@@ -61,7 +61,7 @@ export default function HomePage() {
       ></path>
       </svg>
 
-
+    <div className="bg-[#5D4AB1] text-white">Test Change</div>
 
 
       </div>
