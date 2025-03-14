@@ -58,7 +58,7 @@ export default function HomePage() {
             d="M0,240 C480,360 960,120 1440,240 L1440,320 L0,320 Z"
         ></path>
         </svg>
-
+      <div>nyanyaya </div>
 
 
 
