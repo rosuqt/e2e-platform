@@ -6,7 +6,7 @@ export default function LandingNav() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="flex justify-between items-center px-6 py-4 bg-[#5D4AB1] text-white">
+    <nav className="flex justify-between items-center px-6 py-6 bg-[#5D4AB1] text-white">
       <h1 className="text-xl font-bold">InternConnect</h1>
 
       {/* Desktop Nav */}

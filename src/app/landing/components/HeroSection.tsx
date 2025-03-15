@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Dropdown from "../components/Dropdown";
-import { motion } from "framer-motion";
 
 export default function HomePage() {
   const [selectedCourse, setSelectedCourse] = useState<string>("");
@@ -10,16 +9,52 @@ export default function HomePage() {
 
   const courseOptions: string[] = ["BSIT", "BSBA", "BSTM", "BSHM"];
   const jobOptions: { [key: string]: string[] } = {
-    BSIT: ["Web Developer", "Software Engineer", "System Analyst", "UI/UX Designer"],
-    BSBA: ["Marketing Manager", "Financial Analyst", "HR Specialist", "Business Consultant"],
-    BSTM: ["Tour Guide", "Travel Agent", "Event Planner", "Airline Customer Service Manager"],
-    BSHM: ["Hotel Manager", "Restaurant Manager", "Chef", "Food and Beverage Director"],
+    BSIT: [
+      "Web Developer", "Software Engineer", "System Analyst", "UI/UX Designer",
+      "Cybersecurity Analyst", "Data Scientist", "Cloud Engineer", "Database Administrator",
+      "Mobile App Developer", "Game Developer", "IT Support Specialist", "DevOps Engineer",
+      "AI/ML Engineer", "Full-Stack Developer", "Embedded Systems Engineer", "Network Administrator",
+      "Blockchain Developer", "Business Intelligence Analyst", "IT Project Manager", "Penetration Tester",
+      "E-commerce Developer", "VR/AR Developer", "Software QA Engineer", "Technical Writer",
+      "IT Auditor", "IoT Developer", "ERP Specialist", "Robotics Programmer",
+      "IT Business Analyst", "Front-End Developer"
+    ],
+    
+    BSBA: [
+      "Marketing Manager", "Financial Analyst", "HR Specialist", "Business Consultant",
+      "Entrepreneur", "Sales Manager", "Operations Manager", "Investment Banker",
+      "Public Relations Manager", "Logistics Manager", "Tax Consultant", "Digital Marketer",
+      "Brand Strategist", "Customer Success Manager", "E-commerce Manager", "Product Manager",
+      "Advertising Manager", "Real Estate Agent", "Corporate Trainer", "Retail Manager",
+      "Social Media Manager", "Event Coordinator", "Procurement Manager", "Market Research Analyst",
+      "Franchise Manager", "Export Manager", "Financial Planner", "Business Development Manager",
+      "Risk Analyst", "Trade Specialist"
+    ],
+    
+    BSTM: [
+      "Tour Guide", "Travel Agent", "Event Planner", "Airline Customer Service Manager",
+      "Resort Manager", "Cruise Ship Director", "Hospitality Consultant", "Hotel Sales Manager",
+      "Travel Blogger", "Tour Operations Manager", "Destination Manager", "Cultural Tourism Coordinator",
+      "Eco-Tourism Specialist", "Theme Park Manager", "Concierge Manager", "Airport Ground Staff",
+      "Tourism Researcher", "Flight Attendant", "Casino Host", "Adventure Tourism Coordinator",
+      "Corporate Travel Planner", "Wedding Destination Planner", "Luxury Travel Specialist",
+      "Sustainable Tourism Advisor", "MICE (Meetings, Incentives, Conferences, Exhibitions) Manager",
+      "Airline Sales Executive", "Travel Journalist", "Food Tourism Specialist",
+      "Event Marketing Coordinator", "Travel Photographer"
+    ],
+    
+    BSHM: [
+      "Hotel Manager", "Restaurant Manager", "Chef", "Food and Beverage Director",
+      "Catering Manager", "Pastry Chef", "Banquet Manager", "Hospitality Trainer",
+      "Club Manager", "Resort Operations Manager", "Sommelier", "Kitchen Supervisor",
+      "Guest Relations Manager", "Casino Manager", "Luxury Hospitality Consultant",
+      "Bartender", "Resort Entertainment Coordinator", "Event Catering Manager",
+      "Housekeeping Supervisor", "Hospitality Recruitment Specialist", "Hotel Front Desk Manager",
+      "Airbnb Property Manager", "Cruise Ship Food & Beverage Manager", "Private Chef",
+      "Culinary Instructor", "Sustainable Hospitality Consultant", "Wedding Catering Planner",
+      "Hotel Revenue Manager", "Fine Dining Restaurant Owner", "Spa and Wellness Manager"
+    ]
   };
-
-  const images = [
-    "/images/globe.png",
-    "/images/email.png",
-  ];
 
   return (
     <div className="relative min-h-screen bg-[#ffffff] text-white">
@@ -64,7 +99,12 @@ export default function HomePage() {
           </div>
         </div>
 
-        <FloatingImage images={images} />
+        {/* Right Content with Static Image */}
+        <div className="lg:w-1/2 flex justify-center mt-10 lg:mt-0">
+          <div className="w-[500px] h-[500px] bg-gray-300 rounded-full overflow-hidden mr-[-90px]">
+            <img src="https://www.sti.edu/uploads/Scope_Landscape_2024.webp" alt="Hero" className="w-full h-full object-cover" />
+          </div>
+        </div>
 
         {/* Wave Divider */}
         <div className="absolute -bottom-10 left-0 w-full translate-y-[60px] z-[1]">
@@ -76,66 +116,6 @@ export default function HomePage() {
           </svg>
         </div>
       </div>
-    </div>
-  );
-}
-
-interface FloatingImageProps {
-  images: string[];
-}
-
-function FloatingImage({ images }: FloatingImageProps) {
-  const [isDragging, setIsDragging] = useState(false);
-
-  const positions = [
-    { top: '-300px', left: '40px', rotate: '0deg', zIndex: 10, width: '300px', height: '300px' },  
-    { top: '50px', left: '100px', rotate: '10deg', zIndex: 10, width: '200px', height: '200px' },  
-  ];
-
-  return (
-    <div className="w-full lg:w-1/2 flex justify-center mt-10 lg:mt-0 relative">
-      {images.map((src, index) => (
-        <motion.div
-          key={index}
-          className="overflow-hidden cursor-grab"
-          drag
-          dragElastic={0.8}
-          whileTap={{ cursor: "grabbing" }}
-          dragConstraints={{ left: 30, right: 30, top: 30, bottom: 30 }}
-          animate={{
-            scale: isDragging ? 1.05 : [1, 1.04, 1],
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            repeatType: "loop",
-            ease: "easeInOut",
-          }}
-          whileDrag={{ scale: 1.05 }}
-          onDragStart={() => setIsDragging(true)}
-          onDragEnd={() => setIsDragging(false)}
-          style={{
-            position: 'absolute',
-            top: positions[index]?.top,
-            left: positions[index]?.left,
-            transform: `rotate(${positions[index]?.rotate})`,
-            zIndex: positions[index]?.zIndex,
-            width: positions[index]?.width, 
-            height: positions[index]?.height, 
-          }}
-        >
-          <img
-            src={src}
-            alt="Hero"
-            className="object-cover"
-            draggable={false}
-            style={{
-              width: positions[index]?.width, 
-              height: positions[index]?.height, 
-            }}
-          />
-        </motion.div>
-      ))}
     </div>
   );
 }
