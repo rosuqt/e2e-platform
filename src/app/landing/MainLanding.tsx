@@ -3,13 +3,16 @@ import LandingNav from "./components/LandingNav";
 import HeroSection from "./components/HeroSection";
 import UploadIcon from "./components/icons/UploadIcon";
 import JobMatcher from "./components/icons/JobMatcher";
+import InterviewPrep from "./components/Test";
 import Skills from "./components/icons/Skills";
-import { motion } from "framer-motion";
+import { motion } from 'framer-motion';
+
 
 const scrollFadeInUp = {
   hidden: { opacity: 0, y: 50 },
   visible: { opacity: 1, y: 0, transition: { duration: 1, ease: 'easeOut' } },
 };
+
 
 
 export default function MainLanding() {
@@ -29,6 +32,8 @@ export default function MainLanding() {
           </p>
         </div>
 
+        {/* 1st Section */}
+
         {/* Cards Section */}
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 justify-items-center px-5">
           {/* Showcase your Resume Card */}
@@ -40,12 +45,12 @@ export default function MainLanding() {
             </p>
           </div>
 
-          {/* AI Job Matches Card */}
+          {/* Add Achievements */}
           <div className="bg-[#1C2B5E] text-white p-6 rounded-lg shadow-lg w-full max-w-[375px] flex flex-col items-start transform transition-transform duration-300 ease-in-out hover:scale-110">
             <JobMatcher />
-            <h3 className="text-2xl font-bold mt-3 ml-6">AI Job Matches</h3>
+            <h3 className="text-2xl font-bold mt-3">Add Achievements</h3>
             <p className="mt-2 text-gray-300 text-sm">
-              Get personalized job recommendations based on your skills and resume. Let AI match you with the best opportunities effortlessly.
+            Highlight your milestones and successes, showcasing your skills, growth, and dedication. From personal victories to professional accomplishments,
             </p>
           </div>
 
@@ -58,6 +63,8 @@ export default function MainLanding() {
             </p>
           </div>
         </div>
+
+        {/* 2nd Section */}
 
         {/* 1st group */}
         <motion.div
@@ -81,7 +88,7 @@ export default function MainLanding() {
                 Post a job
               </button>
             </div>  
-            <div className="bg-gray-300 w-[400px] h-[520px] rounded-[30px] mr-44 relative">
+            <div className="bg-gray-300 w-[400px] h-[520px] rounded-[30px] mr-[95px] relative">
               <img src="images/abstract-swirls.jpg" alt="Abstract Swirls" className="w-full h-full object-cover rounded-[30px]" />
               <img 
                 src="https://support.eddy.com/hubfs/Screen%20Shot%202022-02-15%20at%203-10-13%20PM-png-1.png" 
@@ -110,15 +117,15 @@ export default function MainLanding() {
               <img src="images/abstract-swirls.jpg" alt="Abstract Swirls" className="w-full h-full object-cover rounded-[30px]" />
             </div>
             <div className="mr-6 text-left flex flex-col items-start max-w-[900px] space-y-4">
-              <h1 className="text-5xl font-bold md:mr-44 px-5">
+              <h1 className="text-5xl font-bold md:ml-48 px-5">
                 <span className="text-customYellow">Connect with </span>
                 <span className="text-darkBlue">people</span>
               </h1>
-              <h1 className="text-darkBlue text-5xl font-bold md:mr-44 px-5">who can help</h1>
-              <p className="mt-4 text-gray-500 text-lg md:mr-44 pt-4 px-5 w-[600px]">
+              <h1 className="text-darkBlue text-5xl font-bold md:ml-48 px-5">who can help</h1>
+              <p className="mt-4 text-gray-500 text-lg md:ml-48 pt-4 px-5 w-[600px]">
                 Build meaningful connections with people who can support your career journey. Use the in-app messaging system to network, ask questions, and explore new opportunities.
               </p>
-              <button className="bg-button text-white py-4 rounded-[10px] ml-4 mt-auto ml-12 px-14 shadow-lg">
+              <button className="bg-button text-white py-4 rounded-[10px] ml-52 mt-auto ml-12 px-14 shadow-lg">
                 Post a job
               </button>
             </div>
@@ -147,13 +154,35 @@ export default function MainLanding() {
                 Post a job
               </button>
             </div>
-            <div className="bg-gray-300 w-[400px] h-[520px] rounded-[30px] mr-44">
+            <div className="bg-gray-300 w-[400px] h-[520px] rounded-[30px] mr-[95px]">
               <img src="images/abstract-swirls.jpg" alt="Abstract Swirls" className="w-full h-full object-cover rounded-[30px]" />
             </div>
           </div>
         </motion.div>
-              </div>
-            </div>  
+              
+
+        {/* 3rd Section */}
+        <div className="bg-darkBlue flex flex-col lg:flex-row items-center rounded-[80px] justify-center ml-16 mt-36 gap-64 w-[1300px] h-[100px] md:h-[500px] lg:h-[500px]">
+        {/* Left Side */}
+        <div className="max-w-md text-left">
+          <h1 className="text-4xl md:text-6xl font-bold">
+          <span className="text-[#ffffff]">Smart</span> 
+          <span className="text-customYellow"> Practice Interviews</span>
+          </h1>
+          <p className="mt-2 text-xl text-gray-400">
+            Prepare for real job interviews with AI-generated questions and feedback.
+          </p>
+        </div>
+
+        {/* Right Side */}
+        <div className="relative overflow-visible"> 
+          <InterviewPrep />
+        </div>
+
+      </div>
+
+      </div>
+      </div>  
 
 
 
