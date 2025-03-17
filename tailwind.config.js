@@ -1,9 +1,9 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./app/**/*.{js,ts,jsx,tsx}",  // Scan files in app folder
-    "./landing-page/**/*.{js,ts,jsx,tsx}", // Scan landing-page files
-    "./src/**/*.{js,ts,jsx,tsx}", // If you have a src folder
+    "./app/**/*.{js,ts,jsx,tsx}", 
+    "./landing-page/**/*.{js,ts,jsx,tsx}",
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {

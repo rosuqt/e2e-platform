@@ -1,61 +1,94 @@
-import { useState } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { Bookmark } from "lucide-react";
 
-const questions = [
-  "Tell me about yourself.",
-  "What are your strengths and weaknesses?",
-  "Where do you see yourself in five years?",
-  "Why should we hire you?",
-];
+type Company = {
+  name: string;
+  description: string;
+  rating: number;
+};
 
-export default function InterviewPrep() {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [exitX, setExitX] = useState(0);
+const AutoScrollingCarousel = ({ companies }: { companies: Company[] }) => {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
 
-  const x = useMotionValue(0);
-  const scale = useTransform(x, [-150, 0, 150], [0.8, 1, 0.8]);
-  const rotate = useTransform(x, [-150, 0, 150], [-10, 0, 10], { clamp: false });
+  useEffect(() => {
+    const scrollContainer = scrollRef.current;
+    if (!scrollContainer) return;
 
-  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number } }) => {
-    if (info.offset.x < -100) {
-      setExitX(-200);
-      setCurrentQuestion((prev) => (prev + 1) % questions.length);
-    } else if (info.offset.x > 100) {
-      setExitX(200);
-      setCurrentQuestion((prev) => (prev + 1) % questions.length);
-    }
-  };
+    const scrollAmount = 1; 
+    let interval: NodeJS.Timeout;
+
+    const startScrolling = () => {
+      interval = setInterval(() => {
+        if (!isPaused && scrollContainer) {
+          if (
+            scrollContainer.scrollLeft >=
+            scrollContainer.scrollWidth - scrollContainer.clientWidth
+          ) {
+            scrollContainer.scrollLeft = 0; 
+          } else {
+            scrollContainer.scrollLeft += scrollAmount;
+          }
+        }
+      }, 30); 
+    };
+
+    startScrolling();
+    return () => clearInterval(interval);
+  }, [isPaused]);
 
   return (
-    <div className="relative w-[400px] h-[250px] flex items-center justify-center overflow-visible">
-      <AnimatePresence mode="wait">
+    <div
+      className="relative mt-10 overflow-hidden"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      <motion.div
+        ref={scrollRef}
+        className="flex space-x-5 overflow-x-auto scrollbar-hide p-10 "
+      >
+        {companies.map((company, index) => (
+          <motion.div
+            key={index}
+            className="bg-darkBlue p-6 rounded-lg shadow-lg w-[420px] h-[240px] flex-shrink-0 flex flex-col space-y-3 "
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 200 }}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-blue-500 rounded-full"></div>
+              <h3 className="text-2xl text-white font-bold">{company.name}</h3>
+            </div>
+            <p className="text-gray-300 text-lg">{company.description}</p>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3 mt-3">
 
-        {/* Shadow */}
-        <motion.div
-          key={`shadow-${currentQuestion}`}
-          initial={{ y: 15, opacity: 0.5 }}
-          animate={{ y: -5, opacity: 1 }}
-          exit={{ y: -10, opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="absolute w-[90%] h-[110%] bg-gray-400 rounded-3xl mt-32"
-        />
+              <div className="bg-customYellow text-white px-3 py-1 rounded-lg text-lg font-bold">
+                  {company.rating.toFixed(1)}
+                </div>
+                <div className="flex text-yellow-400">
 
-        {/* Card */}
-        <motion.div
-          key={currentQuestion}
-          style={{ x, rotate, scale }}
-          initial={{ x: 0, opacity: 1 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: exitX, opacity: 0, scale: 0.8, transition: { duration: 0.3 } }}
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.5}
-          onDragEnd={handleDragEnd}
-          className="absolute w-[100%] h-[120%] bg-white text-black flex items-center justify-center text-xl rounded-3xl p-6 shadow-lg cursor-grab active:cursor-grabbing"
-        >
-          {questions[currentQuestion]}
-        </motion.div>
-      </AnimatePresence>
+                  {/* Rating logic */}
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <span className="text-2xl" key={i}>
+                      {i < Math.round(company.rating) ? "★" : "☆"}
+                    </span>
+                  ))}
+                </div>
+
+                
+              </div>
+
+              <button className="bg-white text-darkBlue px-6 py-2 mt-7 rounded flex items-center space-x-2">
+                <Bookmark className="w-5 h-5" />
+                <span className="font-bold">Save</span>
+              </button>
+            </div>
+          </motion.div>
+        ))}
+      </motion.div>
     </div>
   );
-}
+};
+
+export default AutoScrollingCarousel;
