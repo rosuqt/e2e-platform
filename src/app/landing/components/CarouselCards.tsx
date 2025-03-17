@@ -46,12 +46,12 @@ const AutoScrollingCarousel = ({ companies }: { companies: Company[] }) => {
     >
       <motion.div
         ref={scrollRef}
-        className="flex space-x-5 overflow-x-auto scrollbar-hide p-10 "
+        className="flex space-x-5 overflow-x-auto  p-10 "
       >
         {companies.map((company, index) => (
           <motion.div
             key={index}
-            className="bg-darkBlue p-6 rounded-lg shadow-lg w-[420px] h-[240px] flex-shrink-0 flex flex-col space-y-3 "
+            className="bg-darkBlue p-6 rounded-lg shadow-lg w-[420px] h-[240px] flex-shrink-0 flex flex-col space-y-3 mt-10 "
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 200 }}
           >

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Dropdown from "../components/Dropdown";
+import { motion } from "framer-motion";
 
 export default function HomePage() {
   const [selectedCourse, setSelectedCourse] = useState<string>("");
@@ -93,9 +94,22 @@ export default function HomePage() {
               width="w-[270px]"
             />
 
-            <button className="bg-button w-40 h-14 md:h-16 rounded-md text-lg font-semibold z-[9999]">
-              Show jobs
-            </button>
+            <motion.button
+              className="bg-gradient-to-r from-blue-500 to-purple-500 
+                        bg-[length:500%_200%] w-40 h-14 md:h-16 
+                        rounded-md text-lg font-semibold z-[9999]"
+              whileHover={{
+                backgroundPosition: "100% 100%",
+                transition: { duration: 1, repeat: Infinity, repeatType: "mirror" } 
+              }}
+              whileTap={{
+                scale: 0.95,
+                backgroundImage: "linear-gradient(to right, #df0dff, #8b5cf6)" 
+              }}
+            >
+              Show Jobs
+            </motion.button>
+
           </div>
         </div>
 
