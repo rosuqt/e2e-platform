@@ -7,9 +7,11 @@ import JobMatcher from "./components/icons/JobMatcher";
 import InterviewPrep from "./components/SwipableCard";
 import Skills from "./components/icons/Skills";
 import AutoScrollingCarousel from "./components/CarouselCards";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-
+import ScrollToTop from "./components/ScrolltoTop";
+import HowItWorks from "./components/HowitWorks";
+import Button3D from "./components/Test/3dButton";
 
 
 const scrollFadeInUp = {
@@ -67,6 +69,8 @@ const images = [
 
 
 export default function MainLanding() {
+    const [hovered, setHovered] = useState(false);
+
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -75,7 +79,6 @@ export default function MainLanding() {
     const interval = setInterval(() => {
       setIndex((prevIndex) => {
         const nextIndex = prevIndex + 1 >= images.length ? 0 : prevIndex + 1;
-        console.log("Current Index:", prevIndex, "Next Index:", nextIndex);
         return nextIndex;
       });
     }, 3000); 
@@ -85,16 +88,18 @@ export default function MainLanding() {
   
   
   return (
-<div className="h-screen w-full overflow-hidden">
-  <div className="h-full overflow-y-auto scrollbar-hide">
+<div className="h-screen w-full">
+
+  <div className="overflow-y-auto scrollbar-hide">
     <div className="relative min-h-screen bg-[#ffffff] text-white no-scrollbar">
       <LandingNav />
       <HeroSection />
+      <ScrollToTop />
 
       <div className="relative bg-white px-6 md:px-10 py-16 text-black no-scrollbar">
         {/* Header Section */}
         <div className="space-y-5 text-center md:text-left md:ml-7 px-5">
-          <h1 className="text-4xl md:text-5xl font-bold">
+          <h1 className="mt-14 text-4xl md:text-5xl font-bold">
             Set up your <span className="text-[#2D4CC8]">Profile</span>
           </h1>
           <p className="mt-2 text-lg text-gray-500 max-w-xl mx-auto md:mx-0">
@@ -105,6 +110,7 @@ export default function MainLanding() {
 
 
         {/* 1st Section */}
+        
         <motion.div
           variants={scrollFadeInUp}
           initial="hidden"
@@ -112,7 +118,10 @@ export default function MainLanding() {
           exit="hidden"
           viewport={{ once: false, amount: 0.2 }}
         >
+          
+
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 justify-items-center px-5">
+        
           {/* Showcase your Resume Card */}
           <div className="bg-[#1C2B5E] text-white p-6 rounded-lg shadow-lg w-full max-w-[375px] flex flex-col items-start transform transition-transform duration-300 ease-in-out hover:scale-110">
             <UploadIcon />
@@ -139,6 +148,7 @@ export default function MainLanding() {
               Showcase your skills and expertise to stand out. Let employers see what you bring to the table.
             </p>
           </div>
+          
         </div>
         </motion.div>
 
@@ -352,7 +362,7 @@ export default function MainLanding() {
             {/* Right: Slideshow */}
             <div className="relative w-[712px] max-w-[712px] h-[700px] mt-10 mr-[-320px]">
 
-            <AnimatePresence mode="wait">
+            
               <motion.img
                   key={index}
                   src={images[index]}
@@ -363,7 +373,7 @@ export default function MainLanding() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5 }}
                 />
-            </AnimatePresence>
+            
             </div>
             
 
@@ -380,7 +390,48 @@ export default function MainLanding() {
           </motion.div>
         </section>
 
-    
+            
+      <div className="p-40 mb-16">
+      <HowItWorks />
+          </div>
+
+          <div className="relative w-full h-screen flex items-center justify-center overflow-hidden bg-black">
+      {/* Gradient Background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-[#5D4AB1] via-purple-500 to-pink-500 bg-animate" />
+      
+      {/* Floating Elements */}
+      <motion.div drag dragConstraints={{ left: -50, right: 50, top: -50, bottom: 50 }}
+        className="absolute w-24 h-24 bg-white/20 backdrop-blur-lg rounded-full top-20 left-10 animate-float" />
+      <motion.div drag dragConstraints={{ left: -100, right: 100, top: -100, bottom: 100 }}
+        className="absolute w-16 h-16 bg-white/30 backdrop-blur-md rounded-full bottom-32 right-20 animate-float" />
+      <motion.div drag dragConstraints={{ left: -150, right: 150, top: -150, bottom: 150 }}
+        className="absolute w-20 h-20 bg-white/25 backdrop-blur-lg rounded-full top-40 right-40 animate-float" />
+      
+      {/* CTA Content */}
+      <div className="relative text-center z-10">
+        <h2 className="text-4xl font-bold text-white drop-shadow-lg">Your Future Starts Here</h2>
+        <p className="text-lg text-white/80 mt-2">Join us and explore endless career opportunities</p>
+        <motion.button
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className="mt-6 px-6 py-3 bg-white text-black font-semibold rounded-lg shadow-lg relative overflow-hidden"
+        >
+          <motion.span
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: hovered ? 1 : 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 bg-black opacity-10"
+          />
+          Get Started
+        </motion.button>
+      </div>
+    </div>
+
+    <div className="flex justify-center items-center min-h-screen bg-gray-900">
+      <Button3D label="Sign Up" />
+    </div>
+
+
 
   </div>
 </div>

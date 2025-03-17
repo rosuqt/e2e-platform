@@ -28,7 +28,7 @@ export default function InterviewPrep() {
 
   return (
     <div className="relative w-[400px] h-[250px] flex items-center justify-center overflow-visible">
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="sync">
 
         {/* Shadow */}
         <motion.div
