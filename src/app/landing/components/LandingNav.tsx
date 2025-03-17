@@ -11,12 +11,15 @@ export default function LandingNav() {
 
       {/* Desktop Nav */}
       <div className="hidden lg:flex space-x-8">
-        <a href="#" className="hover:underline">People</a>
-        <a href="#" className="hover:underline">Jobs</a>
-        <a href="#" className="hover:underline">Companies</a>
-        <a href="#" className="hover:underline">STI Hiring</a>
-        <a href="#" className="font-bold hover:underline">Employer’s Sign-up</a>
-        <button className="bg-white text-[#5D4AB1] px-4 py-2 rounded-md font-semibold">Sign in</button>
+        <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">People</a>
+        <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">Jobs</a>
+        <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">Companies</a>
+        <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">STI Hiring</a>
+        <a href="#" className="font-bold transition-all duration-300 ease-in-out transform hover:scale-105">Employer’s Sign-up</a>
+        <button className="bg-white text-[#5D4AB1] px-4 py-2 rounded-md font-semibold hover:bg-button hover:text-white transition-all duration-300 ease-in-out">
+          Sign in
+        </button>
+
       </div>
 
       {/* Mobile Menu Button */}
@@ -27,11 +30,11 @@ export default function LandingNav() {
       {/* Mobile Menu */}
       {menuOpen && (
         <div className="absolute top-16 left-0 w-full bg-[#5D4AB1] shadow-lg lg:hidden flex flex-col items-center py-4 space-y-4 z-50">
-          <a href="#" className="hover:underline">People</a>
-          <a href="#" className="hover:underline">Jobs</a>
-          <a href="#" className="hover:underline">Companies</a>
-          <a href="#" className="hover:underline">STI Hiring</a>
-          <a href="#" className="font-bold hover:underline">Employer’s Sign-up</a>
+          <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">People</a>
+          <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">Jobs</a>
+          <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">Companies</a>
+          <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">STI Hiring</a>
+          <a href="#" className="font-bold transition-all duration-300 ease-in-out transform hover:scale-105">Employer’s Sign-up</a>
           <button className="bg-white text-[#5D4AB1] px-4 py-2 rounded-md font-semibold">Sign in</button>
         </div>
       )}

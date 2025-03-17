@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 import LandingNav from "./components/LandingNav";
 import HeroSection from "./components/HeroSection";
@@ -11,7 +10,10 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import ScrollToTop from "./components/ScrolltoTop";
 import HowItWorks from "./components/HowitWorks";
-import Button3D from "./components/Test/3dButton";
+import AnimatedButton from "./components/Button2";
+import { AnimatePresence } from "framer-motion";
+import Footer from "./components/Footer";
+
 
 
 const scrollFadeInUp = {
@@ -90,13 +92,13 @@ export default function MainLanding() {
   return (
 <div className="h-screen w-full">
 
-  <div className="overflow-y-auto scrollbar-hide">
-    <div className="relative min-h-screen bg-[#ffffff] text-white no-scrollbar">
+  <div className="overflow-y-auto scroll-container">
+    <div className="relative min-h-screen bg-[#ffffff] text-white ">
       <LandingNav />
       <HeroSection />
       <ScrollToTop />
 
-      <div className="relative bg-white px-6 md:px-10 py-16 text-black no-scrollbar">
+      <div className="relative bg-white px-6 md:px-10 py-16 text-black">
         {/* Header Section */}
         <div className="space-y-5 text-center md:text-left md:ml-7 px-5">
           <h1 className="mt-14 text-4xl md:text-5xl font-bold">
@@ -106,8 +108,6 @@ export default function MainLanding() {
             Set up your profile to showcase your skills. Connect with opportunities and grow your network.
           </p>
         </div>
-
-
 
         {/* 1st Section */}
         
@@ -284,7 +284,7 @@ export default function MainLanding() {
           viewport={{ once: false, amount: 0.2 }}
           
         >
-        <div className="bg-darkBlue flex flex-col lg:flex-row items-center rounded-[80px] justify-center ml-16 mt-36 gap-64 w-[1300px] h-[100px] md:h-[500px] lg:h-[500px]">
+        <div className="bg-darkBlue flex flex-col lg:flex-row items-center rounded-[80px] justify-center ml-16 mt-44 gap-64 w-[1300px] h-[100px] md:h-[500px] lg:h-[500px]">
         {/* Left Side */}
         <div className="max-w-md text-left">
           <h1 className="text-4xl md:text-6xl font-bold">
@@ -329,7 +329,6 @@ export default function MainLanding() {
 
 
       {/* 5th Section */}
-
       <section className="relative w-full px-2 py-28">
       <motion.div
           variants={scrollFadeInUp}
@@ -339,7 +338,6 @@ export default function MainLanding() {
           viewport={{ once: false, amount: 0.2 }}
         >
           <div className="max-w-6xl ml-10 flex flex-col md:flex-row items-center justify-between">
-            {/* Left: Header & Text */}
             <div className="max-w-lg">
               <h2 className="text-8xl font-bold text-customYellow ">
                 STI <span className="text-[#1C2B5E]">is now</span> Hiring
@@ -362,24 +360,21 @@ export default function MainLanding() {
             {/* Right: Slideshow */}
             <div className="relative w-[712px] max-w-[712px] h-[700px] mt-10 mr-[-320px]">
 
-            
+            <AnimatePresence mode="wait">
               <motion.img
-                  key={index}
-                  src={images[index]}
-                  alt="STI Hiring"
-                  className="absolute inset-0 w-full h-full object-cover shadow-lg"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                />
-            
+                key={index}
+                src={images[index]}
+                alt="STI Hiring"
+                className="absolute inset-0 w-full h-full object-cover shadow-lg"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.5, ease: "easeInOut" }}
+              />
+            </AnimatePresence>
             </div>
-            
-
           </div>
 
-          {/* Bottom Blue Bar */}
           <div className="w-[800px] bg-[#1C2B5E] text-gray-200 p-8 mt-[-124px] text-left">
             <p className="text-sm text-left max-w-lg ">
               <strong>Education for Real Life</strong>
@@ -390,47 +385,88 @@ export default function MainLanding() {
           </motion.div>
         </section>
 
-            
-      <div className="p-40 mb-16">
-      <HowItWorks />
-          </div>
+          {/* 6th Section */}     
+          <div className="p-40 mb-16">
+          <HowItWorks />
+              </div>
 
-          <div className="relative w-full h-screen flex items-center justify-center overflow-hidden bg-black">
-      {/* Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#5D4AB1] via-purple-500 to-pink-500 bg-animate" />
-      
-      {/* Floating Elements */}
-      <motion.div drag dragConstraints={{ left: -50, right: 50, top: -50, bottom: 50 }}
-        className="absolute w-24 h-24 bg-white/20 backdrop-blur-lg rounded-full top-20 left-10 animate-float" />
-      <motion.div drag dragConstraints={{ left: -100, right: 100, top: -100, bottom: 100 }}
-        className="absolute w-16 h-16 bg-white/30 backdrop-blur-md rounded-full bottom-32 right-20 animate-float" />
-      <motion.div drag dragConstraints={{ left: -150, right: 150, top: -150, bottom: 150 }}
-        className="absolute w-20 h-20 bg-white/25 backdrop-blur-lg rounded-full top-40 right-40 animate-float" />
-      
-      {/* CTA Content */}
-      <div className="relative text-center z-10">
-        <h2 className="text-4xl font-bold text-white drop-shadow-lg">Your Future Starts Here</h2>
-        <p className="text-lg text-white/80 mt-2">Join us and explore endless career opportunities</p>
-        <motion.button
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-          className="mt-6 px-6 py-3 bg-white text-black font-semibold rounded-lg shadow-lg relative overflow-hidden"
+           {/* 7th Section */}
+
+          <motion.div
+          variants={scrollFadeInUp}
+          initial="hidden"
+          whileInView="visible"
+          exit="hidden"
+          viewport={{ once: false, amount: 0.2 }}
         >
-          <motion.span
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: hovered ? 1 : 0 }}
-            transition={{ duration: 0.3 }}
-            className="absolute inset-0 bg-black opacity-10"
-          />
-          Get Started
-        </motion.button>
-      </div>
-    </div>
+          <div className="relative w-[90%] max-w-[5000px] h-[500px] mx-auto flex items-center justify-center z-10">
 
-    <div className="flex justify-center items-center min-h-screen bg-gray-900">
-      <Button3D label="Sign Up" />
-    </div>
+          <div className="rounded-2xl absolute inset-0 bg-gradient-to-r from-darkBlue  to-[#5D4AB1] bg-animate z-0" />
+          
+          {/* Floating Objects */}
+          <motion.div
+            drag
+            dragConstraints={{left: -100,right: 100,top: -100, bottom: 100, }}
+            className="absolute w-40 h-40 rounded-full top-20 left-[calc(50%--8rem)] animate-float"
+            style={{ cursor: 'grab' }} 
+          >
+            <img
+              src="/images/globe.png"
+              alt="Shape"
+              className="w-full h-full object-cover rounded-full"
+              draggable="false"
+              style={{ transform: 'scale(1.2)' }} 
+            />
+          </motion.div>
 
+          
+          <motion.div drag dragConstraints={{ left: -100, right: 100, top: -100, bottom: 100 }}
+            className="absolute w-20 h-50 rounded-full bottom-10 right-60 animate-float" 
+            style={{ cursor: 'grab' }}  >
+              <img
+              src="/images/shapes/square.png"
+              alt="Shape"
+              className="w-full h-full object-cover rounded-full"
+              draggable="false"
+              style={{ transform: 'scale(4)' }} 
+            />
+          </motion.div>
+          <motion.div drag dragConstraints={{ left: -150, right: -150, top: -150, bottom: 150 }}
+            className="absolute w-20 h-50 rounded-full bottom-96 right-20 animate-float" 
+            style={{ cursor: 'grab' }}  >
+              <img
+              src="/images/shapes/star.png"
+              alt="Shape"
+              className="w-full h-full object-cover rounded-full"
+              draggable="false"
+              style={{ transform: 'scale(4)' }} 
+            />
+          </motion.div>
+
+          {/* CTA */}
+          <div className="relative flex flex-col items-start w-full max-w-[1000px] ml-24 mx-auto z-10">
+          <div className="text-left">
+          <h2 className="text-7xl font-bold drop-shadow-lg">
+            <span className="text-white">Be </span>
+            <span className="text-yellow-400">Future </span>
+            <span className="text-white">Ready</span>
+          </h2>
+          <h3 className="font-semibold text-lg mt-3 text-white"> Find Your Perfect OJT & Career Opportunities Today!</h3>
+
+            <p className="text-base text-white/70 mt-2 w-[500px]">Connect with top employers, showcase your skills, and land the opportunity that takes your career to the next level. 
+            Whether you're searching for internships or full-time jobs, we've got you covered.</p>
+          </div>
+          <div className="mt-5">
+          
+            <AnimatedButton />
+          </div>
+        </div>
+        </div>
+        </motion.div>
+
+    <div className="mt-96">
+    <Footer />
+    </div>
 
 
   </div>
