@@ -6,8 +6,9 @@ import UploadIcon from "./components/icons/UploadIcon";
 import JobMatcher from "./components/icons/JobMatcher";
 import InterviewPrep from "./components/SwipableCard";
 import Skills from "./components/icons/Skills";
-import AutoScrollingCarousel from "./components/Test";
-import { motion } from 'framer-motion';
+import AutoScrollingCarousel from "./components/CarouselCards";
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
 
 
 
@@ -54,9 +55,35 @@ const companies = [
   }
 ];
 
+const images = [
+  'images/sti/teacher1.jpg', 
+  'images/sti/teacher2.jpg',
+  'images/sti/teacher3.jpg',
+  'images/sti/teacher4.jpg',
+  'images/sti/teacher5.jpg'
+
+];
+
 
 
 export default function MainLanding() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (images.length <= 1) return; 
+  
+    const interval = setInterval(() => {
+      setIndex((prevIndex) => {
+        const nextIndex = prevIndex + 1 >= images.length ? 0 : prevIndex + 1;
+        console.log("Current Index:", prevIndex, "Next Index:", nextIndex);
+        return nextIndex;
+      });
+    }, 3000); 
+  
+    return () => clearInterval(interval);
+  }, [images]);
+  
+  
   return (
 <div className="h-screen w-full overflow-hidden">
   <div className="h-full overflow-y-auto scrollbar-hide">
@@ -137,9 +164,19 @@ export default function MainLanding() {
               <p className="mt-4 text-gray-500 text-lg md:ml-8 pt-4 px-5 w-[600px]">
                 Create clear, engaging job postings with AI assistance. Optimize your listings to attract the right candidates effortlessly.
               </p>
-              <button className="bg-button text-white py-4 rounded-[10px] mt-auto ml-12 px-14 shadow-lg">
+
+              <motion.button
+                className="bg-button text-white py-4 rounded-[10px] mt-auto ml-12 px-14 shadow-lg"
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              >
+              
                 Post a job
-              </button>
+              
+              </motion.button>
+              
+              
             </div>  
             <div className="bg-gray-300 w-[400px] h-[520px] rounded-[30px] mr-[95px] relative">
               <img src="images/abstract-swirls.jpg" alt="Abstract Swirls" className="w-full h-full object-cover rounded-[30px]" />
@@ -178,9 +215,16 @@ export default function MainLanding() {
               <p className="mt-4 text-gray-500 text-lg md:ml-48 pt-4 px-5 w-[600px]">
                 Build meaningful connections with people who can support your career journey. Use the in-app messaging system to network, ask questions, and explore new opportunities.
               </p>
-              <button className="bg-button text-white py-4 rounded-[10px] ml-52 mt-auto ml-12 px-14 shadow-lg">
+              <motion.button
+                className="bg-button text-white py-4 rounded-[10px] mt-auto ml-52 px-14 shadow-lg"
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              >
+              
                 Post a job
-              </button>
+              
+              </motion.button>
             </div>
           </div>
         </motion.div>
@@ -203,9 +247,16 @@ export default function MainLanding() {
               <p className="mt-4 text-gray-500 text-lg md:ml-8 pt-4 px-5 w-[600px]">
                 Create clear, engaging job postings with AI assistance. Optimize your listings to attract the right candidates effortlessly.
               </p>
-              <button className="bg-button text-white py-4 rounded-[10px] mt-auto ml-12 px-14 shadow-lg">
+              <motion.button
+                className="bg-button text-white py-4 rounded-[10px] mt-auto ml-12 px-14 shadow-lg"
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              >
+              
                 Post a job
-              </button>
+              
+              </motion.button>
             </div>
             <div className="bg-gray-300 w-[400px] h-[520px] rounded-[30px] mr-[95px]">
               <img src="images/abstract-swirls.jpg" alt="Abstract Swirls" className="w-full h-full object-cover rounded-[30px]" />
@@ -243,8 +294,14 @@ export default function MainLanding() {
       </motion.div>
  
       {/* 4th Section Note: Debating whether pwede to editable by admin or no na >__<*/}
-      
-      <div className="py-56">
+      <motion.div
+          variants={scrollFadeInUp}
+          initial="hidden"
+          whileInView="visible"
+          exit="hidden"
+          viewport={{ once: false, amount: 0.2 }}
+        >
+      <div className=" py-56 mb-[-250px]">
       <div className="max-w-md text-left">
           <h1 className="text-4xl md:text-5xl font-bold whitespace-nowrap ml-24">
           <span className="text-customYellow">Verified </span> 
@@ -254,14 +311,76 @@ export default function MainLanding() {
           Explore opportunities with our partnered companies. Connect with top employers offering OJT programs and career growth opportunities
           </p>
         </div>
-
-      <AutoScrollingCarousel companies={companies} />
-      
-
         </div>
+      <AutoScrollingCarousel companies={companies} />
+      </motion.div>
       </div>
       </div>  
 
+
+      {/* 5th Section */}
+
+      <section className="relative w-full px-2 py-28">
+      <motion.div
+          variants={scrollFadeInUp}
+          initial="hidden"
+          whileInView="visible"
+          exit="hidden"
+          viewport={{ once: false, amount: 0.2 }}
+        >
+          <div className="max-w-6xl ml-10 flex flex-col md:flex-row items-center justify-between">
+            {/* Left: Header & Text */}
+            <div className="max-w-lg">
+              <h2 className="text-8xl font-bold text-customYellow ">
+                STI <span className="text-[#1C2B5E]">is now</span> Hiring
+              </h2>
+              <p className="mt-4 text-gray-700">
+                Join our team at STI College! We’re looking for passionate individuals who are ready to make an impact in education and help shape future professionals.
+              </p>
+              <motion.button
+                className="mt-6 px-14 py-5 bg-[#1C2B5E] text-white text-xl font-semibold rounded-lg shadow-md hover:bg-[#16224A]"
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9, backgroundColor: "#E8AF30" }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              >
+              
+                Apply Now
+              
+              </motion.button>
+            </div>
+
+            {/* Right: Slideshow */}
+            <div className="relative w-[712px] max-w-[712px] h-[700px] mt-10 mr-[-320px]">
+
+            <AnimatePresence mode="wait">
+              <motion.img
+                  key={index}
+                  src={images[index]}
+                  alt="STI Hiring"
+                  className="absolute inset-0 w-full h-full object-cover shadow-lg"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                />
+            </AnimatePresence>
+            </div>
+            
+
+          </div>
+
+          {/* Bottom Blue Bar */}
+          <div className="w-[800px] bg-[#1C2B5E] text-gray-200 p-8 mt-[-124px] text-left">
+            <p className="text-sm text-left max-w-lg ">
+              <strong>Education for Real Life</strong>
+              <br />
+              Kick-start your career with STI College—where real-life education meets real opportunities.
+            </p>
+          </div>
+          </motion.div>
+        </section>
+
+    
 
   </div>
 </div>
