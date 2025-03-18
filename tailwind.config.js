@@ -9,8 +9,10 @@ module.exports = {
     extend: {
       colors: {
         button: "#5E56E0", 
+        buttonHover:"#4e45dd",
         customYellow: "#E8AF30",
-        darkBlue:"#162F65"
+        darkBlue:"#162F65",
+        customPurple:"#5651AB"
       },
     },
   },

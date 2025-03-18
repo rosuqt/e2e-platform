@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { CheckCircle } from "lucide-react"; // Import CheckCircle from lucide-react
+import { Check } from 'lucide-react';
 
 interface StepProgressProps {
   currentStep: number;
@@ -21,23 +21,22 @@ export default function StepProgress({ currentStep }: StepProgressProps) {
             {/* Animated Step Circle */}
             <motion.div
               className={`w-8 h-8 flex items-center justify-center rounded-full font-semibold transition-all
-                ${isCompleted ? "bg-blue-600 text-white" : ""}
-  ${isActive && !isCompleted ? "bg-blue-600 text-white" : "border-[3px] border-blue-600 text-blue-600 bg-white"}`}
+  ${isActive && !isCompleted ? "bg-button text-white" : "border-[3px] border-button text-button bg-white"}`}
               initial={{ scale: 0.9 }}
               animate={{ scale: isActive ? 1.3 : 1 }}
               transition={{ type: "spring", stiffness: 200, damping: 10 }}
             >
               {isCompleted ? (
-                <CheckCircle className="text-blue-700" size={18} /> // Checkmark for completed steps
+                <Check className="text-blue-700" size={20} />
               ) : (
-                stepNumber // Show number for active/incomplete steps
+                stepNumber
               )}
             </motion.div>
 
             {/* Animated Step Divider (Loading Effect) */}
             {index < steps.length - 1 && (
               <motion.div
-                className={`h-1 bg-blue-600 rounded-full`}
+                className={`h-1 bg-button rounded-full`}
                 initial={{ width: 0 }}
                 animate={{ width: isCompleted ? 40 : currentStep === stepNumber + 1 ? 40 : 0 }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
