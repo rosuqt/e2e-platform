@@ -4,6 +4,7 @@ import UploadIcon from "./components/icons/UploadIcon";
 import JobMatcher from "./components/icons/JobMatcher";
 import Skills from "./components/icons/Skills";
 
+
 export default function MainLanding() {
   return (
     <div className="relative min-h-screen bg-[#5d4ab1] text-white">
