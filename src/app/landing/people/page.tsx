@@ -70,7 +70,7 @@ export default function PeoplePage() {
       <footer className="mt-auto border-t text-sm text-gray-500 text-center py-6 px-4">
         <p>
           {/*copyright sign*/}&copy; 2025{" "}
-          <span className="font-semibold">InternConnect</span>
+          <a href="#" className="font-semibold">InternConnect</a>
         </p>
         <div className="flex justify-center gap-4 mt-2 flex-wrap">
           <a href="#" className="hover:underline">

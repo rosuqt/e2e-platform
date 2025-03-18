@@ -11,7 +11,7 @@ export default function LandingNav() {
 
       {/* Desktop Nav */}
       <div className="hidden lg:flex space-x-8">
-        <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">People</a>
+        <a href="/landing/people" className="transition-all duration-300 ease-in-out transform hover:scale-105">People</a>
         <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">Jobs</a>
         <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">Companies</a>
         <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">STI Hiring</a>
