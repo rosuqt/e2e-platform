@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 "use client";
 import LandingNav from "./components/LandingNav";
 import HeroSection from "./components/HeroSection";
@@ -13,6 +14,7 @@ import HowItWorks from "./components/HowitWorks";
 import AnimatedButton from "./components/Button2";
 import { AnimatePresence } from "framer-motion";
 import Footer from "./components/Footer";
+import RemoveDoubleClick from "../components/RemoveDoubleClick";
 
 
 
@@ -71,11 +73,12 @@ const images = [
 
 
 export default function MainLanding() {
-    const [hovered, setHovered] = useState(false);
+
 
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
+    RemoveDoubleClick();
     if (images.length <= 1) return; 
   
     const interval = setInterval(() => {
