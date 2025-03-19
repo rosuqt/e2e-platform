@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Dropdown from "../components/Dropdown";
+import Dropdown from "./LandingDropdown";
 import { motion } from "framer-motion";
 
 export default function HomePage() {

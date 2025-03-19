@@ -27,13 +27,12 @@ export default function StepProgress({ currentStep }: StepProgressProps) {
               transition={{ type: "spring", stiffness: 200, damping: 10 }}
             >
               {isCompleted ? (
-                <Check className="text-blue-700" size={20} />
+                <Check className="text-button" size={20} />
               ) : (
                 stepNumber
               )}
             </motion.div>
 
-            {/* Animated Step Divider (Loading Effect) */}
             {index < steps.length - 1 && (
               <motion.div
                 className={`h-1 bg-button rounded-full`}

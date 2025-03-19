@@ -31,16 +31,17 @@ export default function App() {
       <StepProgress currentStep={currentStep} />
 
       {/* Form Content */}
-      {currentStep === 1 && <Step1 onNext={() => setCurrentStep(2)} />}
-      {currentStep === 2 && <Step2 onNext={() => setCurrentStep(3)} onBack={handleBackStep} />}
-      {currentStep === 3 && <Step3 onBack={handleBackStep} />}
+      {currentStep === 1 && <Step1 />}
+      {currentStep === 2 && <Step2 />}
+      {currentStep === 3 && <Step3 />}
+
 
       {/* Navigation Buttons */}
       <div className="flex justify-between mt-6">
         {currentStep > 1 && (
           <button
             onClick={handleBackStep}
-            className="px-12 py-2  flex items rounded-full border-button border-t-22 border hover:bg-button/5 transition gap-8 text-button"
+            className="px-12 py-2 flex items-center justify-center rounded-full border border-button hover:bg-button/5 transition gap-2 text-button"
           >
             <ChevronLeft className=""size={20}/>
             Back
@@ -50,14 +51,14 @@ export default function App() {
         {currentStep < 3 ? (
           <button
             onClick={handleNextStep}
-            className="px-10 py-2 bg-button text-white rounded-full  flex items  border hover:bg-buttonHover transition gap-8"
+            className="px-12 py-2 flex items-center justify-center gap-2 bg-button text-white rounded-full border hover:bg-buttonHover transition"
           
           >
             <p>Next</p>
             <ChevronRight className=""size={20}/>
           </button>
         ) : (
-          <button className="px-10   py-2 bg-button text-white text-bold rounded-full">
+          <button className="px-12   py-2 bg-button text-white text-bold rounded-full">
             
             Sign Up
           </button>

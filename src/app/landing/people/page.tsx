@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 export default function PeoplePage() {
   return (
     <div className="min-h-screen flex flex-col bg-white text-gray-800 font-sans">
