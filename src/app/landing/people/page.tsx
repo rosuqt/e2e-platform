@@ -1,12 +1,16 @@
+import Link from "next/link"
+
 export default function PeoplePage() {
   return (
     <div className="min-h-screen flex flex-col bg-white text-gray-800 font-sans">
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-center px-4 sm:px-8 py-4 shadow-md gap-4">
         <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+          <Link href="/">
           <span className="text-indigo-600 text-2xl font-bold">
             InternConnect
           </span>
+          </Link>
           {/* Search */}
           <div className="flex flex-wrap border border-gray-300 rounded-full overflow-hidden shadow-sm w-full sm:w-auto">
             <span className="bg-white-100 text-black-600 px-6 py-3 text-sm font-semibold">

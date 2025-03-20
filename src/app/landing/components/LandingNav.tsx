@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Menu, X } from "lucide-react"; 
+import Link from "next/link";
 
 export default function LandingNav() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -11,14 +12,16 @@ export default function LandingNav() {
 
       {/* Desktop Nav */}
       <div className="hidden lg:flex space-x-8">
-        <a href="/landing/people" className="transition-all duration-300 ease-in-out transform hover:scale-105">People</a>
-        <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">Jobs</a>
-        <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">Companies</a>
-        <a href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">STI Hiring</a>
-        <a href="#" className="font-bold transition-all duration-300 ease-in-out transform hover:scale-105">Employer’s Sign-up</a>
+        <Link href="/landing/people" className="transition-all duration-300 ease-in-out transform hover:scale-105">People</Link>
+        <Link href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">Jobs</Link>
+        <Link href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">Companies</Link>
+        <Link href="#" className="transition-all duration-300 ease-in-out transform hover:scale-105">STI Hiring</Link>
+        <Link href="/sign-up" className="font-bold transition-all duration-300 ease-in-out transform hover:scale-105">Employer’s Sign-up</Link>
+        <Link href="/sign-in">
         <button className="bg-white text-[#5D4AB1] px-4 py-2 rounded-md font-semibold hover:bg-button hover:text-white transition-all duration-300 ease-in-out">
           Sign in
         </button>
+        </Link>
 
       </div>
 
