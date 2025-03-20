@@ -15,6 +15,7 @@ import AnimatedButton from "./components/Button2";
 import { AnimatePresence } from "framer-motion";
 import Footer from "./components/Footer";
 import RemoveDoubleClick from "../components/RemoveDoubleClick";
+import Link from "next/link";
 
 
 
@@ -177,7 +178,7 @@ export default function MainLanding() {
               <p className="mt-4 text-gray-500 text-lg md:ml-8 pt-4 px-5 w-[600px]">
                 Create clear, engaging job postings with AI assistance. Optimize your listings to attract the right candidates effortlessly.
               </p>
-
+              <Link href="/sign-in">
               <motion.button
                 className="bg-button text-white py-4 rounded-[10px] mt-auto ml-12 px-14 shadow-lg"
                 whileHover={{ scale: 1.2 }}
@@ -188,6 +189,7 @@ export default function MainLanding() {
                 Post a job
               
               </motion.button>
+              </Link>
               
               
             </div>  
@@ -228,6 +230,8 @@ export default function MainLanding() {
               <p className="mt-4 text-gray-500 text-lg md:ml-48 pt-4 px-5 w-[600px]">
                 Build meaningful connections with people who can support your career journey. Use the in-app messaging system to network, ask questions, and explore new opportunities.
               </p>
+
+              <Link href="/sign-in">
               <motion.button
                 className="bg-button text-white py-4 rounded-[10px] mt-auto ml-52 px-14 shadow-lg"
                 whileHover={{ scale: 1.2 }}
@@ -237,7 +241,7 @@ export default function MainLanding() {
               
                 Post a job
               
-              </motion.button>
+              </motion.button></Link>
             </div>
           </div>
         </motion.div>
@@ -260,6 +264,7 @@ export default function MainLanding() {
               <p className="mt-4 text-gray-500 text-lg md:ml-8 pt-4 px-5 w-[600px]">
                 Create clear, engaging job postings with AI assistance. Optimize your listings to attract the right candidates effortlessly.
               </p>
+              <Link href="/sign-in">
               <motion.button
                 className="bg-button text-white py-4 rounded-[10px] mt-auto ml-12 px-14 shadow-lg"
                 whileHover={{ scale: 1.2 }}
@@ -269,7 +274,7 @@ export default function MainLanding() {
               
                 Post a job
               
-              </motion.button>
+              </motion.button></Link>
             </div>
             <div className="bg-gray-300 w-[400px] h-[520px] rounded-[30px] mr-[95px]">
               <img src="images/abstract-swirls.jpg" alt="Abstract Swirls" className="w-full h-full object-cover rounded-[30px]" />
@@ -348,6 +353,7 @@ export default function MainLanding() {
               <p className="mt-4 text-gray-700">
                 Join our team at STI College! We’re looking for passionate individuals who are ready to make an impact in education and help shape future professionals.
               </p>
+              <Link href="#">
               <motion.button
                 className="mt-6 px-14 py-5 bg-[#1C2B5E] text-white text-xl font-semibold rounded-lg shadow-md hover:bg-[#16224A]"
                 whileHover={{ scale: 1.2 }}
@@ -357,7 +363,7 @@ export default function MainLanding() {
               
                 Apply Now
               
-              </motion.button>
+              </motion.button></Link>
             </div>
 
             {/* Right: Slideshow */}
@@ -457,7 +463,7 @@ export default function MainLanding() {
           <h3 className="font-semibold text-lg mt-3 text-white"> Find Your Perfect OJT & Career Opportunities Today!</h3>
 
             <p className="text-base text-white/70 mt-2 w-[500px]">Connect with top employers, showcase your skills, and land the opportunity that takes your career to the next level. 
-            Whether you're searching for internships or full-time jobs, we've got you covered.</p>
+            Whether you&apos;re searching for internships or full-time jobs, we've got you covered.</p>
           </div>
           <div className="mt-5">
           

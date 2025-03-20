@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 
 export default function HoverImageButton() {
@@ -17,7 +17,7 @@ export default function HoverImageButton() {
       >
        
       </motion.div>
-
+      <Link href="/sign-in">
       <motion.button
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -31,7 +31,7 @@ export default function HoverImageButton() {
         className="px-9 py-5 text-white font-bold text-lg rounded-lg shadow-md"
       >
         Sign-up Now
-      </motion.button>
+      </motion.button></Link>
 
     </div>
   );

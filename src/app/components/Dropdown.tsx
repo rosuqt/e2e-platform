@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Listbox } from "@headlessui/react";
 import { Check, ChevronDown, Frown } from "lucide-react";
 
 export interface DropdownOption {
+  id?: string;
   name: string;
   logo?: string | React.ReactNode;
 }
@@ -11,23 +12,34 @@ interface DropdownProps {
   options: DropdownOption[];
   width?: string;
   placeholder?: string;
-  onChange?: (option: DropdownOption | null) => void; 
+  value?: DropdownOption | null;
+  onChange?: (option: DropdownOption | null) => void;
 }
 
-export default function Dropdown({ options, width = "w-full", placeholder="Select option", onChange }: DropdownProps) {
+export default function Dropdown({
+  options,
+  width = "w-full",
+  placeholder = "Select option",
+  value,
+  onChange,
+}: DropdownProps) {
+  const [selectedOption, setSelectedOption] = useState<DropdownOption | null>(value || null);
+  
+  useEffect(() => {
+    setSelectedOption(value || null);
+  }, [value]);
 
-  const [selectedOption, setSelectedOption] = useState<DropdownOption | null>(null);
-
-  const handleSelect = (option: DropdownOption | null) => {
-    setSelectedOption(option);
-    if (onChange) onChange(option);
+  const handleSelect = (name: string) => {
+    const selected = options.find((opt) => opt.name === name) || null;
+    setSelectedOption(selected);
+    if (onChange) onChange(selected);
   };
 
   return (
-    <Listbox value={selectedOption} onChange={handleSelect}>
+    <Listbox value={selectedOption?.name || ""} onChange={handleSelect}>
       <div className={`relative ${width}`}>
         {/* Dropdown Button */}
-        <Listbox.Button className={`flex items-center justify-between border p-2 rounded bg-white ${width}`}>
+        <Listbox.Button className={`flex items-center justify-between border p-2 bg-white ${width}`}>
           <div className="flex items-center gap-2">
             {selectedOption?.logo && typeof selectedOption.logo === "string" ? (
               <img src={selectedOption.logo} alt="" className="w-4 h-4 rounded-full" />
@@ -35,7 +47,7 @@ export default function Dropdown({ options, width = "w-full", placeholder="Selec
               selectedOption?.logo
             )}
             <span className={selectedOption ? "" : "text-gray-400"}>
-            {selectedOption ? selectedOption.name : placeholder}
+              {selectedOption ? selectedOption.name : placeholder}
             </span>
           </div>
           <ChevronDown className="w-4 h-4 text-gray-500" />
@@ -47,13 +59,13 @@ export default function Dropdown({ options, width = "w-full", placeholder="Selec
             options.map((option, index) => (
               <Listbox.Option
                 key={index}
-                value={option}
+                value={option.name}
                 className="p-2 flex items-center gap-2 cursor-pointer hover:bg-gray-100"
               >
                 {option.logo && typeof option.logo === "string" ? (
                   <img src={option.logo} alt="" className="w-4 h-4 rounded-full" />
                 ) : (
-                  option.logo 
+                  option.logo
                 )}
                 <span>{option.name}</span>
                 {selectedOption?.name === option.name && <Check className="w-4 h-4 text-blue-500 ml-auto" />}
