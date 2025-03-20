@@ -10,6 +10,7 @@ interface DropdownProps {
   setSelected: (value: string) => void;
   dropdownHeight?: string;
   width?: string;
+  height?: string;
   placeholder?: string;
 }
 
@@ -20,6 +21,7 @@ export default function Dropdown({
     setSelected,
     dropdownHeight = "max-h-40",
     width = "w-[200px]",
+    height = "h-auto", // <-- Added height
     placeholder = "Type here...",
 }: DropdownProps) {
     const [showDropdown, setShowDropdown] = useState<boolean>(false);
@@ -48,7 +50,7 @@ export default function Dropdown({
     };
 
     return (
-        <div ref={dropdownRef} className={`relative ${width}`}>
+        <div ref={dropdownRef} className={`relative ${width} ${height}`}>
             {/* Clickable*/}
             <div 
                 className="relative w-full px-4 pt-8 pb-5 rounded-md text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 mt-1 border border-gray-300 cursor-pointer"

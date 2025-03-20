@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Dropdown from "../components/Dropdown";
+import Dropdown from "./LandingDropdown";
 import { motion } from "framer-motion";
 
 export default function HomePage() {
@@ -59,7 +59,7 @@ export default function HomePage() {
 
   return (
     <div className="relative min-h-screen bg-[#ffffff] text-white">
-      <div className="relative bg-[#5D4AB1] min-h-[85vh] flex flex-wrap items-center justify-center px-6 py-16 lg:px-10 lg:flex-row">
+      <div className="relative bg-customPurple min-h-[85vh] flex flex-wrap items-center justify-center px-6 py-16 lg:px-10 lg:flex-row">
         
         <div className="w-full lg:w-1/2 text-center lg:text-left">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight">
