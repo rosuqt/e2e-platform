@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Checkbox } from "./components/Checkbox"; 
 import RemoveDoubleClick from "../components/RemoveDoubleClick";
 import SingleLineFooter from "../components/SingleLineFooter";
+import Link from "next/link";
 
 export default function SignInPage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -21,7 +22,7 @@ export default function SignInPage() {
   return (
     
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
-   <div className="absolute top-0 left-0 m-4 text-xl font-bold">Test Logo</div>
+   <Link href="/" className="absolute top-0 left-0 m-4 text-xl font-bold">Test Logo</Link>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
@@ -86,11 +87,11 @@ export default function SignInPage() {
           </button>
         </div>
         <p className="text-center text-gray-600 mt-4">
-          New Employer? <a href="#" className="text-blue-500">Sign Up Today</a>
+          New Employer? <Link href="/sign-up" className="text-blue-500">Sign Up Today</Link>
         </p>
       </motion.div>
 
-      
+        
     <SingleLineFooter/>
   
     </div>

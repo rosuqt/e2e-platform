@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Link from "next/link"
 
 export default function PeoplePage() {
   return (
@@ -6,9 +6,11 @@ export default function PeoplePage() {
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-center px-4 sm:px-8 py-4 shadow-md gap-4">
         <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+          <Link href="/">
           <span className="text-indigo-600 text-2xl font-bold">
             InternConnect
           </span>
+          </Link>
           {/* Search */}
           <div className="flex flex-wrap border border-gray-300 rounded-full overflow-hidden shadow-sm w-full sm:w-auto">
             <span className="bg-white-100 text-black-600 px-6 py-3 text-sm font-semibold">
@@ -70,7 +72,7 @@ export default function PeoplePage() {
       <footer className="mt-auto border-t text-sm text-gray-500 text-center py-6 px-4">
         <p>
           {/*copyright sign*/}&copy; 2025{" "}
-          <span className="font-semibold">InternConnect</span>
+          <a href="#" className="font-semibold">InternConnect</a>
         </p>
         <div className="flex justify-center gap-4 mt-2 flex-wrap">
           <a href="#" className="hover:underline">
