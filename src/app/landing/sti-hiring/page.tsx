@@ -1,6 +1,9 @@
 import LandingNav from "../components/LandingNav";
 import { CheckCircle, ArrowUpRight,  Mail, MapPin, Phone } from "lucide-react";
 import Footer from "../components/Footer";
+import Image from "next/image";
+import waveDivider from "../sti-hiring/Vector.svg";
+import FooterImage from "../sti-hiring/footerImage.svg";
 
 export default function hiring() {
     return (
@@ -184,6 +187,26 @@ export default function hiring() {
             ))}
           </div>
         </section>
+        <div >
+        <Image src={waveDivider} alt="WaveDivider" width={1600} className="relative top-16 w-full"/>  
+        <div className="relative bg-[#3361AC] text-white py-12 px-6 md:px-12 flex flex-col md:flex-row items-center justify-between ">
+          
+        {/* Left Side - Image */}
+        <div className="w-full md:w-1/2 flex justify-center md:justify-start">
+          <Image src={FooterImage} alt="footerImage" height={800} width={800}></Image>
+        </div>
+
+        {/* Right Side - Text and Button */}
+        <div className="w-full md:w-1/2 text-center md:text-center mt-6 md:mt-0">
+          <h2 className="text-2xl md:text-4xl font-bold">
+            Start Your <span className="text-yellow-400">Journey</span> With Us
+          </h2>
+          <button className="mt-6 bg-yellow-400 text-black font-semibold px-6 py-3 rounded-lg shadow-md hover:bg-yellow-500 transition">
+            Join now
+          </button>
+        </div>
+        </div>
+        </div>
         <Footer/>
         
 
