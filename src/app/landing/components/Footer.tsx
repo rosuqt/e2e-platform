@@ -1,5 +1,5 @@
-import React from 'react';
-import { MapPin, Mail, Phone } from 'lucide-react';
+import React from "react";
+import { MapPin, Mail, Phone } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -9,7 +9,11 @@ const Footer = () => {
         <div className="container mx-auto px-6 py-10 flex justify-between items-center">
           <div className="flex flex-col">
             <div className="flex items-center mb-4">
-              <img src="/path/to/logo.png" alt="App Logo" className="w-8 h-8 mr-3" />
+              <img
+                src="/path/to/logo.png"
+                alt="App Logo"
+                className="w-8 h-8 mr-3"
+              />
               <span className="font-bold text-xl">AppName</span>
             </div>
             <div className="flex items-center mb-2 text-gray-700">
@@ -29,25 +33,63 @@ const Footer = () => {
           <div className="flex flex-col items-left leading-loose">
             <h2 className="font-bold text-lg mb-4">Legal</h2>
             <ul className="space-y-2">
-              <li><a href="/privacy-policy" className="text-gray-700 hover:text-gray-900">Privacy Policy</a></li>
-              <li><a href="/terms-conditions" className="text-gray-700 hover:text-gray-900">Terms and Conditions</a></li>
-              <li><a href="/user-agreement" className="text-gray-700 hover:text-gray-900">User Agreement</a></li>
+              <li>
+                <a
+                  href="/privacy-policy"
+                  className="text-gray-700 hover:text-gray-900"
+                >
+                  Privacy Policy
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/terms-conditions"
+                  className="text-gray-700 hover:text-gray-900"
+                >
+                  Terms and Conditions
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/user-agreement"
+                  className="text-gray-700 hover:text-gray-900"
+                >
+                  User Agreement
+                </a>
+              </li>
             </ul>
           </div>
 
           <div className="flex flex-col items-center leading-loose">
             <h2 className="font-bold text-lg mb-4">About AppName</h2>
             <ul className="space-y-2">
-              <li><a href="/about" className="text-gray-700 hover:text-gray-900">About Us</a></li>
-              <li><a href="/how-it-works" className="text-gray-700 hover:text-gray-900">How it Works</a></li>
-              <li><a href="/faq" className="text-gray-700 hover:text-gray-900">FAQ&apos;s</a></li>
+              <li>
+                <a href="/about" className="text-gray-700 hover:text-gray-900">
+                  About Us
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/how-it-works"
+                  className="text-gray-700 hover:text-gray-900"
+                >
+                  How it Works
+                </a>
+              </li>
+              <li>
+                <a href="/faq" className="text-gray-700 hover:text-gray-900">
+                  FAQ&apos;s
+                </a>
+              </li>
             </ul>
           </div>
         </div>
       </footer>
 
       <div className="bg-darkBlue text-sm text-white/80 text-left py-10 w-full mt-auto">
-        <p className="ml-10">© 2025 STI College Alabang Job Finder. All rights reserved.</p>
+        <p className="ml-10">
+          © 2025 STI College Alabang Job Finder. All rights reserved.
+        </p>
         <p className="ml-10">Connecting Students to Opportunities</p>
       </div>
     </>

@@ -1,7 +1,13 @@
 const JobMatcher = () => (
-  <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg
+    width="44"
+    height="44"
+    viewBox="0 0 44 44"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
     <circle cx="22" cy="22" r="22" fill="#E8C766" />
-    <g transform="translate(10, 10) scale(1.0)"> 
+    <g transform="translate(10, 10) scale(1.0)">
       <path
         d="M7 13H13M7 9H13M17 14L15.76 16.3L13 16.67L15 18.47L14.53 21L17 19.8L19.47 21L19 18.47L21 16.67L18.24 16.3L17 14Z"
         stroke="white"

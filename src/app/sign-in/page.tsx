@@ -1,9 +1,8 @@
 "use client";
 
-
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Checkbox } from "./components/Checkbox"; 
+import { Checkbox } from "./components/Checkbox";
 import RemoveDoubleClick from "../components/RemoveDoubleClick";
 import SingleLineFooter from "../components/SingleLineFooter";
 import Link from "next/link";
@@ -20,9 +19,10 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
-   <Link href="/" className="absolute top-0 left-0 m-4 text-xl font-bold">Test Logo</Link>
+      <Link href="/" className="absolute top-0 left-0 m-4 text-xl font-bold">
+        Test Logo
+      </Link>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
@@ -40,22 +40,25 @@ export default function SignInPage() {
           />
           <div className="relative">
             <input
-              type={showPassword ? "text" : "password"} 
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoComplete="new-password"
             />
-            <button 
-            type="button"
-            className="absolute inset-y-0 right-3 flex items-center text-blue-500 cursor-pointer"
-            onClick={() => setShowPassword(!showPassword)}>
-                
-            {showPassword ? "Hide" : "Show"}
+            <button
+              type="button"
+              className="absolute inset-y-0 right-3 flex items-center text-blue-500 cursor-pointer"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? "Hide" : "Show"}
             </button>
           </div>
           <div className="flex items-center space-x-2">
             <input type="checkbox" className="hidden" />
-            <Checkbox checked={rememberMe} onChange={() => setRememberMe(!rememberMe)} />
+            <Checkbox
+              checked={rememberMe}
+              onChange={() => setRememberMe(!rememberMe)}
+            />
             <label htmlFor="remember" className="text-gray-700">
               Remember me
             </label>
@@ -65,18 +68,28 @@ export default function SignInPage() {
           </button>
           <p className="text-xs text-gray-500 text-center">
             By clicking Sign In, you agree to the
-            <a href="#" className="text-blue-500"> User Agreement</a>,
-            <a href="#" className="text-blue-500"> Privacy Policy</a>, and
-            <a href="#" className="text-blue-500"> Cookie Policy</a>.
+            <a href="#" className="text-blue-500">
+              {" "}
+              User Agreement
+            </a>
+            ,
+            <a href="#" className="text-blue-500">
+              {" "}
+              Privacy Policy
+            </a>
+            , and
+            <a href="#" className="text-blue-500">
+              {" "}
+              Cookie Policy
+            </a>
+            .
           </p>
           <div className="flex items-center my-4">
             <div className="flex-1 h-px bg-gray-300"></div>
             <span className="mx-3 text-gray-500">or</span>
             <div className="flex-1 h-px bg-gray-300"></div>
           </div>
-          <p className="text-sm text-gray-600">
-            For Student Login
-          </p>
+          <p className="text-sm text-gray-600">For Student Login</p>
           <button className="w-full flex items-center justify-center border py-2 rounded-lg hover:bg-gray-200 transition">
             <img
               src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"
@@ -87,14 +100,14 @@ export default function SignInPage() {
           </button>
         </div>
         <p className="text-center text-gray-600 mt-4">
-          New Employer? <Link href="/sign-up" className="text-blue-500">Sign Up Today</Link>
+          New Employer?{" "}
+          <Link href="/sign-up" className="text-blue-500">
+            Sign Up Today
+          </Link>
         </p>
       </motion.div>
 
-        
-    <SingleLineFooter/>
-  
+      <SingleLineFooter />
     </div>
-    
   );
 }

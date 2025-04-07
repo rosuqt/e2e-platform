@@ -17,7 +17,7 @@ export default function ToggleSwitch({
   knobWidth = 60,
   onLabel = "On",
   offLabel = "Off",
-  className="",
+  className = "",
 }: ToggleSwitchProps) {
   const switchWidth = knobWidth * 2.2;
   const knobPosition = isOn ? switchWidth - knobWidth - 8 : 2;
@@ -29,22 +29,22 @@ export default function ToggleSwitch({
 
   return (
     <div className={`toggle-container ${className}`}>
-    <div className="flex flex-col items-center space-y-2">
-      <div
-        className="h-12 flex items-center bg-gray-200 rounded-full p-1 shadow-inner cursor-pointer relative"
-        style={{ width: switchWidth }}
-        onClick={handleToggle}
-      >
-        <motion.div
-          className="h-10 flex items-center justify-center rounded-full shadow-md font-semibold bg-white text-blue-600"
-          style={{ width: knobWidth }}
-          animate={{ x: knobPosition }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      <div className="flex flex-col items-center space-y-2">
+        <div
+          className="h-12 flex items-center bg-gray-200 rounded-full p-1 shadow-inner cursor-pointer relative"
+          style={{ width: switchWidth }}
+          onClick={handleToggle}
         >
-          {isOn ? onLabel : offLabel}
-        </motion.div>
+          <motion.div
+            className="h-10 flex items-center justify-center rounded-full shadow-md font-semibold bg-white text-blue-600"
+            style={{ width: knobWidth }}
+            animate={{ x: knobPosition }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          >
+            {isOn ? onLabel : offLabel}
+          </motion.div>
+        </div>
       </div>
-    </div>
     </div>
   );
 }

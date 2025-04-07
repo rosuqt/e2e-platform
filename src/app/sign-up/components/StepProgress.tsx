@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { Check } from 'lucide-react';
+import { Check } from "lucide-react";
 
 interface StepProgressProps {
   currentStep: number;
@@ -37,7 +37,13 @@ export default function StepProgress({ currentStep }: StepProgressProps) {
               <motion.div
                 className={`h-1 bg-button rounded-full`}
                 initial={{ width: 0 }}
-                animate={{ width: isCompleted ? 40 : currentStep === stepNumber + 1 ? 40 : 0 }}
+                animate={{
+                  width: isCompleted
+                    ? 40
+                    : currentStep === stepNumber + 1
+                      ? 40
+                      : 0,
+                }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
               />
             )}

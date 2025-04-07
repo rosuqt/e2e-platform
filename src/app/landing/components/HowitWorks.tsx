@@ -6,34 +6,38 @@ import ToggleSwitch from "./Toggle";
 
 export default function HowItWorks() {
   const [toggleState, setToggleState] = useState(false);
-  
-  return(
+
+  return (
     <div className="flex flex-col items-center space-y-6">
+      <AnimatePresence mode="wait">
+        {toggleState ? (
+          <AlternateView key="alternate" />
+        ) : (
+          <MainView key="main" />
+        )}
+      </AnimatePresence>
 
-    <AnimatePresence mode="wait">
-      {toggleState ? <AlternateView key="alternate" /> : <MainView key="main" />}
-    </AnimatePresence>
-
-    <ToggleSwitch
-    knobWidth={150}
-      isOn={toggleState}
-      setIsOn={setToggleState}
-      onLabel="For Employers"
-      offLabel="For Students"
-      className="!m-16"
-    />
-  </div>
+      <ToggleSwitch
+        knobWidth={150}
+        isOn={toggleState}
+        setIsOn={setToggleState}
+        onLabel="For Employers"
+        offLabel="For Students"
+        className="!m-16"
+      />
+    </div>
   );
 }
 
-{/*Student View*/}
+{
+  /*Student View*/
+}
 function MainView() {
   const { ref, inView } = useInView({ triggerOnce: false, threshold: 0.2 });
   return (
-    
     <motion.div
       ref={ref}
-      key={inView ? "mainView" : "hidden"} 
+      key={inView ? "mainView" : "hidden"}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -42,9 +46,10 @@ function MainView() {
     >
       {/* Left Section */}
       <div>
-      <h2 className="text-6xl font-bold mb-14">
-        <span className="text-darkBlue">How It</span> <span className="text-customYellow">Works</span>
-      </h2>
+        <h2 className="text-6xl font-bold mb-14">
+          <span className="text-darkBlue">How It</span>{" "}
+          <span className="text-customYellow">Works</span>
+        </h2>
 
         <div className="space-y-8">
           {steps.map((step, index) => (
@@ -92,14 +97,15 @@ function Step({ number, text }: { number: number; text: string }) {
   );
 }
 
-{/*Employer View*/}
+{
+  /*Employer View*/
+}
 function AlternateView() {
-    const { ref, inView } = useInView({ triggerOnce: false, threshold: 0.2 });
+  const { ref, inView } = useInView({ triggerOnce: false, threshold: 0.2 });
   return (
-    
     <motion.div
       ref={ref}
-      key={inView ? "mainView" : "hidden"} 
+      key={inView ? "mainView" : "hidden"}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -108,9 +114,10 @@ function AlternateView() {
     >
       {/* Left Section */}
       <div>
-      <h2 className="text-6xl font-bold mb-14">
-        <span className="text-darkBlue">How It</span> <span className="text-customYellow">Works</span>
-      </h2>
+        <h2 className="text-6xl font-bold mb-14">
+          <span className="text-darkBlue">How It</span>{" "}
+          <span className="text-customYellow">Works</span>
+        </h2>
 
         <div className="space-y-8">
           {steps2.map((step, index) => (
@@ -142,23 +149,23 @@ function AlternateView() {
 const steps = [
   "Create your profile and upload your resume to showcase your skills.",
   "AI recommends the best OJT opportunities. Chat directly with employers.",
-  "Easily apply for OJT programs and monitor your application status."
+  "Easily apply for OJT programs and monitor your application status.",
 ];
 
 const images = [
   { src: "images/how-it-works/student1.avif", title: "Set Up Your Profile" },
   { src: "images/how-it-works/student3.avif", title: "Match & Connect" },
-  { src: "images/how-it-works/student2.avif", title: "Apply & Track Progress" }
+  { src: "images/how-it-works/student2.avif", title: "Apply & Track Progress" },
 ];
 
 const steps2 = [
   "Create your profile and verify your employer account to gain trust and full access.",
   "Find the right candidate with AI-powered candidate matching.",
-  "Streamline your hiring process with easycreal-time application tracking."
+  "Streamline your hiring process with easycreal-time application tracking.",
 ];
 
 const images2 = [
   { src: "images/how-it-works/employer1.avif", title: "Verify your Account" },
   { src: "images/how-it-works/employer3.avif", title: "AI Matching" },
-  { src: "images/how-it-works/employer2.avif", title: "Seamless Hiring" }
+  { src: "images/how-it-works/employer2.avif", title: "Seamless Hiring" },
 ];

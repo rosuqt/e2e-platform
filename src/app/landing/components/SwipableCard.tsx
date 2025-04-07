@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useTransform,
+} from "framer-motion";
 
 const questions = [
   "Tell me about yourself.",
@@ -14,9 +19,14 @@ export default function InterviewPrep() {
 
   const x = useMotionValue(0);
   const scale = useTransform(x, [-150, 0, 150], [0.8, 1, 0.8]);
-  const rotate = useTransform(x, [-150, 0, 150], [-10, 0, 10], { clamp: false });
+  const rotate = useTransform(x, [-150, 0, 150], [-10, 0, 10], {
+    clamp: false,
+  });
 
-  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: { offset: { x: number } }) => {
+  const handleDragEnd = (
+    _: MouseEvent | TouchEvent | PointerEvent,
+    info: { offset: { x: number } },
+  ) => {
     if (info.offset.x < -100) {
       setExitX(-200);
       setCurrentQuestion((prev) => (prev + 1) % questions.length);
@@ -29,7 +39,6 @@ export default function InterviewPrep() {
   return (
     <div className="relative w-[400px] h-[250px] flex items-center justify-center overflow-visible">
       <AnimatePresence mode="sync">
-
         {/* Shadow */}
         <motion.div
           key={`shadow-${currentQuestion}`}
@@ -45,8 +54,16 @@ export default function InterviewPrep() {
           key={currentQuestion}
           style={{ x, rotate, scale }}
           initial={{ x: 0, opacity: 1 }}
-          animate={{ x: [0, -10, 10, 0], transition: { repeat: 90, duration: 2, ease: "easeInOut" } }} 
-          exit={{ x: exitX, opacity: 0, scale: 0.8, transition: { duration: 0.3 } }}
+          animate={{
+            x: [0, -10, 10, 0],
+            transition: { repeat: 90, duration: 2, ease: "easeInOut" },
+          }}
+          exit={{
+            x: exitX,
+            opacity: 0,
+            scale: 0.8,
+            transition: { duration: 0.3 },
+          }}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.5}
@@ -55,7 +72,6 @@ export default function InterviewPrep() {
         >
           {questions[currentQuestion]}
         </motion.div>
-
       </AnimatePresence>
     </div>
   );

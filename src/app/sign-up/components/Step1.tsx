@@ -1,71 +1,82 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
+import Select, { SingleValue } from "react-select";
+import {getCountries,getCountryCallingCode,CountryCode,} from "libphonenumber-js";
+import axios from "axios";
+import Swal from "sweetalert2";
 
-export default function Step1({ setCurrentStep }: { setCurrentStep: (step: number) => void }) {
+
+const countryOptions = getCountries().map((country) => ({
+  value: country as CountryCode,
+  label: `${country} (+${getCountryCallingCode(country as CountryCode)})`,
+  code: `+${getCountryCallingCode(country as CountryCode)}`,
+}));
+
+interface CountryOption {
+  value: CountryCode;
+  label: string;
+  code: string;
+}
+
+interface Errors {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+
+export default function Step1({
+  setCurrentStep,
+}: {
+  setCurrentStep: (step: number) => void;
+}) {
+  const defaultCountry = countryOptions.find((option) => option.value === "PH");
+
+   const [selectedCountry, setSelectedCountry] = useState<CountryOption>(
+    defaultCountry || countryOptions[0],
+  );
+
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    first_name: "",
+    last_name: "",
+    phone: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    country_code: (defaultCountry || countryOptions[0]).code,
+  });
+  const [errors, setErrors] = useState<Errors>({
+    first_name: "",
+    last_name: "",
     phone: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
 
-  const [errors, setErrors] = useState({
-    firstName: "",
-    lastName: "",
-    phone: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [touched, setTouched] = useState({
+    first_name: false,
+    last_name: false,
+    phone: false,
+    email: false,
+    password: false,
+    confirmPassword: false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     let newValue = value;
 
-    if (name === "firstName" || name === "lastName") {
-      if (!/^[A-Za-z\s]*$/.test(value)) {
-        setErrors((prev) => ({ ...prev, [name]: "Only letters are allowed" }));
-      } else {
-        setErrors((prev) => ({ ...prev, [name]: "" }));
-      }
-      newValue = value.replace(/[^A-Za-z\s]/g, "");
-    }
-
-    if (name === "phone") {
-      if (!/^\+?[0-9\s-]*$/.test(value)) {
-        setErrors((prev) => ({ ...prev, phone: "Phone number can only contain numbers, spaces, +, or -" }));
-      } else {
-        setErrors((prev) => ({ ...prev, phone: "" }));
-      }
-      newValue = value.replace(/[^0-9\s+-]/g, "");
-    }
-
-    if (name === "email") {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        setErrors((prev) => ({ ...prev, email: "Enter a valid email address" }));
-      } else {
-        setErrors((prev) => ({ ...prev, email: "" }));
-      }
-    }
-
-    if (name === "password") {
-      if (!/(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(value)) {
-        setErrors((prev) => ({
-          ...prev,
-          password: "Password must have 1 uppercase, 1 number, and 1 special character",
-        }));
-      } else {
-        setErrors((prev) => ({ ...prev, password: "" }));
-      }
-    }
-
-    if (name === "confirmPassword") {
-      if (value !== formData.password) {
-        setErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match" }));
-      } else {
-        setErrors((prev) => ({ ...prev, confirmPassword: "" }));
+    if (name === "first_name" || name === "last_name") {
+      newValue = value.replace(/[^A-Za-z]/g, "");
+    } else if (name === "phone") {
+      newValue = value.replace(/[^0-9]/g, "");
+      if (newValue.length > 15) {
+        newValue = newValue.slice(0, 15);
       }
     }
 
@@ -75,63 +86,161 @@ export default function Step1({ setCurrentStep }: { setCurrentStep: (step: numbe
     }));
   };
 
-  const handleBlur = (name: string) => {
-    if (name === "phone" && (formData.phone.length < 7 || formData.phone.length > 15)) {
-      setErrors((prev) => ({ ...prev, phone: "Phone number must be between 7 and 15 digits." }));
-    }
-    if (name === "confirmPassword" && formData.confirmPassword !== formData.password) {
-      setErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match" }));
+  const handleCountryChange = (option: SingleValue<CountryOption>) => {
+    if (option) {
+      setSelectedCountry(option);
+      setFormData((prev) => ({
+        ...prev,
+        phone: "",
+        country_code: option.code, // update country_code
+      }));
+      setErrors((prev) => ({ ...prev, phone: "" }));
     }
   };
+  
 
-  const isFormValid =
-    Object.values(formData).every((value) => value.trim() !== "") &&
-    Object.values(errors).every((error) => error === "");
+  const validateEmail = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const validatePassword = (password: string) => password.length >= 6;
+
+  const validatePhone = (phone: string) => phone.length >= 10;
+
+  const validateName = (name: string) => /^[A-Za-z\s]+$/.test(name);
+
+  const validateForm = () => {
+    const newErrors: Errors = {
+      first_name:
+        formData.first_name && !validateName(formData.first_name)
+          ? "First name can only contain letters"
+          : "",
+      last_name:
+        formData.last_name && !validateName(formData.last_name)
+          ? "Last name can only contain letters"
+          : "",
+      phone: validatePhone(formData.phone)
+        ? ""
+        : "Phone number must be at least 10 digits",
+      email: validateEmail(formData.email) ? "" : "Enter a valid email",
+      password: validatePassword(formData.password)
+        ? ""
+        : "Password must be at least 6 characters",
+      confirmPassword:
+        formData.password === formData.confirmPassword
+          ? ""
+          : "Passwords do not match",
+    };
+
+    setErrors(newErrors);
+
+    const valid = Object.values(newErrors).every((error) => error === "");
+    setIsFormValid(valid);
+  };
+
+  useEffect(() => {
+    validateForm();
+  }, [formData]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+  
+    if (isFormValid) {
+      try {
+        const response = await axios.post("/api/signup-step1", { ...formData });
+  
+        console.log("Full response:", response);
+  
+        if (response.status === 201) {
+            console.log("Form submitted successfully:", response.data);
+  
+          console.log("Moving to next step...");
+          setCurrentStep(2); 
+        } else {
+          console.error("Unexpected status code:", response.status);
+          console.error("Response data:", response.data);
+        }
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          console.error("Error submitting form:", error.message);
+        } else {
+          console.error("An unknown error occurred during form submission:", error);
+        }
+        Swal.fire({
+          icon: "error",
+          title: "This email already exists!",
+          text: "Please use a different email address.",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#3B82F6",
+        });
+      }
+    }
+  };
+  
+
+  const handleBlur = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
 
   return (
     <div className="mt-6">
       <h2 className="text-xl font-semibold">Personal Details</h2>
       <p className="text-sm text-gray-400 mb-5">
-        Provide your personal details to complete your profile. This information helps ensure a seamless and personalized experience.
+        Provide your personal details to complete your profile.
       </p>
 
-      <form className="grid grid-cols-2 gap-4 mt-4">
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mt-4">
         <div>
           <input
-            name="firstName"
+            name="first_name"
             className="border p-2 rounded w-full"
             placeholder="First name"
             required
-            value={formData.firstName}
+            value={formData.first_name}
             onChange={handleChange}
+            onBlur={() => handleBlur("first_name")}
           />
-          {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
+          {touched.first_name && errors.first_name && (
+            <p className="text-red-500 text-sm mt-1">{errors.first_name}</p>
+          )}
         </div>
 
         <div>
           <input
-            name="lastName"
+            name="last_name"
             className="border p-2 rounded w-full"
             placeholder="Last name"
             required
-            value={formData.lastName}
+            value={formData.last_name}
             onChange={handleChange}
+            onBlur={() => handleBlur("last_name")}
           />
-          {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
+          {touched.last_name && errors.last_name && (
+            <p className="text-red-500 text-sm mt-1">{errors.last_name}</p>
+          )}
         </div>
 
-        <div className="col-span-2">
+        <div className="col-span-2 flex gap-4">
+          <Select
+            options={countryOptions}
+            value={selectedCountry}
+            onChange={handleCountryChange}
+            className="w-1/3"
+            onBlur={() => handleBlur("phone")}
+          />
+
           <input
             type="tel"
             name="phone"
             className="border p-2 rounded w-full"
-            placeholder="Phone Number"
+            placeholder={`Phone Number (+${selectedCountry.code.slice(1)})`}
             required
             value={formData.phone}
             onChange={handleChange}
             onBlur={() => handleBlur("phone")}
           />
-          {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+          {touched.phone && errors.phone && (
+            <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+          )}
         </div>
 
         <div className="col-span-2">
@@ -142,8 +251,11 @@ export default function Step1({ setCurrentStep }: { setCurrentStep: (step: numbe
             required
             value={formData.email}
             onChange={handleChange}
+            onBlur={() => handleBlur("email")}
           />
-          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          {touched.email && errors.email && (
+            <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+          )}
         </div>
 
         <div>
@@ -155,8 +267,11 @@ export default function Step1({ setCurrentStep }: { setCurrentStep: (step: numbe
             required
             value={formData.password}
             onChange={handleChange}
+            onBlur={() => handleBlur("password")}
           />
-          {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          {touched.password && errors.password && (
+            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+          )}
         </div>
 
         <div>
@@ -170,22 +285,24 @@ export default function Step1({ setCurrentStep }: { setCurrentStep: (step: numbe
             onChange={handleChange}
             onBlur={() => handleBlur("confirmPassword")}
           />
-          {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+          {touched.confirmPassword && errors.confirmPassword && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.confirmPassword}
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end mt-6 col-span-2">
+          <button
+            type="submit"
+            className={`px-12 py-2 flex items-center justify-center gap-2 rounded-full border transition ${isFormValid ? "bg-button text-white hover:bg-buttonHover" : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
+            disabled={!isFormValid}
+          >
+            <p>Next</p>
+            <ChevronRight size={20} />
+          </button>
         </div>
       </form>
-
-      <div className="flex justify-end mt-6">
-        <button
-          onClick={() => isFormValid && setCurrentStep(2)}
-          className={`px-12 py-2 flex items-center justify-center gap-2 rounded-full border transition ${
-            isFormValid ? "bg-button text-white hover:bg-buttonHover" : "bg-gray-300 text-gray-500 cursor-not-allowed"
-          }`}
-          disabled={!isFormValid}
-        >
-          <p>Next</p>
-          <ChevronRight size={20} />
-        </button>
-      </div>
     </div>
   );
 }

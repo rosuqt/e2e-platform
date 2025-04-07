@@ -6,14 +6,16 @@ import DigitalSignature from "./DigitalSignature";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
-
-export default function Step3({ setCurrentStep }: { setCurrentStep: (step: number) => void }) {
+export default function Step3({
+  setCurrentStep,
+}: {
+  setCurrentStep: (step: number) => void;
+}) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [agreeTnC, setAgreeTnC] = useState(false);
   const [signature, setSignature] = useState<string | null>(
-    () => localStorage.getItem("signature") || null
+    () => localStorage.getItem("signature") || null,
   );
-  
 
   const termsRef = useRef<HTMLDivElement>(null!);
   const guidelinesRef = useRef<HTMLDivElement>(null!);
@@ -33,7 +35,6 @@ export default function Step3({ setCurrentStep }: { setCurrentStep: (step: numbe
       localStorage.removeItem("signature");
     }
   };
-  
 
   const sections = [
     {
@@ -120,7 +121,8 @@ You acknowledge that any violation of the platform’s policies may result in ac
     <div className="mt-6">
       <h2 className="text-xl font-semibold">Verification Agreement</h2>
       <p className="text-gray-600 text-sm mb-4">
-        To ensure a secure and trusted platform, we require all employers to agree to the following terms. 
+        To ensure a secure and trusted platform, we require all employers to
+        agree to the following terms.
         <span
           onClick={() => setIsExpanded(true)}
           className="text-button font-medium cursor-pointer hover:underline"
@@ -131,14 +133,18 @@ You acknowledge that any violation of the platform’s policies may result in ac
         to sign and agree to our terms.
       </p>
 
-
       {!isExpanded ? (
         <div className="relative border p-4 rounded h-40 overflow-y-auto">
           <motion.button
             onClick={() => setIsExpanded(true)}
             className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
             animate={{ scale: [1, 1.4, 1] }}
-            transition={{ repeat: Infinity, repeatType: "loop", duration: 0.6, repeatDelay: 3 }}
+            transition={{
+              repeat: Infinity,
+              repeatType: "loop",
+              duration: 0.6,
+              repeatDelay: 3,
+            }}
           >
             <Maximize size={18} />
           </motion.button>
@@ -147,17 +153,29 @@ You acknowledge that any violation of the platform’s policies may result in ac
             <p className="text-gray-400 italic text-base">Preview</p>
             {sections.map((section, index) => (
               <div key={index} ref={section.ref} className="mb-4 px-9">
-                <h3 className="font-bold text-lg text-center mb-4 text-black">{section.title}</h3>
-                <p className="text-gray-600 text-left whitespace-pre-line">{section.content}</p>
-                {index !== sections.length - 1 && <hr className="my-10 border-gray-300" />}
+                <h3 className="font-bold text-lg text-center mb-4 text-black">
+                  {section.title}
+                </h3>
+                <p className="text-gray-600 text-left whitespace-pre-line">
+                  {section.content}
+                </p>
+                {index !== sections.length - 1 && (
+                  <hr className="my-10 border-gray-300" />
+                )}
               </div>
             ))}
             {signature ? (
               <div className="border border-gray-500 w-1/2 h-24 flex justify-center items-center mx-auto bg-white">
-              <img src={signature} alt="Signature Preview" className="max-h-full w-auto block" />
-            </div>
+                <img
+                  src={signature}
+                  alt="Signature Preview"
+                  className="max-h-full w-auto block"
+                />
+              </div>
             ) : (
-              <p className="text-gray-500 text-sm text-center">No signature added yet.</p>
+              <p className="text-gray-500 text-sm text-center">
+                No signature added yet.
+              </p>
             )}
           </div>
         </div>
@@ -172,14 +190,23 @@ You acknowledge that any violation of the platform’s policies may result in ac
           <div className="max-w-6xl p-10 w-full border rounded-lg shadow-lg overflow-y-auto h-[100vh]">
             {sections.map((section, index) => (
               <div key={index} ref={section.ref} className="mb-6">
-                <h3 className="font-bold text-2xl text-center text-black">{section.title}</h3>
-                <p className="text-gray-950 text-left whitespace-pre-line px-10 mt-8">{section.content}</p>
-                {index !== sections.length - 1 && <hr className="my-6 border-gray-300" />}
+                <h3 className="font-bold text-2xl text-center text-black">
+                  {section.title}
+                </h3>
+                <p className="text-gray-950 text-left whitespace-pre-line px-10 mt-8">
+                  {section.content}
+                </p>
+                {index !== sections.length - 1 && (
+                  <hr className="my-6 border-gray-300" />
+                )}
               </div>
             ))}
             <hr className="my-6 border-gray-300" />
             <div className="flex items-center gap-2 mt-12">
-              <Checkbox checked={agreeTnC} onChange={() => setAgreeTnC(!agreeTnC)} />
+              <Checkbox
+                checked={agreeTnC}
+                onChange={() => setAgreeTnC(!agreeTnC)}
+              />
               <p className="font-medium">
                 I agree to the{" "}
                 <span
@@ -235,7 +262,6 @@ You acknowledge that any violation of the platform’s policies may result in ac
               setSignature={handleSignatureChange}
               signature={signature}
             />
-
           </div>
         </div>
       )}
@@ -250,17 +276,17 @@ You acknowledge that any violation of the platform’s policies may result in ac
         </button>
 
         <Link href="/sign-in">
-        <button
-        className={`px-12 py-2 font-bold rounded-full transition ${
-          signature && agreeTnC
-            ? "bg-button text-white hover:bg-button/90"
-            : "bg-gray-300 text-gray-500 cursor-not-allowed"
-        }`}
-        disabled={!signature || !agreeTnC}
-      >
-        Sign Up
-      </button>
-      </Link>
+          <button
+            className={`px-12 py-2 font-bold rounded-full transition ${
+              signature && agreeTnC
+                ? "bg-button text-white hover:bg-button/90"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+            disabled={!signature || !agreeTnC}
+          >
+            Sign Up
+          </button>
+        </Link>
       </div>
     </div>
   );
