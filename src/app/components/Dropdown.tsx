@@ -23,8 +23,10 @@ export default function Dropdown({
   value,
   onChange,
 }: DropdownProps) {
-  const [selectedOption, setSelectedOption] = useState<DropdownOption | null>(value || null);
-  
+  const [selectedOption, setSelectedOption] = useState<DropdownOption | null>(
+    value || null,
+  );
+
   useEffect(() => {
     setSelectedOption(value || null);
   }, [value]);
@@ -39,10 +41,16 @@ export default function Dropdown({
     <Listbox value={selectedOption?.name || ""} onChange={handleSelect}>
       <div className={`relative ${width}`}>
         {/* Dropdown Button */}
-        <Listbox.Button className={`flex items-center justify-between border p-2 bg-white ${width}`}>
+        <Listbox.Button
+          className={`flex items-center justify-between border p-2 bg-white ${width}`}
+        >
           <div className="flex items-center gap-2">
             {selectedOption?.logo && typeof selectedOption.logo === "string" ? (
-              <img src={selectedOption.logo} alt="" className="w-4 h-4 rounded-full" />
+              <img
+                src={selectedOption.logo}
+                alt=""
+                className="w-4 h-4 rounded-full"
+              />
             ) : (
               selectedOption?.logo
             )}
@@ -54,7 +62,9 @@ export default function Dropdown({
         </Listbox.Button>
 
         {/* Dropdown Options */}
-        <Listbox.Options className={`absolute ${width} mt-1 bg-white border rounded shadow-lg z-10`}>
+        <Listbox.Options
+          className={`absolute ${width} mt-1 bg-white border rounded shadow-lg z-10`}
+        >
           {options.length > 0 ? (
             options.map((option, index) => (
               <Listbox.Option
@@ -63,12 +73,18 @@ export default function Dropdown({
                 className="p-2 flex items-center gap-2 cursor-pointer hover:bg-gray-100"
               >
                 {option.logo && typeof option.logo === "string" ? (
-                  <img src={option.logo} alt="" className="w-4 h-4 rounded-full" />
+                  <img
+                    src={option.logo}
+                    alt=""
+                    className="w-4 h-4 rounded-full"
+                  />
                 ) : (
                   option.logo
                 )}
                 <span>{option.name}</span>
-                {selectedOption?.name === option.name && <Check className="w-4 h-4 text-blue-500 ml-auto" />}
+                {selectedOption?.name === option.name && (
+                  <Check className="w-4 h-4 text-blue-500 ml-auto" />
+                )}
               </Listbox.Option>
             ))
           ) : (

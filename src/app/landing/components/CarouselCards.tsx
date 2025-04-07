@@ -17,7 +17,7 @@ const AutoScrollingCarousel = ({ companies }: { companies: Company[] }) => {
     const scrollContainer = scrollRef.current;
     if (!scrollContainer) return;
 
-    const scrollAmount = 1; 
+    const scrollAmount = 1;
     let interval: NodeJS.Timeout;
 
     const startScrolling = () => {
@@ -27,12 +27,12 @@ const AutoScrollingCarousel = ({ companies }: { companies: Company[] }) => {
             scrollContainer.scrollLeft >=
             scrollContainer.scrollWidth - scrollContainer.clientWidth
           ) {
-            scrollContainer.scrollLeft = 0; 
+            scrollContainer.scrollLeft = 0;
           } else {
             scrollContainer.scrollLeft += scrollAmount;
           }
         }
-      }, 30); 
+      }, 30);
     };
 
     startScrolling();
@@ -63,12 +63,10 @@ const AutoScrollingCarousel = ({ companies }: { companies: Company[] }) => {
             <p className="text-gray-300 text-lg">{company.description}</p>
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-3 mt-3">
-
-              <div className="bg-customYellow text-white px-3 py-1 rounded-lg text-lg font-bold">
+                <div className="bg-customYellow text-white px-3 py-1 rounded-lg text-lg font-bold">
                   {company.rating.toFixed(1)}
                 </div>
                 <div className="flex text-yellow-400">
-
                   {/* Rating logic */}
                   {Array.from({ length: 5 }, (_, i) => (
                     <span className="text-2xl" key={i}>
@@ -76,15 +74,14 @@ const AutoScrollingCarousel = ({ companies }: { companies: Company[] }) => {
                     </span>
                   ))}
                 </div>
-
-                
               </div>
               <Link href="/sign-in">
-              <button className="bg-white text-darkBlue px-6 py-2 mt-7 rounded flex items-center space-x-2">
-                <Bookmark className="w-5 h-5" />
-                
-                <span className="font-bold">Save</span>
-              </button></Link>
+                <button className="bg-white text-darkBlue px-6 py-2 mt-7 rounded flex items-center space-x-2">
+                  <Bookmark className="w-5 h-5" />
+
+                  <span className="font-bold">Save</span>
+                </button>
+              </Link>
             </div>
           </motion.div>
         ))}
