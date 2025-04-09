@@ -24,21 +24,20 @@ export default function Dropdown({
   onChange,
 }: DropdownProps) {
   const [selectedOption, setSelectedOption] = useState<DropdownOption | null>(
-    value || null,
+    value || null
   );
 
   useEffect(() => {
     setSelectedOption(value || null);
   }, [value]);
 
-  const handleSelect = (name: string) => {
-    const selected = options.find((opt) => opt.name === name) || null;
+  const handleSelect = (selected: DropdownOption) => {
     setSelectedOption(selected);
-    if (onChange) onChange(selected);
+    if (onChange) onChange(selected); // Pass the full DropdownOption object
   };
 
   return (
-    <Listbox value={selectedOption?.name || ""} onChange={handleSelect}>
+    <Listbox value={selectedOption} onChange={handleSelect}>
       <div className={`relative ${width}`}>
         {/* Dropdown Button */}
         <Listbox.Button
@@ -69,7 +68,7 @@ export default function Dropdown({
             options.map((option, index) => (
               <Listbox.Option
                 key={index}
-                value={option.name}
+                value={option}
                 className="p-2 flex items-center gap-2 cursor-pointer hover:bg-gray-100"
               >
                 {option.logo && typeof option.logo === "string" ? (
