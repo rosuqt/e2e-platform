@@ -2,142 +2,32 @@ import { useEffect, useState } from "react";
 import Autocomplete from "@/app/components/Autocomplete";
 import Dropdown, { DropdownOption } from "@/app/components/Dropdown";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { formData } from "./type";
 
 export default function Step2({
   setCurrentStep,
+  formData,
+  setformData,
 }: {
   setCurrentStep: (step: number) => void;
+  formData: formData;
+  setformData: React.Dispatch<React.SetStateAction<formData>>;
 }) {
-  const jobTitles: string[] = [
-    "Software Engineer",
-    "Frontend Developer",
-    "Backend Developer",
-    "Full Stack Developer",
-    "UI/UX Designer",
-    "Product Manager",
-    "Data Scientist",
-    "Machine Learning Engineer",
-    "DevOps Engineer",
-    "Cybersecurity Analyst",
-    "IT Support Specialist",
-    "Network Administrator",
-    "Systems Engineer",
-    "Database Administrator",
-    "Cloud Engineer",
-    "Business Analyst",
-    "Marketing Specialist",
-    "SEO Analyst",
-    "Digital Marketing Manager",
-    "Content Writer",
-    "Graphic Designer",
-    "Art Director",
-    "Sales Executive",
-    "Account Manager",
-    "HR Manager",
-    "Recruitment Specialist",
-    "Operations Manager",
-    "Finance Analyst",
-    "Investment Banker",
-    "Risk Manager",
-    "Legal Advisor",
-    "Medical Doctor",
-    "Registered Nurse",
-    "Pharmacist",
-    "Veterinarian",
-    "Civil Engineer",
-    "Mechanical Engineer",
-    "Electrical Engineer",
-    "Architect",
-    "Construction Manager",
-    "Teacher",
-    "Professor",
-    "Research Scientist",
-    "Social Worker",
-    "Psychologist",
-    "Event Planner",
-    "Customer Support Specialist",
-    "Public Relations Manager",
-    "Entrepreneur",
-    "Freelancer",
-  ];
-
-  const companyRoles: string[] = [
-    "CEO",
-    "CTO",
-    "CFO",
-    "COO",
-    "CMO",
-    "CHRO",
-    "VP of Engineering",
-    "VP of Sales",
-    "VP of Marketing",
-    "VP of Product",
-    "Engineering Manager",
-    "Product Owner",
-    "Scrum Master",
-    "Team Lead",
-    "Tech Lead",
-    "Principal Engineer",
-    "Senior Developer",
-    "Junior Developer",
-    "Software Architect",
-    "Security Analyst",
-    "Cloud Architect",
-    "Database Administrator",
-    "Infrastructure Engineer",
-    "IT Manager",
-    "Operations Director",
-    "Sales Director",
-    "HR Director",
-    "Finance Director",
-    "Marketing Director",
-    "Customer Success Manager",
-    "Support Lead",
-    "Account Executive",
-    "Business Development Manager",
-    "Client Relations Manager",
-    "Project Manager",
-    "Strategy Consultant",
-    "Investment Analyst",
-    "Legal Counsel",
-    "Risk Compliance Officer",
-    "Public Relations Officer",
-    "Event Coordinator",
-    "Media Relations Manager",
-    "Creative Director",
-    "UX Researcher",
-    "QA Engineer",
-    "Test Automation Engineer",
-    "Community Manager",
-    "Corporate Trainer",
-    "Supply Chain Manager",
-    "Procurement Manager",
-  ];
-
-  const [formData, setFormData] = useState<{
-    company: DropdownOption | null;
-    branch: string;
-    companyRole: string;
-    jobTitle: string;
-    companyEmail: string;
-  }>({
-    company: null,
-    branch: "",
-    companyRole: "",
-    jobTitle: "",
-    companyEmail: "",
-  });
+  const jobTitles: string[] = ["Software Engineer"];
+  const companyRoles: string[] = ["CEO"];
 
   const [newBranch, setNewBranch] = useState("");
-
   const [branches, setBranches] = useState<DropdownOption[]>([
     { id: "TestBranch1", name: "Haws" },
     { id: "create-new", name: "+ Create New" },
   ]);
 
-  const [lastAddedBranch, setLastAddedBranch] = useState<DropdownOption | null>(
-    null,
-  );
+  const [showCompanyForm, setShowCompanyForm] = useState(false);
+  const [showBranchForm, setShowBranchForm] = useState(false);
+  const [newCompany, setNewCompany] = useState("");
+  const [companies, setCompanies] = useState<DropdownOption[]>([
+    { id: "create-new", name: "+ Create New" },
+  ]);
 
   const handleSaveBranch = () => {
     if (newBranch.trim() === "") return;
@@ -148,53 +38,8 @@ export default function Step2({
     };
 
     setBranches((prevBranches) => [...prevBranches, newBranchOption]);
-    setLastAddedBranch(newBranchOption);
-
     setShowBranchForm(false);
     setNewBranch("");
-  };
-
-  const [showCompanyForm, setShowCompanyForm] = useState(false);
-  const [showBranchForm, setShowBranchForm] = useState(false);
-  const [newCompany, setNewCompany] = useState("");
-
-  const [companies, setCompanies] = useState<DropdownOption[]>([
-    {
-      id: "kemly-enterprises",
-      name: "Kemly Enterprises",
-      logo: "https://i.pinimg.com/736x/d5/df/38/d5df383773ca1bc126f30096231c285f.jpg",
-    },
-    { id: "create-new", name: "+ Create New" },
-  ]);
-
-  const [lastAddedCompany, setLastAddedCompany] =
-    useState<DropdownOption | null>(null);
-
-  const handleChange = (
-    field: string,
-    value: DropdownOption | string | null,
-  ) => {
-    console.log("Selected Value:", value);
-
-    if (value && typeof value !== "string" && value.id === "create-new") {
-      if (field === "company") {
-        setShowCompanyForm(true);
-      }
-      if (field === "branch") {
-        setShowBranchForm(true);
-      }
-      return;
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      [field]:
-        field === "company"
-          ? (value as DropdownOption)
-          : typeof value === "string"
-            ? value
-            : value?.name || "",
-    }));
   };
 
   const handleSaveCompany = () => {
@@ -205,56 +50,147 @@ export default function Step2({
       name: newCompany,
     };
 
-    setCompanies((prevCompanies) => [...prevCompanies, newCompanyOption]);
-    setLastAddedCompany(newCompanyOption);
+    setCompanies((prevCompanies) => [
+      ...prevCompanies,
+      newCompanyOption,
+      { id: "create-new", name: "+ Create New" },
+    ]);
 
     setShowCompanyForm(false);
     setNewCompany("");
   };
 
-  useEffect(() => {
-    if (lastAddedCompany) {
-      setFormData((prev) => ({ ...prev, company: lastAddedCompany }));
-      setLastAddedCompany(null);
+  console.log("Form Data:", formData);
+
+  const handleChange = async (
+    field: string,
+    value: string | DropdownOption | null
+  ) => {
+    if (field === "company_name" && value) {
+      const selectedCompany = value as DropdownOption;
+  
+      // Set selected company in formData
+      setformData((prev) => ({
+        ...prev,
+        company_name: {
+          id: selectedCompany.id || "",
+          name: selectedCompany.name || "",
+        },
+        company_branch: { id: "", name: "" },
+      }));
+  
+      // Fetch branches
+      try {
+        const res = await fetch(`/api/branches?company_id=${selectedCompany.id}`);
+        const data = await res.json();
+  
+        const fetchedBranches = data.map((branch: { branch_id: string; branch_name: string }) => ({
+          id: branch.branch_id || "",
+          name: branch.branch_name || "Unnamed Branch",
+        }));
+        
+  
+        setBranches([
+          ...fetchedBranches,
+          { id: "create-new", name: "+ Create New" },
+        ]);
+      } catch (error) {
+        console.error("Failed to fetch branches:", error);
+      }
+    } else if (field === "company_branch" && value) {
+      const selectedBranch = value as DropdownOption;
+  
+      setformData((prev) => ({
+        ...prev,
+        company_branch: {
+          id: selectedBranch.id || "",
+          name: selectedBranch.name || "",
+        },
+      }));
+    } else {
+      setformData((prev) => ({
+        ...prev,
+        [field]: typeof value === "string"
+          ? value
+          : (value as DropdownOption)?.name || "",
+      }));
     }
-  }, [lastAddedCompany]);
+  };
+  
 
   useEffect(() => {
-    if (lastAddedBranch) {
-      setFormData((prev) => ({ ...prev, branch: lastAddedBranch.name }));
-      setLastAddedBranch(null);
-    }
-  }, [lastAddedBranch]);
+    const fetchCompanies = async () => {
+      try {
+        const res = await fetch("/api/companies");
+        const data = await res.json();
+
+        const fetchedCompanies = data.map((company: { id: string; company_name: string }) => ({
+          id: company.id || "",
+          name: company.company_name || "Unnamed Company",
+        }));
+
+        setCompanies([...fetchedCompanies, { id: "create-new", name: "+ Create New" }]);
+      } catch (error) {
+        console.error("Failed to fetch companies:", error);
+      }
+    };
+
+    fetchCompanies();
+  }, []);
 
   const isFormValid =
-    formData.company !== null &&
-    formData.branch.trim() !== "" &&
-    formData.companyRole.trim() !== "" &&
-    formData.jobTitle.trim() !== "" &&
-    formData.companyEmail.trim() !== "";
+    formData.company_name?.name?.trim?.() !== "" &&
+    (formData.company_branch?.name?.trim?.() ?? "") !== "" &&
+    formData.company_role?.trim?.() !== "" &&
+    formData.job_title?.trim?.() !== "" &&
+    formData.company_email?.trim?.() !== "" &&
+    /\S+@\S+\.\S+/.test(formData.company_email || "");
+
+  const handleSubmit = async () => {
+    if (isFormValid) {
+      try {
+        const response = await fetch("/api/signup-step1", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            company: formData.company_name?.name,
+            branch: formData.company_branch,
+            companyRole: formData.company_role,
+            jobTitle: formData.job_title,
+            companyEmail: formData.company_email,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setCurrentStep(3);
+        } else {
+          alert(data.message || "Something went wrong.");
+        }
+      } catch (error) {
+        console.error("Error submitting form:", error);
+        alert("Something went wrong. Please try again.");
+      }
+    }
+  };
 
   return (
     <div className="mt-6">
-      <h2 className="text-xl font-semibold">Company Association</h2>
-      <p className="text-sm text-gray-400 mb-5">
-        Connect with your company to start posting jobs and managing
-        applications. If your company is already on our platform, simply search
-        for it. If not, you can add it now!
-      </p>
-
       <div className="grid grid-cols-2 gap-4">
         <Dropdown
           options={companies}
           placeholder="Select a company"
-          value={formData.company}
-          onChange={(value) => handleChange("company", value)}
+          value={companies.find((company) => company.id === formData.company_name?.id) || null}
+          onChange={(value) => handleChange("company_name", value)}
         />
-
         <Dropdown
           options={branches}
           placeholder="Company Branch"
-          value={branches.find((b) => b.name === formData.branch) || null}
-          onChange={(value) => handleChange("branch", value)}
+          value={branches.find((b) => b.id === formData.company_branch?.id) || null}
+          onChange={(value) => handleChange("company_branch", value)}
         />
 
         <Autocomplete
@@ -269,11 +205,11 @@ export default function Step2({
         />
         <input
           type="email"
-          name="companyEmail"
+          name="company_email"
           className="border p-2 w-full col-span-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
           placeholder="Company Email"
-          value={formData.companyEmail}
-          onChange={(e) => handleChange("companyEmail", e.target.value)}
+          value={formData.company_email}
+          onChange={(e) => handleChange("company_email", e.target.value)}
         />
       </div>
 
@@ -288,15 +224,13 @@ export default function Step2({
               className="w-full px-4 py-2 border mt-2"
               placeholder="Enter company name"
             />
-            <button
-              onClick={handleSaveCompany}
-              className="mt-2 px-4 py-2 bg-blue-500 text-white w-full rounded-lg"
-            >
+            <button onClick={handleSaveCompany} className="mt-2 px-4 py-2 bg-blue-500 text-white w-full rounded-lg">
               Save
             </button>
           </div>
         </div>
       )}
+
       {showBranchForm && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 w-full h-full">
           <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
@@ -308,10 +242,7 @@ export default function Step2({
               className="w-full px-4 py-2 border mt-2"
               placeholder="Enter branch name"
             />
-            <button
-              onClick={handleSaveBranch}
-              className="mt-2 px-4 py-2 bg-blue-500 text-white w-full rounded-lg"
-            >
+            <button onClick={handleSaveBranch} className="mt-2 px-4 py-2 bg-blue-500 text-white w-full rounded-lg">
               Save
             </button>
           </div>
@@ -319,24 +250,20 @@ export default function Step2({
       )}
 
       <div className="flex justify-between mt-[82px]">
-        <button
-          onClick={() => setCurrentStep(1)}
-          className="px-12 py-2 flex items-center justify-center rounded-full border border-button hover:bg-button/5 transition gap-2 text-button"
-        >
+        <button onClick={() => setCurrentStep(1)} className="px-12 py-2 flex items-center justify-center rounded-full border border-button hover:bg-button/5 transition gap-2 text-button">
           <ChevronLeft size={20} />
           Back
         </button>
 
         <button
-          onClick={() => isFormValid && setCurrentStep(3)}
-          className={`px-12 py-2 flex items-center justify-center gap-2 rounded-full border transition ${
+          onClick={handleSubmit}
+          className={`px-12 py-2 flex items-center justify-center gap-2 rounded-full border ${
             isFormValid
-              ? "bg-button text-white hover:bg-buttonHover"
+              ? "bg-primary text-white"
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
-          disabled={!isFormValid}
         >
-          <p>Next</p>
+          Continue
           <ChevronRight size={20} />
         </button>
       </div>

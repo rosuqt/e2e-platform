@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
 import Select, { SingleValue } from "react-select";
-import {getCountries,getCountryCallingCode,CountryCode,} from "libphonenumber-js";
+import {
+  getCountries,
+  getCountryCallingCode,
+  CountryCode,
+} from "libphonenumber-js";
 import axios from "axios";
 import Swal from "sweetalert2";
-
+import { formData } from "../components/type";
 
 const countryOptions = getCountries().map((country) => ({
   value: country as CountryCode,
@@ -27,27 +31,17 @@ interface Errors {
   confirmPassword: string;
 }
 
-
 export default function Step1({
   setCurrentStep,
+  formData,
+  setformData,
 }: {
   setCurrentStep: (step: number) => void;
+  formData: formData;
+  setformData: React.Dispatch<React.SetStateAction<formData>>;
 }) {
-  const defaultCountry = countryOptions.find((option) => option.value === "PH");
+  const [selectedCountry, setSelectedCountry] = useState<CountryOption | null>(null);
 
-   const [selectedCountry, setSelectedCountry] = useState<CountryOption>(
-    defaultCountry || countryOptions[0],
-  );
-
-  const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
-    phone: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    country_code: (defaultCountry || countryOptions[0]).code,
-  });
   const [errors, setErrors] = useState<Errors>({
     first_name: "",
     last_name: "",
@@ -67,6 +61,11 @@ export default function Step1({
     confirmPassword: false,
   });
 
+  useEffect(() => {
+    const defaultCountry = countryOptions.find((option) => option.code === formData.country_code);
+    setSelectedCountry(defaultCountry || countryOptions[0]);
+  }, [formData.country_code]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     let newValue = value;
@@ -74,13 +73,10 @@ export default function Step1({
     if (name === "first_name" || name === "last_name") {
       newValue = value.replace(/[^A-Za-z]/g, "");
     } else if (name === "phone") {
-      newValue = value.replace(/[^0-9]/g, "");
-      if (newValue.length > 15) {
-        newValue = newValue.slice(0, 15);
-      }
+      newValue = value.replace(/[^0-9]/g, "").slice(0, 15);
     }
 
-    setFormData((prev) => ({
+    setformData((prev) => ({
       ...prev,
       [name]: newValue,
     }));
@@ -89,15 +85,14 @@ export default function Step1({
   const handleCountryChange = (option: SingleValue<CountryOption>) => {
     if (option) {
       setSelectedCountry(option);
-      setFormData((prev) => ({
+      setformData((prev) => ({
         ...prev,
         phone: "",
-        country_code: option.code, // update country_code
+        country_code: option.code,
       }));
       setErrors((prev) => ({ ...prev, phone: "" }));
     }
   };
-  
 
   const validateEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -132,9 +127,7 @@ export default function Step1({
     };
 
     setErrors(newErrors);
-
-    const valid = Object.values(newErrors).every((error) => error === "");
-    setIsFormValid(valid);
+    setIsFormValid(Object.values(newErrors).every((err) => err === ""));
   };
 
   useEffect(() => {
@@ -143,28 +136,23 @@ export default function Step1({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+
     if (isFormValid) {
       try {
-        const response = await axios.post("/api/signup-step1", { ...formData });
-  
-        console.log("Full response:", response);
-  
+        const response = await axios.post("/api/signup-step1", { ...formData, step: 1 });
+
         if (response.status === 201) {
-            console.log("Form submitted successfully:", response.data);
-  
-          console.log("Moving to next step...");
-          setCurrentStep(2); 
+          setCurrentStep(2);
         } else {
-          console.error("Unexpected status code:", response.status);
-          console.error("Response data:", response.data);
+          console.error("Unexpected response:", response);
         }
       } catch (error: unknown) {
         if (error instanceof Error) {
-          console.error("Error submitting form:", error.message);
+          console.error("Submission error:", error.message);
         } else {
-          console.error("An unknown error occurred during form submission:", error);
+          console.error("Unknown submission error:", error);
         }
+
         Swal.fire({
           icon: "error",
           title: "This email already exists!",
@@ -175,7 +163,6 @@ export default function Step1({
       }
     }
   };
-  
 
   const handleBlur = (field: string) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -220,19 +207,21 @@ export default function Step1({
         </div>
 
         <div className="col-span-2 flex gap-4">
-          <Select
-            options={countryOptions}
-            value={selectedCountry}
-            onChange={handleCountryChange}
-            className="w-1/3"
-            onBlur={() => handleBlur("phone")}
-          />
+          {selectedCountry && (
+            <Select
+              options={countryOptions}
+              value={selectedCountry}
+              onChange={handleCountryChange}
+              className="w-1/3"
+              onBlur={() => handleBlur("phone")}
+            />
+          )}
 
           <input
             type="tel"
             name="phone"
             className="border p-2 rounded w-full"
-            placeholder={`Phone Number (+${selectedCountry.code.slice(1)})`}
+            placeholder={`Phone Number (+${selectedCountry?.code.slice(1)})`}
             required
             value={formData.phone}
             onChange={handleChange}
