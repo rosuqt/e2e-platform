@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { DropdownOption as ImportedDropdownOption } from "@/app/components/Dropdown";
 
 interface RegionSelectorProps {
@@ -14,9 +14,11 @@ const RegionSelector: React.FC<RegionSelectorProps> = ({
   onChange,
   placeholder,
 }) => {
-  const [selectedRegion, setSelectedRegion] = useState<string>(
-    selectedBranch || "",
-  );
+  const [selectedRegion, setSelectedRegion] = useState<string>("");
+
+  useEffect(() => {
+    setSelectedRegion(selectedBranch || "");
+  }, [selectedBranch]);
 
   const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;

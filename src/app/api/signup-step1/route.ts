@@ -1,54 +1,113 @@
 import { NextRequest, NextResponse } from "next/server";
-import pool from "../db"; 
+import pool from "../db";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    console.log("Received Step 1 body:", body);
 
-    const { first_name, last_name, phone, email, password, country_code } =
-      body;
+    const result = await pool.query("SELECT current_database(), current_schema()");
+    console.log("Using database:", result.rows[0]);
 
-    const query = `
-      INSERT INTO personal_details
-      (first_name, last_name, phone, email, password, country_code)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
-    `;
 
-    const values = [
-      first_name,
-      last_name,
-      phone,
-      email,
-      password,
-      country_code,
-    ];
+    const { step, first_name, last_name, phone, email, password, country_code, company_name, company_branch, company_role, job_title, company_email, signature, terms_accepted } = body;
 
-    const result = await pool.query(query, values);
+    // Check if it's the first step or later steps
+    if (step === 1) {
+      const query = `
+        INSERT INTO pending_employers
+        (first_name, last_name, phone, email, password, country_code)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `;
+
+      const values = [
+        first_name,
+        last_name,
+        phone,
+        email,
+        password,
+        country_code,
+      ];
+
+      const result = await pool.query(query, values);
+      return NextResponse.json(
+        { message: "Step 1 complete", data: result.rows[0] },
+        { status: 201 }
+      );
+    }
+
+    if (step === 2) {
+      const query = `
+        UPDATE pending_employers
+        SET company_name = $1, company_branch = $2, company_role = $3, job_title = $4, company_email = $5
+        WHERE email = $6
+        RETURNING *
+      `;
+
+      const values = [
+        company_name,
+        company_branch,
+        company_role,
+        job_title,
+        company_email,
+        email
+      ];
+
+      const result = await pool.query(query, values);
+      return NextResponse.json(
+        { message: "Step 2 complete", data: result.rows[0] },
+        { status: 200 }
+      );
+    }
+
+    if (step === 3) {
+      const query = `
+        UPDATE pending_employers
+        SET signature = $1, terms_accepted = $2
+        WHERE email = $3
+        RETURNING *
+      `;
+
+      const values = [signature, terms_accepted, email];
+
+      const result = await pool.query(query, values);
+      return NextResponse.json(
+        { message: "Step 3 complete", data: result.rows[0] },
+        { status: 200 }
+      );
+    }
 
     return NextResponse.json(
-      { message: "Signup successful", data: result.rows[0] },
-      { status: 201 },
+      { message: "Invalid step" },
+      { status: 400 }
     );
-  } catch (error: unknown) { // Explicitly set the type of error
-    console.error("Error in POST /personal-details:", error);
-
-    // Type assertion to handle the error as an instance of Error
+  } catch (error: unknown) {
+    console.error("Error in POST /pending_employers:", error);
+  
     if (error instanceof Error) {
-      // Handle specific error codes like unique constraint violations
+      console.error("Error message:", error.message);
+  
       if (error.message.includes("duplicate key value")) {
         return NextResponse.json(
           { message: "User with this email already exists!" },
           { status: 400 }
         );
       }
+  
       return NextResponse.json(
         { message: "Something went wrong", error: error.message },
         { status: 500 }
       );
     }
+  
+    return NextResponse.json(
+      { message: "Unknown error occurred", error },
+      { status: 500 }
+    );
+  
+  
 
-    // If the error is not an instance of Error, send a generic error response
     return NextResponse.json(
       { message: "Unknown error occurred" },
       { status: 500 }
