@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Autocomplete from "@/app/components/Autocomplete";
 import Dropdown, { DropdownOption } from "@/app/components/Dropdown";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { formData } from "./type";
+import { formData } from "./components/type";
 
 export default function Step2({
   setCurrentStep,
@@ -39,28 +39,70 @@ export default function Step2({
     setNewBranch("");
   };
 
-  const handleSaveCompany = () => {
+  const handleSaveCompany = async () => {
     if (newCompany.trim() === "") return;
+  
+    try {
+      const res = await fetch("/api/companies/new-company", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ company_name: newCompany }),
+      });
+  
+      if (res.ok) {
+        const data = await res.json();
+  
+        const newCompanyOption: DropdownOption = {
+          id: data.id,
+          name: data.company_name,
+        };
+  
+        const updatedCompanies = [
+          ...companies.filter((c) => c.id !== "create-new"),
+          newCompanyOption,
+          { id: "create-new", name: "+ Create New" },
+        ];
+  
+        setCompanies(updatedCompanies);
 
-    const newCompanyOption: DropdownOption = {
-      id: newCompany.toLowerCase().replace(/\s+/g, "-"),
-      name: newCompany,
-    };
-
-    setCompanies((prevCompanies) => [
-      ...prevCompanies,
-      newCompanyOption,
-      { id: "create-new", name: "+ Create New" },
-    ]);
-
-    setShowCompanyForm(false);
-    setNewCompany("");
+        setformData((prev) => {
+          const updatedData = {
+            ...prev,
+            company_name: {
+              id: newCompanyOption.id || "",
+              name: newCompanyOption.name,
+            },
+            company_branch: { id: "", name: "" },
+          };
+          console.log(updatedData);
+          return updatedData;
+        });
+        
+        
+  
+        setShowCompanyForm(false);
+        setNewCompany("");
+      } else {
+        console.error("Failed to create company.");
+      }
+    } catch (err) {
+      console.error("Error creating company:", err);
+    }
   };
+  
+  
 
   const handleChange = async (field: string, value: string | DropdownOption | null) => {
     if (field === "company_name" && value) {
       const selectedCompany = value as DropdownOption;
-  
+    
+      if (selectedCompany.id === "create-new") {
+        setShowCompanyForm(true);
+        return;
+      }
+    
       setformData((prev) => ({
         ...prev,
         company_name: {
@@ -69,23 +111,23 @@ export default function Step2({
         },
         company_branch: { id: "", name: "" },
       }));
-  
+    
       try {
         const res = await fetch(`/api/branches?company_id=${selectedCompany.id}`);
         console.log("API Response:", res);
-  
+    
         if (!res.ok) {
           console.error("Error fetching branches:", res.statusText);
         }
-  
+    
         const data = await res.json();
-  
+    
         if (data && Array.isArray(data)) {
           const fetchedBranches = data.map((branch: { branch_id: string; branch_name: string }) => ({
             id: branch.branch_id || "",
             name: branch.branch_name || "Unnamed Branch",
           }));
-  
+    
           setBranches([
             ...fetchedBranches,
             { id: "create-new", name: "+ Create New" },
@@ -96,7 +138,8 @@ export default function Step2({
       } catch (error) {
         console.error("Failed to fetch branches:", error);
       }
-    } else if (field === "company_branch" && value) {
+    }
+     else if (field === "company_branch" && value) {
       const selectedBranch = value as DropdownOption;
       console.log("Selected Branch Value:", value);
   
@@ -121,6 +164,8 @@ export default function Step2({
       try {
         const res = await fetch("/api/companies");
         const data = await res.json();
+
+        console.log("Fetched data:", data);  
 
         const fetchedCompanies = data.map((company: { id: string; company_name: string }) => ({
           id: company.id || "",
@@ -201,12 +246,12 @@ export default function Step2({
   return (
     <div className="mt-6">
       <div className="grid grid-cols-2 gap-4">
-        <Dropdown
-          options={companies}
-          placeholder="Select a company"
-          value={companies.find((company) => company.id === formData.company_name?.name) || null}
-          onChange={(value) => handleChange("company_name", value)}
-        />
+      <Dropdown
+        options={companies}
+        placeholder="Select a company"
+        value={companies.find((company) => company.id === formData.company_name?.id) || null}
+        onChange={(value) => handleChange("company_name", value)}
+      />
         <Dropdown
           options={branches}
           placeholder="Company Branch"
