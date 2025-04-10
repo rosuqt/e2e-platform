@@ -4,15 +4,10 @@ import pool from "../db";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    console.log("Received Step 1 body:", body);
-
-    const result = await pool.query("SELECT current_database(), current_schema()");
-    console.log("Using database:", result.rows[0]);
-
-
     const { step, first_name, last_name, phone, email, password, country_code, company_name, company_branch, company_role, job_title, company_email, signature, terms_accepted } = body;
 
-    // Check if it's the first step or later steps
+    const branchName = typeof company_branch === "string" ? company_branch : "test";
+
     if (step === 1) {
       const query = `
         INSERT INTO pending_employers
@@ -20,7 +15,7 @@ export async function POST(req: NextRequest) {
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
       `;
-
+      
       const values = [
         first_name,
         last_name,
@@ -47,7 +42,7 @@ export async function POST(req: NextRequest) {
 
       const values = [
         company_name,
-        company_branch,
+        branchName,
         company_role,
         job_title,
         company_email,
@@ -83,33 +78,22 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   } catch (error: unknown) {
-    console.error("Error in POST /pending_employers:", error);
-  
     if (error instanceof Error) {
-      console.error("Error message:", error.message);
-  
       if (error.message.includes("duplicate key value")) {
         return NextResponse.json(
           { message: "User with this email already exists!" },
           { status: 400 }
         );
       }
-  
+
       return NextResponse.json(
         { message: "Something went wrong", error: error.message },
         { status: 500 }
       );
     }
-  
-    return NextResponse.json(
-      { message: "Unknown error occurred", error },
-      { status: 500 }
-    );
-  
-  
 
     return NextResponse.json(
-      { message: "Unknown error occurred" },
+      { message: "Unknown error occurred", error },
       { status: 500 }
     );
   }

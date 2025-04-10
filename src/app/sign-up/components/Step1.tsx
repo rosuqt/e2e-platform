@@ -75,7 +75,7 @@ export default function Step1({
       setformData((prev) => ({
         ...prev,
         email: value,
-        emailVerified: false, // reset the flag on modification
+        emailVerified: false,
       }));
       return;
     }
