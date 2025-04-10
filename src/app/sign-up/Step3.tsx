@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
 import { ChevronLeft, Maximize, X } from "lucide-react";
 import { Checkbox } from "@/app/sign-in/components/Checkbox";
-import DigitalSignature from "./DigitalSignature";
+import DigitalSignature from "./components/DigitalSignature";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { formData } from "./type";
+import { formData } from "./components/type";
 
 export default function Step3({
   setCurrentStep,

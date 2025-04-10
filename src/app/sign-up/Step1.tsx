@@ -4,7 +4,7 @@ import Select, { SingleValue } from "react-select";
 import { getCountries, getCountryCallingCode, CountryCode } from "libphonenumber-js";
 import axios from "axios";
 import Swal from "sweetalert2";
-import { formData } from "../components/type";
+import { formData } from "./components/type";
 
 const countryOptions = getCountries().map((country) => ({
   value: country as CountryCode,

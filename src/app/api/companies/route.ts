@@ -7,10 +7,9 @@ export async function GET() {
       SELECT 
         id, 
         company_name, 
-        company_branch, 
+        main_branch, 
         company_logo, 
-        company_type, 
-        company_email_domain 
+        company_type
       FROM registered_company
       ORDER BY company_name
     `);
