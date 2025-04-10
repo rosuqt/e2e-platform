@@ -1,11 +1,7 @@
 import { useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
 import Select, { SingleValue } from "react-select";
-import {
-  getCountries,
-  getCountryCallingCode,
-  CountryCode,
-} from "libphonenumber-js";
+import { getCountries, getCountryCallingCode, CountryCode } from "libphonenumber-js";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { formData } from "../components/type";
@@ -41,7 +37,6 @@ export default function Step1({
   setformData: React.Dispatch<React.SetStateAction<formData>>;
 }) {
   const [selectedCountry, setSelectedCountry] = useState<CountryOption | null>(null);
-
   const [errors, setErrors] = useState<Errors>({
     first_name: "",
     last_name: "",
@@ -50,7 +45,6 @@ export default function Step1({
     password: "",
     confirmPassword: "",
   });
-
   const [isFormValid, setIsFormValid] = useState(false);
   const [touched, setTouched] = useState({
     first_name: false,
@@ -76,6 +70,16 @@ export default function Step1({
       newValue = value.replace(/[^0-9]/g, "").slice(0, 15);
     }
 
+    // Special logic for email: reset verification if email is changed
+    if (name === "email") {
+      setformData((prev) => ({
+        ...prev,
+        email: value,
+        emailVerified: false, // reset the flag on modification
+      }));
+      return;
+    }
+
     setformData((prev) => ({
       ...prev,
       [name]: newValue,
@@ -96,11 +100,8 @@ export default function Step1({
 
   const validateEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
   const validatePassword = (password: string) => password.length >= 6;
-
   const validatePhone = (phone: string) => phone.length >= 10;
-
   const validateName = (name: string) => /^[A-Za-z\s]+$/.test(name);
 
   const validateForm = () => {
@@ -137,30 +138,36 @@ export default function Step1({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isFormValid) {
-      try {
-        const response = await axios.post("/api/signup-step1", { ...formData, step: 1 });
+    if (!isFormValid) return;
 
-        if (response.status === 201) {
-          setCurrentStep(2);
-        } else {
-          console.error("Unexpected response:", response);
-        }
-      } catch (error: unknown) {
-        if (error instanceof Error) {
-          console.error("Submission error:", error.message);
-        } else {
-          console.error("Unknown submission error:", error);
-        }
+    // If the email is already verified, skip the API call.
+    if (formData.emailVerified) {
+      setCurrentStep(2);
+      return;
+    }
 
-        Swal.fire({
-          icon: "error",
-          title: "This email already exists!",
-          text: "Please use a different email address.",
-          confirmButtonText: "OK",
-          confirmButtonColor: "#3B82F6",
-        });
+    try {
+      const response = await axios.post("/api/signup-step1", {
+        ...formData,
+        step: 1,
+      });
+
+      if (response.status === 201) {
+        // Mark the email as verified on a successful response.
+        setformData((prev) => ({
+          ...prev,
+          emailVerified: true,
+        }));
+        setCurrentStep(2);
       }
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "This email already exists!",
+        text: "Please use a different email address.",
+        confirmButtonText: "OK",
+        confirmButtonColor: "#3B82F6",
+      });
     }
   };
 
@@ -275,17 +282,18 @@ export default function Step1({
             onBlur={() => handleBlur("confirmPassword")}
           />
           {touched.confirmPassword && errors.confirmPassword && (
-            <p className="text-red-500 text-sm mt-1">
-              {errors.confirmPassword}
-            </p>
+            <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
           )}
         </div>
 
         <div className="flex justify-end mt-6 col-span-2">
           <button
             type="submit"
-            className={`px-12 py-2 flex items-center justify-center gap-2 rounded-full border transition ${isFormValid ? "bg-button text-white hover:bg-buttonHover" : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
-            disabled={!isFormValid}
+            className={`px-12 py-2 flex items-center justify-center gap-2 rounded-full border transition ${
+              isFormValid
+                ? "bg-button text-white hover:bg-buttonHover"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
           >
             <p>Next</p>
             <ChevronRight size={20} />

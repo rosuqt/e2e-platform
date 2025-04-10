@@ -17,6 +17,7 @@ export default function App() {
     country_code: "+63",
     phone: "",
     email: "",
+    emailVerified: false,
     password: "",
     confirmPassword: "",
     company_name: { id: "", name: "" },

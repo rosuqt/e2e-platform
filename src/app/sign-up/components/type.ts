@@ -5,6 +5,7 @@ export type formData = {
     country_code: string;
     phone: string;
     email: string;
+    emailVerified: boolean;
     password: string;
     confirmPassword: string;
     company_name: { id: string; name: string };
