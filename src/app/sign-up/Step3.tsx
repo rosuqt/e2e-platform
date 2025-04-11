@@ -4,7 +4,7 @@ import { Checkbox } from "@/app/sign-in/components/Checkbox";
 import DigitalSignature from "./components/DigitalSignature";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { formData } from "./components/type";
+import { formData } from "../../utils/type";
 
 export default function Step3({
   setCurrentStep,
