@@ -7,7 +7,7 @@ export async function GET() {
       SELECT 
         id, 
         company_name, 
-        main_branch, 
+        company_branch, 
         company_logo, 
         company_type
       FROM registered_company

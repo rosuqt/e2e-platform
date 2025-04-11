@@ -3,6 +3,7 @@ import Autocomplete from "@/app/components/Autocomplete";
 import Dropdown, { DropdownOption } from "@/app/components/Dropdown";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { formData } from "./components/type";
+import CompanyForm from "./components/CreateCompany";
 
 export default function Step2({
   setCurrentStep,
@@ -19,9 +20,14 @@ export default function Step2({
   const [newBranch, setNewBranch] = useState("");
   const [branches, setBranches] = useState<DropdownOption[]>([]);
 
+  const [newCompany, setNewCompany] = useState('');
+  const [industryOpen, setIndustryOpen] = useState(false);
+  const [industryValue, setIndustryValue] = useState('');
+  const [sizeOpen, setSizeOpen] = useState(false);
+  const [sizeValue, setSizeValue] = useState('');
+
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [showBranchForm, setShowBranchForm] = useState(false);
-  const [newCompany, setNewCompany] = useState("");
   const [companies, setCompanies] = useState<DropdownOption[]>([
     { id: "create-new", name: "+ Create New" },
   ]);
@@ -40,15 +46,19 @@ export default function Step2({
   };
 
   const handleSaveCompany = async () => {
+    console.log("Saving company with branch:", newBranch);
     if (newCompany.trim() === "") return;
   
     try {
+      console.log("New Branch:", newBranch);
+      const companyBranch = formData.company_branch?.name || newBranch || "default-branch";
+      console.log("Sending company branch:", companyBranch);
       const res = await fetch("/api/companies/new-company", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ company_name: newCompany }),
+        body: JSON.stringify({ company_name: newCompany, company_branch: companyBranch }),
       });
   
       if (res.ok) {
@@ -66,24 +76,18 @@ export default function Step2({
         ];
   
         setCompanies(updatedCompanies);
-
-        setformData((prev) => {
-          const updatedData = {
-            ...prev,
-            company_name: {
-              id: newCompanyOption.id || "",
-              name: newCompanyOption.name,
-            },
-            company_branch: { id: "", name: "" },
-          };
-          console.log(updatedData);
-          return updatedData;
-        });
-        
-        
+  
+        setformData((prev) => ({
+          ...prev,
+          company_name: {
+            id: newCompanyOption.id ?? "",
+            name: newCompanyOption.name,
+          },
+          company_branch: { id: companyBranch, name: companyBranch }, 
+        }));
   
         setShowCompanyForm(false);
-        setNewCompany("");
+        setNewCompany(""); 
       } else {
         console.error("Failed to create company.");
       }
@@ -97,12 +101,12 @@ export default function Step2({
   const handleChange = async (field: string, value: string | DropdownOption | null) => {
     if (field === "company_name" && value) {
       const selectedCompany = value as DropdownOption;
-    
+
       if (selectedCompany.id === "create-new") {
         setShowCompanyForm(true);
         return;
       }
-    
+
       setformData((prev) => ({
         ...prev,
         company_name: {
@@ -111,23 +115,23 @@ export default function Step2({
         },
         company_branch: { id: "", name: "" },
       }));
-    
+
       try {
         const res = await fetch(`/api/branches?company_id=${selectedCompany.id}`);
         console.log("API Response:", res);
-    
+
         if (!res.ok) {
           console.error("Error fetching branches:", res.statusText);
         }
-    
+
         const data = await res.json();
-    
+
         if (data && Array.isArray(data)) {
           const fetchedBranches = data.map((branch: { branch_id: string; branch_name: string }) => ({
             id: branch.branch_id || "",
             name: branch.branch_name || "Unnamed Branch",
           }));
-    
+
           setBranches([
             ...fetchedBranches,
             { id: "create-new", name: "+ Create New" },
@@ -139,10 +143,10 @@ export default function Step2({
         console.error("Failed to fetch branches:", error);
       }
     }
-     else if (field === "company_branch" && value) {
+    else if (field === "company_branch" && value) {
       const selectedBranch = value as DropdownOption;
       console.log("Selected Branch Value:", value);
-  
+
       setformData((prev) => ({
         ...prev,
         company_branch: {
@@ -157,7 +161,6 @@ export default function Step2({
       }));
     }
   };
-  
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -165,36 +168,31 @@ export default function Step2({
         const res = await fetch("/api/companies");
         const data = await res.json();
 
-        console.log("Fetched data:", data);  
+        console.log("Fetched data:", data);
 
         const fetchedCompanies = data.map((company: { id: string; company_name: string }) => ({
           id: company.id || "",
           name: company.company_name || "Unnamed Company",
         }));
 
-        setCompanies([...fetchedCompanies, { id: "create-new", name: "+ Create New" }]);
-      } catch (error) {
-        console.error("Failed to fetch companies:", error);
-      }
-    };
+        setCompanies([{ id: "create-new", name: "+ Create New" }, ...fetchedCompanies]);
+    } catch (error) {
+      console.error("Failed to fetch companies:", error);
+    }
+  };
 
     fetchCompanies();
   }, []);
 
   console.log("company_name:", formData.company_name?.name);
 
-
   const isFormValid =
-  ((formData.company_name?.name?.trim() ?? "") !== "") &&
-  ((formData.company_branch?.id && typeof formData.company_branch?.id === "string" && formData.company_branch?.id.trim() !== "" && formData.company_branch?.id !== "create-new") ?? false) &&
-  ((formData.company_role?.trim() ?? "") !== "") &&
-  ((formData.job_title?.trim() ?? "") !== "") &&
-  ((formData.company_email?.trim() ?? "") !== "") &&
-  (/\S+@\S+\.\S+/.test(formData.company_email || ""));
-
-
-
-
+    ((formData.company_name?.name?.trim() ?? "") !== "") &&
+    ((formData.company_branch?.id && typeof formData.company_branch?.id === "string" && formData.company_branch?.id.trim() !== "" && formData.company_branch?.id !== "create-new") ?? false) &&
+    ((formData.company_role?.trim() ?? "") !== "") &&
+    ((formData.job_title?.trim() ?? "") !== "") &&
+    ((formData.company_email?.trim() ?? "") !== "") &&
+    (/\S+@\S+\.\S+/.test(formData.company_email || ""));
 
   const handleSubmit = async () => {
     if (isFormValid) {
@@ -207,7 +205,7 @@ export default function Step2({
           company_email: formData.company_email,
           email: formData.email,
         });
-  
+
         const response = await fetch("/api/signup-step1", {
           method: "POST",
           headers: {
@@ -223,7 +221,7 @@ export default function Step2({
             step: 2,
           }),
         });
-  
+
         if (response.ok) {
           const data = await response.json();
           console.log("Success response:", data);
@@ -241,24 +239,22 @@ export default function Step2({
       alert("Please fill out all required fields.");
     }
   };
-  
 
   return (
     <div className="mt-6">
       <div className="grid grid-cols-2 gap-4">
-      <Dropdown
-        options={companies}
-        placeholder="Select a company"
-        value={companies.find((company) => company.id === formData.company_name?.id) || null}
-        onChange={(value) => handleChange("company_name", value)}
-      />
+        <Dropdown
+          options={companies}
+          placeholder="Select a company"
+          value={companies.find((company) => company.id === formData.company_name?.id) || null}
+          onChange={(value) => handleChange("company_name", value)}
+        />
         <Dropdown
           options={branches}
           placeholder="Company Branch"
           value={branches.find((b) => b.id === formData.company_branch?.id) || null}
           onChange={(value) => handleChange("company_branch", value)}
         />
-
         <Autocomplete
           suggestions={companyRoles}
           placeholder="Company Role"
@@ -281,19 +277,23 @@ export default function Step2({
 
       {showCompanyForm && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 w-full h-full">
-          <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
-            <h3 className="text-lg font-semibold">Add New Company</h3>
-            <input
-              type="text"
-              value={newCompany}
-              onChange={(e) => setNewCompany(e.target.value)}
-              className="w-full px-4 py-2 border mt-2"
-              placeholder="Enter company name"
-            />
-            <button onClick={handleSaveCompany} className="mt-2 px-4 py-2 bg-blue-500 text-white w-full rounded-lg">
-              Save
-            </button>
-          </div>
+          <CompanyForm
+            newCompany={newCompany}
+            setNewCompany={setNewCompany}
+            industryOpen={industryOpen}
+            setIndustryOpen={setIndustryOpen}
+            industryValue={industryValue}
+            setIndustryValue={setIndustryValue}
+            sizeOpen={sizeOpen}
+            setSizeOpen={setSizeOpen}
+            sizeValue={sizeValue}
+            setSizeValue={setSizeValue}
+            handleSaveCompany={handleSaveCompany}
+            closeForm={() => setShowCompanyForm(false)}
+            newBranch={newBranch}
+            setNewBranch={setNewBranch}
+          />
+
         </div>
       )}
 
@@ -316,7 +316,10 @@ export default function Step2({
       )}
 
       <div className="flex justify-between mt-[82px]">
-        <button onClick={() => setCurrentStep(1)} className="px-12 py-2 flex items-center justify-center rounded-full border border-button hover:bg-button/5 transition gap-2 text-button">
+        <button
+          onClick={() => setCurrentStep(1)}
+          className="px-12 py-2 flex items-center justify-center rounded-full border border-button hover:bg-button/5 transition gap-2 text-button"
+        >
           <ChevronLeft size={20} />
           Back
         </button>

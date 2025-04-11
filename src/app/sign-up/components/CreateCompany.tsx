@@ -1,263 +1,268 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { ChevronRight } from "lucide-react";
 
-export default function CompanyForm() {
-  const [countryOpen, setCountryOpen] = useState(false)
-  const [cityOpen, setCityOpen] = useState(false)
-  const [countryValue, setCountryValue] = useState("")
-  const [cityValue, setCityValue] = useState("")
+interface CompanyFormProps {
+  newCompany: string;
+  setNewCompany: React.Dispatch<React.SetStateAction<string>>;
+  industryOpen: boolean;
+  setIndustryOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  industryValue: string;
+  setIndustryValue: React.Dispatch<React.SetStateAction<string>>;
+  sizeOpen: boolean;
+  setSizeOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  sizeValue: string;
+  setSizeValue: React.Dispatch<React.SetStateAction<string>>;
+  handleSaveCompany: () => void;
+  closeForm: () => void;
+  newBranch: string;
+  setNewBranch: React.Dispatch<React.SetStateAction<string>>;
+}
+
+export default function CompanyForm({
+  newCompany,
+  setNewCompany,
+  industryOpen,
+  setIndustryOpen,
+  industryValue,
+  setIndustryValue,
+  sizeOpen,
+  setSizeOpen,
+  sizeValue,
+  setSizeValue,
+  handleSaveCompany,
+  closeForm,
+  newBranch,
+  setNewBranch,
+}: CompanyFormProps) {
+
+  const handleClose = () => {
+    closeForm();
+  };
+
+  const handleBranchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewBranch(e.target.value);
+    console.log("New Branch Value on Change:", e.target.value); 
+  };
+  
+  
+
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-lg">
-        <div className="text-center relative pb-2 p-6 border-b border-gray-200">
-          <button className="absolute right-2 top-2 text-gray-400 hover:text-gray-600">✕</button>
-          <div className="mx-auto bg-blue-600 w-10 h-10 rounded-full flex items-center justify-center mb-2">
-            {/* Building icon */}
+    <div className="flex items-center justify-center h-screen p-2">
+      <div className="w-full max-w-2xl bg-white rounded-lg shadow-lg">
+        <div className="relative p-8">
+          <button
+            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+            onClick={handleClose}
+          >
             <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
+              width="24"
+              height="24"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-white"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-              <path d="M9 22v-4h6v4" />
-              <path d="M8 6h.01" />
-              <path d="M16 6h.01" />
-              <path d="M12 6h.01" />
-              <path d="M12 10h.01" />
-              <path d="M12 14h.01" />
-              <path d="M16 10h.01" />
-              <path d="M16 14h.01" />
-              <path d="M8 10h.01" />
-              <path d="M8 14h.01" />
+              <path
+                d="M18 6L6 18M6 6L18 18"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
+          </button>
+
+          <div className="text-center p-8 pb-0">
+            <div className="mx-auto bg-blue-600 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12 13V21M12 13C14.7614 13 17 10.7614 17 8C17 5.23858 14.7614 3 12 3C9.23858 3 7 5.23858 7 8C7 10.7614 9.23858 13 12 13Z"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold">Create a new company</h2>
+            <p className="text-sm text-gray-500 px-6 pb-4 border-b border-gray-300">
+              You are about to create a new company. Please ensure that all fields are answered truthfully and accurately.
+              Company verification is required and can be completed within the app.
+            </p>
           </div>
-          <h2 className="text-xl font-semibold">Create a new company</h2>
-          <p className="text-sm text-gray-500 px-6">
-            You are about to create a new company. Please ensure that all fields are answered truthfully and accurately.
-            Company verification is required and can be completed within the app
-          </p>
-        </div>
-        <div className="p-6 space-y-4">
-          <div>
-            <h3 className="font-medium text-base mb-3">Company Address</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label htmlFor="country" className="text-sm font-medium">
-                  Country
+
+          <div className="p-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-6">Company Information</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Form fields */}
+              <div>
+                <label htmlFor="company_name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Company Name
+                </label>
+                <input
+                  id="company_name"
+                  placeholder="Write Here"
+                  className="w-full rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-sm"
+                  value={newCompany}
+                  onChange={(e) => setNewCompany(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="company_branch" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    Branch Name
+                    <span className="ml-1 text-gray-400">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                        <path d="M12 16V12M12 8H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                    </span>
+                </label>
+                <input
+                    id="company_branch"
+                    placeholder="Type here"
+                    className="w-full rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-sm"
+                    value={newBranch} // Bind the newBranch state here
+                    onChange={handleBranchChange} // Update newBranch on change
+                />
+              </div>
+
+              {/* Industry Dropdown */}
+              <div>
+                <label htmlFor="company-industry" className="block text-sm font-medium text-gray-700 mb-1">
+                  Company Industry
                 </label>
                 <div className="relative">
                   <button
-                    id="country"
-                    onClick={() => setCountryOpen(!countryOpen)}
-                    className="flex items-center justify-between w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                    id="company-industry"
+                    onClick={() => setIndustryOpen(!industryOpen)}
+                    className="flex items-center justify-between w-full rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-500"
                   >
-                    <span>{countryValue || "Select country"}</span>
+                    <span>{industryValue || "Select an industry"}</span>
                     <svg
-                      xmlns="http://www.w3.org/2000/svg"
                       width="16"
                       height="16"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`transition-transform ${countryOpen ? "rotate-180" : ""}`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      className={`transition-transform ${industryOpen ? "rotate-180" : ""}`}
                     >
-                      <path d="m6 9 6 6 6-6" />
+                      <path
+                        d="M6 9L12 15L18 9"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </button>
-                  {countryOpen && (
+                  {industryOpen && (
                     <div className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
                       <div className="py-1">
-                        <button
-                          className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                          onClick={() => {
-                            setCountryValue("United States")
-                            setCountryOpen(false)
-                          }}
-                        >
-                          United States
-                        </button>
-                        <button
-                          className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                          onClick={() => {
-                            setCountryValue("Canada")
-                            setCountryOpen(false)
-                          }}
-                        >
-                          Canada
-                        </button>
-                        <button
-                          className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                          onClick={() => {
-                            setCountryValue("United Kingdom")
-                            setCountryOpen(false)
-                          }}
-                        >
-                          United Kingdom
-                        </button>
+                        {["Technology", "Healthcare", "Finance", "Education", "Retail"].map((industry) => (
+                          <button
+                            key={industry}
+                            className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                            onClick={() => {
+                              setIndustryValue(industry)
+                              setIndustryOpen(false)
+                            }}
+                          >
+                            {industry}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <label htmlFor="city" className="text-sm font-medium">
-                  City/Region
+
+              {/* Size Dropdown */}
+              <div>
+                <label htmlFor="company-size" className="block text-sm font-medium text-gray-700 mb-1">
+                  Company Size
                 </label>
                 <div className="relative">
                   <button
-                    id="city"
-                    onClick={() => setCityOpen(!cityOpen)}
-                    className="flex items-center justify-between w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                    id="company-size"
+                    onClick={() => setSizeOpen(!sizeOpen)}
+                    className="flex items-center justify-between w-full rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-500"
                   >
-                    <span>{cityValue || "Select City/Region"}</span>
+                    <span>{sizeValue || "Select Size"}</span>
                     <svg
-                      xmlns="http://www.w3.org/2000/svg"
                       width="16"
                       height="16"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`transition-transform ${cityOpen ? "rotate-180" : ""}`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      className={`transition-transform ${sizeOpen ? "rotate-180" : ""}`}
                     >
-                      <path d="m6 9 6 6 6-6" />
+                      <path
+                        d="M6 9L12 15L18 9"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </button>
-                  {cityOpen && (
+                  {sizeOpen && (
                     <div className="absolute z-10 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
                       <div className="py-1">
-                        <button
-                          className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                          onClick={() => {
-                            setCityValue("New York")
-                            setCityOpen(false)
-                          }}
-                        >
-                          New York
-                        </button>
-                        <button
-                          className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                          onClick={() => {
-                            setCityValue("Los Angeles")
-                            setCityOpen(false)
-                          }}
-                        >
-                          Los Angeles
-                        </button>
-                        <button
-                          className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-                          onClick={() => {
-                            setCityValue("Chicago")
-                            setCityOpen(false)
-                          }}
-                        >
-                          Chicago
-                        </button>
+                        {["1-10", "11-50", "51-200", "201-500", "500+"].map((size) => (
+                          <button
+                            key={size}
+                            className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                            onClick={() => {
+                              setSizeValue(size)
+                              setSizeOpen(false)
+                            }}
+                          >
+                            {size}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="text-sm font-medium">
-                Company Contact Email
-              </label>
-              <input
-                id="email"
-                placeholder="Write here"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="phone" className="text-sm font-medium">
-                Company Phone Number
-              </label>
-              <input
-                id="phone"
-                placeholder="Write here"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="address" className="text-sm font-medium">
-              Exact Address
-            </label>
-            <input
-              id="address"
-              placeholder="Write here"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Does this company have multiple branches?</label>
-            <div className="flex">
-              <div className="w-1/2">
-                <button className="w-full rounded-md border border-blue-600 bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
-                  Yes
-                </button>
+              {/* Email & Website Fields */}
+              <div>
+                <label htmlFor="email-domain" className="block text-sm font-medium text-gray-700 mb-1">
+                  Company email domain <span className="text-gray-400 text-xs">(if applicable)</span>
+                </label>
+                <input
+                  id="email-domain"
+                  placeholder="e.g @makati.company"
+                  className="w-full rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-sm"
+                />
               </div>
-              <div className="w-1/2">
-                <button className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm hover:bg-gray-100">
-                  No
-                </button>
+
+              <div>
+                <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">
+                  Company website <span className="text-gray-400 text-xs">(if applicable)</span>
+                </label>
+                <input
+                  id="website"
+                  placeholder="e.g www.company.com"
+                  className="w-full rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-sm"
+                />
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-between pt-4">
-            <button className="flex items-center gap-1 rounded-md border border-gray-300 px-3 py-2 text-sm">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <div className="flex justify-end mt-8">
+              <button
+                type="button"
+                onClick={handleSaveCompany}
+                className="px-12 py-2 flex items-center justify-center gap-2 rounded-full border bg-button text-white hover:bg-buttonHover"
               >
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-              Back
-            </button>
-            <button className="flex items-center gap-1 rounded-md bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
-              Next
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </button>
+                <p>Next</p>
+                <ChevronRight size={20} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
