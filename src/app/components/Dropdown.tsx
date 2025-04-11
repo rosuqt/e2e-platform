@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Listbox } from "@headlessui/react";
 import { Check, ChevronDown, Frown } from "lucide-react";
 
@@ -23,33 +23,32 @@ export default function Dropdown({
   value,
   onChange,
 }: DropdownProps) {
-  const [selectedOption, setSelectedOption] = useState<DropdownOption | null>(
-    value || null
-  );
+  const [selectedOption, setSelectedOption] = useState<DropdownOption | null>(value || null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     setSelectedOption(value || null);
+    setSearchQuery("");
   }, [value]);
 
   const handleSelect = (selected: DropdownOption) => {
     setSelectedOption(selected);
-    if (onChange) onChange(selected); // Pass the full DropdownOption object
+    setSearchQuery("");
+    if (onChange) onChange(selected);
   };
+
+  const filteredOptions = options.filter((option) =>
+    option.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Listbox value={selectedOption} onChange={handleSelect}>
       <div className={`relative ${width}`}>
-        {/* Dropdown Button */}
-        <Listbox.Button
-          className={`flex items-center justify-between border p-2 bg-white ${width}`}
-        >
+        {/* Button */}
+        <Listbox.Button className={`flex items-center justify-between border p-2 bg-white ${width}`}>
           <div className="flex items-center gap-2">
             {selectedOption?.logo && typeof selectedOption.logo === "string" ? (
-              <img
-                src={selectedOption.logo}
-                alt=""
-                className="w-4 h-4 rounded-full"
-              />
+              <img src={selectedOption.logo} alt="" className="w-4 h-4 rounded-full" />
             ) : (
               selectedOption?.logo
             )}
@@ -61,22 +60,29 @@ export default function Dropdown({
         </Listbox.Button>
 
         {/* Dropdown Options */}
-        <Listbox.Options
-          className={`absolute ${width} mt-1 bg-white border rounded shadow-lg z-10`}
-        >
-          {options.length > 0 ? (
-            options.map((option, index) => (
+        <Listbox.Options className={`absolute mt-1 ${width} bg-white border rounded shadow-lg z-10 max-h-60 overflow-y-auto`}>
+          <div className="p-2 border-b">
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-full p-1 border rounded focus:outline-none"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Options */}
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option, index) => (
               <Listbox.Option
                 key={index}
                 value={option}
-                className="p-2 flex items-center gap-2 cursor-pointer hover:bg-gray-100"
+                className={`p-2 flex items-center gap-2 cursor-pointer hover:bg-gray-100 ${
+                  option.id === "create-new" ? "font-semibold text-blue-500" : ""
+                }`}
               >
                 {option.logo && typeof option.logo === "string" ? (
-                  <img
-                    src={option.logo}
-                    alt=""
-                    className="w-4 h-4 rounded-full"
-                  />
+                  <img src={option.logo} alt="" className="w-4 h-4 rounded-full" />
                 ) : (
                   option.logo
                 )}
@@ -89,7 +95,7 @@ export default function Dropdown({
           ) : (
             <div className="p-2 text-gray-500 text-sm text-center flex items-center justify-center gap-2">
               <Frown className="w-4 h-4 text-gray-400" />
-              No options available
+              No matches
             </div>
           )}
         </Listbox.Options>
