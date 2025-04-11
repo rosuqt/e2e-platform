@@ -9,8 +9,8 @@ export async function GET() {
         company_name, 
         company_branch, 
         company_logo, 
-        company_type
-      FROM registered_company
+        company_industry
+      FROM pending_newcompanies
       ORDER BY company_name
     `);
 
