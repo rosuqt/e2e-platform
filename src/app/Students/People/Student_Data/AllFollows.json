@@ -1,0 +1,35 @@
+[
+    {
+      "id": 1,
+      "name": "Vivi Anya A.",
+      "title": "HR Manager",
+      "company": "Buzeynga-Inc.",
+      "avatar": "",
+      "favorited": true
+    },
+    {
+      "id": 2,
+      "name": "Vivi Anya A.",
+      "title": "HR Manager",
+      "company": "Buzeynga-Inc.",
+      "avatar": "",
+      "favorited": true
+    },
+    {
+        "id": 3,
+        "name": "Vivi Anya A.",
+        "title": "HR Manager",
+        "company": "Buzeynga-Inc.",
+        "avatar": "",
+        "favorited": false
+    },
+    {
+        "id": 4,
+        "name": "Vivi Anya A.",
+        "title": "HR Manager",
+        "company": "Buzeynga-Inc.",
+        "avatar": "",
+        "favorited": false
+    }
+  ]
+  
