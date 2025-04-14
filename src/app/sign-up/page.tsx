@@ -14,7 +14,7 @@ export default function EmployerSignupPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="w-full max-w-3xl h-[650px] flex items-center bg-white p-8 rounded-lg shadow-md"
+        className="w-full max-w-4xl h-[700px] flex items-center bg-white p-8 rounded-lg shadow-md"
       >
         <EmployerSignup />
       </motion.div>
