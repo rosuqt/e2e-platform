@@ -1,4 +1,4 @@
-  "use client";
+"use client";
   import { useState } from "react";
   import StepProgress from "./StepProgress";
   import Step1 from "../Step1";

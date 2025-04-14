@@ -501,7 +501,7 @@ export default function Step2({
       <div className="grid grid-cols-2 gap-4">
         <Dropdown
           options={companies.filter((company) => company.id !== "create-new" || !formData.company_name?.id)}
-          placeholder="Select a company"
+          placeholder="Select a company*"
           value={
             companies.find((company) => company.id === formData.company_name?.id) || null
           }
@@ -509,7 +509,7 @@ export default function Step2({
         />
         <Dropdown
           options={branches}
-          placeholder="Company Branch"
+          placeholder="Company Branch*"
           value={
             branches.find((b) => b.id === formData.company_branch?.id) || null
           } 
@@ -529,14 +529,14 @@ export default function Step2({
 
         <Autocomplete
         suggestions={companyRoles}
-        placeholder="Company Role"
+        placeholder="Company Role*"
         value={formData.company_role || ""}
         onChange={(value) => handleChange("company_role", value)}
         />
 
       <Autocomplete
         suggestions={jobTitles}
-        placeholder="Job Title"
+        placeholder="Job Title*"
         value={formData.job_title || ""}
         onChange={(value) => handleChange("job_title", value)}
       />
