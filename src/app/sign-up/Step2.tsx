@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import Autocomplete from "@/app/components/Autocomplete";
 import Dropdown, { DropdownOption } from "@/app/components/Dropdown";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { formData } from "../../utils/type";
 import CompanyForm from "./components/new-company/CompanyInformation";
 import Swal from "sweetalert2";
-import { jobTitles, companyRoles } from "@/utils/jobData"; 
+import { jobTitles, companyRoles } from "@/utils/jobData";
+import { MdError } from "react-icons/md";
 
 {/* bro im so done with ts */}
 
@@ -36,6 +38,23 @@ export default function Step2({
     { id: "create-new", name: "+ Create New" },
   ]);
 
+  const [errors, setErrors] = useState({
+    company_name: "",
+    company_branch: "",
+    company_role: "",
+    job_title: "",
+    company_email: "",
+  });
+
+  const validateField = (field: string, value: string) => {
+    if (!value.trim()) {
+      setErrors((prev) => ({ ...prev, [field]: `${field.replace("_", " ")} is required.` }));
+    } else if (field === "company_email" && !/\S+@\S+\.\S+/.test(value)) {
+      setErrors((prev) => ({ ...prev, [field]: "Must be a valid email format." }));
+    } else {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
 
   const industries: DropdownOption[] = [
     { id: "agriculture", name: "Agriculture" },
@@ -73,9 +92,12 @@ export default function Step2({
     { id: "xxlarge", name: "500+" },
   ];
   
-
-
-
+  const shakeVariant = {
+    shake: {
+      x: [0, -5, 5, -5, 5, 0],
+      transition: { duration: 0.4 },
+    },
+  };
 
   const handleSaveCompany = async () => {
     if (newCompany.trim() === "") {
@@ -186,11 +208,12 @@ export default function Step2({
       }));
 
       const updatedBranches = [
+        { id: "create-new", name: "+ Create New" },
+        ...branches.filter((branch) => branch.id !== "create-new"),
         {
           id: companyBranch.toLowerCase().replace(/\s+/g, "-"),
           name: companyBranch,
         },
-        { id: "create-new", name: "+ Create New" },
       ];
 
       setBranches(updatedBranches);
@@ -198,7 +221,7 @@ export default function Step2({
       setformData((prev) => ({
         ...prev,
         company_branch: {
-          id: updatedBranches[0].id,
+          id: updatedBranches[0].id || "",
           name: updatedBranches[0].name,
         },
       }));
@@ -224,7 +247,7 @@ export default function Step2({
         setformData((prev) => ({
           ...prev,
           company_branch: {
-            id: finalBranches[0].id,
+            id: finalBranches[0].id || "",
             name: finalBranches[0].name,
           },
         }));
@@ -308,16 +331,16 @@ export default function Step2({
       }
     } else if (field === "company_branch" && value) {
       const selectedBranch = value as DropdownOption;
-      
+
       if (selectedBranch && selectedBranch.id && selectedBranch.name) {
-        console.log("Selected Branch Value:", selectedBranch);
         setformData((prev) => ({
           ...prev,
           company_branch: {
-            id: String(selectedBranch.id),
+            id: String(selectedBranch.id || ""), // Ensure id is always a string
             name: selectedBranch.name || "",
           },
         }));
+        validateField("company_branch", selectedBranch.name || "");
       } else {
         console.warn("Invalid company branch selected:", selectedBranch);
       }
@@ -326,6 +349,9 @@ export default function Step2({
         ...prev,
         [field]: typeof value === "string" ? value : (value as DropdownOption)?.name || "",
       }));
+      if (typeof value === "string") {
+        validateField(field, value);
+      }
     }
     
   };
@@ -366,10 +392,8 @@ export default function Step2({
               name: branch.branch_name || "Unnamed Branch",
             }));
   
-            const hasCreatedBranch = fetchedBranches.length > 0;
-  
             setBranches([
-              ...(hasCreatedBranch ? [] : [{ id: "create-new", name: "+ Create New" }]),
+              { id: "create-new", name: "+ Create New" }, // Ensure "Create New" is always first
               ...fetchedBranches,
             ]);
           } else {
@@ -446,7 +470,20 @@ export default function Step2({
   console.log("isFormValid:", isFormValid);
 
   const handleSubmit = async () => {
-    if (isFormValid) {
+    const newErrors = {
+      company_name: formData.company_name?.name?.trim() ? "" : "Company name is required.",
+      company_branch: formData.company_branch?.name?.trim() ? "" : "Company branch is required.",
+      company_role: formData.company_role?.trim() ? "" : "Company role is required.",
+      job_title: formData.job_title?.trim() ? "" : "Job title is required.",
+      company_email: formData.company_email?.trim()
+        ? /\S+@\S+\.\S+/.test(formData.company_email)
+          ? ""
+          : "Must be a valid email format. e.g email@mail.com"
+        : "Company email is required.",
+    };
+    setErrors(newErrors);
+
+    if (Object.values(newErrors).every((error) => !error)) {
       try {
         console.log("Form data being submitted:", {
           company_name: formData.company_name?.name,
@@ -480,76 +517,159 @@ export default function Step2({
         } else {
           const data = await response.json();
           console.error("Error response:", data);
-          alert(data.message || "Something went wrong.");
         }
       } catch (error) {
         console.error("Error submitting form:", error);
-        alert("Something went wrong. Please try again.");
       }
-    } else {
-      alert("Please fill out all required fields.");
     }
   };
 
 
   return (
+    /*fields*/
     <div className="mt-6">
       <h2 className="text-xl font-semibold">Company Association</h2>
       <p className="text-sm text-gray-400 mb-5">
       Connect with your company to start posting jobs and managing applications. If your company is already on our platform, simply search for it. If not, you can add it now!
       </p>
       <div className="grid grid-cols-2 gap-4">
-        <Dropdown
-          options={companies.filter((company) => company.id !== "create-new" || !formData.company_name?.id)}
-          placeholder="Select a company*"
-          value={
-            companies.find((company) => company.id === formData.company_name?.id) || null
-          }
-          onChange={(value) => handleChange("company_name", value)}
-        />
-        <Dropdown
-          options={branches}
-          placeholder="Company Branch*"
-          value={
-            branches.find((b) => b.id === formData.company_branch?.id) || null
-          } 
-          onChange={(value) => {
-            const selectedBranch = value as DropdownOption;
-            if (selectedBranch) {
-              setformData((prev) => ({
-                ...prev,
-                company_branch: {
-                  id: selectedBranch.id || "",
-                  name: selectedBranch.name || "",
-                },
-              }));
-            }
-          }}
-        />
+        <motion.div
+          className="relative"
+          variants={shakeVariant}
+          animate={errors.company_name ? "shake" : ""}
+        >
+          <label htmlFor="company_name" className="block text-sm font-regular text-gray-500">
+            Company Name
+          </label>
+          <div className="flex items-center gap-2">
+            <Dropdown
+              options={companies} 
+              placeholder="Select a company*"
+              value={
+                companies.find((company) => company.id === formData.company_name?.id) || null
+              }
+              onChange={(value) => handleChange("company_name", value)}
+              className={`w-full ${errors.company_name ? "border-red-500" : "border-gray-200"}`}
+            />
+            {errors.company_name && <MdError className="text-red-500 w-4 h-4" />}
+          </div>
+          {errors.company_name && <p className="text-red-500 text-xs">{errors.company_name}</p>}
+        </motion.div>
 
-        <Autocomplete
-        suggestions={companyRoles}
-        placeholder="Company Role*"
-        value={formData.company_role || ""}
-        onChange={(value) => handleChange("company_role", value)}
-        />
+        <motion.div
+          className="relative"
+          variants={shakeVariant}
+          animate={errors.company_branch ? "shake" : ""}
+        >
+          <label htmlFor="company_branch" className="block text-sm font-regular text-gray-500">
+            Company Branch
+          </label>
+          <div className="flex items-center gap-2">
+            <Dropdown
+              options={branches}
+              placeholder="Company Branch*"
+              value={
+                branches.find((b) => b.id === formData.company_branch?.id) || null
+              } 
+              onChange={(value) => {
+                const selectedBranch = value as DropdownOption;
+                if (selectedBranch) {
+                  setformData((prev) => ({
+                    ...prev,
+                    company_branch: {
+                      id: selectedBranch.id || "",
+                      name: selectedBranch.name || "",
+                    },
+                  }));
+                  validateField("company_branch", selectedBranch.name || "");
+                }
+              }}
+              className={`w-full ${errors.company_branch ? "border-red-500" : "border-gray-200"}`}
+            />
+            {errors.company_branch && <MdError className="text-red-500 w-4 h-4" />}
+          </div>
+          {errors.company_branch && <p className="text-red-500 text-xs">{errors.company_branch}</p>}
+        </motion.div>
 
-      <Autocomplete
-        suggestions={jobTitles}
-        placeholder="Job Title*"
-        value={formData.job_title || ""}
-        onChange={(value) => handleChange("job_title", value)}
-      />
+        <motion.div
+          className="relative"
+          variants={shakeVariant}
+          animate={errors.company_role ? "shake" : ""}
+        >
+          <label htmlFor="company_role" className="block text-sm font-regular text-gray-500">
+            Company Role
+          </label>
+          <div className="flex items-center gap-2">
+            <Autocomplete
+              suggestions={companyRoles}
+              placeholder="Company Role*"
+              value={formData.company_role || ""}
+              onChange={(value) => {
+                handleChange("company_role", value);
+                validateField("company_role", value as string);
+              }}
+              className={`border rounded-md ${
+                errors.company_role ? "border-red-500" : "border-gray-200"
+              }`}
+            />
+            {errors.company_role && <MdError className="text-red-500 w-4 h-4" />}
+          </div>
+          {errors.company_role && <p className="text-red-500 text-xs">{errors.company_role}</p>}
+        </motion.div>
 
-        <input
-          type="email"
-          name="company_email"
-          className="border p-2 w-full col-span-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          placeholder="Company Email"
-          value={formData.company_email}
-          onChange={(e) => handleChange("company_email", e.target.value)}
-          autoComplete="off"
-        />
+        <motion.div
+          className="relative"
+          variants={shakeVariant}
+          animate={errors.job_title ? "shake" : ""}
+        >
+          <label htmlFor="job_title" className="block text-sm font-regular text-gray-500">
+            Job Title
+          </label>
+          <div className="flex items-center gap-2">
+            <Autocomplete
+              suggestions={jobTitles}
+              placeholder="Job Title*"
+              value={formData.job_title || ""}
+              onChange={(value) => {
+                handleChange("job_title", value);
+                validateField("job_title", value as string);
+              }}
+              className={`border rounded-md ${
+                errors.job_title ? "border-red-500" : "border-gray-200"
+              }`}
+            />
+            {errors.job_title && <MdError className="text-red-500 w-4 h-4" />}
+          </div>
+          {errors.job_title && <p className="text-red-500 text-xs">{errors.job_title}</p>}
+        </motion.div>
+
+        <motion.div
+          className="col-span-2 relative"
+          variants={shakeVariant}
+          animate={errors.company_email ? "shake" : ""}
+        >
+          <label htmlFor="company_email" className="block text-sm font-regular text-gray-500">
+            Company Email
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="email"
+              name="company_email"
+              className={`border p-2 w-full rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                errors.company_email ? "border-red-500" : ""
+              }`}
+              placeholder="Company Email"
+              value={formData.company_email}
+              onChange={(e) => {
+                handleChange("company_email", e.target.value);
+                validateField("company_email", e.target.value);
+              }}
+              autoComplete="off"
+            />
+            {errors.company_email && <MdError className="text-red-500 w-4 h-4" />}
+          </div>
+          {errors.company_email && <p className="text-red-500 text-xs">{errors.company_email}</p>}
+        </motion.div>
       </div>
 
       {showCompanyForm && (

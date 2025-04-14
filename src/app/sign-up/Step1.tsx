@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Select, { SingleValue } from "react-select";
 import { getCountries, getCountryCallingCode, CountryCode } from "libphonenumber-js";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import Swal from "sweetalert2";
 import { formData } from "../../utils/type";
 import { ChevronRight } from "lucide-react";
@@ -134,7 +134,7 @@ export default function Step1({
       email: !formData.email
         ? "Please fill out your email"
         : !validateEmail(formData.email)
-        ? "Enter a valid email"
+        ? "Must be a valid email format. e.g email@mail.com"
         : "",
   
       password: !formData.password
@@ -175,8 +175,6 @@ export default function Step1({
     validateForm();
     if (!isFormValid) return;
   
-    if (!isFormValid) return;
-  
     if (formData.emailVerified) {
       setCurrentStep(2);
       return;
@@ -195,14 +193,25 @@ export default function Step1({
         }));
         setCurrentStep(2);
       }
-    } catch {
-      Swal.fire({
-        icon: "error",
-        title: "This email already exists!",
-        text: "Please use a different email address.",
-        confirmButtonText: "OK",
-        confirmButtonColor: "#3B82F6",
-      });
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status === 409) {
+        Swal.fire({
+          icon: "error",
+          title: "This email already exists!",
+          text: "Please use a different email address.",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#3B82F6",
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "An unexpected error occurred. Please try again later.",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#3B82F6",
+        });
+      }
     }
   };
   
@@ -212,198 +221,231 @@ export default function Step1({
   };
 
   return (
-    <div className="mt-6">
+    <div className="mt-8">
       <h2 className="text-xl font-semibold">Personal Details</h2>
       <p className="text-sm text-gray-400 mb-5">
         Provide your personal details to complete your profile.
       </p>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mt-4">
-      <motion.div
-        variants={shakeVariant}
-        animate={touched.first_name && errors.first_name ? "shake" : ""}
-        className="w-full relative"
-      >
-        <input
-          name="first_name"
-          autoComplete="off"
-          className={`border p-2 rounded w-full pr-10 ${
-            touched.first_name && errors.first_name ? "border-red-500" : ""
-          }`}
-          placeholder="First name*"
-          value={formData.first_name}
-          onChange={handleChange}
-          onBlur={() => handleBlur("first_name")}
-        />
-        {touched.first_name && errors.first_name && (
-          <div className="absolute right-2 top-5 -translate-y-1/2 flex items-center pl-2">
-            <MdError className="text-red-500 w-4 h-4  " />
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 mt-4 relative pb-24">
+        <motion.div
+          variants={shakeVariant}
+          animate={touched.first_name && errors.first_name ? "shake" : ""}
+          className="w-full flex items-center gap-2"
+        >
+          <div className="relative w-full">
+            <label htmlFor="first_name" className="block text-sm font-normal text-gray-500">
+              First Name
+            </label>
+            <input
+              id="first_name"
+              name="first_name"
+              autoComplete="off"
+              className={`border p-2 rounded w-full ${
+                touched.first_name && errors.first_name ? "border-red-500" : ""
+              }`}
+              placeholder="First name*"
+              value={formData.first_name}
+              onChange={handleChange}
+              onBlur={() => handleBlur("first_name")}
+            />
+            <div className="h-4">
+              {touched.first_name && errors.first_name && (
+                <p className="text-red-500 text-xs">{errors.first_name}</p>
+              )}
+            </div>
           </div>
-        )}
-        {touched.first_name && errors.first_name && (
-          <p className="text-red-500 text-sm mt-1">{errors.first_name}</p>
-        )}
-      </motion.div>
+          {touched.first_name && errors.first_name && <MdError className="text-red-500 w-4 h-4" />}
+        </motion.div>
 
-
-
-      <motion.div
-        variants={shakeVariant}
-        animate={touched.first_name && errors.first_name ? "shake" : ""}
-        className="w-full relative"
-      >
-          <input
-            name="last_name"
-            autoComplete="off"
-            className={`border p-2 rounded w-full ${
-              touched.last_name && errors.last_name ? "border-red-500" : ""
-            }`}
-            placeholder="Last name*"
-            value={formData.last_name}
-            onChange={handleChange}
-            onBlur={() => handleBlur("last_name")}
-          />
-          {touched.last_name && errors.last_name && (
-          <div className="absolute right-2 top-5 -translate-y-1/2 flex items-center pl-2">
-            <MdError className="text-red-500 w-4 h-4  " />
+        <motion.div
+          variants={shakeVariant}
+          animate={touched.last_name && errors.last_name ? "shake" : ""}
+          className="w-full flex items-center gap-2"
+        >
+          <div className="relative w-full">
+            <label htmlFor="last_name" className="block text-sm font-normal text-gray-500">
+              Last Name
+            </label>
+            <input
+              id="last_name"
+              name="last_name"
+              autoComplete="off"
+              className={`border p-2 rounded w-full ${
+                touched.last_name && errors.last_name ? "border-red-500" : ""
+              }`}
+              placeholder="Last name*"
+              value={formData.last_name}
+              onChange={handleChange}
+              onBlur={() => handleBlur("last_name")}
+            />
+            <div className="h-4">
+              {touched.last_name && errors.last_name && (
+                <p className="text-red-500 text-xs">{errors.last_name}</p>
+              )}
+            </div>
           </div>
-        )}
-        {touched.last_name && errors.last_name && (
-          <p className="text-red-500 text-sm mt-1">{errors.last_name}</p>
-        )}
+          {touched.last_name && errors.last_name && <MdError className="text-red-500 w-4 h-4" />}
         </motion.div>
 
         <div className="col-span-2 flex gap-4">
-        {selectedCountry && (
-          <Select
-            options={countryOptions}
-            value={selectedCountry}
-            onChange={handleCountryChange}
-            className="w-1/3"
-            onBlur={() => handleBlur("phone")}
-          />
-        )}
-
-        <motion.div
-          className="relative w-full"
-          variants={shakeVariant}
-          animate={touched.phone && errors.phone ? "shake" : ""}
-        >
-          <input
-            type="tel"
-            name="phone"
-            autoComplete="off"
-            className={`border p-2 rounded w-full ${
-              touched.phone && errors.phone ? "border-red-500" : ""
-            }`}
-            placeholder={`Phone Number (+${selectedCountry?.code.slice(1)})*`}
-            value={formData.phone}
-            onChange={handleChange}
-            onBlur={() => handleBlur("phone")}
-          />
-          {touched.phone && errors.phone && (
-            <div className="absolute right-2 top-5 -translate-y-1/2 flex items-center pl-2">
-              <MdError className="text-red-500 w-4 h-4" />
+          {selectedCountry && (
+            <div className="w-1/3">
+              <label htmlFor="country" className="block text-sm font-normal text-gray-500">
+                Country
+              </label>
+              <Select
+                id="country"
+                options={countryOptions}
+                value={selectedCountry}
+                onChange={handleCountryChange}
+                className="w-full"
+                onBlur={() => handleBlur("phone")}
+              />
             </div>
           )}
-          {touched.phone && errors.phone && (
-            <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-          )}
-        </motion.div>
-      </div>
 
-      <motion.div
-        className="col-span-2 relative"
-        variants={shakeVariant}
-        animate={touched.email && errors.email ? "shake" : ""}
-      >
-        <input
-          name="email"
-          autoComplete="off"
-          className={`border p-2 rounded w-full ${
-            touched.email && errors.email ? "border-red-500" : ""
-          }`}
-          placeholder="Personal email*"
-          value={formData.email}
-          onChange={handleChange}
-          onBlur={() => handleBlur("email")}
-        />
-        {touched.email && errors.email && (
-          <div className="absolute right-2 top-5 -translate-y-1/2 flex items-center pl-2">
-            <MdError className="text-red-500 w-4 h-4" />
-          </div>
-        )}
-        {touched.email && errors.email && (
-          <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-        )}
-      </motion.div>
+          <motion.div
+            className="relative w-full flex items-center gap-2"
+            variants={shakeVariant}
+            animate={touched.phone && errors.phone ? "shake" : ""}
+          >
+            <div className="w-full">
+              <label htmlFor="phone" className="block text-sm font-normal text-gray-500">
+                Phone Number
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                name="phone"
+                autoComplete="off"
+                className={`border p-2 rounded w-full ${
+                  touched.phone && errors.phone ? "border-red-500" : ""
+                }`}
+                placeholder={`Phone Number (+${selectedCountry?.code.slice(1)})*`}
+                value={formData.phone}
+                onChange={handleChange}
+                onBlur={() => handleBlur("phone")}
+                onKeyDown={(e) => {
+                  if (!/^[0-9]*$/.test(e.key) && e.key !== "Backspace" && e.key !== "ArrowLeft" && e.key !== "ArrowRight") {
+                    e.preventDefault();
+                  }
+                }}
+              />
+              <div className="h-4">
+                {touched.phone && errors.phone && (
+                  <p className="text-red-500 text-xs">{errors.phone}</p>
+                )}
+              </div>
+            </div>
+            {touched.phone && errors.phone && <MdError className="text-red-500 w-4 h-4" />}
+          </motion.div>
+        </div>
 
-      <motion.div
-        className="relative"
-        variants={shakeVariant}
-        animate={touched.password && errors.password ? "shake" : ""}
-      >
-        <input
-          type="password"
-          name="password"
-          autoComplete="off"
-          className={`border p-2 rounded w-full ${
-            touched.password && errors.password ? "border-red-500" : ""
-          }`}
-          placeholder="Password*"
-          value={formData.password}
-          onChange={handleChange}
-          onBlur={() => handleBlur("password")}
-        />
-        {touched.password && errors.password && (
-          <div className="absolute right-2 top-5 -translate-y-1/2 flex items-center pl-2">
-          </div>
-        )}
-        {touched.password && errors.password && (
-          <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-        )}
-      </motion.div>
-
-      <motion.div
-        className="relative"
-        variants={shakeVariant}
-        animate={touched.confirmPassword && errors.confirmPassword ? "shake" : ""}
-      >
-        <input
-          type="password"
-          name="confirmPassword"
-          autoComplete="off"
-          className={`border p-2 rounded w-full ${
-            touched.confirmPassword && errors.confirmPassword ? "border-red-500" : ""
-          }`}
-          placeholder="Confirm Password*"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          onBlur={() => handleBlur("confirmPassword")}
-        />
-        {touched.confirmPassword && errors.confirmPassword && (
-          <div className="absolute right-2 top-5 -translate-y-1/2 flex items-center pl-2">
-          </div>
-        )}
-        {touched.confirmPassword && errors.confirmPassword && (
-          <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
-        )}
-      </motion.div>
-
-
-        <div className="flex justify-end mt-6 col-span-2">
-        <button
-          type="submit"
-          className={`px-12 py-2 flex items-center justify-center gap-2 rounded-full border transition ${
-            hasSubmitted && !isFormValid
-              ? "bg-gray-300 text-gray-400 cursor-not-allowed"
-              : "bg-button text-white hover:bg-buttonHover"
-          }`}
-          disabled={hasSubmitted && !isFormValid}
+        <motion.div
+          className="col-span-2 flex items-center gap-2"
+          variants={shakeVariant}
+          animate={touched.email && errors.email ? "shake" : ""}
         >
-          Next <ChevronRight size={20} />
-        </button>
+          <div className="relative w-full">
+            <label htmlFor="email" className="block text-sm font-normal text-gray-500">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              autoComplete="off"
+              className={`border p-2 rounded w-full ${
+                touched.email && errors.email ? "border-red-500" : ""
+              }`}
+              placeholder="Personal email*"
+              value={formData.email}
+              onChange={handleChange}
+              onBlur={() => handleBlur("email")}
+            />
+            <div className="h-4">
+              {touched.email && errors.email && (
+                <p className="text-red-500 text-xs">{errors.email}</p>
+              )}
+            </div>
+          </div>
+          {touched.email && errors.email && <MdError className="text-red-500 w-4 h-4" />}
+        </motion.div>
 
+        <motion.div
+          className="relative flex items-center gap-2"
+          variants={shakeVariant}
+          animate={touched.password && errors.password ? "shake" : ""}
+        >
+          <div className="w-full">
+            <label htmlFor="password" className="block text-sm font-normal text-gray-500">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              name="password"
+              autoComplete="off"
+              className={`border p-2 rounded w-full ${
+                touched.password && errors.password ? "border-red-500" : ""
+              }`}
+              placeholder="Password*"
+              value={formData.password}
+              onChange={handleChange}
+              onBlur={() => handleBlur("password")}
+            />
+            <div className="h-4">
+              {touched.password && errors.password && (
+                <p className="text-red-500 text-xs">{errors.password}</p>
+              )}
+            </div>
+          </div>
+          {touched.password && errors.password && <MdError className="text-red-500 w-4 h-4" />}
+        </motion.div>
+
+        <motion.div
+          className="relative flex items-center gap-2"
+          variants={shakeVariant}
+          animate={touched.confirmPassword && errors.confirmPassword ? "shake" : ""}
+        >
+          <div className="w-full">
+            <label htmlFor="confirmPassword" className="block text-sm font-normal text-gray-500">
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              name="confirmPassword"
+              autoComplete="off"
+              className={`border p-2 rounded w-full ${
+                touched.confirmPassword && errors.confirmPassword ? "border-red-500" : ""
+              }`}
+              placeholder="Confirm Password*"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              onBlur={() => handleBlur("confirmPassword")}
+            />
+            <div className="h-4">
+              {touched.confirmPassword && errors.confirmPassword && (
+                <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
+              )}
+            </div>
+          </div>
+          {touched.confirmPassword && errors.confirmPassword && <MdError className="text-red-500 w-4 h-4" />}
+        </motion.div>
+
+        <div className="absolute bottom-6 right-4 left-4 flex justify-end">
+          <button
+            type="submit"
+            className={`px-12 py-2 flex items-center justify-center gap-2 rounded-full border transition ${
+              hasSubmitted && !isFormValid
+                ? "bg-gray-300 text-gray-400 cursor-not-allowed"
+                : "bg-button text-white hover:bg-buttonHover"
+            }`}
+            disabled={hasSubmitted && !isFormValid}
+          >
+            Next <ChevronRight size={20} />
+          </button>
         </div>
       </form>
     </div>

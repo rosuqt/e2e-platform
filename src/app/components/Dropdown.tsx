@@ -15,6 +15,7 @@ interface DropdownProps {
   value?: DropdownOption | null;
   onChange?: (option: DropdownOption | null) => void;
   disabled?: boolean;
+  className?: string;
 }
 
 type SelectOption = {
@@ -31,6 +32,7 @@ export default function Dropdown({
   value,
   onChange,
   disabled = false,
+  className = '',
 }: DropdownProps) {
   const [selectedOption, setSelectedOption] = useState<DropdownOption | null>(value || null);
 
@@ -96,7 +98,7 @@ export default function Dropdown({
   );
 
   return (
-    <div className={width}>
+    <div className={`${width} ${className}`}> {/* Applied className */}
       <Select<SelectOption, false, GroupBase<SelectOption>>
         value={selectedOption ? mappedOptions.find((opt) => opt.original.name === selectedOption.name) : null}
         onChange={handleChange}
@@ -104,24 +106,30 @@ export default function Dropdown({
         placeholder={placeholder}
         isClearable
         isSearchable
+        classNamePrefix="react-select"
+        className={className}
         components={{
           Option: CustomOption,
           SingleValue,
           NoOptionsMessage,
         }}
         styles={{
-          control: (base) => ({
+          control: (base, state) => ({
             ...base,
-            borderColor: '#d1d5db',
+            borderColor: state.isFocused
+              ? '#3B82F6'
+              : className?.includes("border-red-500")
+              ? '#EF4444'
+              : '#D1D5DB',
             height: '45px',
-            boxShadow: 'none',
-            '&:hover': { borderColor: '#9ca3af' },
+            boxShadow: state.isFocused ? '0 0 0 2px rgba(59, 130, 246, 0.5)' : 'none',
+            '&:hover': { borderColor: state.isFocused ? '#3B82F6' : '#9CA3AF' },
             cursor: disabled ? 'not-allowed' : 'pointer',
           }),
           menu: (base) => ({
             ...base,
             zIndex: 10,
-            marginTop:0,
+            marginTop: 0,
             animation: 'bounceIn 0.2s ease-out',
           }),
         }}

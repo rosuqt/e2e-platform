@@ -5,8 +5,9 @@ interface AutocompleteProps {
   suggestions: string[];
   width?: string;
   placeholder?: string;
-  value?: string; // <-- new prop added
+  value?: string;
   onChange?: (value: string) => void;
+  className?: string;
 }
 
 export default function Autocomplete({
@@ -15,11 +16,11 @@ export default function Autocomplete({
   placeholder = "Type something...",
   value,
   onChange,
+  className = "",
 }: AutocompleteProps) {
   const [inputValue, setInputValue] = useState<string>(value || "");
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
 
-  // Sync internal state when external value changes
   useEffect(() => {
     setInputValue(value || "");
   }, [value]);
@@ -47,7 +48,7 @@ export default function Autocomplete({
   };
 
   return (
-    <div className={`relative ${width}`}>
+    <div className={`relative ${width} ${className}`}>
       <input
         type="text"
         value={inputValue}
@@ -58,7 +59,7 @@ export default function Autocomplete({
             setFilteredSuggestions([]);
           }, 100);
         }}
-        className="w-full pr-4 px-2 py-2 border focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className={`w-full pr-4 px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300/50 ${className}`}
         placeholder={placeholder}
       />
 
