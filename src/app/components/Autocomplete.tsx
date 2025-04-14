@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AutocompleteProps {
   suggestions: string[];
   width?: string;
   placeholder?: string;
+  value?: string; // <-- new prop added
   onChange?: (value: string) => void;
 }
 
@@ -12,22 +13,28 @@ export default function Autocomplete({
   suggestions,
   width = "w-full",
   placeholder = "Type something...",
+  value,
   onChange,
 }: AutocompleteProps) {
-  const [inputValue, setInputValue] = useState<string>("");
+  const [inputValue, setInputValue] = useState<string>(value || "");
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setInputValue(value);
-    if (onChange) onChange(value);
+  // Sync internal state when external value changes
+  useEffect(() => {
+    setInputValue(value || "");
+  }, [value]);
 
-    if (value.trim() === "") {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputValue(val);
+    if (onChange) onChange(val);
+
+    if (val.trim() === "") {
       setFilteredSuggestions([]);
     } else {
       setFilteredSuggestions(
         suggestions.filter((item) =>
-          item.toLowerCase().includes(value.toLowerCase())
+          item.toLowerCase().includes(val.toLowerCase())
         )
       );
     }

@@ -145,7 +145,7 @@ export default function HomePage() {
 
   return (
     <div className="relative min-h-screen bg-[#ffffff] text-white">
-      <div className="relative bg-customPurple min-h-[85vh] flex flex-wrap items-center justify-center px-6 py-16 lg:px-10 lg:flex-row">
+      <div className="relative bg-[#1551A9] min-h-[85vh] flex flex-wrap items-center justify-center px-6 py-16 lg:px-10 lg:flex-row">
         <div className="w-full lg:w-1/2 text-center lg:text-left">
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight">
             The ultimate platform for interns to{" "}
@@ -188,7 +188,7 @@ export default function HomePage() {
             />
 
             <motion.button
-              className="bg-gradient-to-r from-blue-500 to-purple-500 
+              className="bg-gradient-to-r from-button to-buttonHover
                         bg-[length:500%_200%] w-40 h-14 md:h-16 
                         rounded-md text-lg font-semibold z-[9999]"
               whileHover={{

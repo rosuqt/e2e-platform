@@ -3,10 +3,11 @@ import Autocomplete from "@/app/components/Autocomplete";
 import Dropdown, { DropdownOption } from "@/app/components/Dropdown";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { formData } from "../../utils/type";
-import CompanyForm from "./components/CreateCompany";
+import CompanyForm from "./components/new-company/CompanyInformation";
 import Swal from "sweetalert2";
-import { jobTitles, companyRoles } from "@/utils/jobData"; // adjust the path as needed
+import { jobTitles, companyRoles } from "@/utils/jobData"; 
 
+{/* bro im so done with ts */}
 
 export default function Step2({
   setCurrentStep,
@@ -21,7 +22,6 @@ export default function Step2({
 
   const [newBranch, setNewBranch] = useState("");
   const [branches, setBranches] = useState<DropdownOption[]>([]);
-
   const [newCompany, setNewCompany] = useState('');
   const [industryOpen, setIndustryOpen] = useState(false);
   const [industryValue, setIndustryValue] = useState('');
@@ -32,12 +32,10 @@ export default function Step2({
 
 
   const [showCompanyForm, setShowCompanyForm] = useState(false);
-  const [showBranchForm, setShowBranchForm] = useState(false);
   const [companies, setCompanies] = useState<DropdownOption[]>([
     { id: "create-new", name: "+ Create New" },
   ]);
 
-  const [isCompanyCreated, setIsCompanyCreated] = useState(false);
 
   const industries: DropdownOption[] = [
     { id: "agriculture", name: "Agriculture" },
@@ -76,18 +74,8 @@ export default function Step2({
   ];
   
 
-  const handleSaveBranch = () => {
-    if (newBranch.trim() === "") return;
 
-    const newBranchOption: DropdownOption = {
-      id: newBranch.toLowerCase().replace(/\s+/g, "-"),
-      name: newBranch,
-    };
 
-    setBranches((prevBranches) => [...prevBranches, newBranchOption]);
-    setShowBranchForm(false);
-    setNewBranch("");
-  };
 
   const handleSaveCompany = async () => {
     if (newCompany.trim() === "") {
@@ -116,28 +104,15 @@ export default function Step2({
       });
       return;
     }
-    
-  
-    console.log("Saving company with branch:", newBranch);
   
     try {
-      console.log("New Branch:", newBranch);
       const companyBranch = formData.company_branch?.name || newBranch || "default-branch";
-      console.log("Sending company branch:", companyBranch);
-  
-      console.log("Selected Industry Value (from state):", industryValue);
   
       const selectedIndustry =
-        formData.company_industry ??
-        industries.find((ind) => ind.name === industryValue) ??
-        { id: "general", name: "General" };
+        formData.company_industry ?? industries.find((ind) => ind.name === industryValue) ?? { id: "general", name: "General" };
   
       const selectedSize =
-        formData.company_size ??
-        companySizes.find((size) => size.name === sizeValue) ??
-        { id: "unknown", name: "Unknown" };
-  
-      console.log("Final Industry being sent in request:", selectedIndustry);
+        formData.company_size ?? companySizes.find((size) => size.name === sizeValue) ?? { id: "unknown", name: "Unknown" };
   
       const requestBody = {
         company_name: newCompany,
@@ -147,8 +122,8 @@ export default function Step2({
         email_domain: emailDomain,
         company_website: companyWebsite,
       };
-  
-      console.log("Request Body being sent:", requestBody);
+
+      
   
       const res = await fetch("/api/companies/new-company", {
         method: "POST",
@@ -159,8 +134,6 @@ export default function Step2({
       });
   
       const data = await res.json();
-
-      
   
       if (res.status === 409) {
         Swal.fire({
@@ -183,7 +156,6 @@ export default function Step2({
         });
         return;
       }
-      
   
       const newCompanyOption: DropdownOption = {
         id: data.company.id,
@@ -196,7 +168,6 @@ export default function Step2({
         { id: "create-new", name: "+ Create New" },
       ];
   
-      setIsCompanyCreated(true);
       setCompanies(updatedCompanies);
   
       setformData((prev) => ({
@@ -205,48 +176,58 @@ export default function Step2({
           id: newCompanyOption.id ?? "",
           name: newCompanyOption.name,
         },
-        company_branch: { id: companyBranch, name: companyBranch },
+        company_branch: {
+          id: companyBranch.toLowerCase().replace(/\s+/g, "-") || "",
+          name: companyBranch,
+        },
         company_size: { id: selectedSize.id, name: selectedSize.name },
         email_domain: emailDomain,
         company_website: companyWebsite,
       }));
-  
+
+      const updatedBranches = [
+        {
+          id: companyBranch.toLowerCase().replace(/\s+/g, "-"),
+          name: companyBranch,
+        },
+        { id: "create-new", name: "+ Create New" },
+      ];
+
+      setBranches(updatedBranches);
+
+      setformData((prev) => ({
+        ...prev,
+        company_branch: {
+          id: updatedBranches[0].id,
+          name: updatedBranches[0].name,
+        },
+      }));
+
       setShowCompanyForm(false);
       setNewCompany("");
-  
+
       const branchRes = await fetch(`/api/branches?company_id=${newCompanyOption.id}`);
       const branchData = await branchRes.json();
-  
+
       if (branchRes.ok && Array.isArray(branchData)) {
         const fetchedBranches = branchData.map((branch: { branch_id: string; branch_name: string }) => ({
           id: branch.branch_id || "",
           name: branch.branch_name || "Unnamed Branch",
         }));
-  
+
         const finalBranches = fetchedBranches.length
           ? [...fetchedBranches, { id: "create-new", name: "+ Create New" }]
-          : [
-              {
-                id: companyBranch.toLowerCase().replace(/\s+/g, "-"),
-                name: companyBranch,
-              },
-              { id: "create-new", name: "+ Create New" },
-            ];
-  
+          : updatedBranches;
+
         setBranches(finalBranches);
-  
-        setformData((prev) => {
-          const alreadySet = prev.company_branch?.name;
-          if (alreadySet) return prev;
-  
-          return {
-            ...prev,
-            company_branch:
-              finalBranches[0]?.id !== "create-new"
-                ? { id: finalBranches[0].id ?? "", name: finalBranches[0].name }
-                : { id: "", name: "" },
-          };
-        });
+
+        setformData((prev) => ({
+          ...prev,
+          company_branch: {
+            id: finalBranches[0].id,
+            name: finalBranches[0].name,
+          },
+        }));
       } else {
         console.error("Failed to fetch branches for the new company.");
       }
@@ -260,20 +241,30 @@ export default function Step2({
         confirmButtonColor: "#3B82F6",
       });
     }
-  };
+  }; //handleSaveCompany ending tag
+  
   
 
   const handleChange = async (field: string, value: string | DropdownOption | null) => {
     if (field === "company_name" && value) {
       const selectedCompany = value as DropdownOption;
-    
+  
+      if (selectedCompany.id === "create-new" && formData.company_name?.id) {
+        Swal.fire({
+          icon: "warning",
+          title: "Company already created",
+          text: "You have already created a company. Please select it from the list.",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#3B82F6",
+        });
+        return;
+      }
+  
       if (selectedCompany.id === "create-new") {
         setShowCompanyForm(true);
         return;
       }
-    
-      setIsCompanyCreated(false);
-    
+  
       setformData((prev) => ({
         ...prev,
         company_name: {
@@ -289,29 +280,15 @@ export default function Step2({
   
         if (!res.ok) {
           const data = await res.json();
-        
-          if (res.status === 409) {
-            Swal.fire({
-              icon: "error",
-              title: "Company already exists",
-              text: data.message || "A company with this name already exists.",
-              confirmButtonText: "OK",
-              confirmButtonColor: "#3B82F6",
-            });
-          } else {
-            Swal.fire({
-              icon: "error",
-              title: "Something went wrong",
-              text: data.message || "We couldn’t fetch the branches. Please try again.",
-              confirmButtonText: "OK",
-              confirmButtonColor: "#3B82F6",
-            });
-          }
-        
-          console.error("Failed to fetch branches. Status:", res.status);
+          Swal.fire({
+            icon: "error",
+            title: "Something went wrong",
+            text: data.message || "We couldn’t fetch the branches. Please try again.",
+            confirmButtonText: "OK",
+            confirmButtonColor: "#3B82F6",
+          });
           return;
         }
-        
   
         const data = await res.json();
   
@@ -325,29 +302,32 @@ export default function Step2({
             ...fetchedBranches,
             { id: "create-new", name: "+ Create New" },
           ]);
-        } else {
-          console.error("Invalid branches data format", data);
         }
       } catch (error) {
         console.error("Failed to fetch branches:", error);
       }
     } else if (field === "company_branch" && value) {
       const selectedBranch = value as DropdownOption;
-      console.log("Selected Branch Value:", value);
-  
-      setformData((prev) => ({
-        ...prev,
-        company_branch: {
-          id: String(selectedBranch.id),
-          name: selectedBranch.name || "",
-        },
-      }));
+      
+      if (selectedBranch && selectedBranch.id && selectedBranch.name) {
+        console.log("Selected Branch Value:", selectedBranch);
+        setformData((prev) => ({
+          ...prev,
+          company_branch: {
+            id: String(selectedBranch.id),
+            name: selectedBranch.name || "",
+          },
+        }));
+      } else {
+        console.warn("Invalid company branch selected:", selectedBranch);
+      }
     } else {
       setformData((prev) => ({
         ...prev,
         [field]: typeof value === "string" ? value : (value as DropdownOption)?.name || "",
       }));
     }
+    
   };
   
 
@@ -373,6 +353,43 @@ export default function Step2({
     fetchCompanies();
   }, []);
 
+  useEffect(() => {
+    const fetchBranchesForSelectedCompany = async () => {
+      if (formData.company_name?.id && formData.company_name.id !== "create-new") {
+        try {
+          const res = await fetch(`/api/branches?company_id=${formData.company_name.id}`);
+          const data = await res.json();
+  
+          if (res.ok && Array.isArray(data)) {
+            const fetchedBranches = data.map((branch: { branch_id: string; branch_name: string }) => ({
+              id: branch.branch_id || "",
+              name: branch.branch_name || "Unnamed Branch",
+            }));
+  
+            const hasCreatedBranch = fetchedBranches.length > 0;
+  
+            setBranches([
+              ...(hasCreatedBranch ? [] : [{ id: "create-new", name: "+ Create New" }]),
+              ...fetchedBranches,
+            ]);
+          } else {
+            console.error("Failed to fetch branches for selected company");
+            setBranches([{ id: "create-new", name: "+ Create New" }]);
+          }
+        } catch (err) {
+          console.error("Error fetching branches for selected company:", err);
+          setBranches([{ id: "create-new", name: "+ Create New" }]);
+        }
+      } else {
+        setBranches([{ id: "create-new", name: "+ Create New" }]);
+      }
+    };
+  
+    fetchBranchesForSelectedCompany();
+  }, [formData.company_name?.id]);
+  
+  
+
   console.log("company_name:", formData.company_name?.name);
   console.log("company_branch:", formData.company_branch);
   console.log("company_role:", formData.company_role);
@@ -383,7 +400,27 @@ export default function Step2({
   const isCompanyNameValid = (formData.company_name?.name?.trim() ?? "") !== "";
   console.log("Is company_name valid:", isCompanyNameValid);
 
-  const isCompanyBranchValid = (formData.company_branch?.id && typeof formData.company_branch?.id === "string" && formData.company_branch?.id.trim() !== "" && formData.company_branch?.id !== "create-new") ?? false;
+  console.log("company_branch object:", formData.company_branch); 
+  console.log("company_branch id:", formData.company_branch?.id);
+
+  const companyBranchId = String(formData.company_branch?.id || "");
+  console.log("companyBranchId (as string):", companyBranchId);
+
+  const isCompanyBranchIdExists = companyBranchId !== "";
+  const isCompanyBranchIdString = typeof companyBranchId === "string";
+  const isCompanyBranchIdNotEmpty = companyBranchId.trim() !== "";
+  const isCompanyBranchIdNotCreateNew = companyBranchId !== "create-new";
+
+  console.log("isCompanyBranchIdExists:", isCompanyBranchIdExists);
+  console.log("isCompanyBranchIdString:", isCompanyBranchIdString);
+  console.log("isCompanyBranchIdNotEmpty:", isCompanyBranchIdNotEmpty);
+  console.log("isCompanyBranchIdNotCreateNew:", isCompanyBranchIdNotCreateNew);
+
+  const isCompanyBranchValid = isCompanyBranchIdExists &&
+    isCompanyBranchIdString &&
+    isCompanyBranchIdNotEmpty &&
+    isCompanyBranchIdNotCreateNew;
+
   console.log("Is company_branch valid:", isCompanyBranchValid);
 
   const isCompanyRoleValid = (formData.company_role?.trim() ?? "") !== "";
@@ -457,35 +494,53 @@ export default function Step2({
 
   return (
     <div className="mt-6">
+      <h2 className="text-xl font-semibold">Company Association</h2>
+      <p className="text-sm text-gray-400 mb-5">
+      Connect with your company to start posting jobs and managing applications. If your company is already on our platform, simply search for it. If not, you can add it now!
+      </p>
       <div className="grid grid-cols-2 gap-4">
         <Dropdown
-          options={companies}
+          options={companies.filter((company) => company.id !== "create-new" || !formData.company_name?.id)}
           placeholder="Select a company"
-          value={companies.find((company) => company.id === formData.company_name?.id) || null}
+          value={
+            companies.find((company) => company.id === formData.company_name?.id) || null
+          }
           onChange={(value) => handleChange("company_name", value)}
         />
         <Dropdown
           options={branches}
           placeholder="Company Branch"
-          value={branches.find((b) => b.id === formData.company_branch?.id) || null}
+          value={
+            branches.find((b) => b.id === formData.company_branch?.id) || null
+          } 
           onChange={(value) => {
-            if (!isCompanyCreated) {
-              handleChange("company_branch", value);
+            const selectedBranch = value as DropdownOption;
+            if (selectedBranch) {
+              setformData((prev) => ({
+                ...prev,
+                company_branch: {
+                  id: selectedBranch.id || "",
+                  name: selectedBranch.name || "",
+                },
+              }));
             }
           }}
-          disabled={isCompanyCreated}
         />
 
         <Autocomplete
-          suggestions={companyRoles}
-          placeholder="Company Role"
-          onChange={(value) => handleChange("company_role", value)}
+        suggestions={companyRoles}
+        placeholder="Company Role"
+        value={formData.company_role || ""}
+        onChange={(value) => handleChange("company_role", value)}
         />
-        <Autocomplete
-          suggestions={jobTitles}
-          placeholder="Job Title"
-          onChange={(value) => handleChange("job_title", value)}
-        />
+
+      <Autocomplete
+        suggestions={jobTitles}
+        placeholder="Job Title"
+        value={formData.job_title || ""}
+        onChange={(value) => handleChange("job_title", value)}
+      />
+
         <input
           type="email"
           name="company_email"
@@ -493,6 +548,7 @@ export default function Step2({
           placeholder="Company Email"
           value={formData.company_email}
           onChange={(e) => handleChange("company_email", e.target.value)}
+          autoComplete="off"
         />
       </div>
 
@@ -522,23 +578,7 @@ export default function Step2({
         </div>
       )}
 
-      {showBranchForm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 w-full h-full">
-          <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
-            <h3 className="text-lg font-semibold">Add New Branch</h3>
-            <input
-              type="text"
-              value={newBranch}
-              onChange={(e) => setNewBranch(e.target.value)}
-              className="w-full px-4 py-2 border mt-2"
-              placeholder="Enter branch name"
-            />
-            <button onClick={handleSaveBranch} className="mt-2 px-4 py-2 bg-blue-500 text-white w-full rounded-lg">
-              Save
-            </button>
-          </div>
-        </div>
-      )}
+
 
       <div className="flex justify-between mt-[82px]">
         <button

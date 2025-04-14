@@ -7,7 +7,7 @@ export default function LandingNav() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="flex justify-between items-center px-6 py-6 bg-customPurple text-white">
+    <nav className="flex justify-between items-center px-6 py-6 bg-[#1551A9] text-white">
       <h1 className="text-xl font-bold">InternConnect</h1>
 
       {/* Desktop Nav */}
@@ -43,7 +43,7 @@ export default function LandingNav() {
           Employer’s Sign-up
         </Link>
         <Link href="/sign-in">
-          <button className="bg-white text-[#5D4AB1] px-4 py-2 rounded-md font-semibold hover:bg-button hover:text-white transition-all duration-300 ease-in-out">
+          <button className="bg-white text-[#1551A9] px-4 py-2 rounded-md font-semibold hover:bg-button hover:text-white transition-all duration-300 ease-in-out">
             Sign in
           </button>
         </Link>
@@ -87,7 +87,7 @@ export default function LandingNav() {
           >
             Employer’s Sign-up
           </a>
-          <button className="bg-white text-[#5D4AB1] px-4 py-2 rounded-md font-semibold">
+          <button className="bg-white text-[#1551A9] px-4 py-2 rounded-md font-semibold">
             Sign in
           </button>
         </div>
