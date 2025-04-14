@@ -225,10 +225,17 @@ export default function Step3({
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
             disabled={!signature || !agreeTnC}
+            onClick={() => {
+              // If the button is disabled, open the full view
+              if (!signature || !agreeTnC) {
+                setIsExpanded(true);  // Open the full view if the button is disabled
+              }
+            }}
           >
             Sign Up
           </button>
         </Link>
+
       </div>
     </div>
   );
