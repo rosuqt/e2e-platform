@@ -1,4 +1,6 @@
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation"; 
+import Swal from "sweetalert2";
 import { ChevronLeft, X, Maximize } from "lucide-react";
 import { Checkbox } from "@/app/sign-in/components/Checkbox";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +21,7 @@ export default function Step3({
   setformData: React.Dispatch<React.SetStateAction<formData>>;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const router = useRouter(); 
 
   const termsRef = useRef<HTMLDivElement>(null!);
   const guidelinesRef = useRef<HTMLDivElement>(null!);
@@ -72,6 +75,33 @@ export default function Step3({
       }
 
       console.log("Sign-up successful!");
+
+      let countdown = 5; 
+      Swal.fire({
+        icon: "success",
+        title: "Sign-up Successful!",
+        html: `<div>Redirecting you to the sign-in page in <b>${countdown}</b> seconds...</div>
+               <div class="mt-4 flex justify-center">
+                 <div class="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+               </div>`,
+        showConfirmButton: false,
+        timer: countdown * 1000,
+        timerProgressBar: true,
+        didOpen: () => {
+          const interval = setInterval(() => {
+            countdown -= 1;
+            const b = Swal.getHtmlContainer()?.querySelector("b");
+            if (b) b.textContent = countdown.toString();
+          }, 1000);
+
+          Swal.getPopup()?.addEventListener("swalclose", () => {
+            clearInterval(interval);
+          });
+        },
+        didClose: () => {
+          router.push("/sign-in");
+        },
+      });
     } catch (error) {
       console.error("Error during sign-up:", error);
     }
