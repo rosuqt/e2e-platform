@@ -11,8 +11,7 @@ import { formData } from "../../utils/type";
     -close button sa fullview must follow while scrolling
     -add visible scrollbar sa fullview
     
-    New:
-    -fix swal alert cuzi ts counting down in negative number*/}
+  */}
 
 
 export default function Step3({
