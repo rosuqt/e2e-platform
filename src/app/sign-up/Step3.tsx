@@ -9,7 +9,11 @@ import { formData } from "../../utils/type";
 
 {/*Fix the ff:
     -close button sa fullview must follow while scrolling
-    -add visible scrollbar sa fullview */}
+    -add visible scrollbar sa fullview
+    
+    New:
+    -fix swal alert cuzi ts counting down in negative number*/}
+
 
 export default function Step3({
   setCurrentStep,
@@ -91,7 +95,9 @@ export default function Step3({
           const interval = setInterval(() => {
             countdown -= 1;
             const b = Swal.getHtmlContainer()?.querySelector("b");
-            if (b) b.textContent = countdown.toString();
+            if (b && countdown >= 0) {
+              b.textContent = countdown.toString();
+            }
           }, 1000);
 
           Swal.getPopup()?.addEventListener("swalclose", () => {

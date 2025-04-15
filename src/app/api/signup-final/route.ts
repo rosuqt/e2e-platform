@@ -1,6 +1,6 @@
-// app/api/employer-signup/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '../db';
+import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
     }
 
-    // 1. Update terms_accepted in pending_employers
     const updateRes = await pool.query(
       'UPDATE pending_employers SET terms_accepted = $1 WHERE email = $2 RETURNING *',
       [terms_accepted, email]
@@ -22,8 +21,9 @@ export async function POST(req: NextRequest) {
     }
 
     const updatedEmployer = updateRes.rows[0];
+    const hashedPassword = await bcrypt.hash(updatedEmployer.password, 10);
+    updatedEmployer.password = hashedPassword;
 
-    // 2. Insert into registered_employers
     const columns = Object.keys(updatedEmployer);
     const values = Object.values(updatedEmployer);
 
@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
     `;
     await pool.query(insertQuery, values);
 
-    // 3. Delete from pending_employers
     await pool.query('DELETE FROM pending_employers WHERE email = $1', [email]);
 
     return NextResponse.json({ message: 'Employer registered successfully' }, { status: 200 });
