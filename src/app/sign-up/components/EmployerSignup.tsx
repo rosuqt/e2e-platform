@@ -25,12 +25,17 @@ export default function App() {
     company_role: "",
     job_title: "",
     company_email: "",
-    signature: "",
+    signature: null,
     terms_accepted: false,
-    email_domain: "",
-    company_website: "",
+    email_domain: null,
+    company_website: null,
     company_size: { id: "", name: "" },
     company_industry: { id: "", name: "" },
+    country: "",
+    city: "",
+    company_no: "",
+    address: "",
+    mult_branch: false,
   });
 
   const stepVariants = {

@@ -5,6 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { formData } from "../../utils/type";
 
+{/*Fix the ff:
+    -close button sa fullview must follow while scrolling
+    -add visible scrollbar sa fullview */}
+
 export default function Step3({
   setCurrentStep,
   formData, 
@@ -55,8 +59,8 @@ export default function Step3({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: formData.email, // Ensure `email` exists in `formData`
-          company_name: formData.company_name, // Ensure `company_name` exists in `formData`
+          email: formData.email,
+          company_name: formData.company_name,
           terms_accepted: formData.terms_accepted,
         }),
       });
@@ -68,7 +72,6 @@ export default function Step3({
       }
 
       console.log("Sign-up successful!");
-      // Redirect to another page or show success message
     } catch (error) {
       console.error("Error during sign-up:", error);
     }
@@ -224,7 +227,7 @@ You acknowledge that any violation of the platform’s policies may result in ac
               transition={{ duration: 0.3 }}
               className="fixed inset-0 flex justify-center items-center z-50"
             >
-              <div className="max-w-6xl p-10 w-full border rounded-lg shadow-lg bg-white overflow-y-auto h-[100vh] relative scrollable-container">
+              <div className="max-w-4xl p-10 w-full border rounded-lg shadow-lg bg-white overflow-y-auto h-[95vh] relative scrollable-container">
 
                 <motion.button
                   onClick={() => setIsExpanded(false)}
@@ -315,7 +318,7 @@ You acknowledge that any violation of the platform’s policies may result in ac
         </p>
         <div className="flex items-start gap-2">
           <Checkbox
-            checked={formData.terms_accepted} // Persist checkbox state
+            checked={formData.terms_accepted}
             onChange={() => {
               const newValue = !formData.terms_accepted;
               console.log("Checkbox terms_accepted value:", newValue);

@@ -8,6 +8,8 @@ import { ChevronRight } from "lucide-react";
 import { MdError } from "react-icons/md";
 import { motion } from "framer-motion";
 
+{/*Needs fix: step1 pending_employers isnt getting checked*/}
+
 const shakeVariant = {
   shake: {
     x: [0, -5, 5, -5, 5, 0],
@@ -194,8 +196,22 @@ export default function Step1({
         setCurrentStep(2);
       }
     } catch (error: unknown) {
-      const axiosError = error as AxiosError;
-      if (axiosError.response?.status === 409) {
+      const axiosError = error as AxiosError<{ message?: string; type?: string }>;
+      const errorMessage = axiosError.response?.data?.message || "";
+      const errorType = axiosError.response?.data?.type;
+
+      if (axiosError.response?.status === 409 && errorType === "pending") {
+        Swal.fire({
+          icon: "warning",
+          title: "This email is pending approval!",
+          text: "Your registration is currently under review.",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#3B82F6",
+        });
+      } else if (
+        axiosError.response?.status === 400 &&
+        errorMessage.toLowerCase().includes("already registered")
+      ) {
         Swal.fire({
           icon: "error",
           title: "This email already exists!",
@@ -227,11 +243,11 @@ export default function Step1({
         Provide your personal details to complete your profile.
       </p>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 mt-4 relative pb-24">
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-1 mt-4 relative pb-24">
         <motion.div
           variants={shakeVariant}
           animate={touched.first_name && errors.first_name ? "shake" : ""}
-          className="w-full flex items-center gap-2"
+          className="w-full flex items-center gap-1"
         >
           <div className="relative w-full">
             <label htmlFor="first_name" className="block text-sm font-normal text-gray-500">
@@ -261,7 +277,7 @@ export default function Step1({
         <motion.div
           variants={shakeVariant}
           animate={touched.last_name && errors.last_name ? "shake" : ""}
-          className="w-full flex items-center gap-2"
+          className="w-full flex items-center gap-1"
         >
           <div className="relative w-full">
             <label htmlFor="last_name" className="block text-sm font-normal text-gray-500">
@@ -288,7 +304,7 @@ export default function Step1({
           {touched.last_name && errors.last_name && <MdError className="text-red-500 w-4 h-4" />}
         </motion.div>
 
-        <div className="col-span-2 flex gap-4">
+        <div className="col-span-2 flex gap-2">
           {selectedCountry && (
             <div className="w-1/3">
               <label htmlFor="country" className="block text-sm font-normal text-gray-500">
@@ -306,7 +322,7 @@ export default function Step1({
           )}
 
           <motion.div
-            className="relative w-full flex items-center gap-2"
+            className="relative w-full flex items-center gap-1"
             variants={shakeVariant}
             animate={touched.phone && errors.phone ? "shake" : ""}
           >
@@ -343,7 +359,7 @@ export default function Step1({
         </div>
 
         <motion.div
-          className="col-span-2 flex items-center gap-2"
+          className="col-span-2 flex items-center gap-1"
           variants={shakeVariant}
           animate={touched.email && errors.email ? "shake" : ""}
         >
@@ -373,7 +389,7 @@ export default function Step1({
         </motion.div>
 
         <motion.div
-          className="relative flex items-center gap-2"
+          className="relative flex items-center gap-1"
           variants={shakeVariant}
           animate={touched.password && errors.password ? "shake" : ""}
         >
@@ -404,7 +420,7 @@ export default function Step1({
         </motion.div>
 
         <motion.div
-          className="relative flex items-center gap-2"
+          className="relative flex items-center gap-1"
           variants={shakeVariant}
           animate={touched.confirmPassword && errors.confirmPassword ? "shake" : ""}
         >
