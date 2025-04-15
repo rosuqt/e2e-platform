@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "../db";
+import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,6 +10,9 @@ export async function POST(req: NextRequest) {
     const branchName = typeof company_branch === "string" ? company_branch : "test";
 
     if (step === 1) {
+      // Hash the password before inserting into pending_employers
+      const hashedPassword = await bcrypt.hash(password, 10);
+
       const emailCheckQuery = `
         SELECT email FROM registered_employers WHERE email = $1
       `;
@@ -45,7 +49,7 @@ export async function POST(req: NextRequest) {
         last_name,
         phone,
         email,
-        password,
+        hashedPassword,
         country_code,
       ];
 
