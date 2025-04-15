@@ -655,7 +655,7 @@ export default function Step2({
             <input
               type="email"
               name="company_email"
-              className={`border p-2 w-full rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+              className={`border p-2 w-full rounded-md  ${
                 errors.company_email ? "border-red-500" : ""
               }`}
               placeholder="Company Email"

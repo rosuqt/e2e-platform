@@ -59,7 +59,7 @@ export default function Autocomplete({
             setFilteredSuggestions([]);
           }, 100);
         }}
-        className={`w-full pr-4 px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300/50 ${className}`}
+        className={`w-full pr-4 px-2 py-2 border border-gray-300/50 ${className}`}
         placeholder={placeholder}
       />
 

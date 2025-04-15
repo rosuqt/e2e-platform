@@ -9,6 +9,30 @@ export async function POST(req: NextRequest) {
     const branchName = typeof company_branch === "string" ? company_branch : "test";
 
     if (step === 1) {
+      const emailCheckQuery = `
+        SELECT email FROM registered_employers WHERE email = $1
+      `;
+      const emailCheckResult = await pool.query(emailCheckQuery, [email]);
+
+      if (emailCheckResult?.rowCount && emailCheckResult.rowCount > 0) {
+        return NextResponse.json(
+          { message: "User with this email is already registered!" },
+          { status: 400 }
+        );
+      }
+
+      const pendingEmailCheckQuery = `
+        SELECT email FROM pending_employers WHERE email = $1
+      `;
+      const pendingEmailCheckResult = await pool.query(pendingEmailCheckQuery, [email]);
+
+      if (pendingEmailCheckResult?.rowCount && pendingEmailCheckResult.rowCount > 0) {
+        return NextResponse.json(
+          { message: "User with this email is already pending approval!", type: "pending" },
+          { status: 409 }
+        );
+      }
+
       const query = `
         INSERT INTO pending_employers
         (first_name, last_name, phone, email, password, country_code)
