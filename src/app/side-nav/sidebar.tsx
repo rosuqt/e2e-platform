@@ -1,5 +1,7 @@
 "use client"
 
+{/*Need fix I can still click ung status pag inopen ko and click dashboard */}
+
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Home, Calendar, BookOpen, Settings, MessageSquare, Bell } from "lucide-react"
@@ -9,14 +11,22 @@ import { StatusIcon } from "./status-icon"
 
 type Status = "active" | "idle" | "unavailable"
 
-export default function Sidebar() {
+interface SidebarProps {
+  onToggle?: (expanded: boolean) => void;
+}
+
+export default function Sidebar({ onToggle }: SidebarProps) {
   const [expanded, setExpanded] = useState(true)
   const [status, setStatus] = useState<Status>("active")
   const [activeItem, setActiveItem] = useState<number | null>(null)
   const [hoveredItem, setHoveredItem] = useState<number | null>(null)
 
   const toggleSidebar = () => {
-    setExpanded(!expanded)
+    const newExpandedState = !expanded;
+    setExpanded(newExpandedState);
+    if (onToggle) {
+      onToggle(newExpandedState);
+    }
   }
 
   const menuItems = [
@@ -29,9 +39,9 @@ export default function Sidebar() {
   ]
 
   return (
-    <div className="flex h-screen">
+    <div className="flex">
       <motion.div
-        className="bg-[#1551A9] text-white flex flex-col h-full shadow-lg relative overflow-hidden overflow-x-hidden"
+        className="bg-[#1551A9] text-white flex flex-col h-screen fixed top-0 left-0 shadow-lg z-[20] overflow-hidden"
         animate={{
           width: expanded ? 280 : 80,
         }}

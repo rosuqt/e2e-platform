@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { Home, Users, Briefcase, MessageCircle, Bell, User } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface TopNavProps {
   className?: string;
@@ -14,7 +15,7 @@ const TopNav: React.FC<TopNavProps> = ({ className, iconColor = 'gray', labelCol
   const pathname = usePathname();
 
   const navItems = [
-    { path: '/student-module/student-dashboard', label: 'Home', icon: Home },
+    { path: '/student/student-dashboard', label: 'Home', icon: Home },
     { path: '/student-module/student-dashboard/#', label: 'People', icon: Users },
     { path: '/student-module/student-dashboard/#', label: 'Jobs', icon: Briefcase },
     { path: '/student-module/student-dashboard/#', label: 'Messages', icon: MessageCircle },
@@ -24,18 +25,26 @@ const TopNav: React.FC<TopNavProps> = ({ className, iconColor = 'gray', labelCol
 
   return (
     <header
-  className={`fixed top-0 z-50 bg-white border-b border-gray-200 py-2 px-4 transition-all duration-300 ease-in-out ${className} ${
-    isSidebarMinimized
-      ? 'left-20 w-[calc(100%-5rem)]'
-      : 'left-64 w-[calc(100%-16rem)]'
-  }`}
->
-
+      className={`fixed top-0 z-[10] bg-white border-b border-gray-200 py-2 px-4 transition-all duration-200 ease-in-out ${className}`}
+      style={{
+        left: isSidebarMinimized ? '80px' : '280px',
+        width: isSidebarMinimized ? 'calc(100% - 80px)' : 'calc(100% - 280px)',
+      }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <span className="text-[#1551a9] font-medium mr-2">InternConnect</span>
+          <span className="text-[#1551a9] font-medium ml-4">InternConnect</span>
         </div>
-        <div className="flex items-center space-x-8">
+        <motion.div
+          className="flex items-center mr-8"
+          style={{ gap: isSidebarMinimized ? '112px' : '96px' }}
+          animate={{ gap: isSidebarMinimized ? '112px' : '96px' }} 
+          transition={{
+            type: 'spring',
+            stiffness: 200,
+            damping: 15,
+          }}
+        >
           {navItems.map((item, index) => {
             const isActive = pathname === item.path;
             const Icon = item.icon;
@@ -52,7 +61,7 @@ const TopNav: React.FC<TopNavProps> = ({ className, iconColor = 'gray', labelCol
               </a>
             );
           })}
-        </div>
+        </motion.div>
       </div>
     </header>
   );
