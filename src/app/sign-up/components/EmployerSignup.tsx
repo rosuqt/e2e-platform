@@ -32,10 +32,10 @@ export default function App() {
     company_size: { id: "", name: "" },
     company_industry: { id: "", name: "" },
     country: "",
-    city: "",
+    /*city: "",
     company_no: "",
     address: "",
-    mult_branch: false,
+    mult_branch: false,*/
   });
 
   const stepVariants = {

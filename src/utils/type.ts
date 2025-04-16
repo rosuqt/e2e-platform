@@ -19,4 +19,5 @@ export type formData = {
   company_website: string | null;
   company_size: { id: string; name: string };
   company_industry: { id: string; name: string };
+  country:string;
 };
