@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import { Search, MapPin, ChevronDown } from "lucide-react";
@@ -5,6 +6,10 @@ import { IoIosArrowRoundBack } from "react-icons/io";
 import Sidebar from "@/app/side-nav/sidebar";
 import TopNav from "@/app/student/student-dashboard/TopNav";
 import JobCards from "@/app/student/student-dashboard/JobCards";
+
+{/* Needs fix, 
+    -figure out why nag scroscroll down ung right 
+    content pag nasa dulo na, dpt hanggang dulo wla parin space */}
 
 export default function Home() {
   const [isSideNavMinimized, setIsSideNavMinimized] = React.useState(false);
