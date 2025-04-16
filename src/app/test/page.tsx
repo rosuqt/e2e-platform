@@ -1,8 +1,10 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
-import { Bookmark, Search, MapPin, ChevronDown } from "lucide-react";
+import { Search, MapPin, ChevronDown } from "lucide-react";
+import { IoIosArrowRoundBack } from "react-icons/io";
 import Sidebar from "@/app/side-nav/sidebar";
 import TopNav from "@/app/student/student-dashboard/TopNav";
+import JobCards from "@/app/student/student-dashboard/JobCards";
 
 export default function Home() {
   const [isSideNavMinimized, setIsSideNavMinimized] = React.useState(false);
@@ -29,7 +31,7 @@ export default function Home() {
       {/* Main Content */}
       <main
         className={`transition-all duration-200 ease-in-out flex-1 ${
-          isSideNavMinimized ? "ml-20" : "ml-64"
+          isSideNavMinimized ? "ml-20" : "ml-72"
         }`}
       >
         {/* Top Navigation */}
@@ -82,45 +84,37 @@ export default function Home() {
           <div className="flex px-4 pb-4 gap-4">
             {/* Left Content - scrolls with page */}
             <div className="w-1/2 space-y-4 pb-64">
-              {[...Array(10)].map((_, index) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-lg border border-[#e6e6ed] p-4 relative"
-                >
-                  <button className="absolute top-4 right-4">
-                    <Bookmark className="text-gray-400" size={20} />
-                  </button>
-                  <div className="flex gap-4">
-                    <div className="w-12 h-12 rounded-full bg-[#dfebfb] flex items-center justify-center"></div>
-                    <div>
-                      <h3 className="font-bold text-lg">Job Title {index + 1}</h3>
-                      <p className="text-sm text-gray-600">Company Name</p>
-                      <div className="flex items-center mt-1">
-                        <span className="text-xs ml-1">4.5/5 (24 reviews)</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              <JobCards />
             </div>
 
             {/* Right Content - sticky after scroll */}
-            <div className="w-1/2 pl-4">
+            <div className="w-1/2 pl-4 min-h-screen">
               <div
                 ref={rightContentRef}
-                className={`transition-all duration-200 ease-in-out bg-white p-4 shadow rounded overflow-y-auto ${
+                className={`transition-all duration-200 ease-in-out bg-[#1551a9] p-4 shadow rounded overflow-y-auto ${
                   isFixed ? "sticky top-24" : ""
                 }`}
                 style={{
-                  maxHeight: "calc(100vh - 6rem)",
+                  maxHeight: "calc(100vh - 2rem)",
+                  minHeight: "calc(100vh - 2rem)",
                   position: isFixed ? "sticky" : "relative",
                   top: isFixed ? "70px" : "auto",
                 }}
               >
-                <p className="font-bold mb-2">Sticky Content</p>
-                {Array.from({ length: 50 }).map((_, i) => (
-                  <p key={i}>Content {i + 1}</p>
-                ))}
+                <div className="mb-4 mt-3">
+                  <div className="flex items-center ml-3">
+                    <IoIosArrowRoundBack className="h-8 w-8 text-white mr-5" />
+                    <h1 className="font-medium text-2xl text-white">Select a Job</h1>
+                  </div>
+                  <p className="text-gray-300 text-sm pl-[65px]">Display details here</p>
+                </div>
+                <div className="flex justify-center mt-6">
+                  <img
+                    src="https://img.freepik.com/free-vector/business-people-arranging-appointment-digital-booking-app_74855-20006.jpg"
+                    alt="Working from Home Illustration"
+                    className="w-96 h-96   rounded-full object-cover"
+                  />
+                </div>
               </div>
             </div>
           </div>
