@@ -86,14 +86,14 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex px-4 pb-4 gap-4">
+          <div className="flex px-4 pb-4 gap-4 relative overflow-clip">
             {/* Left Content - scrolls with page */}
-            <div className="w-1/2 space-y-4 pb-64">
+            <div className="w-1/2 space-y-4 pb-64 ">
               <JobCards />
             </div>
 
             {/* Right Content - sticky after scroll */}
-            <div className="w-1/2 pl-4 min-h-screen">
+            <div className="w-1/2 resize-none pl-10 h-[400vh] right-5 absolute ">
               <div
                 ref={rightContentRef}
                 className={`transition-all duration-200 ease-in-out bg-[#1551a9] p-4 shadow rounded overflow-y-auto ${
