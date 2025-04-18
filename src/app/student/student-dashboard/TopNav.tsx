@@ -29,9 +29,10 @@ const TopNav: React.FC<TopNavProps> = ({ className, iconColor = 'gray', labelCol
       style={{
         left: isSidebarMinimized ? '80px' : '280px',
         width: isSidebarMinimized ? 'calc(100% - 80px)' : 'calc(100% - 280px)',
+        height: '64px',
       }}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between h-full"> 
         <div className="flex items-center">
           <span className="text-[#1551a9] font-medium ml-4">InternConnect</span>
         </div>
