@@ -53,3 +53,143 @@
   }
 }
 
+.border-red-500 {
+  border-color: #f87171; /* Tailwind's red-500 color */
+}
+.text-red-500 {
+  color: #f87171; /* Tailwind's red-500 color */
+}
+
+.border-gray-300 {
+  border-color: #d1d5db; /* Tailwind's gray-300 color */
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+.autocomplete-item {
+  padding: 0.5rem 1rem; /* Adjust padding */
+  background-color: white; /* Default background color */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background-color 0.2s ease; /* Smooth hover transition */
+}
+
+.autocomplete-item:hover {
+  background-color: #f3f4f6; /* Light gray hover color */
+}
+
+.dropdown-arrow {
+  transition: transform 0.2s ease-in-out; /* Smooth rotation animation */
+}
+
+.dropdown-arrow.open {
+  transform: rotate(180deg); /* Rotate arrow when open */
+}
+
+.dropdown-arrow.closed {
+  transform: rotate(0deg); /* Default arrow position */
+}
+
+/* Hide the built-in chevron in the Autocomplete component */
+.heroui-autocomplete__control::after,
+.heroui-autocomplete__dropdown-indicator {
+  display: none !important; /* Completely hide the chevron */
+}
+
+.heroui-autocomplete__control {
+  background-image: none !important; /* Remove any background chevron */
+}
+
+/* Ensure the custom chevron is clickable */
+.pointer-events-none {
+  pointer-events: none;
+}
+
+/* Hide the specific message */
+.heroui-autocomplete__error-message {
+  display: none !important; /* Hide error messages */
+}
+
+/* Hide the chevron button in the Autocomplete component */
+button[aria-label="Show suggestions"] {
+  display: none !important; /* Completely hide the chevron button */
+}
+
+/* Ensure the "No results found" message has a white background */
+.heroui-autocomplete__no-results,
+.heroui-autocomplete__empty-state,
+.heroui-autocomplete__listbox [role="option"][aria-disabled="true"] {
+  background-color: white !important; /* Set white background */
+  padding: 0.5rem 1rem; /* Add padding for better spacing */
+  color: #6b7280; /* Tailwind's gray-500 for text color */
+  border-top: 1px solid #e5e7eb; /* Optional: Add a border for separation */
+  border-radius: 0.25rem; /* Optional: Add rounded corners */
+}
+
+/* Hide the "No results found" message */
+.heroui-autocomplete__no-results {
+  display: none !important;
+}
+
