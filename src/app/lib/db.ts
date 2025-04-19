@@ -10,6 +10,8 @@ const client = new Client({
   },
 });
 
-client.connect();
+client.connect().catch((err) => {
+  console.error("Failed to connect to the database:", err);
+});
 
 export default client;
