@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import client from "../db"; 
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export async function POST(request: Request) {
   try {
@@ -28,8 +29,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
+    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET!, { expiresIn: "1h" });
+
     console.log("Sign-in successful for user:", email);
-    return NextResponse.json({ message: "Sign-in successful", user: { id: user.id, email: user.email } });
+    return NextResponse.json({ 
+      message: "Sign-in successful", 
+      token, 
+      user: { id: user.id, email: user.email } 
+    });
   } catch (error) {
     console.error("Sign-in error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

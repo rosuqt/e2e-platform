@@ -10,6 +10,7 @@ import RemoveDoubleClick from "../components/RemoveDoubleClick";
 import SingleLineFooter from "../components/SingleLineFooter";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {jwtDecode} from "jwt-decode";
 
 export default function SignInPage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -41,6 +42,12 @@ export default function SignInPage() {
         setError(data.error || "Sign-in failed");
         return;
       }
+
+      localStorage.setItem("token", data.token);
+
+      // Decode the token to verify employerId
+      const decoded: { id: string } = jwtDecode(data.token);
+      console.log("Decoded Employer ID after sign-in:", decoded.id); // Debug log
 
       router.push("/student/student-dashboard");
     } catch (err) {
