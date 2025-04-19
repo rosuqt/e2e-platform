@@ -1,19 +1,29 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import Image from "next/image"
-import { motion } from "framer-motion"
-import { Card, CardContent } from "../ui/card"
-import { Briefcase, MapPin, Calendar, Users, Award, Eye, CheckCircle } from "lucide-react"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { Card, CardContent } from "../ui/card";
+import { Briefcase, MapPin, Calendar, Users, Award, Eye, CheckCircle } from "lucide-react";
 import { PiNotepadBold } from "react-icons/pi";
-import type { JobPostingData } from "../../lib/types"
+import type { JobPostingData } from "../../lib/types";
 
 interface PreviewStepProps {
-  formData: JobPostingData
-  onPreview: () => void
+  formData: JobPostingData;
+  onPreview: () => void;
 }
 
 export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
+  const [previewData, setPreviewData] = useState<JobPostingData>(formData);
+
+  useEffect(() => {
+    const storedData = sessionStorage.getItem("jobFormData");
+    if (storedData) {
+      setPreviewData(JSON.parse(storedData));
+    }
+  }, []);
+
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3 pb-2 border-b border-gray-100">
@@ -45,7 +55,7 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Job Title</p>
-                  <p className="text-gray-800">{formData.jobTitle || "[Position Name]"}</p>
+                  <p className="text-gray-800">{previewData.jobTitle || "[Position Name]"}</p>
                 </div>
               </div>
 
@@ -55,7 +65,7 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Location</p>
-                  <p className="text-gray-800">{formData.location || "[Location]"}</p>
+                  <p className="text-gray-800">{previewData.location || "[Location]"}</p>
                 </div>
               </div>
 
@@ -65,7 +75,7 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Remote Options</p>
-                  <p className="text-gray-800">{formData.remoteOptions || "[Remote Options]"}</p>
+                  <p className="text-gray-800">{previewData.remoteOptions || "[Remote Options]"}</p>
                 </div>
               </div>
 
@@ -75,7 +85,7 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Work Type</p>
-                  <p className="text-gray-800">{formData.workType || "[Work Type]"}</p>
+                  <p className="text-gray-800">{previewData.workType || "[Work Type]"}</p>
                 </div>
               </div>
 
@@ -85,7 +95,7 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Recommended Course</p>
-                  <p className="text-gray-800">{formData.recommendedCourse || "[Course]"}</p>
+                  <p className="text-gray-800">{previewData.recommendedCourse || "[Course]"}</p>
                 </div>
               </div>
             </div>
@@ -102,18 +112,18 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
             <div className="space-y-4">
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-1">Description</p>
-                <p className="text-gray-800 text-sm">{formData.jobDescription || "[Job Description]"}</p>
+                <p className="text-gray-800 text-sm">{previewData.jobDescription || "[Job Description]"}</p>
               </div>
 
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-1">Summary</p>
-                <p className="text-gray-800 text-sm">{formData.jobSummary || "[Job Summary]"}</p>
+                <p className="text-gray-800 text-sm">{previewData.jobSummary || "[Job Summary]"}</p>
               </div>
 
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-1">Must-Have Qualifications</p>
                 <ul className="list-disc pl-5 text-sm text-gray-800 space-y-1">
-                  {formData.mustHaveQualifications.map((qual, index) => (
+                  {previewData.mustHaveQualifications.map((qual, index) => (
                     <li key={index}>{qual || "[Qualification]"}</li>
                   ))}
                 </ul>
@@ -122,7 +132,7 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-1">Nice-to-Have Qualifications</p>
                 <ul className="list-disc pl-5 text-sm text-gray-800 space-y-1">
-                  {formData.niceToHaveQualifications.map((qual, index) => (
+                  {previewData.niceToHaveQualifications.map((qual, index) => (
                     <li key={index}>{qual || "[Qualification]"}</li>
                   ))}
                 </ul>
@@ -146,8 +156,8 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Application Deadline</p>
                   <p className="text-gray-800">
-                    {formData.applicationDeadline?.date
-                      ? `${formData.applicationDeadline.date} ${formData.applicationDeadline.time || ""}`
+                    {previewData.applicationDeadline?.date
+                      ? `${previewData.applicationDeadline.date} ${previewData.applicationDeadline.time || ""}`
                       : "[No deadline set]"}
                   </p>
                 </div>
@@ -159,7 +169,7 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Max Applicants</p>
-                  <p className="text-gray-800">{formData.maxApplicants || "[No limit set]"}</p>
+                  <p className="text-gray-800">{previewData.maxApplicants || "[No limit set]"}</p>
                 </div>
               </div>
             </div>
@@ -173,9 +183,9 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
               <h3 className="font-medium text-gray-800">Perks & Benefits</h3>
             </div>
 
-            {formData.perksAndBenefits?.length ? (
+            {previewData.perksAndBenefits?.length ? (
               <div className="flex flex-wrap gap-2">
-                {formData.perksAndBenefits.map((perk) => (
+                {previewData.perksAndBenefits.map((perk) => (
                   <span key={perk} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
                     {perk}
                   </span>
@@ -220,5 +230,5 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
         </Button>
       </div>
     </div>
-  )
+  );
 }

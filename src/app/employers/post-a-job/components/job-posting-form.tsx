@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import type { JobPostingData } from "../lib/types"
 import { Save } from "lucide-react"
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa"
+import { jwtDecode } from "jwt-decode";
 
 export default function JobPostingForm() {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
@@ -36,6 +37,18 @@ export default function JobPostingForm() {
     applicationQuestions: [],
     perksAndBenefits: [],
   })
+  const [employerId, setEmployerId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const decoded: { id: string } = jwtDecode(token);
+      setEmployerId(decoded.id);
+      console.log("Decoded Employer ID:", decoded.id); // Debug log
+    } else {
+      console.warn("No token found in localStorage."); // Debug log
+    }
+  }, [])
 
   const updateFormData = (data: Partial<JobPostingData>) => {
     setFormData((prev) => ({ ...prev, ...data }))
@@ -56,6 +69,79 @@ export default function JobPostingForm() {
   }
 
   const [showPreviewModal, setShowPreviewModal] = useState(false)
+
+  const postJob = async () => {
+    if (!employerId) {
+      alert("Employer ID not found. Please sign in again.")
+      return
+    }
+
+    try {
+      const response = await fetch("/api/employers/post-a-job", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "publishJob",
+          formData,
+          employerId,
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log("Job posted successfully:", result)
+        alert("Job posted successfully!")
+      } else {
+        const error = await response.json()
+        console.error("Failed to post job:", error)
+        alert(`Failed to post job: ${error.error}`)
+      }
+    } catch (error) {
+      console.error("Error posting job:", error)
+      alert("An error occurred while posting the job. Please try again.")
+    }
+  }
+
+  const saveDraft = async () => {
+    if (!employerId) {
+      alert("Employer ID not found. Please sign in again.")
+      return
+    }
+
+    try {
+      const sanitizedFormData = {
+        ...formData,
+        maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
+      }
+
+      const response = await fetch("/api/employers/post-a-job", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "saveDraft",
+          formData: sanitizedFormData,
+          employerId,
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log("Draft saved successfully:", result)
+        alert("Draft saved successfully!")
+      } else {
+        const error = await response.json()
+        console.error("Failed to save draft:", error)
+        alert(`Failed to save draft: ${error.error}`)
+      }
+    } catch (error) {
+      console.error("Error saving draft:", error)
+      alert("An error occurred while saving the draft. Please try again.")
+    }
+  }
 
   const renderStep = () => {
     switch (currentStep) {
@@ -83,6 +169,12 @@ export default function JobPostingForm() {
 
   return (
     <div className="flex">
+      {/* Debugging UI */}
+      {employerId && (
+        <div className="absolute top-4 right-4 bg-gray-100 text-gray-800 p-2 rounded shadow">
+          <p>Employer ID: {employerId}</p>
+        </div>
+      )}
       <Sidebar onToggle={(expanded) => setIsSidebarMinimized(!expanded)} />
       <div
         className={`flex-1 transition-all duration-300 ${
@@ -131,7 +223,11 @@ export default function JobPostingForm() {
               )}
 
               <div className="flex gap-3">
-                <Button variant="outline" className="border-gray-200 text-gray-600 bg-white hover:bg-gray-50 flex items-center gap-2 px-8 py-4 rounded-full">
+                <Button
+                  variant="outline"
+                  onClick={saveDraft}
+                  className="border-gray-200 text-gray-600 bg-white hover:bg-gray-50 flex items-center gap-2 px-8 py-4 rounded-full"
+                >
                   <Save size={16} />
                   <span>Save draft</span>
                 </Button>
@@ -142,7 +238,7 @@ export default function JobPostingForm() {
                     <FaChevronRight />
                   </Button>
                 ) : (
-                  <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-9 py-4 rounded-full">
+                  <Button onClick={postJob} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-9 py-4 rounded-full">
                     Post Job
                   </Button>
                 )}

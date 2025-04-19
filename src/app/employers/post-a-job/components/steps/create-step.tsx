@@ -23,8 +23,16 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
   );
 
   const handlePayTypeChange = (value: string) => {
-    updateFormData({ payType: value });
+    const updatedData = { ...formData, payType: value };
+    updateFormData(updatedData);
+    sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
     setShowPayAmount(value !== "" && value !== "No Pay");
+  };
+
+  const handleInputChange = <T extends keyof JobPostingData>(field: T, value: JobPostingData[T]) => {
+    const updatedData = { ...formData, [field]: value };
+    updateFormData(updatedData);
+    sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
   };
 
   const commonPayAmounts = {
@@ -77,7 +85,7 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
               <FreeSolo
                 options={Object.values(jobTitleSections).flat()}
                 label="Select or type a job title"
-                onSelectionChange={(key) => updateFormData({ jobTitle: key })}
+                onSelectionChange={(key) => handleInputChange("jobTitle", key)}
               />
               <p className="text-xs text-gray-500 mt-2">
                 Be specific with your job title to attract the right candidates
@@ -99,7 +107,7 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
               <Input
                 id="location"
                 value={formData.location}
-                onChange={(e) => updateFormData({ location: e.target.value })}
+                onChange={(e) => handleInputChange("location", e.target.value)}
                 className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                 placeholder="placeholder for location (thnking pa of this)"
               />
@@ -126,7 +134,7 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
                   { value: "Work from home", label: "Work from home" },
                 ]}
                 value={formData.remoteOptions || ""}
-                onChange={(value) => updateFormData({ remoteOptions: value as string })}
+                onChange={(value) => handleInputChange("remoteOptions", value as string)}
               />
               <p className="text-xs text-gray-500 mt-2">Specify the work arrangement for this position</p>
             </div>
@@ -147,7 +155,7 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
                 label="Select a Work Type"
                 options={workTypes}
                 value={formData.workType}
-                onChange={(value) => updateFormData({ workType: value })}
+                onChange={(value) => handleInputChange("workType", value)}
               />
               <p className="text-xs text-gray-500 mt-2">Choose the employment type for this position</p>
             </div>
@@ -212,7 +220,7 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
                       <Input
                         id="payAmount"
                         value={formData.payAmount}
-                        onChange={(e) => updateFormData({ payAmount: e.target.value })}
+                        onChange={(e) => handleInputChange("payAmount", e.target.value)}
                         placeholder={`e.g. ${
                           formData.payType === "Yearly" ? "50,000" : formData.payType === "Monthly" ? "4,000" : "1,000"
                         }`}
@@ -222,7 +230,7 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
                         }}
                       />
                       <Select
-                        onValueChange={(value) => updateFormData({ payAmount: value })}
+                        onValueChange={(value) => handleInputChange("payAmount", value)}
                         value={formData.payAmount}
                       >
                         <SelectTrigger
@@ -275,7 +283,7 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
                 label="Recommended Course"
                 options={courses}
                 value={formData.recommendedCourse || ""}
-                onChange={(value) => updateFormData({ recommendedCourse: value as string })}
+                onChange={(value) => handleInputChange("recommendedCourse", value as string)}
               />
               <p className="text-xs text-gray-500 mt-2">
                 Select the educational background that best fits this position

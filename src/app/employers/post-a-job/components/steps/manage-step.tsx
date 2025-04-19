@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "../ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { motion, AnimatePresence } from "framer-motion"
-import { Card } from "../ui/card"
-import { Calendar, Clock, Users, MessageSquare, Award, ChevronDown, ChevronUp, Plus, Trash2, BookOpen, Briefcase, Bus, UserCheck, Clock as ClockIcon, Lightbulb } from "lucide-react"
-import type { JobPostingData } from "../../lib/types"  
-import React from "react"
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "../ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { motion, AnimatePresence } from "framer-motion";
+import { Card } from "../ui/card";
+import { Calendar, Clock, Users, MessageSquare, Award, ChevronDown, ChevronUp, Plus, Trash2, BookOpen, Briefcase, Bus, UserCheck, Clock as ClockIcon, Lightbulb } from "lucide-react";
+import type { JobPostingData } from "../../lib/types";
+import React from "react";
 
 interface ManageStepProps {
-  formData: JobPostingData
-  updateFormData: (data: Partial<JobPostingData>) => void
+  formData: JobPostingData;
+  updateFormData: (data: Partial<JobPostingData>) => void;
 }
 
 export function ManageStep({ formData, updateFormData }: ManageStepProps) {
@@ -23,14 +23,35 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
     maxApplicants: true,
     questions: true,
     perks: true,
-  })
+  });
+
+  const [selectedPerks, setSelectedPerks] = useState<string[]>([]);
+  const [questions, setQuestions] = useState<
+    Array<{
+      question: string;
+      type: string;
+      options?: string[];
+      autoReject: boolean;
+    }>
+  >([]);
+
+  const [newQuestion, setNewQuestion] = useState("");
+  const [newQuestionType, setNewQuestionType] = useState("text");
+  const [newQuestionOptions, setNewQuestionOptions] = useState("");
+  const [newQuestionAutoReject, setNewQuestionAutoReject] = useState(false);
+
+  // Initialize state only once using useEffect
+  useEffect(() => {
+    setSelectedPerks(formData.perksAndBenefits || []);
+    setQuestions(formData.applicationQuestions || []);
+  }, [formData]);
 
   const toggleSection = (section: keyof typeof sections) => {
     setSections((prev) => ({
       ...prev,
       [section]: !prev[section],
-    }))
-  }
+    }));
+  };
 
   const perks = [
     { id: "training", label: "Free Training & Workshops - Skill development", icon: <BookOpen className="h-5 w-5 text-green-500" />, checked: false },
@@ -39,40 +60,24 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
     { id: "transportation", label: "Transportation Allowance - Support for expenses", icon: <Bus className="h-5 w-5 text-purple-500" />, checked: false },
     { id: "mentorship", label: "Mentorship & Guidance - Hands-on learning", icon: <UserCheck className="h-5 w-5 text-orange-500" />, checked: false },
     { id: "flexible", label: "Flexible Hours - Adjusted schedules for students", icon: <ClockIcon className="h-5 w-5 text-pink-500" />, checked: false },
-  ]
-
-  const [selectedPerks, setSelectedPerks] = useState<string[]>(formData.perksAndBenefits || [])
+  ];
 
   const handlePerkChange = (perkId: string) => {
     setSelectedPerks((prev) => {
-      const newPerks = prev.includes(perkId) ? prev.filter((id) => id !== perkId) : [...prev, perkId]
+      const newPerks = prev.includes(perkId) ? prev.filter((id) => id !== perkId) : [...prev, perkId];
+      const updatedData = { ...formData, perksAndBenefits: newPerks };
+      updateFormData(updatedData); // Update parent state only on interaction
+      sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
+      return newPerks;
+    });
+  };
 
-      updateFormData({ perksAndBenefits: newPerks })
-      return newPerks
-    })
-  }
-
-  // Update the state to include answer types
-  const [newQuestion, setNewQuestion] = useState("")
-  const [newQuestionType, setNewQuestionType] = useState("text")
-  const [newQuestionOptions, setNewQuestionOptions] = useState("")
-  const [newQuestionAutoReject, setNewQuestionAutoReject] = useState(false)
-  const [questions, setQuestions] = useState<
-    Array<{
-      question: string
-      type: string
-      options?: string[]
-      autoReject: boolean
-    }>
-  >(formData.applicationQuestions || [])
-
-  // Update the addQuestion function
   const addQuestion = () => {
     if (newQuestion.trim()) {
       const options =
         newQuestionType !== "text" && newQuestionOptions.trim()
           ? newQuestionOptions.split(",").map((opt) => opt.trim())
-          : undefined
+          : undefined;
 
       const updatedQuestions = [
         ...questions,
@@ -82,16 +87,18 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
           options,
           autoReject: newQuestionAutoReject,
         },
-      ]
+      ];
 
-      setQuestions(updatedQuestions)
-      updateFormData({ applicationQuestions: updatedQuestions })
-      setNewQuestion("")
-      setNewQuestionOptions("")
-      setNewQuestionAutoReject(false)
-      setNewQuestionType("text")
+      setQuestions(updatedQuestions);
+      const updatedData = { ...formData, applicationQuestions: updatedQuestions };
+      updateFormData(updatedData); // Update parent state only on interaction
+      sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
+      setNewQuestion("");
+      setNewQuestionOptions("");
+      setNewQuestionAutoReject(false);
+      setNewQuestionType("text");
     }
-  }
+  };
 
   return (
     <div className="space-y-8">
@@ -235,11 +242,11 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                       min="1"
                       value={formData.maxApplicants}
                       onChange={(e) => {
-                        const value = Number.parseInt(e.target.value)
+                        const value = Number.parseInt(e.target.value);
                         if (!isNaN(value) && value > 0) {
-                          updateFormData({ maxApplicants: e.target.value })
+                          updateFormData({ maxApplicants: e.target.value });
                         } else if (e.target.value === "") {
-                          updateFormData({ maxApplicants: "" })
+                          updateFormData({ maxApplicants: "" });
                         }
                       }}
                       placeholder="Number of applicants"
@@ -409,9 +416,11 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                                 size="sm"
                                 className="text-gray-400 hover:text-red-500 hover:bg-red-50 -mt-1 -mr-1"
                                 onClick={() => {
-                                  const updatedQuestions = questions.filter((_, i) => i !== index)
-                                  setQuestions(updatedQuestions)
-                                  updateFormData({ applicationQuestions: updatedQuestions })
+                                  const updatedQuestions = questions.filter((_, i) => i !== index);
+                                  setQuestions(updatedQuestions);
+                                  const updatedData = { ...formData, applicationQuestions: updatedQuestions };
+                                  updateFormData(updatedData);
+                                  sessionStorage.setItem("jobFormData", JSON.stringify(updatedData)); // Store in sessionStorage
                                 }}
                               >
                                 <Trash2 size={16} />
@@ -525,5 +534,5 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
         </p>
       </div>
     </div>
-  )
+  );
 }
