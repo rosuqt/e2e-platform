@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import pool from "../db";
+import supabase from "@/app/lib/supabase";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,90 +9,104 @@ export async function POST(req: NextRequest) {
     const branchName = typeof company_branch === "string" ? company_branch : "test";
 
     if (step === 1) {
-      const emailCheckQuery = `
-        SELECT email FROM registered_employers WHERE email = $1
-      `;
-      const emailCheckResult = await pool.query(emailCheckQuery, [email]);
+      const { data: existingRegistered, error: registeredError } = await supabase
+        .from("registered_employers")
+        .select("email")
+        .eq("email", email);
 
-      if (emailCheckResult?.rowCount && emailCheckResult.rowCount > 0) {
+      if (registeredError) {
+        console.error("Error checking registered employers:", registeredError);
+        return NextResponse.json({ message: "Error checking registered employers" }, { status: 500 });
+      }
+
+      if (existingRegistered && existingRegistered.length > 0) {
         return NextResponse.json(
           { message: "User with this email is already registered!" },
           { status: 400 }
         );
       }
 
-      const pendingEmailCheckQuery = `
-        SELECT email FROM pending_employers WHERE email = $1
-      `;
-      const pendingEmailCheckResult = await pool.query(pendingEmailCheckQuery, [email]);
+      const { data: existingPending, error: pendingError } = await supabase
+        .from("pending_employers")
+        .select("email")
+        .eq("email", email);
 
-      if (pendingEmailCheckResult?.rowCount && pendingEmailCheckResult.rowCount > 0) {
+      if (pendingError) {
+        console.error("Error checking pending employers:", pendingError);
+        return NextResponse.json({ message: "Error checking pending employers" }, { status: 500 });
+      }
+
+      if (existingPending && existingPending.length > 0) {
         return NextResponse.json(
           { message: "User with this email is already pending approval!", type: "pending" },
           { status: 409 }
         );
       }
 
-      const query = `
-        INSERT INTO pending_employers
-        (first_name, last_name, phone, email, password, country_code)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *
-      `;
-      
-      const values = [
-        first_name,
-        last_name,
-        phone,
-        email,
-        password,
-        country_code,
-      ];
+      const { data: newEmployer, error: insertError } = await supabase
+        .from("pending_employers")
+        .insert({
+          first_name,
+          last_name,
+          phone,
+          email,
+          password,
+          country_code,
+        })
+        .select()
+        .single();
 
-      const result = await pool.query(query, values);
+      if (insertError) {
+        throw insertError;
+      }
+
       return NextResponse.json(
-        { message: "Step 1 complete", data: result.rows[0] },
+        { message: "Step 1 complete", data: newEmployer },
         { status: 201 }
       );
     }
 
     if (step === 2) {
-      const query = `
-        UPDATE pending_employers
-        SET company_name = $1, company_branch = $2, company_role = $3, job_title = $4, company_email = $5
-        WHERE email = $6
-        RETURNING *
-      `;
+      const { data: updatedEmployer, error: updateError } = await supabase
+        .from("pending_employers")
+        .update({
+          company_name,
+          company_branch: branchName,
+          company_role,
+          job_title,
+          company_email,
+        })
+        .eq("email", email)
+        .select()
+        .single();
 
-      const values = [
-        company_name,
-        branchName,
-        company_role,
-        job_title,
-        company_email,
-        email
-      ];
+      if (updateError) {
+        throw updateError;
+      }
 
-      const result = await pool.query(query, values);
       return NextResponse.json(
-        { message: "Step 2 complete", data: result.rows[0] },
+        { message: "Step 2 complete", data: updatedEmployer },
         { status: 200 }
       );
     }
 
     if (step === 3) {
-      const query = `
-        UPDATE pending_employers
-        SET signature = $1, terms_accepted = $2
-        WHERE email = $3
-        RETURNING *
-      `;
+      const { data: updatedEmployer, error: updateError } = await supabase
+        .from("pending_employers")
+        .update({
+          signature,
+          terms_accepted,
+        })
+        .eq("email", email)
+        .select()
+        .single();
 
-      const values = [signature, terms_accepted, email];
+      if (updateError) {
+        throw updateError;
+      }
 
-      const result = await pool.query(query, values);
       return NextResponse.json(
-        { message: "Step 3 complete", data: result.rows[0] },
+        { message: "Step 3 complete", data: updatedEmployer },
         { status: 200 }
       );
     }

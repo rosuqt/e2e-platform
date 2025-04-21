@@ -1,22 +1,20 @@
-import { NextResponse } from 'next/server';
-import pool from '../db.js';
+import { NextResponse } from "next/server";
+import supabase from "@/app/lib/supabase";
 
 export async function GET() {
   try {
-    const result = await pool.query(`
-      SELECT 
-        id, 
-        company_name, 
-        company_branch, 
-        company_logo, 
-        company_industry
-      FROM pending_newcompanies
-      ORDER BY company_name
-    `);
+    const { data, error } = await supabase
+      .from("pending_newcompanies")
+      .select("id, company_name, company_branch, company_logo, company_industry")
+      .order("company_name");
 
-    return NextResponse.json(result.rows);
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching companies:', error);
-    return NextResponse.json({ message: 'Server error' }, { status: 500 });
+    console.error("Error fetching companies:", error);
+    return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }

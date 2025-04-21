@@ -40,7 +40,6 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
   const [newQuestionOptions, setNewQuestionOptions] = useState("");
   const [newQuestionAutoReject, setNewQuestionAutoReject] = useState(false);
 
-  // Initialize state only once using useEffect
   useEffect(() => {
     setSelectedPerks(formData.perksAndBenefits || []);
     setQuestions(formData.applicationQuestions || []);
@@ -66,7 +65,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
     setSelectedPerks((prev) => {
       const newPerks = prev.includes(perkId) ? prev.filter((id) => id !== perkId) : [...prev, perkId];
       const updatedData = { ...formData, perksAndBenefits: newPerks };
-      updateFormData(updatedData); // Update parent state only on interaction
+      updateFormData(updatedData);
       sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
       return newPerks;
     });
@@ -91,7 +90,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
 
       setQuestions(updatedQuestions);
       const updatedData = { ...formData, applicationQuestions: updatedQuestions };
-      updateFormData(updatedData); // Update parent state only on interaction
+      updateFormData(updatedData);
       sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
       setNewQuestion("");
       setNewQuestionOptions("");
