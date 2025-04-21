@@ -9,9 +9,16 @@ interface TopNavProps {
   iconColor?: string;
   labelColor?: string;
   isSidebarMinimized?: boolean;
+  topNavStyle?: React.CSSProperties; // Add this prop to accept custom styles
 }
 
-const TopNav: React.FC<TopNavProps> = ({ className, iconColor = 'gray', labelColor = 'gray', isSidebarMinimized }) => {
+const TopNav: React.FC<TopNavProps> = ({
+  className,
+  iconColor = 'gray',
+  labelColor = 'gray',
+  isSidebarMinimized,
+  topNavStyle, // Destructure the new prop
+}) => {
   const pathname = usePathname();
 
   const navItems = [
@@ -27,19 +34,20 @@ const TopNav: React.FC<TopNavProps> = ({ className, iconColor = 'gray', labelCol
     <header
       className={`fixed top-0 z-[10] bg-white border-b border-gray-200 py-2 px-4 transition-all duration-200 ease-in-out ${className}`}
       style={{
+        ...topNavStyle, // Apply the custom styles passed via props
         left: isSidebarMinimized ? '80px' : '280px',
         width: isSidebarMinimized ? 'calc(100% - 80px)' : 'calc(100% - 280px)',
         height: '64px',
       }}
     >
-      <div className="flex items-center justify-between h-full"> 
+      <div className="flex items-center justify-between h-full">
         <div className="flex items-center">
           <span className="text-[#1551a9] font-medium ml-4">InternConnect</span>
         </div>
         <motion.div
           className="flex items-center mr-8"
           style={{ gap: isSidebarMinimized ? '112px' : '96px' }}
-          animate={{ gap: isSidebarMinimized ? '112px' : '96px' }} 
+          animate={{ gap: isSidebarMinimized ? '112px' : '96px' }}
           transition={{
             type: 'spring',
             stiffness: 200,

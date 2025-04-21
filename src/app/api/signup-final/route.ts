@@ -1,43 +1,54 @@
-import { NextRequest, NextResponse } from 'next/server';
-import pool from '../db';
-import bcrypt from 'bcryptjs';
+import { NextRequest, NextResponse } from "next/server";
+import supabase from "@/app/lib/supabase";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, terms_accepted } = body;
 
-    if (!email || typeof terms_accepted !== 'boolean') {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    if (!email || typeof terms_accepted !== "boolean") {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
-    const updateRes = await pool.query(
-      'UPDATE pending_employers SET terms_accepted = $1 WHERE email = $2 RETURNING *',
-      [terms_accepted, email]
-    );
+    const { data: updatedEmployer, error: updateError } = await supabase
+      .from("pending_employers")
+      .update({ terms_accepted })
+      .eq("email", email)
+      .select()
+      .single();
 
-    if (updateRes.rowCount === 0) {
-      return NextResponse.json({ error: 'Pending employer not found' }, { status: 404 });
+    if (updateError) {
+      throw updateError;
     }
 
-    const updatedEmployer = updateRes.rows[0];
+    if (!updatedEmployer) {
+      return NextResponse.json({ error: "Pending employer not found" }, { status: 404 });
+    }
+
     const hashedPassword = await bcrypt.hash(updatedEmployer.password, 10);
     updatedEmployer.password = hashedPassword;
 
-    const columns = Object.keys(updatedEmployer);
-    const values = Object.values(updatedEmployer);
+    const { error: insertError } = await supabase
+      .from("registered_employers")
+      .insert(updatedEmployer);
 
-    const insertQuery = `
-      INSERT INTO registered_employers (${columns.join(',')})
-      VALUES (${columns.map((_, i) => `$${i + 1}`).join(',')})
-    `;
-    await pool.query(insertQuery, values);
+    if (insertError) {
+      throw insertError;
+    }
 
-    await pool.query('DELETE FROM pending_employers WHERE email = $1', [email]);
+    const { error: deleteError } = await supabase
+      .from("pending_employers")
+      .delete()
+      .eq("email", email);
 
-    return NextResponse.json({ message: 'Employer registered successfully' }, { status: 200 });
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    return NextResponse.json({ message: "Employer registered successfully" }, { status: 200 });
   } catch (err: unknown) {
-    console.error('Signup error:', err);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    console.error("Signup error:", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

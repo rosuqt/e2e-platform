@@ -44,9 +44,9 @@ export default function JobPostingForm() {
     if (token) {
       const decoded: { id: string } = jwtDecode(token);
       setEmployerId(decoded.id);
-      console.log("Decoded Employer ID:", decoded.id); // Debug log
+      console.log("Decoded Employer ID:", decoded.id); 
     } else {
-      console.warn("No token found in localStorage."); // Debug log
+      console.warn("No token found in localStorage.");
     }
   }, [])
 

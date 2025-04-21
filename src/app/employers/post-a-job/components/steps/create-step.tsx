@@ -196,7 +196,7 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
                             transition: "background-color 0.2s",
                             
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#ebf8ff")} // blue-50
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#ebf8ff")}
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
                         >
                           {type.label}
@@ -252,7 +252,7 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
                                   backgroundColor: "white",
                                   transition: "background-color 0.2s",
                                 }}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#ebf8ff")} // blue-50
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#ebf8ff")}
                                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
                               >
                                 {amount}

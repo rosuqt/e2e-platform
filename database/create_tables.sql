@@ -1,6 +1,8 @@
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- Create table for job postings
 CREATE TABLE job_postings (
-    id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,FAULT gen_random_uuid(),
     employer_id UUID NOT NULL REFERENCES registered_employers(id) ON DELETE CASCADE,
     job_title VARCHAR(255) NOT NULL,
     location VARCHAR(255),
@@ -23,7 +25,7 @@ CREATE TABLE job_postings (
 
 -- Create table for job drafts
 CREATE TABLE job_drafts (
-    id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,FAULT gen_random_uuid(),
     employer_id UUID NOT NULL REFERENCES registered_employers(id) ON DELETE CASCADE,
     job_title VARCHAR(255),
     location VARCHAR(255),
@@ -64,10 +66,14 @@ ALTER TABLE job_drafts ALTER COLUMN verification_tier DROP NOT NULL;
 
 -- Registered employers table (for reference)
 CREATE TABLE registered_employers (
-    id UUID PRIMARY KEY, -- Ensure id is the primary key
     name VARCHAR(255),
     email VARCHAR(255) UNIQUE NOT NULL,
     verify_status VARCHAR(50) DEFAULT 'basic'
 );
+
+-- Alter 'registered_employers' table to make 'id' a UUID and primary key
+ALTER TABLE registered_employers
+DROP COLUMN id,
+ADD COLUMN id UUID PRIMARY KEY DEFAULT gen_random_uuid();
 
 
