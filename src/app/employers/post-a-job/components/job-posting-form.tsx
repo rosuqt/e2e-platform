@@ -15,6 +15,7 @@ import type { JobPostingData } from "../lib/types"
 import { Save } from "lucide-react"
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa"
 import { jwtDecode } from "jwt-decode";
+import JobPostingDraftModal from "./ui/job-drafts-live";
 
 export default function JobPostingForm() {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
@@ -38,6 +39,7 @@ export default function JobPostingForm() {
     perksAndBenefits: [],
   })
   const [employerId, setEmployerId] = useState<string | null>(null)
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -72,8 +74,8 @@ export default function JobPostingForm() {
 
   const postJob = async () => {
     if (!employerId) {
-      alert("Employer ID not found. Please sign in again.")
-      return
+      alert("Employer ID not found. Please sign in again.");
+      return;
     }
 
     try {
@@ -87,34 +89,34 @@ export default function JobPostingForm() {
           formData,
           employerId,
         }),
-      })
+      });
 
       if (response.ok) {
-        const result = await response.json()
-        console.log("Job posted successfully:", result)
-        alert("Job posted successfully!")
+        const result = await response.json();
+        console.log("Job posted successfully:", result);
+        setShowSuccessModal(true);
       } else {
-        const error = await response.json()
-        console.error("Failed to post job:", error)
-        alert(`Failed to post job: ${error.error}`)
+        const error = await response.json();
+        console.error("Failed to post job:", error);
+        alert(`Failed to post job: ${error.error}`);
       }
     } catch (error) {
-      console.error("Error posting job:", error)
-      alert("An error occurred while posting the job. Please try again.")
+      console.error("Error posting job:", error);
+      alert("An error occurred while posting the job. Please try again.");
     }
   }
 
   const saveDraft = async () => {
     if (!employerId) {
-      alert("Employer ID not found. Please sign in again.")
-      return
+      alert("Employer ID not found. Please sign in again.");
+      return;
     }
 
     try {
       const sanitizedFormData = {
         ...formData,
         maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
-      }
+      };
 
       const response = await fetch("/api/employers/post-a-job", {
         method: "POST",
@@ -126,20 +128,19 @@ export default function JobPostingForm() {
           formData: sanitizedFormData,
           employerId,
         }),
-      })
+      });
 
       if (response.ok) {
-        const result = await response.json()
-        console.log("Draft saved successfully:", result)
-        alert("Draft saved successfully!")
+        const result = await response.json();
+        console.log("Draft saved successfully:", result);
+        setShowSuccessModal(true);
       } else {
-        const error = await response.json()
-        console.error("Failed to save draft:", error)
-        alert(`Failed to save draft: ${error.error}`)
+        const error = await response.json();
+        console.error("Failed to save draft:", error);
       }
     } catch (error) {
-      console.error("Error saving draft:", error)
-      alert("An error occurred while saving the draft. Please try again.")
+      console.error("Error saving draft:", error);
+      alert("An error occurred while saving the draft. Please try again.");
     }
   }
 
@@ -271,6 +272,10 @@ export default function JobPostingForm() {
                   </div>
                 </motion.div>
               </div>
+            )}
+
+            {showSuccessModal && (
+              <JobPostingDraftModal onClose={() => setShowSuccessModal(false)} />
             )}
           </div>
         </div>

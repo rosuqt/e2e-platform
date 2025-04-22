@@ -1,8 +1,6 @@
 "use client"
 
-{/*Need fix I can still click ung status pag inopen ko and click dashboard */}
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Home, Calendar, BookOpen, Settings, MessageSquare, Bell } from "lucide-react"
 import { cn } from "../lib/utils"
@@ -12,20 +10,26 @@ import { StatusIcon } from "./status-icon"
 type Status = "active" | "idle" | "unavailable"
 
 interface SidebarProps {
-  onToggle?: (expanded: boolean) => void;
+  onToggle?: (expanded: boolean) => void
 }
 
 export default function Sidebar({ onToggle }: SidebarProps) {
   const [expanded, setExpanded] = useState(true)
   const [status, setStatus] = useState<Status>("active")
-  const [activeItem, setActiveItem] = useState<number | null>(null)
+  const [activeItem, setActiveItem] = useState<number | null>(0)
   const [hoveredItem, setHoveredItem] = useState<number | null>(null)
 
-  const toggleSidebar = () => {
-    const newExpandedState = !expanded;
-    setExpanded(newExpandedState);
+  useEffect(() => {
     if (onToggle) {
-      onToggle(newExpandedState);
+      onToggle(expanded)
+    }
+  }, [expanded, onToggle])
+
+  const toggleSidebar = () => {
+    const newExpandedState = !expanded
+    setExpanded(newExpandedState)
+    if (onToggle) {
+      onToggle(newExpandedState)
     }
   }
 
@@ -41,7 +45,8 @@ export default function Sidebar({ onToggle }: SidebarProps) {
   return (
     <div className="flex">
       <motion.div
-        className="bg-[#1551A9] text-white flex flex-col h-screen fixed top-0 left-0 shadow-lg z-[20] overflow-hidden"
+        className="text-white flex flex-col h-screen fixed top-0 left-0 shadow-xl z-[20] overflow-hidden"
+        initial={false}
         animate={{
           width: expanded ? 280 : 80,
         }}
@@ -49,69 +54,78 @@ export default function Sidebar({ onToggle }: SidebarProps) {
           duration: 0.5,
           ease: [0.19, 1, 0.22, 1],
         }}
+        style={{
+          borderTopRightRadius: 24,
+          borderBottomRightRadius: 24,
+        }}
       >
-        {/* Fixed position burger icon */}
-        <div className="absolute top-6 right-2 z-10">
-          <div className="relative w-6 h-6">
-            <button
-              onClick={toggleSidebar}
-              className="text-white focus:outline-none absolute inset-0 flex items-center justify-center"
-            >
-              <motion.div
-                className="relative w-6 h-6"
-                initial={false}
-                animate={{
-                  rotate: expanded ? 0 : 0,
-                }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
-              >
-                {/* Top line */}
-                <motion.div
-                  className="absolute w-5 h-0.5 bg-white"
-                  initial={false}
-                  animate={{
-                    y: expanded ? 0 : -6.5,
-                    rotate: expanded ? -45 : 0, 
-                  }}
-                  transition={{ duration: 0.5, ease: "easeInOut" }}
-                />
-                {/* Middle line */}
-                <motion.div
-                  className="absolute w-5 h-0.5 bg-white"
-                  initial={false}
-                  animate={{
-                    opacity: expanded ? 0 : 1,
-                  }}
-                  transition={{ duration: 0.5, ease: "easeInOut" }}
-                />
-                {/* Bottom line */}
-                <motion.div
-                  className="absolute w-5 h-0.5 bg-white"
-                  initial={false}
-                  animate={{
-                    y: expanded ? 0 : 6.5,
-                    rotate: expanded ? 45 : 0,
-                  }}
-                  transition={{ duration: 0.5, ease: "easeInOut" }}
-                />
-              </motion.div>
-            </button>
-          </div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-sky-500 z-0">
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.2)_0%,_transparent_50%)]"></div>
         </div>
 
-        {/* Fixed height header section */}
-        <div className="h-14"></div>
+        <motion.div
+          className="absolute top-6 right-4 z-[30]"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <button
+            onClick={toggleSidebar}
+            className="text-white focus:outline-none flex items-center justify-center p-2 w-8 h-8"
+          >
+            <motion.div
+              className="relative w-4 h-4"
+              initial={false}
+              animate={{
+                rotate: expanded ? 0 : 0,
+              }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+            >
+              <motion.div
+                className="absolute w-4 h-0.5 bg-white rounded-full"
+                initial={false}
+                animate={{
+                  y: expanded ? 0 : -4,
+                  rotate: expanded ? -45 : 0,
+                }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+              />
+              <motion.div
+                className="absolute w-4 h-0.5 bg-white rounded-full"
+                initial={false}
+                animate={{
+                  opacity: expanded ? 0 : 1,
+                }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+              />
+              <motion.div
+                className="absolute w-4 h-0.5 bg-white rounded-full"
+                initial={false}
+                animate={{
+                  y: expanded ? 0 : 4,
+                  rotate: expanded ? 45 : 0,
+                }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+              />
+            </motion.div>
+          </button>
+        </motion.div>
 
-        {/* Profile section with fixed height */}
-        <div className="flex items-center px-4 py-3 h-[72px] mt-2">
-          <div className="relative">
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold">
+        <div className="h-14 relative z-10"></div>
+
+        <div
+          className={cn(
+            "flex items-center py-3 h-[72px] mt-2 relative z-10",
+            "px-6 justify-center"
+          )}
+        >
+          <motion.div className="relative" whileHover={{ scale: 1.05 }} layout>
+            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl font-bold shadow-lg">
               KR
             </div>
-            <div className="absolute top-0 right-0">
+            <motion.div className="absolute -top-1 -right-1" layout>
               <StatusIcon status={status} size="sm" />
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           <AnimatePresence>
             {expanded && (
@@ -119,7 +133,7 @@ export default function Sidebar({ onToggle }: SidebarProps) {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
                 className="ml-3 overflow-hidden"
               >
                 <div className="font-medium">Kemly Rose</div>
@@ -129,53 +143,63 @@ export default function Sidebar({ onToggle }: SidebarProps) {
           </AnimatePresence>
         </div>
 
-        {/* Status dropdown with fixed height container */}
-        <div className="h-[42px] px-4 flex items-center">
-          {expanded && <StatusDropdown status={status} onStatusChange={setStatus} expanded={expanded} />}
+        <div className={cn("h-[42px] flex items-center relative z-30", expanded ? "px-4" : "px-0 justify-center")}>
+          {expanded ? (
+            <StatusDropdown status={status} onStatusChange={setStatus} expanded={expanded} />
+          ) : (
+            <motion.div
+              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              {expanded && <StatusIcon status={status} size="sm" />}
+            </motion.div>
+          )}
         </div>
 
-        {/* Navigation with fixed top margin */}
-        <div
-          className="mt-12 flex-1 overflow-y-auto relative z-10 scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-transparent"
-        >
+        <div className="mt-12 flex-1 overflow-y-auto relative z-10 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-transparent px-2">
           <ul className="space-y-4">
             {menuItems.map((item, index) => (
-              <li key={index} className="relative px-2 overflow-hidden">
-                <a
+              <li key={index} className="relative overflow-hidden">
+                <motion.a
                   href="#"
                   onClick={() => setActiveItem(index)}
                   onMouseEnter={() => setHoveredItem(index)}
                   onMouseLeave={() => setHoveredItem(null)}
                   className={cn(
-                    "flex items-center h-[46px] transition-all relative z-10",
-                    "pl-6",
-                    expanded ? "pr-4" : "pr-0",
-                    hoveredItem === index && activeItem !== index ? "scale-105" : ""
+                    "flex items-center h-[46px] transition-all relative z-10 rounded-2xl",
+                    expanded ? "pl-6 pr-4" : "px-0 justify-center",
+                    hoveredItem === index && activeItem !== index ? "scale-105" : "",
                   )}
+                  whileHover={{
+                    scale: 1.05,
+                    transition: { duration: 0.2 },
+                  }}
+                  layout
                 >
-                  {/* Background highlight for selected item */}
                   {activeItem === index && (
                     <motion.div
-                      className="absolute inset-y-0 right-0 w-full -mr-2 bg-white -z-10 rounded-l-full overflow-hidden"
-                      initial={{ width: "0%", opacity: 0 }}
-                      animate={{ width: "100%", opacity: 1 }}
-                      exit={{ width: "0%", opacity: 0 }}
+                      className="absolute inset-0 bg-white/20 backdrop-blur-sm -z-10 rounded-2xl overflow-hidden"
+                      layoutId="activeBackground"
+                      initial={{ borderRadius: 16 }}
                       transition={{
                         type: "spring",
                         stiffness: 300,
-                        damping: 20,
-                        mass: 1,
+                        damping: 30,
                       }}
                     />
                   )}
 
-                  <item.icon
-                    className={cn(
-                      "w-6 h-6 min-w-6 transition-transform",
-                      hoveredItem === index ? "scale-105" : "",
-                      activeItem === index ? "text-[#1551A9]" : ""
-                    )}
-                  />
+                  <motion.div whileHover={{ rotate: [0, -10, 10, -5, 0] }} transition={{ duration: 0.5 }} layout>
+                    <item.icon
+                      className={cn(
+                        "w-6 h-6 min-w-6 transition-transform",
+                        hoveredItem === index ? "scale-105" : "",
+                        activeItem === index ? "text-white" : "text-white/70",
+                      )}
+                    />
+                  </motion.div>
+
                   <AnimatePresence>
                     {expanded && (
                       <motion.span
@@ -186,14 +210,14 @@ export default function Sidebar({ onToggle }: SidebarProps) {
                         className={cn(
                           "ml-3 whitespace-nowrap transition-transform",
                           hoveredItem === index ? "scale-105" : "",
-                          activeItem === index ? "text-[#1551A9]" : ""
+                          activeItem === index ? "text-white" : "text-white/70",
                         )}
                       >
                         {item.text}
                       </motion.span>
                     )}
                   </AnimatePresence>
-                </a>
+                </motion.a>
               </li>
             ))}
           </ul>
