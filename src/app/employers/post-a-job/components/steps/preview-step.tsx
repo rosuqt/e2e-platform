@@ -8,6 +8,8 @@ import { Card, CardContent } from "../ui/card";
 import { Briefcase, MapPin, Calendar, Users, Award, Eye, CheckCircle } from "lucide-react";
 import { PiNotepadBold } from "react-icons/pi";
 import type { JobPostingData } from "../../lib/types";
+import { useRouter } from "next/navigation";
+import Swal from "sweetalert2";
 
 interface PreviewStepProps {
   formData: JobPostingData;
@@ -16,6 +18,34 @@ interface PreviewStepProps {
 
 export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
   const [previewData, setPreviewData] = useState<JobPostingData>(formData);
+  const router = useRouter();
+
+  const handlePreview = async () => {
+    try {
+      const isSuccessful = true; 
+      if (isSuccessful) {
+        router.push("/employers/post-a-job/components/steps/job-posting-live");
+      } else {
+        throw new Error("Failed to post the job.");
+      }
+    } catch (error) {
+      const errorMessage = typeof error === "string" ? error : (error as Error).message;
+
+      if (errorMessage.includes("Invalid EmployerID")) {
+        Swal.fire({
+          icon: "warning",
+          title: "Session Expired",
+          text: "Your session has expired. Please sign in again to continue.",
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Oops...",
+          text: errorMessage || "Something went wrong!",
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     const storedData = sessionStorage.getItem("jobFormData");
@@ -222,7 +252,7 @@ export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
         </div>
 
         <Button
-          onClick={onPreview}
+          onClick={handlePreview}
           className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 gap-2 text-white"
         >
           <Eye size={18} />
