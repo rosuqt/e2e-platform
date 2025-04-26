@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 export default function EmployerSignupPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 relative">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 relative pt-5 pb-5">
       <Link href="/" className="absolute top-0 left-0 m-4 text-xl font-bold">
         Test Logo
       </Link>
@@ -14,7 +14,7 @@ export default function EmployerSignupPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="w-full max-w-3xl h-[600px] flex items-center bg-white p-6 rounded-lg shadow-md"
+        className="w-full max-w-[50svw] h-[700px] flex items-center bg-white p-8 rounded-lg shadow-md"
       >
         <EmployerSignup />
       </motion.div>
