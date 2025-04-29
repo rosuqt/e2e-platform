@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import Select, { SingleValue } from "react-select";
 import { getCountries, getCountryCallingCode, CountryCode } from "libphonenumber-js";
 import axios, { AxiosError } from "axios";
 import Swal from "sweetalert2";
 import { formData } from "../../utils/type";
 import { ChevronRight } from "lucide-react";
-import { MdError } from "react-icons/md";
 import { motion } from "framer-motion";
+import TextField from "@mui/material/TextField";
+import { FormControl,  MenuItem, Select as MuiSelect, SelectChangeEvent } from "@mui/material";
 
 {/*Needs fix: step1 pending_employers isnt getting checked*/}
 
@@ -94,13 +94,15 @@ export default function Step1({
   };
   
 
-  const handleCountryChange = (option: SingleValue<CountryOption>) => {
-    if (option) {
-      setSelectedCountry(option);
+  const handleCountryChange = (event: SelectChangeEvent<string>) => {
+    const selectedCode = event.target.value;
+    const selectedOption = countryOptions.find((option) => option.code === selectedCode);
+    if (selectedOption) {
+      setSelectedCountry(selectedOption);
       setformData((prev) => ({
         ...prev,
         phone: "",
-        country_code: option.code,
+        country_code: selectedOption.code,
       }));
       setErrors((prev) => ({ ...prev, phone: "" }));
     }
@@ -247,207 +249,154 @@ export default function Step1({
         <motion.div
           variants={shakeVariant}
           animate={touched.first_name && errors.first_name ? "shake" : ""}
-          className="w-full flex items-center gap-1"
+          className="w-full flex items-center gap-1 mb-6"
         >
           <div className="relative w-full">
-            <label htmlFor="first_name" className="block text-sm font-normal text-gray-500">
-              First Name
-            </label>
-            <input
+            <TextField
               id="first_name"
               name="first_name"
-              autoComplete="off"
-              className={`border p-2 rounded w-full ${
-                touched.first_name && errors.first_name ? "border-red-500" : ""
-              }`}
-              placeholder="First name*"
+              label="First Name*"
+              variant="outlined"
+              fullWidth
               value={formData.first_name}
               onChange={handleChange}
               onBlur={() => handleBlur("first_name")}
+              error={touched.first_name && !!errors.first_name}
+              helperText={touched.first_name && errors.first_name}
+              FormHelperTextProps={{ style: { minHeight: "1.5em" } }} // Reserve space for helper text
             />
-            <div className="h-4">
-              {touched.first_name && errors.first_name && (
-                <p className="text-red-500 text-xs">{errors.first_name}</p>
-              )}
-            </div>
           </div>
-          {touched.first_name && errors.first_name && <MdError className="text-red-500 w-4 h-4" />}
         </motion.div>
 
         <motion.div
           variants={shakeVariant}
           animate={touched.last_name && errors.last_name ? "shake" : ""}
-          className="w-full flex items-center gap-1"
+          className="w-full flex items-center gap-1 mb-6"
         >
           <div className="relative w-full">
-            <label htmlFor="last_name" className="block text-sm font-normal text-gray-500">
-              Last Name
-            </label>
-            <input
+            <TextField
               id="last_name"
               name="last_name"
-              autoComplete="off"
-              className={`border p-2 rounded w-full ${
-                touched.last_name && errors.last_name ? "border-red-500" : ""
-              }`}
-              placeholder="Last name*"
+              label="Last Name*"
+              variant="outlined"
+              fullWidth
               value={formData.last_name}
               onChange={handleChange}
               onBlur={() => handleBlur("last_name")}
+              error={touched.last_name && !!errors.last_name}
+              helperText={touched.last_name && errors.last_name}
+              FormHelperTextProps={{ style: { minHeight: "1.5em" } }} // Reserve space for helper text
             />
-            <div className="h-4">
-              {touched.last_name && errors.last_name && (
-                <p className="text-red-500 text-xs">{errors.last_name}</p>
-              )}
-            </div>
           </div>
-          {touched.last_name && errors.last_name && <MdError className="text-red-500 w-4 h-4" />}
         </motion.div>
 
-        <div className="col-span-2 flex gap-2">
-          {selectedCountry && (
-            <div className="w-1/3">
-              <label htmlFor="country" className="block text-sm font-normal text-gray-500">
-                Country
-              </label>
-              <Select
-                id="country"
-                options={countryOptions}
-                value={selectedCountry}
+        <div className="col-span-2 flex gap-6 items-end mb-6">
+          <div className="w-1/3">
+            <FormControl fullWidth>
+              <MuiSelect
+                labelId="country-select-label"
+                id="country-select"
+                value={selectedCountry?.code || ""}
                 onChange={handleCountryChange}
-                className="w-full"
                 onBlur={() => handleBlur("phone")}
-              />
-            </div>
-          )}
+                displayEmpty
+              >
+                {countryOptions.map((option) => (
+                  <MenuItem key={option.code} value={option.code}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </MuiSelect>
+            </FormControl>
+          </div>
 
           <motion.div
-            className="relative w-full flex items-center gap-1"
+            className="flex-1 relative flex items-center gap-1"
             variants={shakeVariant}
             animate={touched.phone && errors.phone ? "shake" : ""}
           >
             <div className="w-full">
-              <label htmlFor="phone" className="block text-sm font-normal text-gray-500">
-                Phone Number
-              </label>
-              <input
+              <TextField
                 id="phone"
-                type="tel"
                 name="phone"
-                autoComplete="off"
-                className={`border p-2 rounded w-full ${
-                  touched.phone && errors.phone ? "border-red-500" : ""
-                }`}
-                placeholder={`Phone Number (+${selectedCountry?.code.slice(1)})*`}
+                label="Phone Number*"
+                variant="outlined"
+                fullWidth
                 value={formData.phone}
                 onChange={handleChange}
                 onBlur={() => handleBlur("phone")}
-                onKeyDown={(e) => {
-                  if (!/^[0-9]*$/.test(e.key) && e.key !== "Backspace" && e.key !== "ArrowLeft" && e.key !== "ArrowRight") {
-                    e.preventDefault();
-                  }
-                }}
+                error={touched.phone && !!errors.phone}
+                helperText={touched.phone && errors.phone}
               />
-              <div className="h-4">
-                {touched.phone && errors.phone && (
-                  <p className="text-red-500 text-xs">{errors.phone}</p>
-                )}
-              </div>
             </div>
-            {touched.phone && errors.phone && <MdError className="text-red-500 w-4 h-4" />}
           </motion.div>
         </div>
 
         <motion.div
-          className="col-span-2 flex items-center gap-1"
+          className="col-span-2 flex items-center gap-1 mb-6"
           variants={shakeVariant}
           animate={touched.email && errors.email ? "shake" : ""}
         >
           <div className="relative w-full">
-            <label htmlFor="email" className="block text-sm font-normal text-gray-500">
-              Email
-            </label>
-            <input
+            <TextField
               id="email"
               name="email"
-              autoComplete="off"
-              className={`border p-2 rounded w-full ${
-                touched.email && errors.email ? "border-red-500" : ""
-              }`}
-              placeholder="Personal email*"
+              label="Personal Email*"
+              variant="outlined"
+              fullWidth
               value={formData.email}
               onChange={handleChange}
               onBlur={() => handleBlur("email")}
+              error={touched.email && !!errors.email}
+              helperText={touched.email && errors.email}
             />
-            <div className="h-4">
-              {touched.email && errors.email && (
-                <p className="text-red-500 text-xs">{errors.email}</p>
-              )}
-            </div>
           </div>
-          {touched.email && errors.email && <MdError className="text-red-500 w-4 h-4" />}
         </motion.div>
 
         <motion.div
-          className="relative flex items-center gap-1"
+          className="relative flex items-center gap-1 mb-6"
           variants={shakeVariant}
           animate={touched.password && errors.password ? "shake" : ""}
         >
           <div className="w-full">
-            <label htmlFor="password" className="block text-sm font-normal text-gray-500">
-              Password
-            </label>
-            <input
+            <TextField
               id="password"
-              type="password"
               name="password"
-              autoComplete="off"
-              className={`border p-2 rounded w-full ${
-                touched.password && errors.password ? "border-red-500" : ""
-              }`}
-              placeholder="Password*"
+              label="Password*"
+              type="password"
+              variant="outlined"
+              fullWidth
               value={formData.password}
               onChange={handleChange}
               onBlur={() => handleBlur("password")}
+              error={touched.password && !!errors.password}
+              helperText={touched.password && errors.password}
+              FormHelperTextProps={{ style: { minHeight: "1.5em" } }} // Reserve space for helper text
             />
-            <div className="h-4">
-              {touched.password && errors.password && (
-                <p className="text-red-500 text-xs">{errors.password}</p>
-              )}
-            </div>
           </div>
-          {touched.password && errors.password && <MdError className="text-red-500 w-4 h-4" />}
         </motion.div>
 
         <motion.div
-          className="relative flex items-center gap-1"
+          className="relative flex items-center gap-1 mb-6"
           variants={shakeVariant}
           animate={touched.confirmPassword && errors.confirmPassword ? "shake" : ""}
         >
           <div className="w-full">
-            <label htmlFor="confirmPassword" className="block text-sm font-normal text-gray-500">
-              Confirm Password
-            </label>
-            <input
+            <TextField
               id="confirmPassword"
-              type="password"
               name="confirmPassword"
-              autoComplete="off"
-              className={`border p-2 rounded w-full ${
-                touched.confirmPassword && errors.confirmPassword ? "border-red-500" : ""
-              }`}
-              placeholder="Confirm Password*"
+              label="Confirm Password*"
+              type="password"
+              variant="outlined"
+              fullWidth
               value={formData.confirmPassword}
               onChange={handleChange}
               onBlur={() => handleBlur("confirmPassword")}
+              error={touched.confirmPassword && !!errors.confirmPassword}
+              helperText={touched.confirmPassword && errors.confirmPassword}
+              FormHelperTextProps={{ style: { minHeight: "1.5em" } }} // Reserve space for helper text
             />
-            <div className="h-4">
-              {touched.confirmPassword && errors.confirmPassword && (
-                <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
-              )}
-            </div>
           </div>
-          {touched.confirmPassword && errors.confirmPassword && <MdError className="text-red-500 w-4 h-4" />}
         </motion.div>
 
         <div className="absolute bottom-6 right-4 left-4 flex justify-end">

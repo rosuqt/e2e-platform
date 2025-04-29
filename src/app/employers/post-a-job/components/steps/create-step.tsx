@@ -7,9 +7,9 @@ import { motion } from "framer-motion"
 import { Card, CardContent } from "../ui/card"
 import { Briefcase, MapPin, Globe, Clock, DollarSign, GraduationCap, Lightbulb } from "lucide-react"
 import type { JobPostingData } from "../../lib/types"
-import MUIDropdown from "../ui/MUIDropdown"
+import MUIDropdown from "../../../../components/MUIDropdown"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { FreeSolo } from "../ui/customSection"
+import { FreeSolo } from "../../../../components/customSection"
 import { jobTitleSections } from "../../lib/jobTitles"
 
 interface CreateStepProps {
