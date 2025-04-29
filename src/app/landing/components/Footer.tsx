@@ -1,99 +1,109 @@
-import React from "react";
-import { MapPin, Mail, Phone } from "lucide-react";
+import { MapPin, Mail, Phone, Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
+import Link from "next/link"
 
 const Footer = () => {
   return (
-    <>
-      {/* Footer */}
-      <footer className="bg-white border-t-2 border-gray-300 mb-14 leading-loose">
-        <div className="container mx-auto px-6 py-10 flex justify-between items-center">
-          <div className="flex flex-col">
+    <footer className="bg-white border-t border-gray-200">
+      <div className="container mx-auto px-6 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div>
             <div className="flex items-center mb-4">
-              <img
-                src="/path/to/logo.png"
-                alt="App Logo"
-                className="w-8 h-8 mr-3"
-              />
-              <span className="font-bold text-xl">AppName</span>
+              <span className="font-bold text-xl text-blue-700">InternConnect</span>
             </div>
-            <div className="flex items-center mb-2 text-gray-700">
-              <MapPin className="w-5 h-5 mr-2" />
-              <span>Location</span>
-            </div>
-            <div className="flex items-center mb-2 text-gray-700">
-              <Mail className="w-5 h-5 mr-2" />
-              <span>admin@appname.com</span>
-            </div>
-            <div className="flex items-center text-gray-700">
-              <Phone className="w-5 h-5 mr-2" />
-              <span>+123 456 7890</span>
+            <p className="text-gray-600 mb-4">
+              Connecting students to opportunities and helping employers find the perfect talent.
+            </p>
+            <div className="flex space-x-4">
+              <a href="#" className="text-gray-500 hover:text-blue-700">
+                <Facebook className="w-5 h-5" />
+              </a>
+              <a href="#" className="text-gray-500 hover:text-blue-700">
+                <Twitter className="w-5 h-5" />
+              </a>
+              <a href="#" className="text-gray-500 hover:text-blue-700">
+                <Instagram className="w-5 h-5" />
+              </a>
+              <a href="#" className="text-gray-500 hover:text-blue-700">
+                <Linkedin className="w-5 h-5" />
+              </a>
             </div>
           </div>
 
-          <div className="flex flex-col items-left leading-loose">
-            <h2 className="font-bold text-lg mb-4">Legal</h2>
-            <ul className="space-y-2">
+          <div>
+            <h3 className="font-semibold text-lg mb-4">Quick Links</h3>
+            <ul className="space-y-3">
               <li>
-                <a
-                  href="/privacy-policy"
-                  className="text-gray-700 hover:text-gray-900"
-                >
-                  Privacy Policy
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/terms-conditions"
-                  className="text-gray-700 hover:text-gray-900"
-                >
-                  Terms and Conditions
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/user-agreement"
-                  className="text-gray-700 hover:text-gray-900"
-                >
-                  User Agreement
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div className="flex flex-col items-center leading-loose">
-            <h2 className="font-bold text-lg mb-4">About AppName</h2>
-            <ul className="space-y-2">
-              <li>
-                <a href="/about" className="text-gray-700 hover:text-gray-900">
+                <Link href="/about" className="text-gray-600 hover:text-blue-700">
                   About Us
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/how-it-works"
-                  className="text-gray-700 hover:text-gray-900"
-                >
+                <Link href="/how-it-works" className="text-gray-600 hover:text-blue-700">
                   How it Works
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/faq" className="text-gray-700 hover:text-gray-900">
-                  FAQ&apos;s
-                </a>
+                <Link href="/faq" className="text-gray-600 hover:text-blue-700">
+                  FAQ
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="text-gray-600 hover:text-blue-700">
+                  Contact Us
+                </Link>
               </li>
             </ul>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-lg mb-4">Legal</h3>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/privacy-policy" className="text-gray-600 hover:text-blue-700">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms-conditions" className="text-gray-600 hover:text-blue-700">
+                  Terms and Conditions
+                </Link>
+              </li>
+              <li>
+                <Link href="/user-agreement" className="text-gray-600 hover:text-blue-700">
+                  User Agreement
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-lg mb-4">Contact Us</h3>
+            <div className="space-y-3">
+              <div className="flex items-start">
+                <MapPin className="w-5 h-5 text-blue-700 mr-2 mt-0.5" />
+                <span className="text-gray-600">123 Campus Drive, Metro Manila, Philippines</span>
+              </div>
+              <div className="flex items-start">
+                <Mail className="w-5 h-5 text-blue-700 mr-2 mt-0.5" />
+                <span className="text-gray-600">support@internconnect.com</span>
+              </div>
+              <div className="flex items-start">
+                <Phone className="w-5 h-5 text-blue-700 mr-2 mt-0.5" />
+                <span className="text-gray-600">+63 123 456 7890</span>
+              </div>
+            </div>
           </div>
         </div>
-      </footer>
-
-      <div className="bg-darkBlue text-sm text-white/80 text-left py-10 w-full mt-auto">
-        <p className="ml-10">
-          © 2025 STI College Alabang Job Finder. All rights reserved.
-        </p>
-        <p className="ml-10">Connecting Students to Opportunities</p>
       </div>
-    </>
-  );
-};
 
-export default Footer;
+      <div className="bg-blue-700 text-white py-6">
+        <div className="container mx-auto px-6 text-center md:text-left">
+          <p>© {new Date().getFullYear()} InternConnect. All rights reserved.</p>
+          <p className="text-blue-100">Connecting Students to Opportunities</p>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+export default Footer
