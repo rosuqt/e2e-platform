@@ -1,7 +1,7 @@
 import { MapPin, Mail, Phone, Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
 import Link from "next/link"
 
-const Footer = () => {
+const LandingFooter = () => {
   return (
     <footer className="bg-white border-t border-gray-200">
       <div className="container mx-auto px-6 py-12">
@@ -106,4 +106,4 @@ const Footer = () => {
   )
 }
 
-export default Footer
+export default LandingFooter
