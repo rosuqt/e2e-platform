@@ -105,7 +105,7 @@ export default function CompanyAssociationForm({
     }
   }, []);
 
-  const handleCompanyModalClose = async (newCompany?: { companyName: string; companyBranch: string }) => {
+  const handleCompanyModalClose = useCallback(async (newCompany?: { companyName: string; companyBranch: string }) => {
     setCompanyModalOpen(false);
 
     if (newCompany) {
@@ -131,9 +131,9 @@ export default function CompanyAssociationForm({
         console.warn("Newly created company not found in the fetched companies list.");
       }
     }
-  };
+  }, [data, fetchCompanies, fetchBranches, onChange]);
 
-  const handleBranchModalClose = (newBranch?: { branchName: string }) => {
+  const handleBranchModalClose = useCallback((newBranch?: { branchName: string }) => {
     setBranchModalOpen(false);
 
     if (newBranch && newBranch.branchName) {
@@ -154,7 +154,7 @@ export default function CompanyAssociationForm({
       onChange(updatedData);
       sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
     }
-  };
+  }, [data, fetchBranches, onChange, selectedCompanyId]);
 
   useEffect(() => {
     fetchCompanies();
@@ -173,7 +173,23 @@ export default function CompanyAssociationForm({
       setSelectedCompanyId(null);
       setFetchedBranches([]);
     }
-  }, []);
+  }, [data, onChange]);
+
+  useEffect(() => {
+    if (selectedCompanyId) {
+      console.log("Triggering fetchBranches for selectedCompanyId:", selectedCompanyId);
+      fetchBranches(selectedCompanyId);
+    }
+  }, [selectedCompanyId, fetchBranches]);
+
+  useEffect(() => {
+    if (data.companyName && !fetchedCompanies.some((company) => company.name === data.companyName)) {
+      console.warn(`Selected company "${data.companyName}" is not in the fetched companies list.`);
+      const updatedData = { ...data, companyName: "", companyId: undefined, companyBranch: "" };
+      onChange(updatedData);
+      sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
+    }
+  }, [data, fetchedCompanies, onChange]);
 
   const handleCompanyChange = async (value: string) => {
     if (value === "new") {
@@ -205,22 +221,6 @@ export default function CompanyAssociationForm({
       sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
     }
   };
-
-  useEffect(() => {
-    if (selectedCompanyId) {
-      console.log("Triggering fetchBranches for selectedCompanyId:", selectedCompanyId);
-      fetchBranches(selectedCompanyId);
-    }
-  }, [selectedCompanyId, fetchBranches]);
-
-  useEffect(() => {
-    if (data.companyName && !fetchedCompanies.some((company) => company.name === data.companyName)) {
-      console.warn(`Selected company "${data.companyName}" is not in the fetched companies list.`);
-      const updatedData = { ...data, companyName: "", companyId: undefined, companyBranch: "" };
-      onChange(updatedData);
-      sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
-    }
-  }, []);
 
   return (
     <>

@@ -8,12 +8,12 @@ import { ArrowRight, CheckCircle, Globe, Briefcase, GraduationCap, Users, Search
 
 // Components
 import Navbar from "./components/navbar"
-import Footer from "./components/footer"
 import CompanyCard from "./components/company-card"
 import FeatureCard from "./components/feature-card"
 import InterviewCard from "./components/interview-card"
 import HowItWorksSection from "./components/how-it-works"
 import CourseSelector from "./components/course-selector"
+import LandingFooter from "./components/landing-footer"
 
 // Animation variants
 const fadeInUp = {
@@ -674,7 +674,8 @@ export default function MainLanding() {
       </section>
 
       {/* Footer */}
-      <Footer />
+      
+      <LandingFooter/>
     </div>
   )
 }
