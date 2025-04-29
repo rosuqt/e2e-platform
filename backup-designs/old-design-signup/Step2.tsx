@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import Autocomplete from "@/app/components/Autocomplete";
-import Dropdown, { DropdownOption } from "@/app/components/Dropdown";
+import MUIDropdown from "@/app/components/MUIDropdown";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { formData } from "../../utils/type";
 import CompanyForm from "./components/new-company/CompanyInformation";
 import Swal from "sweetalert2";
 import { jobTitles, companyRoles } from "@/utils/jobData";
 import { MdError } from "react-icons/md";
+import { DropdownOption } from "@/app/components/Dropdown"; // Ensure this path is correct
+import { FreeSolo } from "@/app/components/customSection";
+import TextField from "@mui/material/TextField";
 
 {/* bro im so done with ts */}
 
@@ -542,14 +544,14 @@ export default function Step2({
             Company Name
           </label>
           <div className="flex items-center gap-2">
-            <Dropdown
-              options={companies} 
-              placeholder="Select a company*"
-              value={
-                companies.find((company) => company.id === formData.company_name?.id) || null
-              }
-              onChange={(value) => handleChange("company_name", value)}
-              className={`w-full ${errors.company_name ? "border-red-500" : "border-gray-200"}`}
+            <MUIDropdown
+              label="Select a company*"
+              options={companies.map((company) => ({
+                value: company.id || "", // Ensure value is always a string
+                label: company.name,
+              }))}
+              value={formData.company_name?.id || ""}
+              onChange={(value) => handleChange("company_name", companies.find((c) => c.id === value) || null)}
             />
             {errors.company_name && <MdError className="text-red-500 w-4 h-4" />}
           </div>
@@ -565,14 +567,15 @@ export default function Step2({
             Company Branch
           </label>
           <div className="flex items-center gap-2">
-            <Dropdown
-              options={branches}
-              placeholder="Company Branch*"
-              value={
-                branches.find((b) => b.id === formData.company_branch?.id) || null
-              } 
+            <MUIDropdown
+              label="Company Branch*"
+              options={branches.map((branch) => ({
+                value: branch.id || "", // Ensure value is always a string
+                label: branch.name,
+              }))}
+              value={formData.company_branch?.id || ""}
               onChange={(value) => {
-                const selectedBranch = value as DropdownOption;
+                const selectedBranch = branches.find((b) => b.id === value);
                 if (selectedBranch) {
                   setformData((prev) => ({
                     ...prev,
@@ -584,7 +587,6 @@ export default function Step2({
                   validateField("company_branch", selectedBranch.name || "");
                 }
               }}
-              className={`w-full ${errors.company_branch ? "border-red-500" : "border-gray-200"}`}
             />
             {errors.company_branch && <MdError className="text-red-500 w-4 h-4" />}
           </div>
@@ -600,17 +602,13 @@ export default function Step2({
             Company Role
           </label>
           <div className="flex items-center gap-2">
-            <Autocomplete
-              suggestions={companyRoles}
-              placeholder="Company Role*"
-              value={formData.company_role || ""}
-              onChange={(value) => {
+            <FreeSolo
+              options={companyRoles}
+              label="Company Role*"
+              onSelectionChange={(value) => {
                 handleChange("company_role", value);
-                validateField("company_role", value as string);
+                validateField("company_role", value);
               }}
-              className={`border rounded-md ${
-                errors.company_role ? "border-red-500" : "border-gray-200"
-              }`}
             />
             {errors.company_role && <MdError className="text-red-500 w-4 h-4" />}
           </div>
@@ -626,17 +624,13 @@ export default function Step2({
             Job Title
           </label>
           <div className="flex items-center gap-2">
-            <Autocomplete
-              suggestions={jobTitles}
-              placeholder="Job Title*"
-              value={formData.job_title || ""}
-              onChange={(value) => {
+            <FreeSolo
+              options={jobTitles}
+              label="Job Title*"
+              onSelectionChange={(value) => {
                 handleChange("job_title", value);
-                validateField("job_title", value as string);
+                validateField("job_title", value);
               }}
-              className={`border rounded-md ${
-                errors.job_title ? "border-red-500" : "border-gray-200"
-              }`}
             />
             {errors.job_title && <MdError className="text-red-500 w-4 h-4" />}
           </div>
@@ -652,23 +646,20 @@ export default function Step2({
             Company Email
           </label>
           <div className="flex items-center gap-2">
-            <input
-              type="email"
-              name="company_email"
-              className={`border p-2 w-full rounded-md  ${
-                errors.company_email ? "border-red-500" : ""
-              }`}
-              placeholder="Company Email"
+            <TextField
+              id="outlined-basic"
+              label="Company Email"
+              variant="outlined"
+              fullWidth
               value={formData.company_email}
               onChange={(e) => {
                 handleChange("company_email", e.target.value);
                 validateField("company_email", e.target.value);
               }}
-              autoComplete="off"
+              error={!!errors.company_email}
+              helperText={errors.company_email}
             />
-            {errors.company_email && <MdError className="text-red-500 w-4 h-4" />}
           </div>
-          {errors.company_email && <p className="text-red-500 text-xs">{errors.company_email}</p>}
         </motion.div>
       </div>
 

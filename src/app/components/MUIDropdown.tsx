@@ -2,7 +2,7 @@ import { FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@m
 import { useState } from "react";
 
 interface Option {
-  value: string | number;
+  value: string | number | ""; // Allow empty string as a valid value
   label: string;
 }
 

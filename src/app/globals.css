@@ -3,16 +3,16 @@
 @tailwind utilities;
 
 ::-webkit-scrollbar-track {
-  background-color: transparent;
+  background-color: #f3f4f6; /* Optional: Set a light background for the track */
 }
 
 ::-webkit-scrollbar {
-  width: 0px;
+  width: 8px; /* Set a visible width for the scrollbar */
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgb(207, 207, 207);
-  border-radius: 4px;
+  background-color: rgb(207, 207, 207); /* Keep the thumb color */
+  border-radius: 4px; /* Keep the rounded corners */
 }
 
 .no-select {

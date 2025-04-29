@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
   try {
     const { data, error } = await supabase
-      .from('pending_newbranches')
+      .from('pending_branches')
       .select(`
         id AS branch_id,
         name AS branch_name,

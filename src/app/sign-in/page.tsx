@@ -1,16 +1,13 @@
 "use client";
 
-{/*Fix needed: 
-    -default eye icon still shows up at first input */}
-
+import type React from "react";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Checkbox } from "./components/Checkbox";
-import RemoveDoubleClick from "../components/RemoveDoubleClick";
-import SingleLineFooter from "../components/SingleLineFooter";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {jwtDecode} from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
+import { Eye, EyeOff, LogIn } from "lucide-react";
+import { TextField, IconButton, InputAdornment, Checkbox, FormControlLabel } from "@mui/material";
 
 export default function SignInPage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -23,7 +20,14 @@ export default function SignInPage() {
 
   useEffect(() => {
     setIsVisible(true);
-    RemoveDoubleClick();
+
+    const handleDoubleClick = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener("dblclick", handleDoubleClick);
+    return () => {
+      document.removeEventListener("dblclick", handleDoubleClick);
+    };
   }, []);
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -45,9 +49,8 @@ export default function SignInPage() {
 
       localStorage.setItem("token", data.token);
 
-      // Decode the token to verify employerId
       const decoded: { id: string } = jwtDecode(data.token);
-      console.log("Decoded Employer ID after sign-in:", decoded.id); // Debug log
+      console.log("Decoded Employer ID after sign-in:", decoded.id);
 
       router.push("/student/student-dashboard");
     } catch (err) {
@@ -57,105 +60,172 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <Link href="/" className="absolute top-0 left-0 m-4 text-xl font-bold">
-        Test Logo
+    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 relative overflow-hidden">
+      <Link href="/" className="absolute top-6 left-6 text-xl font-bold text-blue-600 z-10 flex items-center">
+        <motion.div
+          className="mr-2 bg-blue-500 text-white p-2 rounded-lg shadow-lg"
+          whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <LogIn size={20} />
+        </motion.div>
+        <span className="bg-gradient-to-r from-blue-500 to-sky-400 text-transparent bg-clip-text">Test Logo</span>
       </Link>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md"
+        className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md relative overflow-hidden border-2 border-blue-200 z-10"
       >
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
-          Sign in
-        </h2>
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-        <form onSubmit={handleSignIn} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Email or phone number"
+        <motion.h2
+          className="text-3xl font-bold text-gray-700 mb-6 text-center relative z-10"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+        >
+          <span className="bg-gradient-to-r from-blue-500 to-sky-400 text-transparent bg-clip-text">Sign in</span>
+        </motion.h2>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-3 mb-4 bg-red-100 text-red-500 rounded-xl text-sm text-center"
+          >
+            {error}
+          </motion.div>
+        )}
+
+        <motion.form
+          onSubmit={handleSignIn}
+          className="space-y-4 relative z-10"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+        >
+          <TextField
+            label="Email or phone number"
+            variant="outlined"
+            fullWidth
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            InputLabelProps={{ shrink: true }}
           />
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 "
-              autoComplete="new-password"
+
+          <TextField
+            label="Password"
+            variant="outlined"
+            fullWidth
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                    {showPassword ? <EyeOff /> : <Eye />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+            InputLabelProps={{ shrink: true }}
+          />
+
+          <div className="flex items-center justify-between">
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={rememberMe}
+                  onChange={() => setRememberMe(!rememberMe)}
+                  color="primary"
+                />
+              }
+              label={<span className="text-gray-700">Remember me</span>}
             />
-            <button
-              type="button"
-              className={`absolute inset-y-0 right-3 flex items-center text-blue-500 cursor-pointer appearance-none focus:outline-none ${
-                password === "" ? "pointer-events-none" : ""
-              }`}
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
+            <Link href="/forgot-password" className="text-blue-500 hover:underline text-sm">
+              Forgot password?
+            </Link>
           </div>
-          <div className="flex items-center space-x-2">
-            <input type="checkbox" className="hidden" />
-            <Checkbox
-              checked={rememberMe}
-              onChange={() => setRememberMe(!rememberMe)}
-            />
-            <label htmlFor="remember" className="text-gray-700">
-              Remember me
-            </label>
-          </div>
-          <button
+
+          <motion.button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+            className="w-full bg-gradient-to-r from-blue-500 to-sky-500 text-white py-4 rounded-2xl font-medium shadow-lg hover:shadow-blue-200/50 transition-all duration-200 flex items-center justify-center"
+            whileHover={{ scale: 1.03, boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.5)" }}
+            whileTap={{ scale: 0.97 }}
           >
-            Sign in
-          </button>
-        </form>
-        <p className="text-xs text-gray-500 text-center">
+            <span>Sign in</span>
+          </motion.button>
+        </motion.form>
+
+        <motion.p
+          className="text-xs text-gray-700 text-center mt-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+        >
           By clicking Sign In, you agree to the
-          <a href="#" className="text-blue-500">
+          <a href="#" className="text-blue-500 hover:text-blue-700 transition-colors">
             {" "}
             User Agreement
           </a>
           ,
-          <a href="#" className="text-blue-500">
+          <a href="#" className="text-blue-500 hover:text-blue-700 transition-colors">
             {" "}
             Privacy Policy
           </a>
           , and
-          <a href="#" className="text-blue-500">
+          <a href="#" className="text-blue-500 hover:text-blue-700 transition-colors">
             {" "}
             Cookie Policy
           </a>
           .
-        </p>
+        </motion.p>
+
         <div className="flex items-center my-4">
-          <div className="flex-1 h-px bg-gray-300"></div>
-          <span className="mx-3 text-gray-500">or</span>
-          <div className="flex-1 h-px bg-gray-300"></div>
+          <div className="flex-1 h-px bg-blue-200"></div>
+          <span className="mx-3 text-gray-700">or</span>
+          <div className="flex-1 h-px bg-blue-200"></div>
         </div>
-        <p className="text-sm text-gray-600">For Student Login</p>
-        <button className="w-full flex items-center justify-center border py-2 rounded-lg hover:bg-gray-200 transition">
+
+        <motion.p
+          className="text-sm text-gray-700 font-medium"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
+        >
+          For Student Login
+        </motion.p>
+
+        <motion.button
+          className="w-full flex items-center justify-center border-2 border-blue-200 py-3 rounded-2xl hover:bg-blue-50 transition-all duration-200 mt-2 text-gray-700"
+          whileHover={{ scale: 1.02, boxShadow: "0 5px 15px -5px rgba(59, 130, 246, 0.3)" }}
+          whileTap={{ scale: 0.98 }}
+        >
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"
             alt="Microsoft logo"
             className="w-5 h-5 mr-2"
           />
           Continue with Microsoft
-        </button>
-        <p className="text-center text-gray-600 mt-4">
+        </motion.button>
+
+        <motion.p
+          className="text-center text-gray-700 mt-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
+        >
           New Employer?{" "}
-          <Link href="/sign-up" className="text-blue-500">
+          <Link href="/sign-up" className="text-blue-500 font-medium hover:text-blue-700 transition-colors">
             Sign Up Today
           </Link>
-        </p>
+        </motion.p>
       </motion.div>
 
-      <SingleLineFooter />
+      <div className="absolute bottom-0 left-0 right-0 p-4 text-center text-gray-700 text-sm">
+        © {new Date().getFullYear()} Test Company. All rights reserved.
+      </div>
     </div>
   );
 }
