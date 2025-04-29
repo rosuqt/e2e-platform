@@ -16,7 +16,7 @@ interface PreviewStepProps {
   onPreview: () => void;
 }
 
-export function PreviewStep({ formData, onPreview }: PreviewStepProps) {
+export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
   const [previewData, setPreviewData] = useState<JobPostingData>(formData);
   const router = useRouter();
 
