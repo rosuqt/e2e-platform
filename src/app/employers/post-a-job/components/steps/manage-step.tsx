@@ -461,7 +461,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
               <Checkbox
                 checked={sections.perks}
                 onCheckedChange={() => toggleSection("perks")}
-                onClick={(e) => e.stopPropagation()} // Prevent event propagation
+                onClick={(e) => e.stopPropagation()} 
                 className="data-[state=checked]:bg-blue-500 border-blue-300"
               />
               <div className="flex items-center gap-2">

@@ -1,8 +1,7 @@
 import { FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
-import { useState } from "react";
 
 interface Option {
-  value: string | number | ""; // Allow empty string as a valid value
+  value: string | number | "";
   label: string;
 }
 
@@ -11,29 +10,33 @@ interface MUIDropdownProps {
   options: Option[];
   value: string | number;
   onChange: (value: string) => void;
+  error?: boolean;
+  errorMessage?: string; 
 }
 
-const MUIDropdown: React.FC<MUIDropdownProps> = ({ label, options, value, onChange }) => {
-  const [touched, setTouched] = useState(false);
-
+const MUIDropdown: React.FC<MUIDropdownProps> = ({ label, options, value, onChange, error, errorMessage }) => {
   const handleChange = (event: SelectChangeEvent<string>) => {
-    setTouched(true);
     onChange(event.target.value as string);
   };
 
-  const isValid = value !== undefined && value !== "";
-
   return (
-    <FormControl fullWidth className="w-full px-3 py-2">
-      <InputLabel id="mui-dropdown-label">{label}</InputLabel>
+    <FormControl
+      fullWidth
+      className={`w-full px-3 py-2 ${error ? "border-red-500 animate-shake" : ""}`}
+    >
+      <InputLabel
+        id="mui-dropdown-label"
+        style={{ color: error ? "red" : undefined }}
+      >
+        {label}
+      </InputLabel>
       <Select
         labelId="mui-dropdown-label"
         id="mui-dropdown"
         value={String(value)}
         label={label}
         onChange={handleChange}
-        onBlur={() => setTouched(true)}
-        error={!isValid && touched}
+        error={error}
       >
         {options.map((option) => (
           <MenuItem
@@ -50,8 +53,8 @@ const MUIDropdown: React.FC<MUIDropdownProps> = ({ label, options, value, onChan
           </MenuItem>
         ))}
       </Select>
-      {!isValid && touched && (
-        <p className="text-red-500 text-sm mt-1">This field must be filled</p>
+      {error && errorMessage && (
+        <p className="text-red-500 text-sm mt-1">{errorMessage}</p>
       )}
     </FormControl>
   );

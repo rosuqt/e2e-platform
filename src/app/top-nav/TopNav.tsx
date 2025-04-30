@@ -9,7 +9,7 @@ interface TopNavProps {
   iconColor?: string;
   labelColor?: string;
   isSidebarMinimized?: boolean;
-  topNavStyle?: React.CSSProperties; // Add this prop to accept custom styles
+  topNavStyle?: React.CSSProperties;
 }
 
 const TopNav: React.FC<TopNavProps> = ({
@@ -17,7 +17,7 @@ const TopNav: React.FC<TopNavProps> = ({
   iconColor = 'gray',
   labelColor = 'gray',
   isSidebarMinimized,
-  topNavStyle, // Destructure the new prop
+  topNavStyle, 
 }) => {
   const pathname = usePathname();
 
@@ -34,7 +34,7 @@ const TopNav: React.FC<TopNavProps> = ({
     <header
       className={`fixed top-0 z-[10] bg-white border-b border-gray-200 py-2 px-4 transition-all duration-200 ease-in-out ${className}`}
       style={{
-        ...topNavStyle, // Apply the custom styles passed via props
+        ...topNavStyle,
         left: isSidebarMinimized ? '80px' : '280px',
         width: isSidebarMinimized ? 'calc(100% - 80px)' : 'calc(100% - 280px)',
         height: '64px',

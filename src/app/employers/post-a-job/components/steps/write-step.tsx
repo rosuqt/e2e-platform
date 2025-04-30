@@ -1,21 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Plus, Trash2, FileText, ListChecks, FileEdit, Lightbulb } from "lucide-react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "../ui/card"
 import type { JobPostingData } from "../../lib/types"
+import { TextField } from "@mui/material"
 
 interface WriteStepProps {
   formData: JobPostingData
   updateFormData: (data: Partial<JobPostingData>) => void
+  errors: Record<string, boolean>
 }
 
-export function WriteStep({ formData, updateFormData }: WriteStepProps) {
+export function WriteStep({ formData, updateFormData, errors }: WriteStepProps) {
   const [mustHaves, setMustHaves] = useState<string[]>(
     formData.mustHaveQualifications.length ? formData.mustHaveQualifications : [""],
   )
@@ -93,29 +93,24 @@ export function WriteStep({ formData, updateFormData }: WriteStepProps) {
               </Label>
             </div>
             <div className="border-b border-gray-200">
-              <div className="bg-gray-50 px-4 py-2 flex gap-3">
-                <button className="text-gray-500 hover:text-gray-700 text-sm font-medium px-2 py-1 rounded hover:bg-gray-100 transition-colors">
-                  Paragraph
-                </button>
-                <button className="text-gray-500 hover:text-gray-700 text-sm font-bold px-2 py-1 rounded hover:bg-gray-100 transition-colors">
-                  B
-                </button>
-                <button className="text-gray-500 hover:text-gray-700 text-sm italic px-2 py-1 rounded hover:bg-gray-100 transition-colors">
-                  I
-                </button>
-                <button className="text-gray-500 hover:text-gray-700 text-sm px-2 py-1 rounded hover:bg-gray-100 transition-colors">
-                  • Bullet
-                </button>
-                <button className="text-gray-500 hover:text-gray-700 text-sm px-2 py-1 rounded hover:bg-gray-100 transition-colors">
-                  1. Number
-                </button>
-              </div>
-              <Textarea
+              <TextField
                 id="jobDescription"
                 value={formData.jobDescription}
                 onChange={(e) => updateFormData({ jobDescription: e.target.value })}
-                className="border-0 focus-visible:ring-0 min-h-[200px] p-4 text-gray-700"
+                multiline
+                rows={6}
+                variant="outlined"
+                fullWidth
                 placeholder="Describe the responsibilities, requirements, and benefits of the job..."
+                InputProps={{
+                  style: {
+                    fontFamily: "Roboto, Arial, sans-serif",
+                    fontSize: "14px",
+                    color: "#333",
+                  },
+                }}
+                error={errors.jobDescription}
+                helperText={errors.jobDescription ? "Job description is required." : ""}
               />
             </div>
           </CardContent>
@@ -143,11 +138,19 @@ export function WriteStep({ formData, updateFormData }: WriteStepProps) {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Input
+                      <TextField
                         value={item}
                         onChange={(e) => handleMustHaveChange(index, e.target.value)}
                         placeholder="e.g. 2+ years of experience with React"
-                        className="flex-1 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                        variant="outlined"
+                        fullWidth
+                        size="small"
+                        error={errors.mustHaveQualifications && !item.trim()}
+                        helperText={
+                          errors.mustHaveQualifications && !item.trim()
+                            ? "At least one must-have qualification is required."
+                            : ""
+                        }
                       />
                       <Button
                         type="button"
@@ -187,11 +190,13 @@ export function WriteStep({ formData, updateFormData }: WriteStepProps) {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <Input
+                      <TextField
                         value={item}
                         onChange={(e) => handleNiceToHaveChange(index, e.target.value)}
                         placeholder="e.g. Experience with TypeScript"
-                        className="flex-1 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                        variant="outlined"
+                        fullWidth
+                        size="small"
                       />
                       <Button
                         type="button"
@@ -228,12 +233,24 @@ export function WriteStep({ formData, updateFormData }: WriteStepProps) {
                 Job Summary
               </Label>
             </div>
-            <Textarea
+            <TextField
               id="jobSummary"
               value={formData.jobSummary}
               onChange={(e) => updateFormData({ jobSummary: e.target.value })}
-              className="min-h-[100px] border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+              multiline
+              rows={4}
+              variant="outlined"
+              fullWidth
               placeholder="Provide a brief summary of the job..."
+              InputProps={{
+                style: {
+                  fontFamily: "Roboto, Arial, sans-serif",
+                  fontSize: "14px",
+                  color: "#333",
+                },
+              }}
+              error={errors.jobSummary}
+              helperText={errors.jobSummary ? "Job summary is required." : ""}
             />
             <p className="text-xs text-gray-500 mt-2">
               A concise summary helps candidates quickly understand the role and increases application rates.
