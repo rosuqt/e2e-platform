@@ -2,9 +2,9 @@
 import { useEffect, useState, useRef } from "react"
 import { Search, MapPin, ChevronDown, Briefcase, ArrowLeft, ArrowRight } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import JobCards from "@/app/student/student-dashboard/JobCards"
+import JobCards from "@/app/student/student-dashboard/components/JobCards"
 import Sidebar from "@/app/side-nav/sidebar"
-import TopNav from "@/app/student/student-dashboard/TopNav"
+import TopNav from "@/app/top-nav/TopNav"
 
 export default function Home() {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
@@ -85,7 +85,6 @@ export default function Home() {
     setSelectedJob(null)
   }
 
-  const bubbles = Array.from({ length: 15 }, (_, i) => i)
 
   return (
     <div className="flex overflow-x-hidden bg-gradient-to-br from-blue-50 to-sky-100">
@@ -114,32 +113,6 @@ export default function Home() {
           {/* Page Content */}
           <div className="mt-[64px]">
             <div className="bg-gradient-to-br from-blue-50 to-sky-100 min-h-screen w-full relative overflow-hidden">
-              {/* Floating Bubbles Background */}
-              {bubbles.map((bubble, index) => (
-                <motion.div
-                  key={index}
-                  className="absolute rounded-full bg-blue-200 opacity-30"
-                  style={{
-                    width: Math.random() * 100 + 20,
-                    height: Math.random() * 100 + 20,
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    zIndex: 0,
-                  }}
-                  animate={{
-                    y: [0, -20, 0],
-                    x: [0, Math.random() * 10 - 5, 0],
-                    scale: [1, 1.1, 1],
-                  }}
-                  transition={{
-                    duration: Math.random() * 5 + 5,
-                    repeat: Number.POSITIVE_INFINITY,
-                    ease: "easeInOut",
-                    delay: Math.random() * 2,
-                  }}
-                />
-              ))}
-
               {/* Main Content */}
               <main className="transition-all duration-300 ease-in-out flex-1 relative z-10">
                 {/* Content Wrapper */}
@@ -152,9 +125,6 @@ export default function Home() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                   >
-                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-100 rounded-full opacity-50"></div>
-                    <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-100 rounded-full opacity-50"></div>
-
                     <motion.h1
                       className="text-4xl font-bold text-blue-600 mb-6 flex items-center relative z-10"
                       initial={{ opacity: 0 }}
@@ -258,7 +228,7 @@ export default function Home() {
                       }}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={{ delay: 0.5, duration: 0.5 }}
+                      transition={{ duration: 0.3 }}
                     >
                       <JobCards onSelectJob={handleJobSelect} selectedJob={selectedJob} />
                     </motion.div>
@@ -266,7 +236,7 @@ export default function Home() {
                     {/* Right Content - dynamically positioned */}
                     <div
                       ref={rightSectionRef}
-                      className="right-section transition-all duration-300 ease-in-out pl-6 relative-right-section"
+                      className="right-section transition-all duration-200 ease-in-out pl-6 relative-right-section"
                       style={{
                         width: "60%",
                         maxWidth: "calc(100% - 40px)",
@@ -274,14 +244,11 @@ export default function Home() {
                     >
                       <div className="h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl">
                         <div className="bg-gradient-to-br from-blue-500 to-sky-600 p-6 h-full rounded-3xl shadow-2xl relative overflow-hidden">
-                          <div className="absolute top-0 right-0 w-40 h-40 bg-blue-400 rounded-full opacity-20 -mr-10 -mt-10"></div>
-                          <div className="absolute bottom-0 left-0 w-60 h-60 bg-sky-400 rounded-full opacity-20 -ml-20 -mb-20"></div>
-
                           <div className="mb-6 mt-3 relative z-10">
                             <div className="flex items-center">
                               <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={selectedJob !== null ? handleCloseJobDetails : undefined}
                                 className="bg-white/20 backdrop-blur-sm p-3 rounded-xl mr-4 text-white hover:bg-white/30 transition-all"
                               >
@@ -289,20 +256,20 @@ export default function Home() {
                                   {selectedJob !== null ? (
                                     <motion.div
                                       key="arrow-left"
-                                      initial={{ opacity: 0, x: 20 }}
-                                      animate={{ opacity: 1, x: 0 }}
-                                      exit={{ opacity: 0, x: -20 }}
-                                      transition={{ duration: 0.3 }}
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      exit={{ opacity: 0 }}
+                                      transition={{ duration: 0.2 }}
                                     >
                                       <ArrowLeft className="h-6 w-6" />
                                     </motion.div>
                                   ) : (
                                     <motion.div
                                       key="arrow-right"
-                                      initial={{ opacity: 0, x: -20 }}
-                                      animate={{ opacity: 1, x: 0 }}
-                                      exit={{ opacity: 0, x: 20 }}
-                                      transition={{ duration: 0.3 }}
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      exit={{ opacity: 0 }}
+                                      transition={{ duration: 0.2 }}
                                     >
                                       <ArrowRight className="h-6 w-6" />
                                     </motion.div>

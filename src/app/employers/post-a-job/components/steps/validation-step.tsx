@@ -101,13 +101,13 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
             <div className="pt-3">
               {formData.verificationTier === "basic" ? (
                 <Button className="w-full bg-blue-600 hover:bg-blue-700">Current Tier</Button>
-              ) : (
+              ) : formData.verificationTier === "standard" || formData.verificationTier === "full" ? null : (
                 <Button
                   variant="outline"
                   className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
                   onClick={() => updateFormData({ verificationTier: "basic" })}
                 >
-                  Select
+                  Verify
                 </Button>
               )}
             </div>
@@ -170,13 +170,13 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
             <div className="pt-3">
               {formData.verificationTier === "standard" ? (
                 <Button className="w-full bg-blue-600 hover:bg-blue-700">Current Tier</Button>
-              ) : (
+              ) : formData.verificationTier === "full" ? null : (
                 <Button
                   variant="outline"
                   className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
                   onClick={() => updateFormData({ verificationTier: "standard" })}
                 >
-                  Select
+                  Verify
                 </Button>
               )}
             </div>
@@ -245,7 +245,7 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
                   className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
                   onClick={() => updateFormData({ verificationTier: "full" })}
                 >
-                  Select
+                  Verify
                 </Button>
               )}
             </div>

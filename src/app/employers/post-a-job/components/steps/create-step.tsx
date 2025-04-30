@@ -3,42 +3,74 @@
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { motion } from "framer-motion"
 import { Card, CardContent } from "../ui/card"
 import { Briefcase, MapPin, Globe, Clock, DollarSign, GraduationCap, Lightbulb } from "lucide-react"
 import type { JobPostingData } from "../../lib/types"
 import MUIDropdown from "../../../../components/MUIDropdown"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { FreeSolo } from "../../../../components/customSection"
 import { jobTitleSections } from "../../lib/jobTitles"
+import { TextField } from "@mui/material"
+import Checkbox from "@mui/material/Checkbox"
+import Autocomplete from "@mui/material/Autocomplete"
+import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank"
+import CheckBoxIcon from "@mui/icons-material/CheckBox"
 
 interface CreateStepProps {
   formData: JobPostingData
-  updateFormData: (data: Partial<JobPostingData>) => void
+  handleFieldChange: <T extends keyof JobPostingData>(field: T, value: JobPostingData[T]) => void
+  errors: Record<string, boolean>
 }
 
-export function CreateStep({ formData, updateFormData }: CreateStepProps) {
+const icon = <CheckBoxOutlineBlankIcon fontSize="small" />
+const checkedIcon = <CheckBoxIcon fontSize="small" />
+
+export function CreateStep({ formData, handleFieldChange, errors }: CreateStepProps) {
   const [showPayAmount, setShowPayAmount] = useState<boolean>(
     formData.payType !== "" && formData.payType !== "No Pay"
-  );
+  )
+
+  const courses = [
+    { title: "BSIT - Bachelor of Science in Information Technology", value: "BSIT" },
+    { title: "BSBA - Bachelor of Science in Business Administration", value: "BSBA" },
+    { title: "BSHM - Bachelor of Science in Hospitality Management", value: "BSHM" },
+    { title: "BSTM - Bachelor of Science in Tourism Management", value: "BSTM" },
+  ]
+
+  const recommendedCourses = Array.isArray(formData.recommendedCourse)
+    ? formData.recommendedCourse
+    : formData.recommendedCourse
+        ?.split(", ")
+        .map((title) => courses.find((course) => course.title === title))
+        .filter(Boolean) || []
+
+  const handleRecommendedCourseChange = (newValue: { title: string; value: string }[]) => {
+    handleFieldChange(
+      "recommendedCourse",
+      newValue.map((course) => course.title).join(", ") 
+    )
+  }
 
   const handlePayTypeChange = (value: string) => {
-    const updatedData = { ...formData, payType: value };
-    updateFormData(updatedData);
-    sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
-    setShowPayAmount(value !== "" && value !== "No Pay");
-  };
+    handleFieldChange("payType", value)
+    setShowPayAmount(value !== "" && value !== "No Pay")
+    if (value === "No Pay") {
+      handleFieldChange("payAmount", "") 
+    }
+  }
 
-  const handleInputChange = <T extends keyof JobPostingData>(field: T, value: JobPostingData[T]) => {
-    const updatedData = { ...formData, [field]: value };
-    updateFormData(updatedData);
-    sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
-  };
+  const validatePayAmount = () => {
+    if (showPayAmount && !formData.payAmount) {
+      return "Pay amount is required"
+    }
+    return ""
+  }
+
+  const payAmountError = validatePayAmount()
 
   const commonPayAmounts = {
-    Weekly: ["$500", "$750", "$1,000", "$1,500", "$2,000"],
-    Monthly: ["$2,000", "$3,000", "$4,000", "$5,000", "$6,000"],
-    Yearly: ["$30,000", "$45,000", "$60,000", "$75,000", "$90,000", "$120,000"],
+    Weekly: ["500", "750", "1000", "1500", "2000"],
+    Monthly: ["2000", "3000", "4000", "5000", "6000"],
+    Yearly: ["30000", "45000", "60000", "75000", "90000", "120000"],
   }
 
   const workTypes = [
@@ -53,13 +85,6 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
     { value: "Weekly", label: "Weekly" },
     { value: "Monthly", label: "Monthly" },
     { value: "Yearly", label: "Yearly" },
-  ]
-
-  const courses = [
-    { value: "BSIT", label: "BSIT - Bachelor of Science in Information Technology" },
-    { value: "BSBA", label: "BSBA - Bachelor of Science in Business Administration" },
-    { value: "BSHM", label: "BSHM - Bachelor of Science in Hospitality Management" },
-    { value: "BSTM", label: "BSTM - Bachelor of Science in Tourism Management" },
   ]
 
   return (
@@ -85,7 +110,9 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
               <FreeSolo
                 options={Object.values(jobTitleSections).flat()}
                 label="Select or type a job title"
-                onSelectionChange={(key) => handleInputChange("jobTitle", key)}
+                onSelectionChange={(key) => handleFieldChange("jobTitle", key)}
+                error={errors.jobTitle}
+                errorMessage="Job title is required"
               />
               <p className="text-xs text-gray-500 mt-2">
                 Be specific with your job title to attract the right candidates
@@ -107,10 +134,11 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
               <Input
                 id="location"
                 value={formData.location}
-                onChange={(e) => handleInputChange("location", e.target.value)}
-                className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                placeholder="placeholder for location (thnking pa of this)"
+                onChange={(e) => handleFieldChange("location", e.target.value)}
+                className={`border-gray-200 focus:ring-blue-500 ${errors.location ? "border-red-500" : ""}`}
+                placeholder="Enter location"
               />
+              {errors.location && <p className="text-red-500 text-sm">Location is required</p>}
               <p className="text-xs text-gray-500 mt-2">Enter the primary location where the job will be performed</p>
             </div>
           </CardContent>
@@ -127,14 +155,16 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
             </div>
             <div className="p-4">
               <MUIDropdown
-                label="Select a Remote Options"
+                label="Select a Remote Option"
                 options={[
                   { value: "On-site", label: "On-site" },
                   { value: "Hybrid", label: "Hybrid" },
                   { value: "Work from home", label: "Work from home" },
                 ]}
                 value={formData.remoteOptions || ""}
-                onChange={(value) => handleInputChange("remoteOptions", value as string)}
+                onChange={(value) => handleFieldChange("remoteOptions", value)}
+                error={errors.remoteOptions} 
+                errorMessage="Remote option is required"
               />
               <p className="text-xs text-gray-500 mt-2">Specify the work arrangement for this position</p>
             </div>
@@ -155,8 +185,10 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
                 label="Select a Work Type"
                 options={workTypes}
                 value={formData.workType}
-                onChange={(value) => handleInputChange("workType", value)}
+                onChange={(value) => handleFieldChange("workType", value)}
+                error={errors.workType}
               />
+              {errors.workType && <p className="text-red-500 text-sm mt-1">Work type is required</p>}
               <p className="text-xs text-gray-500 mt-2">Choose the employment type for this position</p>
             </div>
           </CardContent>
@@ -172,96 +204,43 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
               </Label>
             </div>
             <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="payType" className="text-sm text-gray-600 mb-2 block">
-                    Pay Type
-                  </Label>
-                  <Select value={formData.payType} onValueChange={handlePayTypeChange}>
-                    <SelectTrigger
-                      className="border-gray-200 focus:ring-blue-500 text-medium"
-                      style={{
-                        height: "50px",
-                      }}
-                    >
-                      <SelectValue placeholder="Select pay type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {payTypes.map((type) => (
-                        <SelectItem
-                          key={type.value}
-                          value={type.value}
-                          style={{
-                            backgroundColor: "white",
-                            transition: "background-color 0.2s",
-                            
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#ebf8ff")}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
-                        >
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MUIDropdown
+                  label="Pay Type"
+                  options={payTypes}
+                  value={formData.payType}
+                  onChange={handlePayTypeChange}
+                  error={errors.payType}
+                  errorMessage="Pay type is required"
+                />
 
                 {showPayAmount && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Label htmlFor="payAmount" className="text-sm text-gray-600 mb-2 block">
-                      Pay Amount
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="payAmount"
-                        value={formData.payAmount}
-                        onChange={(e) => handleInputChange("payAmount", e.target.value)}
-                        placeholder={`e.g. ${
-                          formData.payType === "Yearly" ? "50,000" : formData.payType === "Monthly" ? "4,000" : "1,000"
-                        }`}
-                        className="flex-1 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                        style={{
-                          height: "50px",
-                        }}
-                      />
-                      <Select
-                        onValueChange={(value) => handleInputChange("payAmount", value)}
-                        value={formData.payAmount}
-                      >
-                        <SelectTrigger
-                          className="w-[180px] border-gray-200 focus:ring-blue-500"
-                          style={{
-                            height: "50px",
-                          }}
-                        >
-                          <SelectValue placeholder="Common amounts" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {formData.payType &&
-                            formData.payType !== "No Pay" &&
-                            commonPayAmounts[formData.payType as keyof typeof commonPayAmounts]?.map((amount) => (
-                              <SelectItem
-                                key={amount}
-                                value={amount}
-                                style={{
-                                  backgroundColor: "white",
-                                  transition: "background-color 0.2s",
-                                }}
-                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#ebf8ff")}
-                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
-                              >
-                                {amount}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </motion.div>
+                  <>
+                    <TextField
+                      id="payAmount"
+                      label="Pay Amount"
+                      value={formData.payAmount}
+                      onChange={(e) => handleFieldChange("payAmount", e.target.value)}
+                      fullWidth
+                      error={!!payAmountError}
+                      helperText={payAmountError}
+                      variant="outlined"
+                    />
+                    <MUIDropdown
+                      label="Common Amounts"
+                      options={
+                        formData.payType &&
+                        formData.payType !== "No Pay" &&
+                        commonPayAmounts[formData.payType as keyof typeof commonPayAmounts]?.map((amount) => ({
+                          value: amount,
+                          label: amount,
+                        })) || []
+                      }
+                      value={formData.payAmount}
+                      onChange={(value) => handleFieldChange("payAmount", value)}
+                      error={!!payAmountError}
+                    />
+                  </>
                 )}
               </div>
               <p className="text-xs text-gray-500 mt-3">Specify the compensation details for this position</p>
@@ -279,11 +258,37 @@ export function CreateStep({ formData, updateFormData }: CreateStepProps) {
               </Label>
             </div>
             <div className="p-4">
-              <MUIDropdown
-                label="Recommended Course"
+              <Autocomplete
+                multiple
+                id="recommended-course"
                 options={courses}
-                value={formData.recommendedCourse || ""}
-                onChange={(value) => handleInputChange("recommendedCourse", value as string)}
+                disableCloseOnSelect
+                getOptionLabel={(option) => option.title}
+                value={recommendedCourses}
+                onChange={(event, newValue) => handleRecommendedCourseChange(newValue)}
+                renderOption={(props, option, { selected }) => {
+                  const { key, ...optionProps } = props
+                  return (
+                    <li key={key} {...optionProps}>
+                      <Checkbox
+                        icon={icon}
+                        checkedIcon={checkedIcon}
+                        style={{ marginRight: 8 }}
+                        checked={selected}
+                      />
+                      {option.title}
+                    </li>
+                  )
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Recommended Course"
+                    placeholder="Select courses"
+                    error={errors.recommendedCourse}
+                    helperText={errors.recommendedCourse ? "Recommended course is required" : ""}
+                  />
+                )}
               />
               <p className="text-xs text-gray-500 mt-2">
                 Select the educational background that best fits this position

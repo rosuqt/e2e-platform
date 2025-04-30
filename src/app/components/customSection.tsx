@@ -7,16 +7,26 @@ interface FreeSoloProps {
   options: string[];
   label: string;
   onSelectionChange: (value: string) => void;
+  error?: boolean;
+  errorMessage?: string;
 }
 
-export function FreeSolo({ options, label, onSelectionChange }: FreeSoloProps) {
+export function FreeSolo({ options, label, onSelectionChange, error, errorMessage }: FreeSoloProps) {
   return (
     <Stack spacing={2} sx={{ width: "100%" }}>
       <Autocomplete
         freeSolo
         options={options}
         onChange={(_, value) => onSelectionChange(value || "")}
-        renderInput={(params) => <TextField {...params} label={label} />}
+        onInputChange={(_, value) => onSelectionChange(value || "")}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label={label}
+            error={error}
+            helperText={error && errorMessage ? errorMessage : ""}
+          />
+        )}
       />
     </Stack>
   );
