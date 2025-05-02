@@ -114,62 +114,68 @@ export default function SignUpForm() {
         personalDetails: { ...formData.personalDetails, ...data.personalDetails },
         companyAssociation: { ...formData.companyAssociation, ...data.companyAssociation },
       },
+    };
+
+    if (JSON.stringify(updatedData) !== JSON.stringify(formData)) {
+      setFormData(updatedData);
+      sessionStorage.setItem("signUpFormData", JSON.stringify(updatedData));
     }
-    setFormData(updatedData)
-    sessionStorage.setItem("signUpFormData", JSON.stringify(updatedData))
-  }
+  };
 
   const validatePersonalDetails = async () => {
-    const errors: { [key: string]: string } = {}
-    const details = formData.personalDetails
+    const errors: { [key: string]: string } = {};
+    const details = formData.personalDetails;
 
     if (!details.firstName.trim()) {
-      errors.firstName = "First Name is required."
+      errors.firstName = "First Name is required.";
     } else if (/[^a-zA-Z\s]/.test(details.firstName)) {
-      errors.firstName = "First Name must not contain numbers or special characters."
+      errors.firstName = "First Name must not contain numbers or special characters.";
     }
 
     if (!details.lastName.trim()) {
-      errors.lastName = "Last Name is required."
+      errors.lastName = "Last Name is required.";
     } else if (/[^a-zA-Z\s]/.test(details.lastName)) {
-      errors.lastName = "Last Name must not contain numbers or special characters."
+      errors.lastName = "Last Name must not contain numbers or special characters.";
     }
 
     if (!details.countryCode.trim()) {
-      errors.countryCode = "Country Code is required."
+      errors.countryCode = "Country Code is required.";
     }
 
     if (!details.phone.trim()) {
-      errors.phone = "Phone Number is required."
+      errors.phone = "Phone Number is required.";
     } else if (/[^0-9]/.test(details.phone)) {
-      errors.phone = "Phone Number must not contain letters or special characters."
+      errors.phone = "Phone Number must not contain letters or special characters.";
     } else if (details.phone.length < 8) {
-      errors.phone = "Phone Number must be at least 8 digits long."
+      errors.phone = "Phone Number must be at least 8 digits long.";
     }
 
     if (!details.email.trim()) {
-      errors.email = "Email is required."
+      errors.email = "Email is required.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)) {
-      errors.email = "Invalid email format."
+      errors.email = "Invalid email format.";
     } else if (await checkEmailExists(details.email)) {
-      errors.email = "This email is already registered."
+      errors.email = "This email is already registered.";
     }
 
     if (!details.password.trim()) {
-      errors.password = "Password is required."
+      errors.password = "Password is required.";
     } else if (details.password.length < 6) {
-      errors.password = "Password must be at least 6 characters long."
+      errors.password = "Password must be at least 6 characters long.";
     }
 
     if (!details.confirmPassword.trim()) {
-      errors.confirmPassword = "Confirm Password is required."
+      errors.confirmPassword = "Confirm Password is required.";
     } else if (details.password !== details.confirmPassword) {
-      errors.confirmPassword = "Passwords do not match."
+      errors.confirmPassword = "Passwords do not match.";
     }
 
-    setPersonalDetailsErrors(errors)
-    return Object.keys(errors).length === 0
-  }
+    if (JSON.stringify(errors) !== JSON.stringify(personalDetailsErrors)) {
+      setPersonalDetailsErrors(errors);
+    }
+
+    return Object.keys(errors).length === 0;
+  };
 
   const validateCompanyFields = () => {
     const errors: { [key: string]: string } = {}

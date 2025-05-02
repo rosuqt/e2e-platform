@@ -48,9 +48,9 @@ export default function CompanyAssociationForm({
   const [fetchedCompanies, setFetchedCompanies] = useState<Company[]>([]);
   const [fetchedBranches, setFetchedBranches] = useState<{ branch_name: string; status: string }[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-  const [loadingCompanies, setLoadingCompanies] = useState(false); 
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
-  const [allowsMultipleBranches, setAllowsMultipleBranches] = useState<boolean | null>(null); 
+  const [allowsMultipleBranches, setAllowsMultipleBranches] = useState<boolean | null>(null);
   const [searchInput, setSearchInput] = useState("");
 
   const fetchCompanies = useCallback(async (): Promise<Company[]> => {
@@ -85,15 +85,10 @@ export default function CompanyAssociationForm({
     setLoadingBranches(true);
     try {
       const response = await fetch(`/api/sign-up/branches?company_id=${companyId}`);
-
       if (!response.ok) {
         throw new Error(`Failed to fetch branches: ${response.statusText}`);
       }
-
       const { branches, multipleBranch } = await response.json();
-
-      console.log("Fetched branches:", branches);
-
       setFetchedBranches(branches);
       setAllowsMultipleBranches(multipleBranch);
     } catch (error) {
@@ -109,8 +104,6 @@ export default function CompanyAssociationForm({
     setCompanyModalOpen(false);
 
     if (newCompany) {
-      console.log("New company created:", newCompany);
-
       const updatedCompanies = await fetchCompanies();
 
       const selectedCompany = updatedCompanies.find((company) => company.name === newCompany.companyName);
@@ -127,8 +120,6 @@ export default function CompanyAssociationForm({
         sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
 
         fetchBranches(selectedCompany.id);
-      } else {
-        console.warn("Newly created company not found in the fetched companies list.");
       }
     }
   }, [data, fetchCompanies, fetchBranches, onChange]);
@@ -137,8 +128,6 @@ export default function CompanyAssociationForm({
     setBranchModalOpen(false);
 
     if (newBranch && newBranch.branchName) {
-      console.log("New branch created:", newBranch);
-
       setFetchedBranches((prevBranches) => [
         ...prevBranches,
         { branch_name: newBranch.branchName, status: "pending" },
@@ -164,32 +153,22 @@ export default function CompanyAssociationForm({
     const savedData = sessionStorage.getItem("signUpFormData");
     if (savedData) {
       const parsedData = JSON.parse(savedData);
-      const mergedData = {
-        ...data,
-        ...parsedData.companyAssociation,
-        companyName: "",
-      };
-      onChange(mergedData);
-      setSelectedCompanyId(null);
+      if (parsedData?.companyAssociation?.companyId) {
+        console.log("Restoring selectedCompanyId from sessionStorage:", parsedData.companyAssociation.companyId); // Debug log
+        setSelectedCompanyId(parsedData.companyAssociation.companyId);
+      } else {
+        setSelectedCompanyId(null);
+      }
       setFetchedBranches([]);
     }
-  }, [data, onChange]);
+  }, [data]);
 
   useEffect(() => {
     if (selectedCompanyId) {
-      console.log("Triggering fetchBranches for selectedCompanyId:", selectedCompanyId);
+      console.log("Fetching branches for companyId:", selectedCompanyId); // Debug log
       fetchBranches(selectedCompanyId);
     }
   }, [selectedCompanyId, fetchBranches]);
-
-  useEffect(() => {
-    if (data.companyName && !fetchedCompanies.some((company) => company.name === data.companyName)) {
-      console.warn(`Selected company "${data.companyName}" is not in the fetched companies list.`);
-      const updatedData = { ...data, companyName: "", companyId: undefined, companyBranch: "" };
-      onChange(updatedData);
-      sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
-    }
-  }, [data, fetchedCompanies, onChange]);
 
   const handleCompanyChange = async (value: string) => {
     if (value === "new") {
@@ -199,28 +178,39 @@ export default function CompanyAssociationForm({
 
     const selectedCompany = fetchedCompanies.find((company) => company.name === value);
     if (selectedCompany) {
-      console.log("Selected company:", selectedCompany);
-      setSelectedCompanyId(selectedCompany.id)
-      setFetchedBranches([]);
-      const updatedData = {
-        ...data,
-        companyName: value,
-        companyId: selectedCompany.id,
-        companyBranch: "",
-        companyEmail: selectedCompany.emailDomain ? `${selectedCompany.emailDomain.startsWith("@") ? "" : "@"}${selectedCompany.emailDomain}` : "",
-      };
-      onChange(updatedData);  
-      sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
-      console.log("Fetching branches for company ID:", selectedCompany.id);
-      await fetchBranches(selectedCompany.id);
+      if (selectedCompanyId !== selectedCompany.id) {
+        console.log("Setting selectedCompanyId:", selectedCompany.id); // Debug log
+        setSelectedCompanyId(selectedCompany.id);
+        setFetchedBranches([]);
+        const updatedData = {
+          ...data,
+          companyName: value,
+          companyId: selectedCompany.id,
+          companyBranch: "",
+          companyEmail: selectedCompany.emailDomain
+            ? `${selectedCompany.emailDomain.startsWith("@") ? "" : "@"}${selectedCompany.emailDomain}`
+            : "",
+        };
+        onChange(updatedData);
+        sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
+      }
     } else {
-      console.log("No company selected, clearing branches.");
-      setFetchedBranches([]); 
+      console.log("Clearing selectedCompanyId"); // Debug log
+      setSelectedCompanyId(null);
+      setFetchedBranches([]);
       const updatedData = { ...data, companyName: "", companyId: undefined, companyBranch: "", companyEmail: "" };
       onChange(updatedData);
       sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
     }
   };
+
+  useEffect(() => {
+    if (data.companyName && !fetchedCompanies.some((company) => company.name === data.companyName)) {
+      const updatedData = { ...data, companyName: "", companyId: undefined, companyBranch: "" };
+      onChange(updatedData);
+      sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
+    }
+  }, [data.companyName, fetchedCompanies, onChange]);
 
   return (
     <>
@@ -247,7 +237,7 @@ export default function CompanyAssociationForm({
                 id="companyName"
                 options={
                   loadingCompanies
-                    ? Array.from({ length: 5 }, (_, i) => `loading-${i}`) // Placeholder options
+                    ? Array.from({ length: 5 }, (_, i) => `loading-${i}`)
                     : ["+ Add New Company", ...fetchedCompanies
                       .filter((company) =>
                         company.name.toLowerCase().includes(searchInput.toLowerCase())
@@ -270,9 +260,9 @@ export default function CompanyAssociationForm({
                     setSearchInput(newInputValue);
                   }
                 }}
-                inputValue={searchInput} 
+                inputValue={searchInput}
                 loading={loadingCompanies}
-                freeSolo 
+                freeSolo
                 renderOption={(props, option) => {
                   if (loadingCompanies && option.startsWith("loading-")) {
                     return (
@@ -287,7 +277,7 @@ export default function CompanyAssociationForm({
                       <li
                         {...props}
                         style={{
-                          color: "blue", 
+                          color: "blue",
                           fontWeight: "500",
                           display: "flex",
                           alignItems: "center",
@@ -385,7 +375,7 @@ export default function CompanyAssociationForm({
                 id="companyBranch"
                 options={
                   loadingBranches
-                    ? Array.from({ length: 5 }, (_, i) => `loading-${i}`) // Placeholder options
+                    ? Array.from({ length: 5 }, (_, i) => `loading-${i}`)
                     : allowsMultipleBranches === false
                     ? fetchedBranches.map((branch) => branch.branch_name)
                     : ["+ Add New Branch", ...fetchedBranches.map((branch) => branch.branch_name)]
@@ -607,8 +597,12 @@ export default function CompanyAssociationForm({
           style: { maxWidth: "900px", width: "90%", margin: "auto" },
         }}
       >
-        {selectedCompanyId && (
+        {selectedCompanyId ? (
           <CreateBranchModal onClose={handleBranchModalClose} companyId={selectedCompanyId} />
+        ) : (
+          <div style={{ padding: "16px", color: "red" }}>
+            Error: Cannot open CreateBranchModal because company ID is missing.
+          </div>
         )}
       </Dialog>
     </>
