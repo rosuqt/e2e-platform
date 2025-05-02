@@ -74,7 +74,7 @@ export default function CreateBranchModal({
   const handleSubmit = async () => {
     try {
       console.log("Submitting formData:", { ...formData, companyId });
-      const response = await fetch("/api/branches/new-branch", {
+      const response = await fetch("/api/sign-up/create-branch/new-branch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, companyId }),
