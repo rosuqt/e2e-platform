@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import supabase from "@/app/lib/supabase";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const includePending = url.searchParams.get("includePending") === "true";
+
     const { data: registeredCompanies, error: registeredError } = await supabase
       .from("registered_companies")
       .select("id, company_name, company_branch, company_logo_image_path, company_industry, email_domain");
@@ -11,12 +14,24 @@ export async function GET() {
       throw registeredError;
     }
 
-    const { data: pendingCompanies, error: pendingError } = await supabase
-      .from("pending_companies")
-      .select("id, company_name, company_branch, company_logo_image_path, company_industry, email_domain");
+    let pendingCompanies: {
+      id: string;
+      company_name: string;
+      company_branch: string;
+      company_logo_image_path: string | null;
+      company_industry: string;
+      email_domain: string | null;
+    }[] = [];
 
-    if (pendingError) {
-      throw pendingError;
+    if (includePending) {
+      const { data, error: pendingError } = await supabase
+        .from("pending_companies")
+        .select("id, company_name, company_branch, company_logo_image_path, company_industry, email_domain");
+
+      if (pendingError) {
+        throw pendingError;
+      }
+      pendingCompanies = data || [];
     }
 
     const supabaseBaseUrl = "https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/company.logo/";

@@ -1,5 +1,6 @@
 export interface PersonalDetails {
   firstName: string;
+  middleName?: string; // Optional middle name
   lastName: string;
   countryCode: string;
   phone: string;

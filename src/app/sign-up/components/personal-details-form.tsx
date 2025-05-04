@@ -11,7 +11,7 @@ import { countries } from "../data/countries";
 import Image from "next/image";
 
 export default function PersonalDetailsForm({
-  data = { firstName: "", lastName: "", countryCode: "", phone: "", email: "", password: "", confirmPassword: "" },
+  data = { firstName: "", middleName: "", lastName: "", countryCode: "", phone: "", email: "", password: "", confirmPassword: "" },
   onChange,
   errors = {},
 }: {
@@ -39,7 +39,7 @@ export default function PersonalDetailsForm({
         <h2 className="text-lg font-semibold text-gray-800">Personal Details</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-6">
         <motion.div {...(errors.firstName ? errorAnimation : {})}>
           <TextField
             id="firstName"
@@ -47,9 +47,29 @@ export default function PersonalDetailsForm({
             variant="outlined"
             fullWidth
             value={data.firstName}
-            onChange={(e) => onChange({ ...data, firstName: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value;
+              onChange({ ...data, firstName: value });
+            }}
             error={!!errors.firstName}
             helperText={errors.firstName}
+            inputProps={{ maxLength: 35, minLength: 1 }}
+          />
+        </motion.div>
+        <motion.div {...(errors.middleName ? errorAnimation : {})}>
+          <TextField
+            id="middleName"
+            label="Middle Name"
+            variant="outlined"
+            fullWidth
+            value={data.middleName || ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              onChange({ ...data, middleName: value });
+            }}
+            error={!!errors.middleName}
+            helperText={errors.middleName}
+            inputProps={{ maxLength: 35 }}
           />
         </motion.div>
         <motion.div {...(errors.lastName ? errorAnimation : {})}>
@@ -59,9 +79,13 @@ export default function PersonalDetailsForm({
             variant="outlined"
             fullWidth
             value={data.lastName}
-            onChange={(e) => onChange({ ...data, lastName: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value;
+              onChange({ ...data, lastName: value });
+            }}
             error={!!errors.lastName}
             helperText={errors.lastName}
+            inputProps={{ maxLength: 36, minLength: 1 }}
           />
         </motion.div>
       </div>
@@ -117,9 +141,13 @@ export default function PersonalDetailsForm({
             variant="outlined"
             fullWidth
             value={data.phone}
-            onChange={(e) => onChange({ ...data, phone: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value;
+              onChange({ ...data, phone: value });
+            }}
             error={!!errors.phone}
             helperText={errors.phone}
+            inputProps={{ maxLength: 15, minLength: 7 }}
           />
         </motion.div>
       </div>
@@ -132,9 +160,16 @@ export default function PersonalDetailsForm({
           variant="outlined"
           fullWidth
           value={data.email}
-          onChange={(e) => onChange({ ...data, email: e.target.value })}
+          onChange={(e) => {
+            const value = e.target.value;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const emailError = emailRegex.test(value) ? "" : "Invalid email format";
+            onChange({ ...data, email: value });
+            errors.email = emailError;
+          }}
           error={!!errors.email}
           helperText={errors.email}
+          inputProps={{ maxLength: 254, minLength: 6 }}
         />
       </motion.div>
 
@@ -150,6 +185,7 @@ export default function PersonalDetailsForm({
             onChange={(e) => onChange({ ...data, password: e.target.value })}
             error={!!errors.password}
             helperText={errors.password}
+            inputProps={{ maxLength: 128, minLength: 8 }}
           />
         </motion.div>
         <motion.div {...(errors.confirmPassword ? errorAnimation : {})}>
@@ -160,9 +196,15 @@ export default function PersonalDetailsForm({
             variant="outlined"
             fullWidth
             value={data.confirmPassword}
-            onChange={(e) => onChange({ ...data, confirmPassword: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value;
+              const confirmPasswordError = value !== data.password ? "Passwords do not match" : "";
+              onChange({ ...data, confirmPassword: value });
+              errors.confirmPassword = confirmPasswordError;
+            }}
             error={!!errors.confirmPassword}
             helperText={errors.confirmPassword}
+            inputProps={{ maxLength: 128, minLength: 8 }}
           />
         </motion.div>
       </div>
