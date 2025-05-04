@@ -46,6 +46,7 @@ export default function SignUpForm() {
   const [formData, setFormData] = useState<SignUpFormData>({
     personalDetails: {
       firstName: "",
+      middleName: "",
       lastName: "",
       countryCode: "",
       phone: "",
@@ -65,6 +66,7 @@ export default function SignUpForm() {
       termsAccepted: false,
       personalDetails: {
         firstName: "",
+        middleName: "",
         lastName: "",
         countryCode: "",
         phone: "",
@@ -89,6 +91,7 @@ export default function SignUpForm() {
   })
   const [personalDetailsErrors, setPersonalDetailsErrors] = useState<{ [key: string]: string }>({
     firstName: "",
+    middleName: "",
     lastName: "",
     countryCode: "",
     phone: "",
@@ -97,12 +100,21 @@ export default function SignUpForm() {
     confirmPassword: "",
   })
 
+  const [fetchedCompanies, setFetchedCompanies] = useState<{ name: string }[]>([]);
+
   useEffect(() => {
-    const savedData = sessionStorage.getItem("signUpFormData")
+    const savedData = sessionStorage.getItem("signUpFormData");
     if (savedData) {
-      setFormData(JSON.parse(savedData))
+      setFormData(JSON.parse(savedData));
     }
-  }, [])
+
+    fetch("/api/sign-up/companies")
+      .then((response) => response.json())
+      .then((data: { company_name: string }[]) => 
+        setFetchedCompanies(data.map((company) => ({ name: company.company_name })))
+      )
+      .catch((error) => console.error("Error fetching companies:", error));
+  }, []);
 
   const saveToSessionStorage = (data: Partial<SignUpFormData>) => {
     const updatedData = {
@@ -130,12 +142,22 @@ export default function SignUpForm() {
       errors.firstName = "First Name is required.";
     } else if (/[^a-zA-Z\s]/.test(details.firstName)) {
       errors.firstName = "First Name must not contain numbers or special characters.";
+    } else if (details.firstName.length < 1 || details.firstName.length > 36) {
+      errors.firstName = "First Name must be between 1 and 36 characters.";
+    }
+
+    if (details.middleName && /[^a-zA-Z\s]/.test(details.middleName)) {
+      errors.middleName = "Middle Name must not contain numbers or special characters.";
+    } else if (details.middleName && details.middleName.length > 35) {
+      errors.middleName = "Middle Name must not exceed 35 characters.";
     }
 
     if (!details.lastName.trim()) {
       errors.lastName = "Last Name is required.";
     } else if (/[^a-zA-Z\s]/.test(details.lastName)) {
       errors.lastName = "Last Name must not contain numbers or special characters.";
+    } else if (details.lastName.length < 1 || details.lastName.length > 35) {
+      errors.lastName = "Last Name must be between 1 and 35 characters.";
     }
 
     if (!details.countryCode.trim()) {
@@ -146,28 +168,32 @@ export default function SignUpForm() {
       errors.phone = "Phone Number is required.";
     } else if (/[^0-9]/.test(details.phone)) {
       errors.phone = "Phone Number must not contain letters or special characters.";
-    } else if (details.phone.length < 8) {
-      errors.phone = "Phone Number must be at least 8 digits long.";
+    } else if (details.phone.length < 7 || details.phone.length > 15) {
+      errors.phone = "Phone Number must be between 7 and 15 digits.";
     }
 
     if (!details.email.trim()) {
       errors.email = "Email is required.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)) {
       errors.email = "Invalid email format.";
+    } else if (details.email.length < 6 || details.email.length > 254) {
+      errors.email = "Email must be between 6 and 254 characters.";
     } else if (await checkEmailExists(details.email)) {
       errors.email = "This email is already registered.";
     }
 
     if (!details.password.trim()) {
       errors.password = "Password is required.";
-    } else if (details.password.length < 6) {
-      errors.password = "Password must be at least 6 characters long.";
+    } else if (details.password.length < 8 || details.password.length > 40) {
+      errors.password = "Password must be between 8 and 40 characters.";
     }
 
     if (!details.confirmPassword.trim()) {
       errors.confirmPassword = "Confirm Password is required.";
     } else if (details.password !== details.confirmPassword) {
       errors.confirmPassword = "Passwords do not match.";
+    } else if (details.confirmPassword.length < 8 || details.confirmPassword.length > 64) {
+      errors.confirmPassword = "Confirm Password must be between 8 and 64 characters."; 
     }
 
     if (JSON.stringify(errors) !== JSON.stringify(personalDetailsErrors)) {
@@ -210,18 +236,30 @@ export default function SignUpForm() {
 
   const handleNextStep = async () => {
     if (currentStep === 1) {
-      const isValid = await validatePersonalDetails()
-      if (!isValid) return
+      const isValid = await validatePersonalDetails(); 
+      if (!isValid) return; 
     }
     if (currentStep === 2) {
-      const isValid = validateCompanyFields()
-      if (!isValid) return
+      const isValid = validateCompanyFields();
+      if (!isValid) return;
+
+      const companyName = formData.companyAssociation.companyName.trim();
+      if (
+        !fetchedCompanies.some((company) => company.name === companyName) &&
+        !companyName 
+      ) {
+        setCompanyErrors((prev) => ({
+          ...prev,
+          companyName: "Please select a valid company from the list.",
+        }));
+        return;
+      }
     }
 
     if (currentStep < 3) {
-      setCurrentStep(currentStep + 1)
+      setCurrentStep(currentStep + 1);
     } else if (currentStep === 3) {
-      setLoading(true)
+      setLoading(true);
       fetch("/api/sign-up", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -229,25 +267,25 @@ export default function SignUpForm() {
       })
         .then((response) => {
           if (!response.ok) {
-            throw new Error("Failed to submit form data")
+            throw new Error("Failed to submit form data");
           }
-          return response.json()
+          return response.json();
         })
         .then(() => {
-          setShowSuccess(true)
+          setShowSuccess(true);
         })
         .catch(() => {
           Swal.fire({
             icon: "error",
             title: "Submission Failed",
             text: "An error occurred while submitting the form.",
-          })
+          });
         })
         .finally(() => {
-          setLoading(false)
-        })
+          setLoading(false);
+        });
     }
-  }
+  };
 
   const handlePreviousStep = () => {
     if (currentStep > 1) {
