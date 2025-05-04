@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, CheckCircle, Globe, Briefcase, GraduationCap, Users, Search } from "lucide-react"
+import { ArrowRight, CheckCircle, Globe, Briefcase, GraduationCap, Users, Search, ChevronUp } from "lucide-react"
+import { createClient } from "@supabase/supabase-js"
 
-// Components
 import Navbar from "./components/navbar"
 import CompanyCard from "./components/company-card"
 import FeatureCard from "./components/feature-card"
@@ -15,7 +15,11 @@ import HowItWorksSection from "./components/how-it-works"
 import CourseSelector from "./components/course-selector"
 import LandingFooter from "./components/landing-footer"
 
-// Animation variants
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 const fadeInUp = {
   hidden: { opacity: 0, y: 60 },
   visible: {
@@ -25,7 +29,6 @@ const fadeInUp = {
   },
 }
 
-// Company data
 const companies = [
   {
     name: "Vivi Enterprises",
@@ -65,7 +68,6 @@ const companies = [
   },
 ]
 
-// Features data
 const features = [
   {
     icon: <GraduationCap className="w-8 h-8 text-white" />,
@@ -87,7 +89,25 @@ const features = [
 ]
 
 export default function MainLanding() {
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null)
+  const [bgImageUrl, setBgImageUrl] = useState<string | null>(null)
+  const [stiHiringImageUrl, setStiHiringImageUrl] = useState<string | null>(null)
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > window.innerHeight)
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   useEffect(() => {
     const handleDoubleClick = (e: MouseEvent) => {
@@ -102,8 +122,53 @@ export default function MainLanding() {
     }
   }, [])
 
+  useEffect(() => {
+    const fetchHeroImage = async () => {
+      const response = await supabase.storage
+        .from("app.images")
+        .getPublicUrl("hero-section-img.png");
+
+      setHeroImageUrl(response.data?.publicUrl || null);
+    };
+
+    fetchHeroImage();
+  }, []);
+
+  useEffect(() => {
+    const fetchBgImage = async () => {
+      const response = await supabase.storage
+        .from("app.images")
+        .getPublicUrl("bg-placeholder.jpg");
+
+      setBgImageUrl(response.data?.publicUrl || null);
+    };
+
+    fetchBgImage();
+  }, []);
+
+  useEffect(() => {
+    const fetchStiHiringImage = async () => {
+      const response = await supabase.storage
+        .from("app.images")
+        .getPublicUrl("sti-hiring.png");
+
+      setStiHiringImageUrl(response.data?.publicUrl || null);
+    };
+
+    fetchStiHiringImage();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
+      {/* Scroll to Top Icon */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 bg-blue-700 text-white p-3 rounded-full shadow-lg hover:bg-blue-800 border-2 border-white z-50"
+        >
+          <ChevronUp className="w-6 h-6" />
+        </button>
+      )}
       {/* Hero Section with Navbar */}
       <div className="relative bg-gradient-to-r from-blue-700 to-indigo-800">
         <Navbar />
@@ -131,7 +196,7 @@ export default function MainLanding() {
             >
               <div className="relative w-full h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-2xl">
                 <Image
-                  src="/placeholder.svg?height=500&width=600"
+                  src={heroImageUrl || "/placeholder.svg?height=500&width=600"}
                   alt="Students collaborating"
                   fill
                   className="object-cover"
@@ -263,7 +328,7 @@ export default function MainLanding() {
             >
               <div className="relative rounded-xl overflow-hidden shadow-2xl">
                 <Image
-                  src="/placeholder.svg?height=500&width=600"
+                  src={bgImageUrl || "/placeholder.svg?height=500&width=600"}
                   alt="AI Job Matching"
                   width={600}
                   height={500}
@@ -335,7 +400,7 @@ export default function MainLanding() {
             >
               <div className="relative rounded-xl overflow-hidden shadow-2xl">
                 <Image
-                  src="/placeholder.svg?height=500&width=600"
+                  src={bgImageUrl || "/placeholder.svg?height=500&width=600"}
                   alt="Connect with people"
                   width={600}
                   height={500}
@@ -525,7 +590,7 @@ export default function MainLanding() {
               transition={{ duration: 0.6 }}
             >
               <div className="relative rounded-xl overflow-hidden shadow-2xl h-[500px]">
-                <Image src="/placeholder.svg?height=500&width=600" alt="STI Hiring" fill className="object-cover" />
+                <Image src={stiHiringImageUrl || "/placeholder.svg?height=500&width=600"} alt="STI Hiring" fill className="object-cover" />
               </div>
             </motion.div>
           </div>

@@ -5,6 +5,11 @@ import { motion } from "framer-motion";
 import { TextField, MenuItem, Button } from "@mui/material";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Autocomplete from "@mui/material/Autocomplete";
+import Box from "@mui/material/Box";
+import Popper from "@mui/material/Popper";
+import { countries } from "@/app/sign-up/data/countries";
+import Image from "next/image";
 
 const shakeAnimation = {
   initial: { x: 0 },
@@ -20,6 +25,7 @@ export default function CreateBranchModal({
   companyId: string;
 }) {
   const branchNameRef = useRef<HTMLDivElement>(null);
+  const branchPhoneRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     branchName: "",
     branchPhone: "",
@@ -35,15 +41,10 @@ export default function CreateBranchModal({
 
   const [isNextDisabled, setIsNextDisabled] = useState(false);
   const [branchNameError, setBranchNameError] = useState("");
+  const [branchPhoneError, setBranchPhoneError] = useState("");
+  const [branchCountryCodeError, setBranchCountryCodeError] = useState("");
 
   const handleBlur = async () => {
-    if (!formData.branchName.trim()) {
-      setBranchNameError("Branch Name is required");
-      setIsNextDisabled(true);
-      branchNameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-
     try {
       const response = await fetch(`/api/sign-up/create-branch/check-branch-name?name=${encodeURIComponent(formData.branchName)}`);
       const result = await response.json();
@@ -64,14 +65,64 @@ export default function CreateBranchModal({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
-    setFormData({ ...formData, [id]: value });
 
-    if (id === "branchName" && value.trim()) {
-      setIsNextDisabled(false);
+    if (id === "branchName") {
+      setBranchNameError("");
     }
+
+    if (id === "branchPhone") {
+      setBranchPhoneError("");
+    }
+
+    setFormData({ ...formData, [id]: value });
   };
 
   const handleSubmit = async () => {
+    let hasError = false;
+
+    if (!formData.branchName.trim()) {
+      setBranchNameError("Branch Name is required.");
+      branchNameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      hasError = true;
+    } else if (formData.branchName.length < 2 || formData.branchName.length > 40) {
+      setBranchNameError("Branch Name must be between 2 and 40 characters.");
+      branchNameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      hasError = true;
+    } else {
+      try {
+        const response = await fetch(`/api/sign-up/create-branch/check-branch-name?name=${encodeURIComponent(formData.branchName)}`);
+        const result = await response.json();
+
+        if (result.exists) {
+          setBranchNameError(`Branch name "${formData.branchName}" already exists. Please choose a different name.`);
+          branchNameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+          hasError = true;
+        }
+      } catch (error) {
+        console.error("Error checking branch name:", error);
+        setBranchNameError("An error occurred while validating the branch name. Please try again.");
+        hasError = true;
+      }
+    }
+
+    if (!formData.branchPhone.trim()) {
+      setBranchPhoneError("Phone Number is required.");
+      branchPhoneRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      hasError = true;
+    } else if (formData.branchPhone.split(" ").slice(1).join("").length < 8 || formData.branchPhone.split(" ").slice(1).join("").length > 15) {
+      setBranchPhoneError("Phone Number must be between 8 and 15 digits.");
+      branchPhoneRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      hasError = true;
+    }
+
+    if (!formData.branchPhone.split(" ")[0]) {
+      setBranchCountryCodeError("Country Code is required.");
+      branchPhoneRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      hasError = true;
+    }
+
+    if (hasError) return;
+
     try {
       console.log("Submitting formData:", { ...formData, companyId });
       const response = await fetch("/api/sign-up/create-branch/new-branch", {
@@ -136,38 +187,83 @@ export default function CreateBranchModal({
         >
           <TextField
             id="branchName"
-            label="Branch Name"
+            label="Branch Name *"
             variant="outlined"
             fullWidth
             value={formData.branchName}
-            onChange={(e) => {
-              setFormData({ ...formData, branchName: e.target.value });
-              setBranchNameError("");
-              if (isNextDisabled && e.target.value.trim()) {
-                setIsNextDisabled(false);
-              }
-            }}
+            onChange={handleChange}
             onBlur={handleBlur}
             error={!!branchNameError}
-            helperText={branchNameError || "e.g., Downtown Office"}
-            InputProps={{
-              style: branchNameError
-                ? { borderColor: "red", animation: "shake 0.3s" }
-                : {},
-            }}
+            helperText={branchNameError}
+            inputProps={{ maxLength: 40 }}
           />
-          <p className="text-xs text-gray-500 mt-1">Provide a unique name for the branch.</p>
         </motion.div>
 
-        <TextField
-          id="branchPhone"
-          label="Phone Number"
-          variant="outlined"
-          fullWidth
-          value={formData.branchPhone}
-          onChange={handleChange}
-        />
-        <p className="text-xs text-gray-500 mt-1">Enter the branch&apos;s contact phone number.</p>
+        <motion.div
+          ref={branchPhoneRef}
+          {...(branchPhoneError || branchCountryCodeError ? shakeAnimation : {})}
+        >
+          <div className="flex items-center gap-3">
+            <Autocomplete
+              id="branchCountryCode"
+              options={countries}
+              autoHighlight
+              disablePortal
+              PopperComponent={(props) => <Popper {...props} placement="bottom-start" />}
+              getOptionLabel={(option: { code: string; phone: string }) => `${option.code} (+${option.phone})`}
+              renderOption={(props, option: { code: string; phone: string }) => {
+                const { key, ...optionProps } = props;
+                return (
+                  <Box
+                    key={key}
+                    component="li"
+                    sx={{ '& > img': { mr: 2, flexShrink: 0 } }}
+                    {...optionProps}
+                  >
+                    <Image
+                      loading="lazy"
+                      width={20}
+                      height={15}
+                      src={`https://flagcdn.com/w20/${option.code.toLowerCase()}.png`}
+                      alt=""
+                    />
+                    {option.code} (+{option.phone})
+                  </Box>
+                );
+              }}
+              value={countries.find((c) => c.phone === formData.branchPhone.split(" ")[0]) || null}
+              onChange={(event, newValue) => {
+                const phoneWithoutCode = formData.branchPhone.split(" ").slice(1).join(" ");
+                setFormData({ ...formData, branchPhone: `${newValue?.phone || ""} ${phoneWithoutCode}` });
+                setBranchCountryCodeError(""); // Clear error on valid selection
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Country Code *"
+                  error={!!branchCountryCodeError}
+                  helperText={branchCountryCodeError}
+                />
+              )}
+              sx={{ minWidth: 200 }}  
+            />
+            <TextField
+              id="branchPhone"
+              label="Phone Number *"
+              variant="outlined"
+              fullWidth
+              value={formData.branchPhone.split(" ").slice(1).join(" ")}
+              onChange={(e) => {
+                const value = e.target.value;
+                const countryCode = formData.branchPhone.split(" ")[0];
+                setFormData({ ...formData, branchPhone: `${countryCode} ${value}` });
+              }}
+              error={!!branchPhoneError}
+              helperText={branchPhoneError}
+              inputProps={{ maxLength: 15, minLength: 8 }}
+            />
+          </div>
+        </motion.div>
 
         <div className="flex items-center">
           <TextField
@@ -175,12 +271,6 @@ export default function CreateBranchModal({
             variant="outlined"
             disabled
             className="w-16 text-center"
-            InputProps={{
-              style: {
-                borderTopRightRadius: 0,
-                borderBottomRightRadius: 0,
-              },
-            }}
           />
           <TextField
             id="branchEmailDomain"
@@ -188,22 +278,9 @@ export default function CreateBranchModal({
             variant="outlined"
             fullWidth
             value={formData.branchEmailDomain.startsWith("@") ? formData.branchEmailDomain.slice(1) : formData.branchEmailDomain}
-            onChange={(e) => {
-              const value = e.target.value;
-              setFormData({
-                ...formData,
-                branchEmailDomain: value.startsWith("@") ? value : `@${value}`,
-              });
-            }}
-            InputProps={{
-              style: {
-                borderTopLeftRadius: 0,
-                borderBottomLeftRadius: 0,
-              },
-            }}
+            onChange={handleChange}
           />
         </div>
-        <p className="text-xs text-gray-500 mt-1">Specify the email domain for the branch, e.g., &quot;branch.example.com&quot;.</p>
 
         <h3 className="text-lg font-semibold text-blue-700 mt-6">
           Branch Address <span className="text-sm text-gray-500">(leave blank to skip for now)</span>
@@ -245,7 +322,6 @@ export default function CreateBranchModal({
                 <MenuItem value="fr">France</MenuItem>
                 <MenuItem value="jp">Japan</MenuItem>
               </TextField>
-              <p className="text-xs text-gray-500 mt-1">Select the country where the branch is located.</p>
             </div>
 
             <div>
@@ -262,7 +338,6 @@ export default function CreateBranchModal({
                   })
                 }
               />
-              <p className="text-xs text-gray-500 mt-1">Enter the city or region of the branch.</p>
             </div>
           </div>
 
@@ -280,7 +355,6 @@ export default function CreateBranchModal({
                 })
               }
             />
-            <p className="text-xs text-gray-500 mt-1">Provide the street address of the branch.</p>
           </div>
 
           <div>
@@ -297,7 +371,6 @@ export default function CreateBranchModal({
                 })
               }
             />
-            <p className="text-xs text-gray-500 mt-1">Enter the province or state of the branch.</p>
           </div>
 
           <div>
@@ -314,7 +387,6 @@ export default function CreateBranchModal({
                 })
               }
             />
-            <p className="text-xs text-gray-500 mt-1">Provide additional details for the branch&apos;s exact location.</p>
           </div>
         </div>
 

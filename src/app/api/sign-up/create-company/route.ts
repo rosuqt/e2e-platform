@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     const { error: branchError } = await supabase
       .from("pending_branches")
       .insert({
-        branch_name: formData.companyBranch,
+        branch_name: formData.companyBranch || "Headquarters", 
         company_id: companyData.id,
         main_branch: true,
       });

@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     }
 
     if (multipleBranch === null) {
-      console.warn(`Company with id ${company_id} not found in registered or pending companies`); // Debug log
+      console.warn(`Company with id ${company_id} not found in registered or pending companies`); 
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 

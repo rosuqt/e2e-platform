@@ -52,11 +52,12 @@ export default function CompanyAssociationForm({
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [allowsMultipleBranches, setAllowsMultipleBranches] = useState<boolean | null>(null);
   const [searchInput, setSearchInput] = useState("");
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const fetchCompanies = useCallback(async (): Promise<Company[]> => {
     setLoadingCompanies(true);
     try {
-      const response = await fetch("/api/sign-up/companies");
+      const response = await fetch("/api/sign-up/companies?includePending=true");
       if (!response.ok) {
         throw new Error(`Failed to fetch companies: ${response.statusText}`);
       }
@@ -104,25 +105,29 @@ export default function CompanyAssociationForm({
     setCompanyModalOpen(false);
 
     if (newCompany) {
-      const updatedCompanies = await fetchCompanies();
+      const newCompanyData: Company = {
+        id: `pending-${Date.now()}`, 
+        name: newCompany.companyName,
+        status: "pending",
+        logo: null,
+        emailDomain: null,
+      };
 
-      const selectedCompany = updatedCompanies.find((company) => company.name === newCompany.companyName);
+      setFetchedCompanies((prevCompanies) => [newCompanyData, ...prevCompanies]);
 
-      if (selectedCompany) {
-        setSelectedCompanyId(selectedCompany.id);
-        const updatedData = {
-          ...data,
-          companyName: newCompany.companyName,
-          companyBranch: newCompany.companyBranch,
-          companyId: selectedCompany.id,
-        };
-        onChange(updatedData);
-        sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
+      const updatedData = {
+        ...data,
+        companyName: newCompany.companyName,
+        companyBranch: newCompany.companyBranch,
+        companyId: newCompanyData.id,
+      };
 
-        fetchBranches(selectedCompany.id);
-      }
+      onChange(updatedData);
+      sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
+
+      fetchBranches(newCompanyData.id);
     }
-  }, [data, fetchCompanies, fetchBranches, onChange]);
+  }, [data, fetchBranches, onChange]);
 
   const handleBranchModalClose = useCallback((newBranch?: { branchName: string }) => {
     setBranchModalOpen(false);
@@ -154,7 +159,7 @@ export default function CompanyAssociationForm({
     if (savedData) {
       const parsedData = JSON.parse(savedData);
       if (parsedData?.companyAssociation?.companyId) {
-        console.log("Restoring selectedCompanyId from sessionStorage:", parsedData.companyAssociation.companyId); // Debug log
+        console.log("Restoring selectedCompanyId from sessionStorage:", parsedData.companyAssociation.companyId); 
         setSelectedCompanyId(parsedData.companyAssociation.companyId);
       } else {
         setSelectedCompanyId(null);
@@ -165,7 +170,7 @@ export default function CompanyAssociationForm({
 
   useEffect(() => {
     if (selectedCompanyId) {
-      console.log("Fetching branches for companyId:", selectedCompanyId); // Debug log
+      console.log("Fetching branches for companyId:", selectedCompanyId); 
       fetchBranches(selectedCompanyId);
     }
   }, [selectedCompanyId, fetchBranches]);
@@ -179,7 +184,7 @@ export default function CompanyAssociationForm({
     const selectedCompany = fetchedCompanies.find((company) => company.name === value);
     if (selectedCompany) {
       if (selectedCompanyId !== selectedCompany.id) {
-        console.log("Setting selectedCompanyId:", selectedCompany.id); // Debug log
+        console.log("Setting selectedCompanyId:", selectedCompany.id);
         setSelectedCompanyId(selectedCompany.id);
         setFetchedBranches([]);
         const updatedData = {
@@ -195,7 +200,7 @@ export default function CompanyAssociationForm({
         sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
       }
     } else {
-      console.log("Clearing selectedCompanyId"); // Debug log
+      console.log("Clearing selectedCompanyId"); 
       setSelectedCompanyId(null);
       setFetchedBranches([]);
       const updatedData = { ...data, companyName: "", companyId: undefined, companyBranch: "", companyEmail: "" };
@@ -245,7 +250,7 @@ export default function CompanyAssociationForm({
                       .map((company) => company.name),
                     ]
                 }
-                value={data.companyName || searchInput}
+                value={data.companyName || ""}
                 onChange={(event, newValue) => {
                   if (newValue === "+ Add New Company") {
                     setCompanyModalOpen(true);
@@ -255,14 +260,14 @@ export default function CompanyAssociationForm({
                     handleCompanyChange(newValue);
                   }
                 }}
+                inputValue={searchInput}
                 onInputChange={(event, newInputValue) => {
                   if (newInputValue !== "+ Add New Company") {
                     setSearchInput(newInputValue);
                   }
                 }}
-                inputValue={searchInput}
                 loading={loadingCompanies}
-                freeSolo
+                freeSolo={false}
                 renderOption={(props, option) => {
                   if (loadingCompanies && option.startsWith("loading-")) {
                     return (
@@ -558,10 +563,32 @@ export default function CompanyAssociationForm({
             fullWidth
             value={data.companyEmail || ""}
             onChange={(e) => {
-              const updatedData = { ...data, companyEmail: e.target.value };
+              const email = e.target.value;
+              setEmailError(null);
+              const updatedData = { ...data, companyEmail: email };
               onChange(updatedData);
               sessionStorage.setItem("signUpFormData", JSON.stringify({ companyAssociation: updatedData }));
             }}
+            onBlur={(e) => {
+              const email = e.target.value;
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; 
+              const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9.-]{1,29}$/;
+              const [, domain] = email.split("@");
+
+              if (email && !emailRegex.test(email)) {
+                setEmailError("Invalid email format");
+                return;
+              }
+
+              if (domain && !domainRegex.test(domain)) {
+                setEmailError("Invalid email domain: must be 2–30 characters and not start with special characters");
+                return;
+              }
+
+              setEmailError(null);
+            }}
+            error={!!emailError}
+            helperText={emailError}
             sx={{
               "& .MuiInputLabel-root": { color: "gray" },
               "& .MuiOutlinedInput-root": {

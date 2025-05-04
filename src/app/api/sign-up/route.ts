@@ -73,6 +73,7 @@ export async function POST(request: Request) {
       .from("registered_employers")
       .insert({
         first_name: formData.personalDetails.firstName,
+        middle_name: formData.personalDetails.middleName || null,
         last_name: formData.personalDetails.lastName,
         country_code: formData.personalDetails.countryCode,
         phone: formData.personalDetails.phone,

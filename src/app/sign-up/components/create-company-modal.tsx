@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { TextField, MenuItem, Button, Switch, Tabs, Tab, Tooltip } from "@mui/material"
+import { TextField, MenuItem, Button, Switch, Tabs, Tab, Tooltip, CircularProgress } from "@mui/material"
+import { InfoOutlined } from "@mui/icons-material";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -15,6 +16,12 @@ const shakeAnimation = {
   transition: { duration: 0.3 },
 }
 
+const validateLength = (field: string, value: string, min: number, max: number) => {
+  if (value.length < min) return `${field} must be at least ${min} characters.`;
+  if (value.length > max) return `${field} must not exceed ${max} characters.`;
+  return "";
+};
+
 export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?: { companyName: string; companyBranch: string }) => void }) {
   const [activeTab, setActiveTab] = useState(0)
   const [isNextDisabled, setIsNextDisabled] = useState(false)
@@ -24,6 +31,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
     contactEmail: "",
     contactNumber: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     companyName: "",
@@ -55,13 +63,67 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
     sessionStorage.setItem("createCompanyFormData", JSON.stringify(formData));
   }, [formData]);
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    let truncatedValue = value;
+
+    if (id === "companyName") {
+      truncatedValue = value.slice(0, 40);
+    } else if (id === "companyBranch") {
+      truncatedValue = value.slice(0, 40);
+    } else if (id === "companyEmailDomain") {
+      truncatedValue = value.startsWith("@") ? value.slice(1, 40) : value.slice(0, 40);
+    } else if (id === "companyWebsite") {
+      truncatedValue = value.slice(0, 40);
+    }
+
+    if (formData[id as keyof typeof formData] !== truncatedValue) {
+      setFormData({ ...formData, [id]: truncatedValue });
+    }
+  };
+
   const handleNext = async () => {
+    setIsLoading(true);
     if (activeTab === 0) {
+      const companyNameError = !formData.companyName
+        ? "Company Name is required"
+        : validateLength("Company Name", formData.companyName, 2, 40);
+      const branchNameError = !formData.companyBranch
+        ? "Company Branch Name is required"
+        : validateLength("Company Branch Name", formData.companyBranch, 2, 40);
+      const emailDomainError = formData.companyEmailDomain
+        ? validateLength(
+            "Email Domain",
+            formData.companyEmailDomain.startsWith("@") ? formData.companyEmailDomain.slice(1) : formData.companyEmailDomain,
+            3,
+            40
+          ) || (!/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyEmailDomain.slice(1))
+              ? "Invalid domain format (e.g., company.com)"
+              : "")
+        : "";
+      const websiteError = formData.companyWebsite
+        ? validateLength("Company Website", formData.companyWebsite, 10, 40) ||
+          (!/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyWebsite)
+            ? "Invalid website format (e.g., example.com)"
+            : "")
+        : "";
+
+      if (companyNameError || branchNameError || emailDomainError || websiteError) {
+        setCompanyNameError(companyNameError);
+        setIsNextDisabled(true);
+        setIsLoading(false);
+        return;
+      }
+
+      setCompanyNameError("");
+      setIsNextDisabled(false);
+
       const isInvalid =
         !formData.companyName || !formData.companyBranch || !formData.companyIndustry;
 
-      setIsNextDisabled(isInvalid);
+      setIsNextDisabled(isInvalid); 
       if (isInvalid) {
+        setIsLoading(false);
         return;
       }
 
@@ -72,15 +134,18 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
         if (response.ok && result.exists) {
           setCompanyNameError(`"${formData.companyName}" already exists. Please select it from the dropdown list instead of creating a new one`);
           setIsNextDisabled(true);
+          setIsLoading(false);
           return;
         } else if (!response.ok) {
           console.error("Error checking company name:", result.message);
           toast.error("An error occurred while validating the company name. Please try again.");
+          setIsLoading(false);
           return;
         }
       } catch (error) {
         console.error("Error checking company name:", error);
         toast.error("An error occurred while validating the company name. Please try again.");
+        setIsLoading(false);
         return; 
       }
 
@@ -97,6 +162,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
       });
 
       if (!emailValid || !numberValid) {
+        setIsLoading(false);
         return;
       }
     }
@@ -108,12 +174,17 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
       console.log("Company data submitted:", formData);
       onClose();
     }
+    setIsLoading(false);
   }
 
   const handleBack = () => {
-    if (activeTab > 0) {
-      setActiveTab(activeTab - 1)
-    }
+    setIsLoading(true);
+    setTimeout(() => {
+      if (activeTab > 0) {
+        setActiveTab(activeTab - 1)
+      }
+      setIsLoading(false);
+    }, 300);
   }
 
   const handleSkipAddress = () => {
@@ -134,11 +205,15 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
   }
 
   const handleSubmit = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch("/api/sign-up/create-company", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          companyBranch: formData.companyBranch || "Headquarters", 
+        }),
       });
 
       if (response.ok) {
@@ -157,6 +232,8 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
     } catch (error) {
       console.error("Error submitting company data:", error);
       toast.error("An error occurred while creating the company.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -164,7 +241,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
       <div
         className="p-6 max-w-3xl mx-auto bg-white rounded-lg overflow-y-auto"
-        style={{ height: "750px" }}
+        style={{ height: "700px" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
@@ -214,13 +291,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                   variant="outlined"
                   fullWidth
                   value={formData.companyName}
-                  onChange={(e) => {
-                    setFormData({ ...formData, companyName: e.target.value });
-                    setCompanyNameError("");
-                    if (isNextDisabled && e.target.value) {
-                      setIsNextDisabled(false); 
-                    }
-                  }}
+                  onChange={handleChange}
                   error={!!companyNameError || (isNextDisabled && !formData.companyName)}
                   helperText={
                     companyNameError || 
@@ -242,32 +313,28 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 {...(isNextDisabled && !formData.companyBranch ? shakeAnimation : {})}
                 className="relative"
               >
-                <Tooltip
-                  title="This is the main branch created in the app, typically the headquarters or primary branch."
-                  arrow
-                >
-                  <TextField
-                    id="companyBranch"
-                    label="Company Branch Name *"
-                    variant="outlined"
-                    fullWidth
-                    value={noBranches ? "Headquarters" : formData.companyBranch}
-                    onChange={(e) => {
-                      setFormData({ ...formData, companyBranch: e.target.value });
-                      if (isNextDisabled && e.target.value) {
-                        setIsNextDisabled(false);
-                      }
-                    }}
-                    disabled={noBranches}
-                    error={isNextDisabled && !formData.companyBranch}
-                    helperText={isNextDisabled && !formData.companyBranch ? "Company Branch Name is required" : ""}
-                  />
-                </Tooltip>
-                <label htmlFor="companyBranch" className="text-sm text-gray-600">
-                  {noBranches
-                    ? "The branch is set to Headquarters as this company doesn't have branches."
-                    : "Specify the main branch of the company"}
-                </label>
+                <TextField
+                  id="companyBranch"
+                  label="Company Branch Name *"
+                  variant="outlined"
+                  fullWidth
+                  value={noBranches ? "Headquarters" : formData.companyBranch}
+                  onChange={handleChange}
+                  disabled={noBranches}
+                  error={!!companyNameError || (isNextDisabled && !formData.companyBranch)}
+                  helperText={
+                    companyNameError || 
+                    (isNextDisabled && !formData.companyBranch ? "Company Branch Name is required" : "")
+                  }
+                />
+                <div className="flex items-center mt-2">
+                  <Tooltip title="This will be the main branch in the app, used as the primary reference point. It doesn't necessarily reflect the actual main office of the company." arrow>
+                    <InfoOutlined className="text-gray-500 mr-1 cursor-pointer" fontSize="small" />
+                  </Tooltip>
+                  <label htmlFor="companyBranch" className="text-sm text-gray-600">
+                    Specify the main branch of the company
+                  </label>
+                </div>
                 <div className="flex items-center mt-2">
                   <Switch
                     id="noBranches"
@@ -361,13 +428,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 variant="outlined"
                 fullWidth
                 value={formData.companyEmailDomain.startsWith("@") ? formData.companyEmailDomain.slice(1) : formData.companyEmailDomain}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFormData({
-                    ...formData,
-                    companyEmailDomain: value.startsWith("@") ? value : `@${value}`,
-                  });
-                }}
+                onChange={handleChange}
                 error={
                   !!formData.companyEmailDomain &&
                   !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyEmailDomain.slice(1))
@@ -375,7 +436,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 helperText={
                   formData.companyEmailDomain &&
                   !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyEmailDomain.slice(1))
-                    ? "Invalid domain format eg company.name.com"
+                    ? "Invalid domain format (e.g., company.com)"
                     : ""
                 }
                 InputProps={{
@@ -393,8 +454,16 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
               variant="outlined"
               fullWidth
               value={formData.companyWebsite}
-              onChange={(e) =>
-                setFormData({ ...formData, companyWebsite: e.target.value })
+              onChange={handleChange}
+              error={
+                !!formData.companyWebsite &&
+                !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyWebsite)
+              }
+              helperText={
+                formData.companyWebsite &&
+                !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyWebsite)
+                  ? "Invalid website format (e.g., example.com)"
+                  : ""
               }
             />
             <label htmlFor="companyWebsite" className="text-sm text-gray-600">Enter the company&apos;s official website URL</label>
@@ -404,9 +473,10 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 variant="contained"
                 color="primary"
                 onClick={handleNext}
-                disabled={isNextDisabled}
+                disabled={isNextDisabled || isLoading}
+                startIcon={isLoading && <CircularProgress size={20} />}
               >
-                Next
+                {isLoading ? "Loading..." : "Next"}
               </Button>
             </div>
           </motion.div>
@@ -572,6 +642,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
               <Button
                 variant="outlined"
                 onClick={handleBack}
+                disabled={isLoading}
                 className="border-blue-300 text-blue-600 hover:bg-blue-50"
               >
                 Back
@@ -587,9 +658,11 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                   variant="contained"
                   color="primary"
                   onClick={handleNext}
+                  disabled={isLoading}
                   className="bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white"
+                  startIcon={isLoading && <CircularProgress size={20} />}
                 >
-                  Next
+                  {isLoading ? "Loading..." : "Next"}
                 </Button>
               </div>
             </div>
@@ -678,6 +751,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
               <Button
                 variant="outlined"
                 onClick={handleBack}
+                disabled={isLoading}
                 className="border-blue-300 text-blue-600 hover:bg-blue-50"
               >
                 Back
@@ -686,14 +760,16 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 variant="contained"
                 color="primary"
                 onClick={handleSubmit}
+                disabled={isLoading}
                 className="bg-gradient-to-r from-blue-500 to-sky-500 hover:from-blue-600 hover:to-sky-600 text-white"
+                startIcon={isLoading && <CircularProgress size={20} />}
               >
-                Create Company
+                {isLoading ? "Submitting..." : "Submit"}
               </Button>
             </div>
           </motion.div>
         )}
       </div>
     </div>
-  )
+  );
 }
