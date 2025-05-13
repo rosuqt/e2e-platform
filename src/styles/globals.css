@@ -13,6 +13,14 @@
   }
 }
 
+/* Ensure the body and html elements span the full height */
+html, body {
+  height: 100%;
+  margin: 0;
+  background: linear-gradient(to bottom right, #ebf8ff, #e0f2fe, #e0e7ff); /* Matches the page gradient */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
 .animate-shake {
   animation: shake 0.3s ease-in-out;
 }

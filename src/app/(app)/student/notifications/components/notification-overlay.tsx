@@ -1,0 +1,80 @@
+"use client"
+
+import { X, BriefcaseIcon, Calendar, MapPin, Building, Clock } from "lucide-react"
+
+interface Notification {
+  id: number
+  title: string
+  description: string
+  time: string
+  read: boolean
+}
+
+interface NotificationOverlayProps {
+  notification: Notification
+  onClose: () => void
+}
+
+export default function NotificationOverlay({ notification, onClose }: NotificationOverlayProps) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[1050] flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+        <div className="flex items-center justify-between p-4 bg-blue-50 border-b border-blue-100">
+          <h3 className="text-lg font-semibold text-blue-800">Notification Details</h3>
+          <button onClick={onClose} className="rounded-full p-1 hover:bg-blue-100 transition-colors">
+            <X className="h-5 w-5 text-blue-700" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <BriefcaseIcon className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h4 className="font-medium text-lg text-blue-800">{notification.title}</h4>
+              <p className="text-sm text-gray-500">{notification.time}</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-gray-700">{notification.description}</p>
+
+            <div className="bg-blue-50 p-4 rounded-lg space-y-3">
+              <h5 className="font-medium text-blue-800">Job Details</h5>
+
+              <div className="flex items-center gap-2">
+                <Building className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-gray-700">[Company Name]</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-gray-700">[Location]</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-gray-700">Applied on [Date]</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-gray-700">Status updated 3 mins ago</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex gap-3 justify-end">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+              Dismiss
+            </button>
+            <button className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
+              View Application
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
