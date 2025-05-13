@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import supabase from "../../../lib/supabase";
 
-// Define the type for formData
 interface FormData {
     jobTitle: string;
     location: string;
@@ -19,25 +18,26 @@ interface FormData {
     maxApplicants: number | null;
     applicationQuestions: string[];
     perksAndBenefits: string[];
+    responsibilities: string[];
 }
 
 function isFormDataEmpty(formData: FormData): boolean {
     return Object.entries(formData).every(([key, value]) => {
         if (Array.isArray(value)) {
-            return value.length === 0 || value.every((item) => typeof item === "string" && item.trim() === ""); // Check for non-empty strings in arrays
+            return value.length === 0 || value.every((item) => typeof item === "string" && item.trim() === ""); 
         }
         if (typeof value === "object" && value !== null) {
             return Object.values(value).every(
-                (nestedValue) => typeof nestedValue === "string" && nestedValue.trim() === "" // Safely handle nested objects
+                (nestedValue) => typeof nestedValue === "string" && nestedValue.trim() === "" 
             );
         }
         if (key === "verificationTier") {
-            return value === "basic"; // Ignore default value
+            return value === "basic";
         }
         if (key === "maxApplicants") {
-            return value === null; // Ignore null as default
+            return value === null;
         }
-        return typeof value === "string" && value.trim() === ""; // Check for non-empty strings
+        return typeof value === "string" && value.trim() === "";
     });
 }
 
@@ -46,7 +46,17 @@ export async function POST(request: Request) {
         const { action, formData, employerId }: { action: string; formData: FormData; employerId: string } = await request.json();
 
         console.log("API triggered with action:", action);
-        console.log("Received formData:", formData);
+
+        const { data: employer, error: employerError } = await supabase
+            .from("registered_employers")
+            .select("id")
+            .eq("id", employerId)
+            .single();
+
+        if (employerError || !employer) {
+            console.error("Invalid or expired session. Employer ID not found.");
+            return NextResponse.json({ error: "Session expired" }, { status: 401 });
+        }
 
         if (action === "saveDraft") {
             console.log("Saving draft...");
@@ -77,6 +87,7 @@ export async function POST(request: Request) {
                     max_applicants: formData.maxApplicants,
                     application_questions: JSON.stringify(formData.applicationQuestions),
                     perks_and_benefits: formData.perksAndBenefits,
+                    responsibilities: formData.responsibilities,
                     verification_tier: formData.verificationTier,
                 })
                 .select()
@@ -112,6 +123,7 @@ export async function POST(request: Request) {
                     max_applicants: formData.maxApplicants,
                     application_questions: JSON.stringify(formData.applicationQuestions),
                     perks_and_benefits: formData.perksAndBenefits,
+                    responsibilities: formData.responsibilities,
                     verification_tier: formData.verificationTier,
                 })
                 .select()

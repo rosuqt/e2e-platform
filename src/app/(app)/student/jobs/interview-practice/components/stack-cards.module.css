@@ -1,0 +1,84 @@
+
+
+.tariffCards {
+  position: relative;
+  width: 300px;
+  height: 400px;
+  margin: 0 auto;
+  perspective: 1000px;
+  transform: translateX(-50px);
+}
+
+.tariffCards:after {
+  position: absolute;
+  bottom: -27px;
+  left: 5%;
+  content: '';
+  width: 65%;
+  height: 10px;
+  border-radius: 100%;
+  background-image: radial-gradient(rgba(34, 50, 84, 0.04), rgba(34, 50, 84, 0));
+}
+
+.tariffCards > div {
+  position: absolute;
+  width: 320px;
+  height: 160px;
+  border-radius: 12px;
+  color: white;
+  transform: rotateX(45deg) rotateY(-15deg) rotate(45deg) translateZ(calc(var(--index) * -100px));
+  z-index: calc(10 - var(--index));
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.imageWrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+.imageWrapper img {
+  border-radius: 12px;
+}
+
+.tariffCards > div img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+}
+
+.tariffCards > div h3,
+.tariffCards > div span {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.tariffCards > div:hover {
+  transform: translateX(-100px) rotateX(45deg) rotateY(-15deg) rotate(30deg) translateZ(calc(var(--index) * -100px));
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.animatedImage {
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.animatedImage:hover {
+  transform: rotateX(0deg) rotateY(0deg) rotate(0deg) scale(1.1);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
