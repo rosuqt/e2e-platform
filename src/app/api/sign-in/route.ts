@@ -1,3 +1,5 @@
+//old route for sign in
+
 import { NextResponse } from "next/server";
 import supabase from "@/app/lib/supabase";
 import bcrypt from "bcryptjs";

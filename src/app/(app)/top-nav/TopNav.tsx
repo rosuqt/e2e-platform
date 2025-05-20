@@ -71,7 +71,7 @@ const TopNav: React.FC<TopNavProps> = ({
       >
         <div className="flex justify-between items-center px-6 md:px-10 h-full">
           <div className="flex items-center">
-            <Image src="/images/test.png" alt="Seekr Logo" width={50} height={50} />
+            <Image src="/images/logo-test2.png" alt="Seekr Logo" width={50} height={50} />
             <span className="text-[#1551a9] font-medium ml-4">Seekr</span>
           </div>
           <motion.div
