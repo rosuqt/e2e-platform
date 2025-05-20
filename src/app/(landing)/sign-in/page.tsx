@@ -4,8 +4,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { jwtDecode } from "jwt-decode";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { TextField, IconButton, InputAdornment, Checkbox, FormControlLabel } from "@mui/material";
 import Image from "next/image";
@@ -19,9 +18,14 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     setIsVisible(true);
+
+    if (searchParams?.get("error")) {
+      setError("Invalid email or password");
+    }
 
     const handleDoubleClick = (e: MouseEvent) => {
       e.preventDefault();
@@ -30,34 +34,23 @@ export default function SignInPage() {
     return () => {
       document.removeEventListener("dblclick", handleDoubleClick);
     };
-  }, []);
+  }, [searchParams]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    try {
-      const response = await fetch("/api/sign-in", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    const res = await signIn("credentials", {
+      redirect: false,
+      email,
+      password,
+      callbackUrl: "/employers/dashboard", 
+    });
 
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.error || "Sign-in failed");
-        return;
-      }
-
-      localStorage.setItem("token", data.token);
-
-      const decoded: { id: string } = jwtDecode(data.token);
-      console.log("Decoded Employer ID after sign-in:", decoded.id);
-
-      router.push("/student/student-dashboard");
-    } catch (err) {
-      console.error("Sign-in error:", err);
-      setError("An unexpected error occurred");
+    if (res?.error) {
+      setError("Invalid email or password");
+    } else if (res?.ok) {
+      router.push("/employers/dashboard");   
     }
   };
 
@@ -193,7 +186,7 @@ export default function SignInPage() {
           whileHover={{ scale: 1.02, boxShadow: "0 5px 15px -5px rgba(59, 130, 246, 0.3)" }}
           whileTap={{ scale: 0.98 }}
           type="button"
-          onClick={() => signIn("azure-ad")}
+          onClick={() => signIn("azure-ad", { callbackUrl: "/students/dashboard" })}
         >
           <Image
             src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"

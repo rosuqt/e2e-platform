@@ -5,9 +5,9 @@ import { Home, Users, Briefcase, MessageCircle, Bell, User } from 'lucide-react'
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { ProfileModal } from '@/app/(app)/student/profile/components/profile-modal';
-import { NotificationsModal } from '@/app/(app)/student/notifications/components/notifications-modal';
-import { MessagesModal } from '@/app/(app)/student/messages/components/messages-modal';
+import { ProfileModal } from '../students/profile/components/profile-modal';
+import { MessagesModal } from '../students/messages/components/messages-modal';
+import { NotificationsModal } from '../students/notifications/components/notifications-modal';
 
 interface TopNavProps {
   className?: string;
