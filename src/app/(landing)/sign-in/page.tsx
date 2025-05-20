@@ -9,6 +9,7 @@ import { jwtDecode } from "jwt-decode";
 import { Eye, EyeOff } from "lucide-react";
 import { TextField, IconButton, InputAdornment, Checkbox, FormControlLabel } from "@mui/material";
 import Image from "next/image";
+import { signIn } from "next-auth/react";
 
 export default function SignInPage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -191,6 +192,8 @@ export default function SignInPage() {
           className="w-full flex items-center justify-center border-2 border-blue-200 py-3 rounded-2xl hover:bg-blue-50 transition-all duration-200 mt-2 text-gray-700"
           whileHover={{ scale: 1.02, boxShadow: "0 5px 15px -5px rgba(59, 130, 246, 0.3)" }}
           whileTap={{ scale: 0.98 }}
+          type="button"
+          onClick={() => signIn("azure-ad")}
         >
           <Image
             src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"

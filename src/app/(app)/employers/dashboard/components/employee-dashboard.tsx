@@ -9,13 +9,10 @@ import {
   UserCheck,
   FileText,
   ArrowUpRight,
-  Search,
-  Bell,
   Filter,
   MoreHorizontal,
   Calendar,
   MapPin,
-  CheckCircle,
   Star,
 } from "lucide-react"
 import { motion } from "framer-motion"
@@ -39,9 +36,22 @@ export default function EmployeeDashboard() {
     hiringProgress: 68,
   }
 
+  const topPerformingJob = {
+    title: "Senior Software Engineer",
+    applicants: 45,
+    views: 1200,
+    applicationsRate: "3.75%",
+  }
+
+  const candidateMatches = [
+    { name: "Alice Brown", position: "Backend Developer", match: 96 },
+    { name: "John Doe", position: "UI/UX Designer", match: 92 },
+    { name: "Jane Smith", position: "DevOps Engineer", match: 89 },
+  ]
+
   // Mock data for today's agenda
   const todayAgenda = [
-    { time: "10:00 AM", event: "Interview with John Smith", type: "interview" },
+    { time: "10:00 AM", event: "Interview with Kemly R", type: "interview" },
     { time: "11:30 AM", event: "Team meeting - Hiring updates", type: "meeting" },
     { time: "2:00 PM", event: "Review applications for Senior Developer", type: "review" },
     { time: "4:30 PM", event: "Call with Marketing about job descriptions", type: "call" },
@@ -143,30 +153,16 @@ export default function EmployeeDashboard() {
             </div>
 
             <div className="flex items-center gap-3 ml-auto">
-              <div className="relative max-w-sm hidden md:block">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-blue-300" />
-                <input
-                  type="search"
-                  placeholder="Search applicants..."
-                  className="pl-8 h-10 w-[220px] rounded-xl border border-blue-400 bg-blue-700/30 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300 placeholder:text-blue-300 text-white"
-                />
-              </div>
-
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="transition-transform duration-300"
+              >
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 bg-blue-700/30 border-blue-400 text-white hover:bg-blue-700/50 hover:text-white"
+                  size="lg"
+                  className="h-12 px-6 bg-white text-blue-600 font-bold shadow-md border border-blue-300 hover:bg-blue-50 hover:shadow-lg"
                 >
-                  <Bell className="h-4 w-4 mr-2" />
-                  <span className="hidden md:inline">Notifications</span>
-                  <Badge className="ml-2 bg-blue-500 hover:bg-blue-500 text-white">3</Badge>
-                </Button>
-              </motion.div>
-
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button size="sm" className="h-10 bg-white text-blue-600 hover:bg-blue-50">
-                  <PlusCircle className="h-4 w-4 mr-2" />
+                  <PlusCircle className="h-5 w-5 mr-2" />
                   <span>Post Job</span>
                 </Button>
               </motion.div>
@@ -263,15 +259,14 @@ export default function EmployeeDashboard() {
             <Card className="overflow-hidden border-blue-200 bg-gradient-to-br from-white to-blue-50">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
-                  <CardDescription className="text-blue-600 font-medium">Hiring Progress</CardDescription>
+                  <CardDescription className="text-blue-600 font-medium">Top Performing Job Listing</CardDescription>
                   <div className="p-2 bg-blue-100 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-blue-600" />
+                    <Briefcase className="h-5 w-5 text-blue-600" />
                   </div>
                 </div>
-                <CardTitle className="text-3xl text-blue-900">{analyticsData.hiringProgress}%</CardTitle>
+                <CardTitle className="text-2xl text-blue-900">{topPerformingJob.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <LinearProgress variant="determinate" value={analyticsData.hiringProgress} className="h-2 bg-blue-100" />
               </CardContent>
               <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
             </Card>
@@ -283,7 +278,7 @@ export default function EmployeeDashboard() {
           {/* Applicants Section */}
           <DashboardSection colSpan="col-span-12 lg:col-span-7">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-              <Card className="h-full border-blue-200 overflow-hidden">
+              <Card className="h-[calc(100vh-300px)] border-blue-200 overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                   <div>
                     <CardTitle className="text-white flex items-center">
@@ -456,14 +451,14 @@ export default function EmployeeDashboard() {
             </motion.div>
           </DashboardSection>
 
-          {/* Agenda Section */}
+          {/* Agenda and Candidate Matches Section */}
           <DashboardSection colSpan="col-span-12 lg:col-span-5">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.2 }}
             >
-              <Card className="h-full border-blue-200 bg-gradient-to-br from-blue-600 to-blue-700 text-white overflow-hidden">
+              <Card className="h-[calc(100vh-300px)] border-blue-200 bg-gradient-to-br from-blue-600 to-blue-700 text-white overflow-hidden">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-white flex items-center">
@@ -477,7 +472,7 @@ export default function EmployeeDashboard() {
                     {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="h-[50%] overflow-y-auto">
                   <div className="space-y-4">
                     {todayAgenda.map((item, index) => (
                       <motion.div
@@ -532,6 +527,26 @@ export default function EmployeeDashboard() {
                     ))}
                   </div>
                 </CardContent>
+                <CardFooter className="h-[50%] overflow-y-auto bg-gradient-to-b from-blue-700 to-blue-800 p-4">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white">Candidate Matches for You</h3>
+                    {candidateMatches.map((candidate, index) => (
+                      <motion.div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 * index }}
+                      >
+                        <div>
+                          <h4 className="text-sm font-medium text-white">{candidate.name}</h4>
+                          <p className="text-xs text-blue-200">{candidate.position}</p>
+                        </div>
+                        <div className="text-sm font-medium text-yellow-400">{candidate.match}%</div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </CardFooter>
               </Card>
             </motion.div>
           </DashboardSection>
