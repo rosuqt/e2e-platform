@@ -18,12 +18,12 @@ import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Box from "@mui/material/Box";
 
-
 export default function ProfileLayout() {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(0);
+  const [bio, setBio] = useState("");
 
   const menuItems = useMemo(
     () => [
@@ -120,22 +120,47 @@ export default function ProfileLayout() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h1 className="text-2xl font-bold">Kemly Rose</h1>
-                        <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">Available to work</span>
+                        <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                          Available to work
+                        </span>
                       </div>
-                      <p className="text-gray-600">4th Year | BS- Information Technology</p>
+                      <p className="text-gray-600">
+                        4th Year | BS- Information Technology
+                      </p>
                     </div>
                   </div>
 
-                  <div className="mt-2 flex items-center text-gray-500 text-sm">
-                    <span>Add a short bio</span>
-                    <MdEdit className="h-4 w-4 ml-1 cursor-pointer" />
+                  <div className="mt-2 relative w-full text-sm">
+                    <div className="relative w-full">
+                      {!bio && (
+                        <div className="absolute left-0 top-0 flex items-center text-gray-400 pointer-events-none px-1 py-1">
+                          <span>Add a short bio</span>
+                          <MdEdit className="ml-1 h-4 w-4" />
+                        </div>
+                      )}
+                      <textarea
+                        className="w-full bg-transparent focus:outline-none text-gray-600 resize-none px-1 py-1"
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        maxLength={50}
+                        rows={1}
+                        style={{ minHeight: "1.5em" }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* MUI Tabs */}
               <div className="flex mt-6">
-                <Box sx={{ borderBottom: 1, borderColor: "divider", width: "fit-content", minWidth: 0 }}>
+                <Box
+                  sx={{
+                    borderBottom: 1,
+                    borderColor: "divider",
+                    width: "fit-content",
+                    minWidth: 0,
+                  }}
+                >
                   <Tabs
                     value={activeTab}
                     onChange={(_, v) => setActiveTab(v)}
@@ -192,5 +217,6 @@ export default function ProfileLayout() {
         </div>
       </div>
     </BaseLayout>
+
   );
 }
