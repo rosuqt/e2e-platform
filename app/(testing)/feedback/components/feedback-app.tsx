@@ -232,7 +232,6 @@ export default function TestCaseFeedback() {
                     className="bg-white/10 border-purple-500/30 text-white"
                     value={formData.testCaseTitle}
                     onChange={(e) => handleChange("testCaseTitle", e.target.value)}
-                    required
                   />
                 </div>
 
@@ -241,7 +240,7 @@ export default function TestCaseFeedback() {
                     <Label htmlFor="category" className="text-purple-200">
                       Category
                     </Label>
-                    <Select value={formData.category} onValueChange={(value) => handleChange("category", value)}>
+                    <Select value={formData.category} onValueChange={(value) => handleChange("category", value)} required>
                       <SelectTrigger className="bg-white/10 border-purple-500/30 text-white">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -260,7 +259,7 @@ export default function TestCaseFeedback() {
                     <Label htmlFor="severity" className="text-purple-200">
                       Severity
                     </Label>
-                    <Select value={formData.severity} onValueChange={(value) => handleChange("severity", value)}>
+                    <Select value={formData.severity} onValueChange={(value) => handleChange("severity", value)} required>
                       <SelectTrigger className="bg-white/10 border-purple-500/30 text-white">
                         <SelectValue placeholder="Select severity" />
                       </SelectTrigger>
@@ -311,7 +310,6 @@ export default function TestCaseFeedback() {
                     className="bg-white/10 border-purple-500/30 text-white min-h-[80px]"
                     value={formData.stepsToReproduce}
                     onChange={(e) => handleChange("stepsToReproduce", e.target.value)}
-                    required
                   />
                 </div>
 
@@ -326,7 +324,6 @@ export default function TestCaseFeedback() {
                       className="bg-white/10 border-purple-500/30 text-white min-h-[80px]"
                       value={formData.expectedResult}
                       onChange={(e) => handleChange("expectedResult", e.target.value)}
-                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -339,7 +336,6 @@ export default function TestCaseFeedback() {
                       className="bg-white/10 border-purple-500/30 text-white min-h-[80px]"
                       value={formData.actualResult}
                       onChange={(e) => handleChange("actualResult", e.target.value)}
-                      required
                     />
                   </div>
                 </div>

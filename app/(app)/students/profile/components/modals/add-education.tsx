@@ -10,10 +10,13 @@ import {
   TextField,
   Typography,
   Card,
-  CardContent
+  CardContent,
+  MenuItem,
+  ListSubheader
 } from "@mui/material";
 import type { SlideProps } from "@mui/material";
 import { GraduationCap } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 const SlideUp = forwardRef(function Transition(
   props: SlideProps,
@@ -30,6 +33,8 @@ type AddEducationalModalProps = {
     acronym?: string;
     degree: string;
     years: string;
+    level: string;
+    iconColor?: string;
   }) => void;
 };
 
@@ -42,7 +47,10 @@ export default function AddEducationalModal({
   const [acronym, setAcronym] = useState("");
   const [degree, setDegree] = useState("");
   const [years, setYears] = useState("");
+  const [level, setLevel] = useState(""); 
+  const [iconColor, setIconColor] = useState("#2563eb");
   const [saving, setSaving] = useState(false);
+  const { data: session } = useSession();
 
   const handleClose = () => {
     onClose?.();
@@ -50,12 +58,26 @@ export default function AddEducationalModal({
     setAcronym("");
     setDegree("");
     setYears("");
+    setLevel("");
+    setIconColor("#2563eb");
     setSaving(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    onSave?.({ school, acronym, degree, years });
+    const studentId = (session?.user as { studentId?: string })?.studentId;
+    if (studentId) {
+      await fetch("/api/students/student-profile/modal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "education",
+          student_id: studentId,
+          data: { school, acronym, degree, years, level, iconColor }
+        })
+      });
+    }
+    onSave?.({ school, acronym, degree, years, level, iconColor });
     handleClose();
   };
 
@@ -136,23 +158,34 @@ export default function AddEducationalModal({
                   height: 56,
                   fontWeight: 600,
                   fontSize: 24,
-                  bgcolor: "#2563eb",
-                  mr: 2
+                  bgcolor: iconColor,
+                  mr: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
                 }}
               >
-                <GraduationCap size={24} style={{ marginRight: 6, color: "#fff" }} />
-                {acronym ? (
-                  <span style={{ marginLeft: 4 }}>{acronym}</span>
-                ) : (
-                  <span style={{ marginLeft: 4 }}>?</span>
-                )}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    height: "100%"
+                  }}
+                >
+                  {acronym
+                    ? <span style={{ color: "#fff", width: "100%", textAlign: "center" }}>{acronym}</span>
+                    : <GraduationCap size={28} color="#fff" />}
+                </Box>
               </Avatar>
               <Box>
                 <Typography fontWeight={600} fontSize={18} color="#1e293b">
                   {school || "School Name"}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
-                  {degree || "Degree"}
+                  {(level || "Level") + " | " + (degree && degree !== "None" ? degree : "Strand/Degree")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
                   {years || "Years Attended"}
@@ -160,61 +193,160 @@ export default function AddEducationalModal({
               </Box>
             </CardContent>
           </Card>
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
+                School Name
+              </Typography>
+              <TextField
+                fullWidth
+                value={school}
+                onChange={e => setSchool(e.target.value)}
+                variant="outlined"
+                placeholder="e.g. STI College"
+                sx={{
+                  background: "#fff",
+                  borderRadius: 2,
+                  mb: 2,
+                  fontSize: 15,
+                  "& .MuiOutlinedInput-root": { fontSize: 15 }
+                }}
+                inputProps={{ maxLength: 100 }}
+              />
+            </Box>
+          </Box>
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
+                Level
+              </Typography>
+              <TextField
+                select
+                fullWidth
+                value={level}
+                onChange={e => setLevel(e.target.value)}
+                variant="outlined"
+                placeholder="Select Level"
+                SelectProps={{ native: true }}
+                sx={{
+                  background: "#fff",
+                  borderRadius: 2,
+                  mb: 2,
+                  fontSize: 15,
+                  "& .MuiOutlinedInput-root": { fontSize: 15 }
+                }}
+              >
+                <option value="">Select Level</option>
+                <option value="College">College</option>
+                <option value="Senior High">Senior High</option>
+                <option value="Junior High">Junior High</option>
+              </TextField>
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
+                Strand/Degree
+              </Typography>
+              <TextField
+                select
+                fullWidth
+                value={degree}
+                onChange={e => setDegree(e.target.value)}
+                variant="outlined"
+                placeholder="Select Strand/Degree"
+                SelectProps={{
+                  native: false,
+                  MenuProps: {
+                    PaperProps: {
+                      style: {
+                        maxHeight: 200,
+                        overflowY: "auto"
+                      }
+                    }
+                  }
+                }}
+                sx={{
+                  background: "#fff",
+                  borderRadius: 2,
+                  mb: 2,
+                  fontSize: 15,
+                  "& .MuiOutlinedInput-root": { fontSize: 15 }
+                }}
+              >
+                <MenuItem value="" disabled>
+                  Select Strand/Degree
+                </MenuItem>
+                <MenuItem value="None">None</MenuItem>
+                <ListSubheader>College Courses</ListSubheader>
+                <MenuItem value="BS - Information Technology">BS - Information Technology</MenuItem>
+                <MenuItem value="BS - Computer Science">BS - Computer Science</MenuItem>
+                <MenuItem value="BS - Business Administration">BS - Business Administration</MenuItem>
+                <MenuItem value="BS - Accountancy">BS - Accountancy</MenuItem>
+                <MenuItem value="BS - Hospitality Management">BS - Hospitality Management</MenuItem>
+                <MenuItem value="BS - Tourism Management">BS - Tourism Management</MenuItem>
+                <MenuItem value="BS - Engineering">BS - Engineering</MenuItem>
+                <MenuItem value="BA - Communication">BA - Communication</MenuItem>
+                <ListSubheader>SHS Strands</ListSubheader>
+                <MenuItem value="STEM">STEM</MenuItem>
+                <MenuItem value="ABM">ABM</MenuItem>
+                <MenuItem value="HUMSS">HUMSS</MenuItem>
+                <MenuItem value="GAS">GAS</MenuItem>
+                <MenuItem value="TVL">TVL</MenuItem>
+                <MenuItem value="ICT">ICT</MenuItem>
+                <MenuItem value="Sports">Sports</MenuItem>
+                <MenuItem value="Arts and Design">Arts and Design</MenuItem>
+              </TextField>
+            </Box>
+          </Box>
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
+                Acronym (optional)
+              </Typography>
+              <TextField
+                fullWidth
+                value={acronym}
+                onChange={e => setAcronym(e.target.value)}
+                variant="outlined"
+                placeholder="e.g. STI"
+                sx={{
+                  background: "#fff",
+                  borderRadius: 2,
+                  mb: 2,
+                  fontSize: 15,
+                  "& .MuiOutlinedInput-root": { fontSize: 15 }
+                }}
+                inputProps={{ maxLength: 10 }}
+              />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
+                Icon Color
+              </Typography>
+              <TextField
+                select
+                fullWidth
+                value={iconColor}
+                onChange={e => setIconColor(e.target.value)}
+                variant="outlined"
+                sx={{
+                  background: "#fff",
+                  borderRadius: 2,
+                  mb: 2,
+                  fontSize: 15,
+                  "& .MuiOutlinedInput-root": { fontSize: 15 }
+                }}
+              >
+                <MenuItem value="#2563eb">Blue</MenuItem>
+                <MenuItem value="#22c55e">Green</MenuItem>
+                <MenuItem value="#facc15">Yellow</MenuItem>
+                <MenuItem value="#f59e42">Orange</MenuItem>
+                <MenuItem value="#ef4444">Red</MenuItem>
+                <MenuItem value="#a855f7">Purple</MenuItem>
+                <MenuItem value="#64748b">Gray</MenuItem>
+              </TextField>
+            </Box>
+          </Box>
           <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
-              School Name
-            </Typography>
-            <TextField
-              fullWidth
-              value={school}
-              onChange={e => setSchool(e.target.value)}
-              variant="outlined"
-              placeholder="e.g. STI College"
-              sx={{
-                background: "#fff",
-                borderRadius: 2,
-                mb: 2,
-                fontSize: 15,
-                "& .MuiOutlinedInput-root": { fontSize: 15 }
-              }}
-              inputProps={{ maxLength: 100 }}
-            />
-            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
-              Acronym (optional)
-            </Typography>
-            <TextField
-              fullWidth
-              value={acronym}
-              onChange={e => setAcronym(e.target.value)}
-              variant="outlined"
-              placeholder="e.g. STI"
-              sx={{
-                background: "#fff",
-                borderRadius: 2,
-                mb: 2,
-                fontSize: 15,
-                "& .MuiOutlinedInput-root": { fontSize: 15 }
-              }}
-              inputProps={{ maxLength: 10 }}
-            />
-            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
-              Degree
-            </Typography>
-            <TextField
-              fullWidth
-              value={degree}
-              onChange={e => setDegree(e.target.value)}
-              variant="outlined"
-              placeholder="e.g. Bachelor of Science - Information Technology"
-              sx={{
-                background: "#fff",
-                borderRadius: 2,
-                mb: 2,
-                fontSize: 15,
-                "& .MuiOutlinedInput-root": { fontSize: 15 }
-              }}
-              inputProps={{ maxLength: 100 }}
-            />
             <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
               Years Attended
             </Typography>
@@ -252,7 +384,7 @@ export default function AddEducationalModal({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!school || !degree || !years || saving}
+              disabled={!school || !years || !level || saving}
               sx={{
                 flex: 1,
                 background: "#2563eb",

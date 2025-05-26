@@ -259,7 +259,7 @@ export default function SavedCandidatesPage() {
         <div className="max-w-7xl mx-auto px-6 py-8 relative">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Saved Candidates</h1>
+              <h1 className="text-3xl font-bold text-white mb-2">Candidates Matches</h1>
               <p className="text-blue-100">
                 Discover perfect matches for your job openings • {filteredCandidates.length} candidates
               </p>
