@@ -6,8 +6,12 @@ import { MdWorkOutline, MdStarOutline, MdContactMail, MdOutlineEmojiObjects } fr
 import { FaFacebook, FaLinkedin, FaRegBookmark, FaTwitter } from "react-icons/fa6";
 import { LuTrophy } from "react-icons/lu";
 import { Mail, Phone } from "lucide-react"
+import AddEducationalModal from "./modals/add-education";
+import { useState } from "react";
 
 export default function AboutPage() {
+  const [openAddEducation, setOpenAddEducation] = useState(false);
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
@@ -24,9 +28,9 @@ export default function AboutPage() {
             <h3 className="font-medium mb-2">Introduction</h3>
             <p className="text-sm text-gray-500 mb-3 -mt-2">Write a brief introduction about yourself and your passions.</p>
             <textarea
-              className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-600"
+              className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-600 outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Write about your passions and interests..."
-              defaultValue="Passionate about web development and always eager to learn new technologies. Currently exploring frontend design and backend logic to build efficient and user-friendly applications. Love solving problems through code!"
+             
             />
           </div>
           <hr className="border-gray-200" />
@@ -50,9 +54,15 @@ export default function AboutPage() {
                 size="sm"
                 variant="outline"
                 className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                onClick={() => setOpenAddEducation(true)}
               >
                 Add Educational Background
               </Button>
+              <AddEducationalModal
+                open={openAddEducation}
+                onClose={() => setOpenAddEducation(false)}
+                onSave={() => setOpenAddEducation(false)}
+              />
             </div>
           </div>
           <hr className="border-gray-200" />
@@ -62,9 +72,9 @@ export default function AboutPage() {
             <h3 className="font-medium mb-2">Career Goals</h3>
             <p className="text-sm text-gray-500 mb-3 -mt-2">Define your career aspirations and what you aim to achieve.</p>
             <textarea
-              className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-600"
+              className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-600 outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Write about your career aspirations..."
-              defaultValue="Aspiring front-end developer focused on creating engaging, accessible, and user-friendly web applications. Currently enhancing my JavaScript and React skills through hands-on projects, aiming to secure an internship or entry-level role to gain real-world experience and grow in a dynamic tech environment."
+              
             />
           </div>
         </div>

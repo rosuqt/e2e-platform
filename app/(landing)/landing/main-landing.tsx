@@ -14,10 +14,14 @@ import HowItWorksSection from "./components/how-it-works"
 import CourseSelector from "./components/course-selector"
 import LandingFooter from "./components/landing-footer"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error("Supabase environment variables are not set.");
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 60 },
@@ -573,7 +577,7 @@ export default function MainLanding() {
               >
                 Future
               </motion.span>
-              <span className="text-white">Ready</span>
+              <span className="text-white"> Ready</span>
             </motion.h2>
 
             <motion.p
