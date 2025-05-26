@@ -1,7 +1,7 @@
-/** @type {import('tailwindcss').Config} */
-import tailwindcssAnimate from "tailwindcss-animate";
-import { heroui } from "@heroui/react";
+const tailwindcssAnimate = require("tailwindcss-animate");
+const { heroui } = require("@heroui/react");
 
+/** @type {import('tailwindcss').Config} */
 module.exports = {
     darkMode: ["class"],
     content: [
@@ -66,6 +66,5 @@ module.exports = {
   		}
   	}
   },
-  plugins: [tailwindcssAnimate],
-  plugins: [heroui()],
+  plugins: [tailwindcssAnimate, heroui()],
 };
