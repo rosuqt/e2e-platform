@@ -7,7 +7,6 @@ import BaseLayout from "../../base-layout";
 import { TbSettings, TbBug } from "react-icons/tb";
 import { FiCalendar } from "react-icons/fi";
 import { FaUser } from "react-icons/fa";
-import { TiCameraOutline } from "react-icons/ti";
 import { MdEdit } from "react-icons/md";
 import { Camera, LogOut } from "lucide-react";
 import AboutPage from "./components/profile-page";
@@ -17,6 +16,13 @@ import ActivityLogPage from "./components/tabs/activity-tab";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Box from "@mui/material/Box";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import Button from "@mui/material/Button";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 
 export default function ProfileLayout() {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
@@ -24,6 +30,10 @@ export default function ProfileLayout() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(0);
   const [bio, setBio] = useState("");
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [coverDialogOpen, setCoverDialogOpen] = useState(false);
+  const [coverMenuAnchor, setCoverMenuAnchor] = useState<null | HTMLElement>(null);
 
   const menuItems = useMemo(
     () => [
@@ -35,6 +45,13 @@ export default function ProfileLayout() {
     ],
     []
   );
+
+  const presetCovers = [
+    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80",
+"https://plus.unsplash.com/premium_photo-1667680403630-014f531d9664?q=80&w=2021&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+  ];
 
   useEffect(() => {
     if (pathname === "/profile") {
@@ -54,6 +71,54 @@ export default function ProfileLayout() {
     });
   }, [menuItems, router]);
 
+  useEffect(() => {
+    const savedProfile = localStorage.getItem("profileImage");
+    if (savedProfile) setProfileImage(savedProfile);
+    const savedCover = localStorage.getItem("coverImage");
+    if (savedCover) setCoverImage(savedCover);
+  }, []);
+
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setProfileImage(result);
+      localStorage.setItem("profileImage", result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const closeCoverDialog = () => setCoverDialogOpen(false);
+
+  const handlePresetCover = (url: string) => {
+    setCoverImage(url);
+    localStorage.setItem("coverImage", url);
+    setCoverDialogOpen(false);
+  };
+
+  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      setCoverImage(result);
+      localStorage.setItem("coverImage", result);
+      setCoverDialogOpen(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerProfileInput = () => {
+    document.getElementById("profile-image-input")?.click();
+  };
+
+  const triggerCoverInput = () => {
+    document.getElementById("cover-image-input")?.click();
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 0:
@@ -69,6 +134,19 @@ export default function ProfileLayout() {
     }
   };
 
+  const openCoverMenu = (e: React.MouseEvent<HTMLButtonElement>) => setCoverMenuAnchor(e.currentTarget);
+  const closeCoverMenu = () => setCoverMenuAnchor(null);
+
+  const handleCoverMenuUpload = () => {
+    closeCoverMenu();
+    triggerCoverInput();
+  };
+
+  const handleCoverMenuPreset = () => {
+    closeCoverMenu();
+    setCoverDialogOpen(true);
+  };
+
   return (
     <BaseLayout
       sidebar={
@@ -82,16 +160,72 @@ export default function ProfileLayout() {
       }
       isSidebarMinimized={isSidebarMinimized}
     >
+      <input
+        id="profile-image-input"
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleProfileImageChange}
+      />
+      <input
+        id="cover-image-input"
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleCoverImageChange}
+      />
+      <Menu
+        anchorEl={coverMenuAnchor}
+        open={Boolean(coverMenuAnchor)}
+        onClose={closeCoverMenu}
+      >
+        <MenuItem onClick={handleCoverMenuUpload}>Upload from device</MenuItem>
+        <MenuItem onClick={handleCoverMenuPreset}>Select preset</MenuItem>
+      </Menu>
+      <Dialog open={coverDialogOpen} onClose={closeCoverDialog}>
+        <DialogTitle>Choose a preset cover</DialogTitle>
+        <DialogContent>
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-2">
+              {presetCovers.map((url, i) => (
+                <img
+                  key={i}
+                  src={url}
+                  alt={`Preset ${i + 1}`}
+                  className="w-24 h-16 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500"
+                  onClick={() => handlePresetCover(url)}
+                />
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeCoverDialog}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
         <div className="container mx-auto px-4 py-8">
           {/* Profile Header */}
           <div className="bg-white rounded-xl shadow-md border border-blue-200 overflow-hidden mb-6">
             {/* Cover Image */}
-            <div className="h-40 bg-gradient-to-r from-blue-600 to-blue-400 relative">
+            <div className="h-40 relative">
+              {coverImage ? (
+                <img
+                  src={coverImage}
+                  alt="Cover"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div
+                  className="w-full h-full bg-gradient-to-r from-blue-600 to-blue-400"
+                  style={{ height: "100%" }}
+                />
+              )}
               <button
                 className="absolute top-4 right-4 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 rounded-full p-2"
+                onClick={openCoverMenu}
               >
-                <TiCameraOutline className="h-5 w-5" />
+                <Camera className="h-5 w-5" />
               </button>
             </div>
 
@@ -100,16 +234,25 @@ export default function ProfileLayout() {
               <div className="flex flex-col md:flex-row md:items-end">
                 <div className="absolute -top-16 left-6 w-32 h-32">
                   <div className="relative w-full h-full">
-                    {/* Profile initials in colored circle with white border */}
-                    <div className="w-full h-full rounded-full bg-white border-4 border-white flex items-center justify-center">
-                      <div className="w-full h-full rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-3xl select-none">
-                        KR
-                      </div>
+                    {/* Profile initials or image */}
+                    <div className="w-full h-full rounded-full bg-white border-4 border-white flex items-center justify-center overflow-hidden">
+                      {profileImage ? (
+                        <img
+                          src={profileImage}
+                          alt="Profile"
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                      ) : (
+                        <div className="w-full h-full rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-3xl select-none">
+                          KR
+                        </div>
+                      )}
                     </div>
                     {/* Floating camera button */}
                     <button
                       className="absolute -top-2 -right-2 bg-white border border-blue-300 text-blue-600 hover:bg-blue-50 rounded-full p-2 shadow"
                       title="Change profile picture"
+                      onClick={triggerProfileInput}
                     >
                       <Camera className="w-5 h-5" />
                     </button>
@@ -217,6 +360,5 @@ export default function ProfileLayout() {
         </div>
       </div>
     </BaseLayout>
-
   );
 }
