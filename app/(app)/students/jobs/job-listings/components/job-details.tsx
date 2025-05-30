@@ -1,18 +1,126 @@
-import React, { useState } from "react";
-import { ArrowRight, CheckCircle, MapPin, Users, Mail, Bookmark, Briefcase, Clock, DollarSign, Calendar } from "lucide-react"; 
+import React, { useState, useEffect } from "react";
+import { ArrowRight, CheckCircle, MapPin, Users, Mail, Bookmark, Briefcase, Clock } from "lucide-react";
 import { Divider as Separator } from "@mui/material";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
 import { FaWandMagicSparkles } from "react-icons/fa6";
 import { ApplicationModal } from "./application-modal";
+import clsx from "clsx";
 
-const JobDetails = ({ onClose }: { onClose: () => void }) => {
+type Employer = {
+  first_name?: string;
+  last_name?: string;
+  company_name?: string;
+};
+
+type Job = {
+  id: string;
+  title?: string;
+  job_title?: string;
+  description?: string;
+  location?: string;
+  type?: string;
+  vacancies?: number;
+  deadline?: string;
+  application_deadline?: string;
+  skills?: string[];
+  match_percentage?: number;
+  employers?: Employer;
+  registered_employers?: { company_name?: string };
+  responsibilities?: string[];
+  must_haves?: string[];
+  nice_to_haves?: string[];
+  perks?: string[];
+};
+
+function getDaysLeft(deadline?: string): string {
+  if (!deadline) return "N/A";
+  const deadlineDate = new Date(deadline);
+  const now = new Date();
+  const diff = deadlineDate.getTime() - now.getTime();
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+  if (isNaN(days)) return "N/A";
+  if (days < 0) return "Closed";
+  if (days === 0) return "Closes today";
+  if (days === 1) return "1 day left";
+  return `${days} days left`;
+}
+
+const progressStates = [
+  { value: 15, color: "#ef4444", label: "15%" },
+  { value: 36, color: "#f97316", label: "36%" },
+  { value: 98, color: "#22c55e", label: "98%" },
+];
+
+const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [job, setJob] = useState<Job | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [progressIdx, setProgressIdx] = useState(0);
+  const [showText, setShowText] = useState(false);
+
+  useEffect(() => {
+    if (!jobId) return;
+    setLoading(true);
+    fetch(`/api/students/job-listings/${jobId}`)
+      .then(res => res.json())
+      .then(data => {
+        setJob(data && !data.error ? data : null);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [jobId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgressIdx((prev) => (prev + 1) % progressStates.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setShowText(true), 500);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-sm p-8">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-sm p-8">
+        Unable to load job details.
+      </div>
+    );
+  }
+
+  const company =
+    job.registered_employers?.company_name ||
+    job.employers?.company_name ||
+    [job.employers?.first_name ?? "", job.employers?.last_name ?? ""].filter(Boolean).join(" ") ||
+    "Unknown Company";
+
+  // Ensure company is always a string before using slice
+  const title = job.job_title || job.title || "Untitled Position";
+  const description = job.description || "";
+  const location = job.location || "Unknown Location";
+  const type = job.type || "Full-time";
+  const vacancies = job.vacancies || 1;
+  const deadline = job.deadline || job.application_deadline || "";
+  const skills = job.skills || [];
+  const responsibilities = job.responsibilities || [];
+  const mustHaves = job.must_haves || [];
+  const niceToHaves = job.nice_to_haves || [];
+  const perks = job.perks || [];
 
   return (
     <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-sm">
-      {/* Header Section */}
       <div className="p-6 relative">
         <button
           onClick={onClose}
@@ -22,28 +130,24 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
         </button>
         <div className="mt-12 flex items-start gap-4">
           <div className="bg-black rounded-full w-14 h-14 flex items-center justify-center text-white">
-            <span className="font-bold text-sm">Mark-It</span>
+            <span className="font-bold text-sm">{company.slice(0, 8)}</span>
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">UI/UX Designer</h1>
+              <h1 className="text-2xl font-bold">{title}</h1>
               <CheckCircle className="w-5 h-5 text-primary" />
             </div>
-            <div className="text-muted-foreground">Fb Mark-It Place</div>
+            <div className="text-muted-foreground">{company}</div>
             <div className="text-sm text-muted-foreground flex items-center gap-1">
               <MapPin className="w-4 h-4" />
-              <span>9/686 Jumper Road, Fernway Drive, San Jose Del Monte Malancat, Pampanga, NCR</span>
+              <span>{location}</span>
             </div>
           </div>
         </div>
 
         <div className="mt-4 flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm bg-gray-200 px-4   py-1 rounded-full">
-            <span className="text-blue-600 font-medium">5 Skills Matched</span>
-          </div>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <Users className="w-4 h-4 text-muted-foreground" />
-            <span>23 applicants</span>
+          <div className="flex items-center gap-2 text-sm bg-gray-200 px-4 py-1 rounded-full">
+            <span className="text-blue-600 font-medium">{skills.length} Skills Matched</span>
           </div>
         </div>
 
@@ -65,69 +169,59 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
         </div>
 
         <p className="mt-4 text-sm text-muted-foreground">
-          Seeking a creative UI/UX Designer to craft intuitive and visually engaging user experiences. You will design
-          user-friendly interfaces that enhance functionality and aesthetics.
+          {description}
         </p>
       </div>
 
       <Separator />
 
-      {/* Job Details Section */}
-      <div className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Job Details</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center gap-3">
-            <Briefcase className="w-3 h-3 text-muted-foreground" />
-            <span className="text-sm">On-the-Job Training</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Clock className="w-3 h-3 text-muted-foreground" />
-            <span className="text-sm">Closes at March 28, 2025</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-3 h-3 text-muted-foreground" />
-            <span className="text-sm">800 / Day</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Calendar className="w-3 h-3 text-muted-foreground" />
-            <span className="text-sm">Posted 7 days ago</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Users className="w-3 h-3 text-muted-foreground" />
-            <span className="text-sm">5 vacancies</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <CheckCircle className="w-3 h-3 text-muted-foreground" />
-            <span className="text-sm">Recommended for BSIT Students</span>
-          </div>
-        </div>
-      </div>
-
-      <Separator />
-
-      {/* Match Percentage */}
       <div className="p-6">
         <div className="flex items-start gap-4">
-          <div className="relative w-20 h-20 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full border-4 border-muted" />
-            <div
-              className="absolute inset-0 rounded-full border-4 border-transparent border-t-red-600"
-              style={{ transform: "rotate(54deg)" }}
-            />
-            <span className="text-xl font-bold">15%</span>
+          <div className="relative w-20 h-20">
+            <svg viewBox="0 0 100 100" className="w-full h-full">
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                stroke="#e5e7eb"
+                strokeWidth="12"
+                fill="none"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                stroke={progressStates[progressIdx].color}
+                strokeWidth="12"
+                fill="none"
+                strokeDasharray={2 * Math.PI * 40}
+                strokeDashoffset={
+                  2 * Math.PI * 40 * (1 - progressStates[progressIdx].value / 100)
+                }
+                strokeLinecap="round"
+                style={{ transition: "stroke-dashoffset 0.5s, stroke 0.5s" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xl font-bold">{progressStates[progressIdx].label}</span>
+            </div>
           </div>
           <div className="flex-1">
-            <h3 className="text-red-600 font-semibold">This Job Isn&apos;t a Strong Match</h3>
+            <h3
+              className={clsx(
+                "text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-500 font-semibold text-lg",
+                "animate-shiny",
+                { "opacity-0": !showText, "opacity-100 transition-opacity duration-500": showText }
+              )}
+            >
+              Get a Personalized Job Match Percentage
+            </h3>
             <p className="text-xs text-muted-foreground mt-1">
-              We&apos;ve checked your resume and selected skills, and unfortunately, this job isn&apos;t the best match for your
-              profile. You can still apply, but the job may be seeking candidates with different qualifications.
+              Job match percentage indicates how well a job aligns with your profile, skills, and resume—helping you find roles tailored to your qualifications and experience.
             </p>
-            <div className="mt-2 flex justify-between">
-              <Button variant="link" className="p-0 h-auto text-primary">
-                View Details
-              </Button>
-            </div>
+            <Button variant="link" className="p-0 h-auto text-primary mt-2">
+              View Details
+            </Button>
             <div className="mt-4 flex justify-end">
               <div className="flex items-center gap-2 bg-yellow-100 text-yellow-600 text-xs px-3 py-1 rounded-full">
                 <FaWandMagicSparkles className="w-4 h-4" />
@@ -140,60 +234,64 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
 
       <Separator />
 
-      {/* About the Job */}
+      <div className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Job Details</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center gap-3">
+            <Briefcase className="w-3 h-3 text-muted-foreground" />
+            <span className="text-sm">{type}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Clock className="w-3 h-3 text-muted-foreground" />
+            <span className="text-sm">{getDaysLeft(deadline)}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Users className="w-3 h-3 text-muted-foreground" />
+            <span className="text-sm">{vacancies} vacancies</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-3 h-3 text-muted-foreground" />
+            <span className="text-sm">Recommended for you</span>
+          </div>
+        </div>
+      </div>
+
+      <Separator />
+
       <div className="p-6">
         <h2 className="text-lg font-semibold mb-4">About the Job</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Passionate about creating beautiful, high-performance web applications? We&apos;re looking for a Frontend Developer
-          with experience in React, Next.js, and TailwindCSS to join our fast-growing team. You&apos;ll work closely with
-          designers and backend engineers to build sleek, scalable, and user-friendly interfaces. This is a remote first
-          role with flexible hours, competitive pay, and opportunities for career growth!
+          {description}
         </p>
-
         <h3 className="font-semibold mt-6 mb-2">Responsibilities</h3>
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
-          <li>
-            Develop and maintain responsive, high-performance web applications using React.js, Next.js, and TailwindCSS.
-          </li>
-          <li>Collaborate with UI/UX designers to implement beautiful and functional designs.</li>
-          <li>Optimize web applications for speed, scalability, and accessibility.</li>
-          <li>Work with backend engineers to integrate APIs and manage data flow efficiently.</li>
-          <li>Write clean, reusable, and maintainable code while following best practices.</li>
-          <li>Participate in code reviews and contribute to improving our development workflows.</li>
+          {responsibilities && responsibilities.filter(Boolean).length > 0
+            ? responsibilities.filter(Boolean).map((item, i) => <li key={i}>{item}</li>)
+            : <li>No responsibilities listed.</li>}
         </ul>
-
         <h3 className="font-semibold mt-6 mb-2">Qualifications</h3>
         <h4 className="text-sm font-medium mb-2">Must-Haves:</h4>
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
-          <li>2+ years of experience in Frontend Development (React.js, Next.js).</li>
-          <li>Proficiency in HTML, CSS, JavaScript, and TailwindCSS.</li>
-          <li>Strong understanding of component-based architecture and state management.</li>
-          <li>Experience with RESTful APIs & handling asynchronous requests.</li>
-          <li>Ability to write clean, efficient, and well-documented code.</li>
-          <li>A good eye for design and attention to detail.</li>
+          {mustHaves && mustHaves.filter(Boolean).length > 0
+            ? mustHaves.filter(Boolean).map((item, i) => <li key={i}>{item}</li>)
+            : <li>No must-haves listed.</li>}
         </ul>
-
         <h4 className="text-sm font-medium mt-4 mb-2">Nice-to-Haves:</h4>
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
-          <li>Experience with TypeScript.</li>
-          <li>Knowledge of backend technologies (Node.js, Express, Firebase, or similar).</li>
-          <li>Familiarity with CI/CD and version control (Git, GitHub).</li>
-          <li>Knowledge of SEO & web performance optimization.</li>
+          {niceToHaves && niceToHaves.filter(Boolean).length > 0
+            ? niceToHaves.filter(Boolean).map((item, i) => <li key={i}>{item}</li>)
+            : <li>No nice-to-haves listed.</li>}
         </ul>
-
         <h3 className="font-semibold mt-6 mb-2">Perks and Benefits</h3>
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
-          <li>Remote & Flexible Work: Work from anywhere with flexible hours.</li>
-          <li>Competitive Salary & Bonuses: Performance-based incentives.</li>
-          <li>Learning & Growth: Access to courses, workshops, and conferences.</li>
-          <li>Paid Time Off: Generous vacation and sick leave.</li>
-          <li>Tech Allowance: We provide the tools you need to succeed!</li>
+          {perks && perks.filter(Boolean).length > 0
+            ? perks.filter(Boolean).map((item, i) => <li key={i}>{item}</li>)
+            : <li>No perks listed.</li>}
         </ul>
       </div>
 
       <Separator />
 
-      {/* Job Posted By */}
       <div className="p-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -208,10 +306,10 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-medium">Juan Ponce Dionisio</span>
+                <span className="font-medium">{company}</span>
                 <CheckCircle className="w-4 h-4 text-primary" />
               </div>
-              <span className="text-xs text-muted-foreground">HR Manager at FB Mark-It Place</span>
+              <span className="text-xs text-muted-foreground">HR Manager</span>
             </div>
           </div>
           <Button variant="outline" className="rounded-full text-blue-500 border-blue-500">
@@ -222,11 +320,9 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
 
       <Separator />
 
-      {/* About the Company */}
       <Card className="m-6">
         <div className="p-6">
           <h2 className="text-xl font-bold mb-6">About the Company</h2>
-
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 flex items-center justify-center bg-gray-100 rounded-md overflow-hidden">
               <div className="relative w-12 h-12">
@@ -238,21 +334,16 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
                 </svg>
               </div>
             </div>
-
             <div className="flex-1">
-              <h3 className="font-bold">Job-All Tech Solutions</h3>
+              <h3 className="font-bold">{company}</h3>
               <div className="text-sm font-medium">Software Development</div>
-              <div className="text-xs text-muted-foreground mt-1">San Francisco, USA | Berlin, Germany</div>
+              <div className="text-xs text-muted-foreground mt-1">{location}</div>
               <div className="text-xs text-muted-foreground">Medium (200-500 employees)</div>
             </div>
           </div>
-
           <p className="text-sm text-muted-foreground mt-4">
-            Job-All Tech Solutions is a leading software development company specializing in AI-driven solutions and
-            enterprise applications. With a global presence in San Francisco and Berlin, we are committed to innovation,
-            efficiency, and excellence...
+            See company profile for more information.
           </p>
-
           <div className="mt-2 text-right">
             <Button variant="link" className="p-0 h-auto text-primary">
               View company
@@ -261,10 +352,8 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
         </div>
       </Card>
 
-      {/* Employees linked to this company */}
       <div className="p-6">
         <h2 className="text-lg font-semibold mb-4">Employees linked to this company</h2>
-
         <div className="grid grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="overflow-hidden">
@@ -280,8 +369,8 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
                     />
                   </div>
                   <div className="text-center">
-                    <div className="font-medium text-sm">Antonio Bayagbag</div>
-                    <div className="text-xs text-muted-foreground">HR Manager for Job-All</div>
+                    <div className="font-medium text-sm">Employee {i}</div>
+                    <div className="text-xs text-muted-foreground">Position</div>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" className="  text-blue-500 border-blue-500 w-full mt-3 rounded-full">
@@ -291,7 +380,6 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
             </Card>
           ))}
         </div>
-
         <div className="flex justify-end mt-4">
           <Button variant="ghost" size="icon" className="rounded-full bg-primary/10">
             <span className="sr-only">Next</span>
@@ -307,12 +395,10 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
           </Button>
         </div>
       </div>
-
-      {/* Render ApplicationModal */}
       {isModalOpen && (
         <ApplicationModal
-          jobId={0} 
-          onClose={() => setIsModalOpen(false)} 
+          jobId={job.id}
+          onClose={() => setIsModalOpen(false)}
         />
       )}
     </div>

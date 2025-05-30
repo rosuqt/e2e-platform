@@ -170,7 +170,12 @@ You acknowledge that any violation of the platform’s policies may result in ac
                       </div>
                       <div>
                         <p className="text-xs font-medium text-gray-500 mb-1">Phone Number</p>
-                        <p className="text-sm text-gray-800">{`${data?.personalDetails?.countryCode || "Country code not provided"} ${data?.personalDetails?.phone || "Phone number not provided"}`}</p>
+                        <p className="text-sm text-gray-800">
+                          {data?.personalDetails?.countryCode
+                            ? `+${data.personalDetails.countryCode} `
+                            : ""}
+                          {data?.personalDetails?.phone || "Phone number not provided"}
+                        </p>
                       </div>
                       <div className="sm:col-span-2">
                         <p className="text-xs font-medium text-gray-500 mb-1">Personal Email</p>
@@ -304,7 +309,7 @@ You acknowledge that any violation of the platform’s policies may result in ac
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-center text-xl font-bold text-gray-800">Terms and Conditions</DialogTitle>
+            <DialogTitle className="text-center text-2xl font-bold text-gray-800">Terms and Conditions</DialogTitle>
             <DialogDescription className="text-center text-gray-500">
               Please read our terms and conditions carefully
             </DialogDescription>
@@ -313,7 +318,7 @@ You acknowledge that any violation of the platform’s policies may result in ac
           <div className="text-sm text-gray-700 space-y-6 mt-4 px-2">
             {sections.map((section, index) => (
               <div key={index} ref={section.ref}>
-                <h3 className="font-semibold text-gray-800">{section.title}</h3>
+                <h3 className="font-semibold text-gray-800 text-xl">{section.title}</h3>
                 <p className="leading-relaxed whitespace-pre-wrap">{section.content}</p>
               </div>
             ))}

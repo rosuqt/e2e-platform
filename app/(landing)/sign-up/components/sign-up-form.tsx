@@ -11,6 +11,8 @@ import CompanyAssociationForm from "./company-association-form"
 import VerificationForm from "./verification-form"
 import SuccessPage from "./success"
 import { SignUpFormData } from "../types"
+import { parsePhoneNumberFromString, CountryCode } from "libphonenumber-js"
+import { countries } from "../data/countries"
 
 const AnimatedCheckIcon = ({ isVisible }: { isVisible: boolean }) => (
   <AnimatePresence>
@@ -100,7 +102,7 @@ export default function SignUpForm() {
     confirmPassword: "",
   })
 
-  const [fetchedCompanies, setFetchedCompanies] = useState<{ name: string }[]>([]);
+  const [fetchedCompanies, setFetchedCompanies] = useState<{ name: string, emailDomain?: string | null, branches?: { branch_name: string, email_domain?: string | null }[] }[]>([]);
 
   useEffect(() => {
     const savedData = sessionStorage.getItem("signUpFormData");
@@ -111,10 +113,12 @@ export default function SignUpForm() {
     const fetchInitialData = async () => {
       try {
         const companiesResponse = await fetch("/api/sign-up/companies");
-        const companiesData: { company_name: string }[] = await companiesResponse.json();
-        setFetchedCompanies(companiesData.map((company) => ({ name: company.company_name })));
-
-        // Prefetch forms
+        const companiesData: { company_name: string, email_domain?: string | null, branches?: { branch_name: string, email_domain?: string | null }[] }[] = await companiesResponse.json();
+        setFetchedCompanies(companiesData.map((company) => ({
+          name: company.company_name,
+          emailDomain: company.email_domain || null,
+          branches: company.branches || [],
+        })));
         await Promise.all([
           fetch("/api/sign-up/personal-details-form"),
           fetch("/api/sign-up/company-association-form"),
@@ -153,23 +157,22 @@ export default function SignUpForm() {
 
     if (!details.firstName.trim()) {
       errors.firstName = "First Name is required.";
-    } else if (!/^[a-zA-Z]+(?:[-\s][a-zA-Z]+)*$/.test(details.firstName)) {
-      errors.firstName = "Only letters, spaces, and single dashes allowed between names.";
+    } else if (!/^[a-zA-Z]+([-.][a-zA-Z]+)*$/.test(details.firstName)) {
+      errors.firstName = "Only letters, single dash or dot allowed between names.";
     } else if (details.firstName.length < 1 || details.firstName.length > 36) {
       errors.firstName = "Must be between 1 and 36 characters.";
     }
 
-
-    if (details.middleName && /[^a-zA-Z\s]/.test(details.middleName)) {
-      errors.middleName = "Cant contain numbers or symbols.";
+    if (details.middleName && !/^[a-zA-Z]+([-.][a-zA-Z]+)*$/.test(details.middleName)) {
+      errors.middleName = "Only letters, single dash or dot allowed between names.";
     } else if (details.middleName && details.middleName.length > 35) {
       errors.middleName = "Must not exceed 35 characters.";
     }
 
     if (!details.lastName.trim()) {
       errors.lastName = "Last Name is required.";
-    } else if (/[^a-zA-Z\s]/.test(details.lastName)) {
-      errors.lastName = "Cant contain numbers or symbols.";
+    } else if (!/^[a-zA-Z]+([-.][a-zA-Z]+)*$/.test(details.lastName)) {
+      errors.lastName = "Only letters, single dash or dot allowed between names.";
     } else if (details.lastName.length < 1 || details.lastName.length > 35) {
       errors.lastName = "Last Name must be between 1 and 35 characters.";
     }
@@ -180,20 +183,58 @@ export default function SignUpForm() {
 
     if (!details.phone.trim()) {
       errors.phone = "Phone Number is required.";
-    } else if (/[^0-9]/.test(details.phone)) {
-      errors.phone = "Cant contain letters or symbols.";
-    } else if (details.phone.length < 7 || details.phone.length > 15) {
-      errors.phone = "Must be between 7 and 15 digits.";
+    } else {
+      const country = countries.find((c) => c.phone === details.countryCode);
+      const countryIso = country?.code as CountryCode | undefined;
+      let phoneInput = details.phone.trim();
+
+      if (countryIso === "PH" && phoneInput.startsWith("0")) {
+        phoneInput = phoneInput.substring(1);
+      }
+
+      if (
+        (details.countryCode === "63" || details.countryCode === "+63") &&
+        (!/^9\d{9}$/.test(phoneInput))
+      ) {
+        errors.phone = "PH mobile must start with 9 and be 10 digits (e.g. 9123456789)";
+      } else if (!/^\d{7,15}$/.test(phoneInput)) {
+        errors.phone = "Invalid phone number";
+      } else {
+        const phoneNumber = countryIso
+          ? parsePhoneNumberFromString(phoneInput, countryIso)
+          : undefined;
+
+        if (!countryIso) {
+          errors.countryCode = "Invalid country code.";
+        } else if (!phoneNumber || !phoneNumber.isValid()) {
+          errors.phone = "Invalid phone number for selected country.";
+        }
+      }
     }
 
     if (!details.email.trim()) {
       errors.email = "Email is required.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email)) {
-      errors.email = "Invalid email format.";
-    } else if (details.email.length < 6 || details.email.length > 254) {
-      errors.email = "Email must be between 6 and 254 characters.";
-    } else if (await checkEmailExists(details.email)) {
-      errors.email = "This email is already registered.";
+    } else {
+      const emailRegex = /^[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
+      const domainPart = details.email.split('@')[1];
+      if (!emailRegex.test(details.email)) {
+        errors.email = "Invalid email format.";
+      } else if (
+        domainPart &&
+        domainPart
+          .split('.')
+          .some(
+            label =>
+              label.startsWith('-') ||
+              label.endsWith('-')
+          )
+      ) {
+        errors.email = "Invalid email format.";
+      } else if (details.email.length < 6 || details.email.length > 254) {
+        errors.email = "Email must be between 6 and 254 characters.";
+      } else if (await checkEmailExists(details.email)) {
+        errors.email = "This email is already registered.";
+      }
     }
 
     if (!details.password.trim()) {
@@ -229,6 +270,7 @@ export default function SignUpForm() {
     if (!formData.companyAssociation.jobTitle.trim()) {
       errors.jobTitle = "Job Title is required."
     }
+
     setCompanyErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -241,6 +283,8 @@ export default function SignUpForm() {
     if (currentStep === 2) {
       const isValid = validateCompanyFields();
       if (!isValid) return;
+      const companyAssociationWithError = formData.companyAssociation as typeof formData.companyAssociation & { __emailError?: string | null };
+      if (companyAssociationWithError.__emailError) return;
 
       const companyName = formData.companyAssociation.companyName.trim();
       if (
@@ -271,6 +315,7 @@ export default function SignUpForm() {
           return response.json();
         })
         .then(() => {
+          sessionStorage.removeItem("signUpFormData");
           setShowSuccess(true);
         })
         .catch(() => {

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { TextField, MenuItem, Button } from "@mui/material";
+import { TextField,  Button } from "@mui/material";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -10,6 +10,7 @@ import Box from "@mui/material/Box";
 import Popper from "@mui/material/Popper";
 import { countries } from "../data/countries";
 import Image from "next/image";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 const shakeAnimation = {
   initial: { x: 0 },
@@ -30,19 +31,19 @@ export default function CreateBranchModal({
     branchName: "",
     branchPhone: "",
     branchEmailDomain: "",
-    address: {
-      country: "",
-      city: "",
-      street: "",
-      province: "",
-      exactAddress: "",
-    },
+    address: "",
+    suiteUnitFloor: "",
+    businessPark: "",
+    buildingName: "",
+    contactEmail: "",
   });
 
   const [isNextDisabled, setIsNextDisabled] = useState(false);
   const [branchNameError, setBranchNameError] = useState("");
   const [branchPhoneError, setBranchPhoneError] = useState("");
   const [branchCountryCodeError, setBranchCountryCodeError] = useState("");
+  const [branchAddressError, setBranchAddressError] = useState("");
+  const [branchContactEmailError, setBranchContactEmailError] = useState("");
 
   const handleBlur = async () => {
     try {
@@ -72,6 +73,14 @@ export default function CreateBranchModal({
 
     if (id === "branchPhone") {
       setBranchPhoneError("");
+    }
+
+    if (id === "address") {
+      setBranchAddressError("");
+    }
+
+    if (id === "contactEmail") {
+      setBranchContactEmailError("");
     }
 
     setFormData({ ...formData, [id]: value });
@@ -121,10 +130,22 @@ export default function CreateBranchModal({
       hasError = true;
     }
 
+    if (!formData.address.trim()) {
+      setBranchAddressError("Address is required.");
+      hasError = true;
+    }
+
+    if (!formData.contactEmail.trim()) {
+      setBranchContactEmailError("Contact Email is required.");
+      hasError = true;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
+      setBranchContactEmailError("Invalid email format.");
+      hasError = true;
+    }
+
     if (hasError) return;
 
     try {
-      console.log("Submitting formData:", { ...formData, companyId });
       const response = await fetch("/api/sign-up/create-branch/new-branch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,8 +154,6 @@ export default function CreateBranchModal({
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Branch data submitted successfully:", result);
-
         const branchName = result.data?.branch_name || result.branch?.branch_name || "unknown";
 
         if (!toast.isActive("branchCreated")) {
@@ -144,18 +163,15 @@ export default function CreateBranchModal({
         if (branchName !== "unknown") {
           onClose({ branchName });
         } else {
-          console.warn("API response does not contain branch_name. Full response:", result);
           onClose();
         }
       } else {
-        const errorData = await response.json();
-        console.error("Error details:", errorData);
         setBranchNameError("An error occurred while creating the branch. Please try again.");
         branchNameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
         toast.error("Failed to create branch. Please try again.");
       }
     } catch (error) {
-      console.error("Error submitting branch data:", error);
+      console.error("Error creating branch:", error);
       setBranchNameError("An unexpected error occurred. Please try again.");
       branchNameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       toast.error("An error occurred while creating the branch.");
@@ -187,7 +203,8 @@ export default function CreateBranchModal({
         >
           <TextField
             id="branchName"
-            label="Branch Name *"
+            label={<span>Branch Name <span style={{ color: "red" }}>*</span></span>}
+            placeholder="Enter branch name"
             variant="outlined"
             fullWidth
             value={formData.branchName}
@@ -196,6 +213,18 @@ export default function CreateBranchModal({
             error={!!branchNameError}
             helperText={branchNameError}
             inputProps={{ maxLength: 40 }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "&:hover fieldset": {
+                  borderColor: "#2563eb",
+                },
+              },
+              "& .MuiInputLabel-root": {
+                "&:hover": {
+                  color: "#2563eb",
+                },
+              },
+            }}
           />
         </motion.div>
 
@@ -240,16 +269,30 @@ export default function CreateBranchModal({
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Country Code *"
+                  label={<span>Country Code <span style={{ color: "red" }}>*</span></span>}
+                  placeholder="Select country code"
                   error={!!branchCountryCodeError}
                   helperText={branchCountryCodeError}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
+                    },
+                  }}
                 />
               )}
               sx={{ minWidth: 200 }}  
             />
             <TextField
               id="branchPhone"
-              label="Phone Number *"
+              label={<span>Phone Number <span style={{ color: "red" }}>*</span></span>}
+              placeholder="Enter branch phone number"
               variant="outlined"
               fullWidth
               value={formData.branchPhone.split(" ").slice(1).join(" ")}
@@ -261,8 +304,45 @@ export default function CreateBranchModal({
               error={!!branchPhoneError}
               helperText={branchPhoneError}
               inputProps={{ maxLength: 15, minLength: 8 }}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  "&:hover fieldset": {
+                    borderColor: "#2563eb",
+                  },
+                },
+                "& .MuiInputLabel-root": {
+                  "&:hover": {
+                    color: "#2563eb",
+                  },
+                },
+              }}
             />
           </div>
+          <TextField
+            id="contactEmail"
+            label={<span>Contact Email <span style={{ color: "red" }}>*</span></span>}
+            placeholder="Enter branch contact email"
+            type="email"
+            variant="outlined"
+            fullWidth
+            value={formData.contactEmail}
+            onChange={handleChange}
+            error={!!branchContactEmailError}
+            helperText={branchContactEmailError}
+            sx={{
+              mt: 2,
+              "& .MuiOutlinedInput-root": {
+                "&:hover fieldset": {
+                  borderColor: "#2563eb",
+                },
+              },
+              "& .MuiInputLabel-root": {
+                "&:hover": {
+                  color: "#2563eb",
+                },
+              },
+            }}
+          />
         </motion.div>
 
         <div className="flex items-center">
@@ -271,121 +351,112 @@ export default function CreateBranchModal({
             variant="outlined"
             disabled
             className="w-16 text-center"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "&:hover fieldset": {
+                  borderColor: "#2563eb",
+                },
+              },
+              "& .MuiInputLabel-root": {
+                "&:hover": {
+                  color: "#2563eb",
+                },
+              },
+            }}
           />
           <TextField
             id="branchEmailDomain"
             label="Email Domain (if applicable)"
+            placeholder="e.g. branch.com"
             variant="outlined"
             fullWidth
             value={formData.branchEmailDomain.startsWith("@") ? formData.branchEmailDomain.slice(1) : formData.branchEmailDomain}
             onChange={handleChange}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "&:hover fieldset": {
+                  borderColor: "#2563eb",
+                },
+              },
+              "& .MuiInputLabel-root": {
+                "&:hover": {
+                  color: "#2563eb",
+                },
+              },
+            }}
           />
         </div>
 
-        <h3 className="text-lg font-semibold text-blue-700 mt-6">
-          Branch Address <span className="text-sm text-gray-500">(leave blank to skip for now)</span>
-        </h3>
-
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <TextField
-                id="branchCountry"
-                select
-                label="Country"
-                variant="outlined"
-                fullWidth
-                value={formData.address.country}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: { ...formData.address, country: e.target.value },
-                  })
-                }
-                SelectProps={{
-                  MenuProps: {
-                    PaperProps: {
-                      style: {
-                        maxHeight: "200px",
-                        overflowY: "auto",
-                      },
-                    },
-                    disablePortal: true,
+          <AddressAutocomplete
+            value={formData.address}
+            onChange={(val: string) => setFormData({ ...formData, address: val })}
+            error={!!branchAddressError}
+            helperText={branchAddressError}
+          />
+          <div className="grid grid-cols-3 gap-4">
+            <TextField
+              id="suiteUnitFloor"
+              label="Suite / Unit / Floor (optional)"
+              placeholder="e.g. Suite 401, 3rd Floor"
+              variant="outlined"
+              fullWidth
+              value={formData.suiteUnitFloor}
+              onChange={handleChange}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  "&:hover fieldset": {
+                    borderColor: "#2563eb",
                   },
-                }}
-              >
-                <MenuItem value="us">United States</MenuItem>
-                <MenuItem value="ca">Canada</MenuItem>
-                <MenuItem value="uk">United Kingdom</MenuItem>
-                <MenuItem value="au">Australia</MenuItem>
-                <MenuItem value="de">Germany</MenuItem>
-                <MenuItem value="fr">France</MenuItem>
-                <MenuItem value="jp">Japan</MenuItem>
-              </TextField>
-            </div>
-
-            <div>
-              <TextField
-                id="branchCity"
-                label="City/Region"
-                variant="outlined"
-                fullWidth
-                value={formData.address.city}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: { ...formData.address, city: e.target.value },
-                  })
-                }
-              />
-            </div>
-          </div>
-
-          <div>
-            <TextField
-              id="branchStreet"
-              label="Street"
-              variant="outlined"
-              fullWidth
-              value={formData.address.street}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  address: { ...formData.address, street: e.target.value },
-                })
-              }
+                },
+                "& .MuiInputLabel-root": {
+                  "&:hover": {
+                    color: "#2563eb",
+                  },
+                },
+              }}
             />
-          </div>
-
-          <div>
             <TextField
-              id="branchProvince"
-              label="Province/State"
+              id="businessPark"
+              label="Landmark"
+              placeholder="e.g. Technohub Business Park"
               variant="outlined"
               fullWidth
-              value={formData.address.province}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  address: { ...formData.address, province: e.target.value },
-                })
-              }
+              value={formData.businessPark}
+              onChange={handleChange}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  "&:hover fieldset": {
+                    borderColor: "#2563eb",
+                  },
+                },
+                "& .MuiInputLabel-root": {
+                  "&:hover": {
+                    color: "#2563eb",
+                  },
+                },
+              }}
             />
-          </div>
-
-          <div>
             <TextField
-              id="branchExactAddress"
-              label="Exact Address"
+              id="buildingName"
+              label="Building Name"
+              placeholder="e.g. Cyber One Tower"
               variant="outlined"
               fullWidth
-              value={formData.address.exactAddress}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  address: { ...formData.address, exactAddress: e.target.value },
-                })
-              }
+              value={formData.buildingName}
+              onChange={handleChange}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  "&:hover fieldset": {
+                    borderColor: "#2563eb",
+                  },
+                },
+                "& .MuiInputLabel-root": {
+                  "&:hover": {
+                    color: "#2563eb",
+                  },
+                },
+              }}
             />
           </div>
         </div>

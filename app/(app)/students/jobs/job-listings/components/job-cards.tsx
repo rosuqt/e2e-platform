@@ -3,8 +3,30 @@ import { BookOpen, Clock, Users, Award, Bookmark } from "lucide-react";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { CgSmile } from "react-icons/cg";
-
 import { IoIosRocket } from "react-icons/io";
+import { useEffect, useState } from "react";
+
+type Employer = {
+  first_name?: string;
+  last_name?: string;
+  company_name?: string;
+};
+
+type Job = {
+  id: number | string;
+  title?: string;
+  job_title?: string;
+  description?: string;
+  location?: string;
+  type?: string;
+  vacancies?: number;
+  deadline?: string;
+  application_deadline?: string;
+  skills?: string[];
+  match_percentage?: number;
+  employers?: Employer;
+  registered_employers?: { company_name?: string };
+};
 
 function JobCard({
   id,
@@ -12,31 +34,111 @@ function JobCard({
   onSelect,
   onQuickApply,
 }: {
-  id: number;
+  id: number | string;
   isSelected: boolean;
   onSelect: () => void;
   onQuickApply: () => void;
 }) {
-  const companies = ["Fb Mark-it Place", "Meta", "Google", "Amazon", "Microsoft"];
-  const titles = ["UI/UX Designer", "Frontend Developer", "Product Manager", "Software Engineer", "Data Analyst"];
-  const descriptions = [
-    "Seeking a creative UI/UX Designer to craft intuitive and visually engaging user experiences.",
-    "Looking for a talented Frontend Developer to build responsive web applications.",
-    "Hiring a Product Manager to lead our product development initiatives.",
-    "Join our engineering team to build scalable software solutions.",
-    "Help us analyze data and provide insights to drive business decisions.",
-  ];
-  
-  const matchPercentages = [93, 87, 76, 95, 82];
+  function getDaysLeft(deadline?: string): string {
+    if (!deadline) return "N/A";
+    const deadlineDate = new Date(deadline);
+    const now = new Date();
+    const diff = deadlineDate.getTime() - now.getTime();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    if (isNaN(days)) return "N/A";
+    if (days < 0) return "Closed";
+    if (days === 0) return "Closes today";
+    if (days === 1) return "1 day left";
+    return `${days} days left`;
+  }
+
+  const [job, setJob] = useState<Job | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (typeof id !== "string" || !uuidRegex.test(id)) {
+      setError("Invalid job id");
+      setJob(null);
+      setLoading(false);
+      return;
+    }
+
+    fetch(`/api/students/job-listings/${id}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to fetch job details");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (!data || data.error) {
+          setError(data?.error || "No job data");
+          setJob(null);
+        } else {
+          setJob(data);
+        }
+        setLoading(false);
+      })
+      .catch((e) => {
+        setError(typeof e === "string" ? e : e.message || "Unable to load job details");
+        setLoading(false);
+      });
+  }, [id]);
+
+  const transitionDelay = typeof id === "number" ? id * 0.1 : 0;
+
+  if (loading) {
+    return (
+      <motion.div
+        className="bg-white rounded-lg shadow-sm p-5 border-l-4 border-l-transparent border-gray-200 relative overflow-hidden mt-2 animate-pulse"
+      >
+        <div className="h-6 bg-gray-200 rounded w-1/3 mb-2" />
+        <div className="h-4 bg-gray-100 rounded w-1/4 mb-4" />
+        <div className="h-4 bg-gray-100 rounded w-1/2 mb-2" />
+        <div className="h-4 bg-gray-100 rounded w-1/3" />
+      </motion.div>
+    );
+  }
+
+  if (error || !job) {
+    return (
+      <motion.div
+        className="bg-white rounded-lg shadow-sm p-5 border-l-4 border-l-transparent border-gray-200 relative overflow-hidden mt-2"
+      >
+        <div className="text-red-500">{error || "No job data"}</div>
+      </motion.div>
+    );
+  }
+
+  const company =
+    job.registered_employers?.company_name ||
+    job.employers?.company_name ||
+    [job.employers?.first_name, job.employers?.last_name].filter(Boolean).join(" ") ||
+    "Unknown Company";
+
+  const title = job.job_title || job.title || "Untitled Position";
+  const description = job.description || "";
+  const location = job.location || "Unknown Location";
+  const type = job.type || "Full-time";
+  const vacancies = job.vacancies || 1;
+  const deadline = job.deadline || job.application_deadline || "";
+  const skills = job.skills || [];
+  const matchPercentage = job.match_percentage || 80;
 
   return (
     <motion.div
       className={`bg-white rounded-lg shadow-sm p-5 border-l-4 ${
         isSelected ? "border-l-blue-500 border-blue-200" : "border-l-transparent border-gray-200"
-      } relative overflow-hidden mt-2`} 
+      } relative overflow-hidden mt-2`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: id * 0.1 }}
+      transition={{ duration: 0.5, delay: transitionDelay }}
       whileHover={{
         y: -2,
         boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
@@ -49,37 +151,19 @@ function JobCard({
             className="w-12 h-12 bg-black rounded-full flex items-center justify-center overflow-hidden text-white"
             whileHover={{ scale: 1.1 }}
           >
-            {id === 0 ? (
-              <div className="text-center text-xs font-bold">Mark.it</div>
-            ) : (
-              <Image
-                src={`/placeholder.svg?height=48&width=48&text=${companies[id % companies.length].charAt(0)}`}
-                alt="Company logo"
-                width={48}
-                height={48}
-                className="object-cover"
-              />
-            )}
+            <Image
+              src={`/placeholder.svg?height=48&width=48&text=${company.charAt(0)}`}
+              alt="Company logo"
+              width={48}
+              height={48}
+              className="object-cover"
+            />
           </motion.div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-lg text-gray-800">{titles[id % titles.length]}</h3>
-              {id === 0 && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-5 h-5 text-blue-500"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              )}
+              <h3 className="font-semibold text-lg text-gray-800">{title}</h3>
             </div>
-            <p className="text-sm text-gray-500">{companies[id % companies.length]}</p>
+            <p className="text-sm text-gray-500">{company}</p>
           </div>
         </div>
         <motion.button
@@ -95,42 +179,40 @@ function JobCard({
       </div>
 
       <div className="flex flex-wrap gap-2 mt-3">
-        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">React</Badge>
-        <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-none">Node.js</Badge>
-        <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">UI/UX</Badge>
-        <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-none">Python</Badge>
-        <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border-none">Java</Badge>
+        {(skills.length > 0 ? skills : ["React", "Node.js", "UI/UX", "Python", "Java"]).map((skill: string, i: number) => (
+          <Badge key={i} className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">{skill}</Badge>
+        ))}
       </div>
 
-      {descriptions[id % descriptions.length] && (
+      {description && (
         <p className="text-gray-600 text-sm mt-3">
-          {descriptions[id % descriptions.length]}
+          {description}
         </p>
       )}
 
-      {matchPercentages[id % matchPercentages.length] && (
+      {matchPercentage && (
         <div className="bg-green-100 text-green-700 text-sm font-semibold mt-4 px-4 py-2 rounded-lg flex items-center gap-2">
           <CgSmile className="w-5 h-5" />
-          <span>You are {matchPercentages[id % matchPercentages.length]}% match to this job.</span>
+          <span>You are {matchPercentage}% match to this job.</span>
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm text-gray-600">
         <div className="flex items-center">
           <Clock className="h-4 w-4 mr-2 text-gray-400" />
-          <span>3 days left</span>
+          <span>{getDaysLeft(deadline)}</span>
         </div>
         <div className="flex items-center">
           <BookOpen className="h-4 w-4 mr-2 text-gray-400" />
-          <span>Full-time</span>
+          <span>{type}</span>
         </div>
         <div className="flex items-center">
           <Users className="h-4 w-4 mr-2 text-gray-400" />
-          <span>5 vacancies left</span>
+          <span>{vacancies} vacancies left</span>
         </div>
         <div className="flex items-center">
           <Award className="h-4 w-4 mr-2 text-gray-400" />
-          <span>Muntinlupa</span>
+          <span>{location}</span>
         </div>
       </div>
 

@@ -47,5 +47,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: jobPrefError.message }, { status: 500 })
   }
 
+  const educations = [{
+    level: "College",
+    years: yearLevel,
+    degree: "BS - Information Technology",
+    school: "STI College Alabang",
+    acronym: "STI",
+    iconColor: "#facc15"
+  }];
+
+  await supabase
+    .from("student_profile")
+    .upsert([{
+      student_id,
+      educations
+    }], { onConflict: "student_id" });
+
   return NextResponse.json({ success: true })
 }

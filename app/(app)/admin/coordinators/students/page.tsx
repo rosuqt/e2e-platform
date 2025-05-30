@@ -396,7 +396,7 @@ export default function StudentManagement() {
             <Upload className="h-4 w-4" />
             Bulk Upload
           </Button>
-          <Button className="flex items-center gap-2">
+          <Button className="flex items-center gap-2" >
             <Download className="h-4 w-4" />
             Export List
           </Button>

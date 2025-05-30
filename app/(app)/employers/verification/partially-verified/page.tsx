@@ -124,7 +124,7 @@ export default function PartiallyVerifiedPage() {
                 { name: "Candidate Matches", value: "Locked", included: false },
                 { name: "Invitations", value: "Locked", included: false },
               ]}
-              buttonText="Downgrade"
+              buttonText="Previous"
               buttonDisabled={true}
             />
 

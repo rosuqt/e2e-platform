@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { TextField, MenuItem, Dialog, CircularProgress, Autocomplete, Skeleton } from "@mui/material";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { styled } from "@mui/system";
 import { PiBuildingsFill } from "react-icons/pi";
 import Popper from "@mui/material/Popper";
@@ -34,6 +34,8 @@ const GroupItems = styled("ul")({
   padding: 0,
 });
 
+type CompanyAssociationWithError = CompanyAssociation & { __emailError?: string | null };
+
 export default function CompanyAssociationForm({
   data,
   onChange,
@@ -46,15 +48,16 @@ export default function CompanyAssociationForm({
   const [isCompanyModalOpen, setCompanyModalOpen] = useState(false);
   const [isBranchModalOpen, setBranchModalOpen] = useState(false);
   const [fetchedCompanies, setFetchedCompanies] = useState<Company[]>([]);
-  const [fetchedBranches, setFetchedBranches] = useState<{ branch_name: string; status: string }[]>([]);
+  const [fetchedBranches, setFetchedBranches] = useState<{ branch_name: string; status: string; email_domain?: string | null }[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [allowsMultipleBranches, setAllowsMultipleBranches] = useState<boolean | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
-
-  const didInit = useRef(false);
+  const [branchInput, setBranchInput] = useState("");
+  const [requiredEmailDomain, setRequiredEmailDomain] = useState<string | null>(null);
+  const [selectedBranchDomain, setSelectedBranchDomain] = useState<string | null>(null);
 
   const saveCompanyAssociation = (updated: CompanyAssociation) => {
     const prev = sessionStorage.getItem("signUpFormData");
@@ -106,7 +109,6 @@ export default function CompanyAssociationForm({
     try {
       const response = await fetch(`/api/sign-up/branches?company_id=${companyId}`);
       if (!response.ok) {
-
         throw new Error(`Failed to fetch branches: ${response.statusText}`);
       }
       const { branches, multipleBranch } = await response.json();
@@ -174,45 +176,53 @@ export default function CompanyAssociationForm({
   }, [data, fetchBranches, onChange, selectedCompanyId]);
 
   useEffect(() => {
-    fetchCompanies();
-  }, []);
-
-  useEffect(() => {
-    if (didInit.current) return;
-    didInit.current = true;
-
     const savedData = sessionStorage.getItem("signUpFormData");
     if (savedData) {
       const parsedData = JSON.parse(savedData);
       if (parsedData?.companyAssociation) {
         onChange(parsedData.companyAssociation);
+        setSearchInput(parsedData.companyAssociation.companyName || "");
+        setBranchInput(parsedData.companyAssociation.companyBranch || "");
         if (parsedData.companyAssociation.companyId) {
           setSelectedCompanyId(parsedData.companyAssociation.companyId);
         }
       }
-    } else if (data.companyId) {
-      setSelectedCompanyId(data.companyId);
+    } else {
+      setSearchInput(data.companyName || "");
+      setBranchInput(data.companyBranch || "");
+      if (data.companyId) {
+        setSelectedCompanyId(data.companyId);
+      }
     }
   }, []);
 
   useEffect(() => {
-    if (selectedCompanyId) {
-      fetchBranches(selectedCompanyId);
+    if (fetchedCompanies.length === 0) {
+      fetchCompanies();
     }
-  }, [selectedCompanyId, fetchBranches]);
+  }, [fetchCompanies, fetchedCompanies.length]);
 
   useEffect(() => {
-    if (
-      data.companyName &&
-      !fetchedCompanies.some((company) => company.name === data.companyName)
-    ) {
-      if (!data.companyId?.startsWith("pending-")) {
-        const updatedData = { ...data, companyName: "", companyId: undefined, companyBranch: "" };
-        onChange(updatedData);
-        saveCompanyAssociation(updatedData);
-      }
+    if (selectedCompanyId && fetchedBranches.length === 0) {
+      fetchBranches(selectedCompanyId);
     }
-  }, [data.companyName, fetchedCompanies, onChange, data.companyId]);
+  }, [selectedCompanyId, fetchBranches, fetchedBranches.length]);
+
+  useEffect(() => {
+    setSearchInput(data.companyName || "");
+    setBranchInput(data.companyBranch || "");
+  }, [data.companyName, data.companyBranch]);
+
+  const emailDomainForDisplay =
+    selectedBranchDomain && selectedBranchDomain.trim() !== ""
+      ? selectedBranchDomain
+      : requiredEmailDomain && requiredEmailDomain.trim() !== ""
+      ? requiredEmailDomain
+      : "";
+
+  useEffect(() => {
+    onChange({ ...data, __emailError: emailError } as CompanyAssociationWithError);
+  }, [emailError]);
 
   const handleCompanyChange = async (value: string) => {
     if (value === "new") {
@@ -222,6 +232,8 @@ export default function CompanyAssociationForm({
 
     const selectedCompany = fetchedCompanies.find((company) => company.name === value);
     if (selectedCompany) {
+      setRequiredEmailDomain(selectedCompany.emailDomain || null);
+      setSelectedBranchDomain(null);
       if (selectedCompanyId !== selectedCompany.id) {
         setSelectedCompanyId(selectedCompany.id);
         setFetchedBranches([]);
@@ -230,12 +242,12 @@ export default function CompanyAssociationForm({
           companyName: value,
           companyId: selectedCompany.id,
           companyBranch: "",
-          companyEmail: selectedCompany.emailDomain
-            ? `${selectedCompany.emailDomain.startsWith("@") ? "" : "@"}${selectedCompany.emailDomain}`
-            : "",
+          companyEmail: "",
         };
         onChange(updatedData);
         saveCompanyAssociation(updatedData);
+        setSearchInput(value);
+        setBranchInput("");
       } else {
         const updatedData = {
           ...data,
@@ -244,21 +256,42 @@ export default function CompanyAssociationForm({
         };
         onChange(updatedData);
         saveCompanyAssociation(updatedData);
+        setSearchInput(value);
       }
     } else {
       setSelectedCompanyId(null);
       setFetchedBranches([]);
+      setRequiredEmailDomain(null);
+      setSelectedBranchDomain(null);
       const updatedData = { ...data, companyName: "", companyId: undefined, companyBranch: "", companyEmail: "" };
       onChange(updatedData);
       saveCompanyAssociation(updatedData);
+      setSearchInput("");
+      setBranchInput("");
     }
   };
 
-  useEffect(() => {
-    if (data.companyId && !selectedCompanyId) {
-      setSelectedCompanyId(data.companyId);
+  const handleBranchChange = (newValue: string | null) => {
+    if (newValue === "+ Add New Branch") {
+      setBranchModalOpen(true);
+      onChange({ ...data, companyBranch: "" });
+      saveCompanyAssociation({ ...data, companyBranch: "" });
+      setBranchInput("");
+      setSelectedBranchDomain(null);
+    } else {
+      onChange({ ...data, companyBranch: newValue || "" });
+      saveCompanyAssociation({ ...data, companyBranch: newValue || "" });
+      setBranchInput(newValue || "");
+      if (newValue) {
+        const branch = fetchedBranches.find(
+          (b) => b.branch_name === newValue
+        );
+        setSelectedBranchDomain(branch && branch.email_domain && branch.email_domain.trim() !== "" ? branch.email_domain : null);
+      } else {
+        setSelectedBranchDomain(null);
+      }
     }
-  }, [data.companyId, selectedCompanyId]);
+  };
 
   return (
     <>
@@ -303,7 +336,8 @@ export default function CompanyAssociationForm({
                   } else if (newValue) {
                     handleCompanyChange(newValue);
                   }
-                }}
+                }
+                }
                 inputValue={searchInput}
                 onInputChange={(event, newInputValue) => {
                   if (newInputValue !== "+ Add New Company") {
@@ -395,7 +429,8 @@ export default function CompanyAssociationForm({
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Company Name *"
+                    label={<span>Company Name <span className="text-red-600">*</span></span>}
+                    placeholder="Select or type your company"
                     variant="outlined"
                     fullWidth
                     error={!!errors.companyName}
@@ -410,9 +445,10 @@ export default function CompanyAssociationForm({
                       ),
                     }}
                     sx={{
-                      "& .MuiInputLabel-root": { color: "gray" },
+                      "& .MuiInputLabel-root": { color: "gray", "&:hover": { color: "#2563eb" } },
                       "& .MuiOutlinedInput-root": {
                         "& fieldset": { borderColor: "darkgray" },
+                        "&:hover fieldset": { borderColor: "#2563eb" },
                       },
                     }}
                   />
@@ -434,23 +470,20 @@ export default function CompanyAssociationForm({
                 }
                 value={data.companyBranch || ""}
                 onChange={(event, newValue) => {
-                  if (newValue === "+ Add New Branch") {
-                    setBranchModalOpen(true);
-                    onChange({ ...data, companyBranch: "" });
-                    saveCompanyAssociation({ ...data, companyBranch: "" });
-                  } else {
-                    onChange({ ...data, companyBranch: newValue || "" });
-                    saveCompanyAssociation({ ...data, companyBranch: newValue || "" });
-                  }
+                  handleBranchChange(newValue as string);
                 }}
                 onInputChange={(event, newInputValue) => {
                   if (newInputValue === "+ Add New Branch") {
                     setBranchModalOpen(true);
                     onChange({ ...data, companyBranch: "" });
                     saveCompanyAssociation({ ...data, companyBranch: "" });
+                    setBranchInput("");
+                    setSelectedBranchDomain(null);
+                  } else {
+                    setBranchInput(newInputValue);
                   }
                 }}
-                inputValue={data.companyBranch || ""}
+                inputValue={branchInput}
                 loading={loadingBranches}
                 freeSolo
                 disabled={!data.companyName}
@@ -481,7 +514,8 @@ export default function CompanyAssociationForm({
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Company Branch *"
+                    label={<span>Company Branch <span className="text-red-600">*</span></span>}
+                    placeholder="Select or type your branch"
                     variant="outlined"
                     fullWidth
                     error={!!errors.companyBranch}
@@ -496,10 +530,14 @@ export default function CompanyAssociationForm({
                       ),
                     }}
                     sx={{
-                      "& .MuiInputLabel-root": { color: !data.companyName ? "lightgray" : "gray" },
+                      "& .MuiInputLabel-root": {
+                        color: !data.companyName ? "lightgray" : "gray",
+                        "&:hover": { color: "#2563eb" },
+                      },
                       "& .MuiOutlinedInput-root": {
                         "& fieldset": { borderColor: !data.companyName ? "lightgray" : "darkgray" },
                         backgroundColor: !data.companyName ? "#f5f5f5" : "white",
+                        "&:hover fieldset": { borderColor: "#2563eb" },
                       },
                     }}
                   />
@@ -515,7 +553,7 @@ export default function CompanyAssociationForm({
               <TextField
                 id="companyRole"
                 select
-                label="Company Role *"
+                label={<span>Company Role <span className="text-red-600">*</span></span>}
                 variant="outlined"
                 fullWidth
                 value={data.companyRole || ""}
@@ -589,14 +627,16 @@ export default function CompanyAssociationForm({
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    label="Job Title *"
+                    label={<span>Job Title <span className="text-red-600">*</span></span>}
+                    placeholder="Select or type a job title"
                     variant="outlined"
                     error={!!errors.jobTitle}
                     helperText={errors.jobTitle}
                     sx={{
-                      "& .MuiInputLabel-root": { color: "gray" },
+                      "& .MuiInputLabel-root": { color: "gray", "&:hover": { color: "#2563eb" } },
                       "& .MuiOutlinedInput-root": {
                         "& fieldset": { borderColor: "darkgray" },
+                        "&:hover fieldset": { borderColor: "#2563eb" },
                       },
                     }}
                   />
@@ -609,40 +649,58 @@ export default function CompanyAssociationForm({
         <div className="px-6" style={{ marginTop: "1.5rem" }}>
           <TextField
             id="companyEmail"
-            label="Company Email (if applicable)"
+            label={
+              emailDomainForDisplay
+                ? (
+                  <span>
+                    Company Email <span className="text-red-600">*</span> (must match {emailDomainForDisplay.startsWith("@") ? emailDomainForDisplay : "@" + emailDomainForDisplay})
+                  </span>
+                )
+                : "Company Email (if applicable)"
+            }
+            placeholder={
+              emailDomainForDisplay
+                ? `Enter your company email (must match ${emailDomainForDisplay.startsWith("@") ? emailDomainForDisplay : "@" + emailDomainForDisplay})`
+                : "Enter company email"
+            }
             variant="outlined"
             fullWidth
             value={data.companyEmail || ""}
             onChange={(e) => {
-              const email = e.target.value;
               setEmailError(null);
-              const updatedData = { ...data, companyEmail: email };
+              const updatedData = { ...data, companyEmail: e.target.value };
               onChange(updatedData);
               saveCompanyAssociation(updatedData);
             }}
             onBlur={(e) => {
               const email = e.target.value;
-              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-              const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9.-]{1,29}$/;
-              const [, domain] = email.split("@");
-
-              if (email && !emailRegex.test(email)) {
+              const domain = emailDomainForDisplay;
+              if (domain) {
+                if (!email) {
+                  setEmailError("Company Email is required for this branch/company.");
+                  return;
+                }
+                if (
+                  !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+                  !email.endsWith(domain.startsWith("@") ? domain : "@" + domain)
+                ) {
+                  setEmailError(
+                    `Email must match the domain (${domain.startsWith("@") ? domain : "@" + domain})`
+                  );
+                  return;
+                }
+              } else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                 setEmailError("Invalid email format");
                 return;
               }
-
-              if (domain && !domainRegex.test(domain)) {
-                setEmailError("Invalid email domain: must be 2–30 characters and not start with special characters");
-                return;
-              }
-
               setEmailError(null);
             }}
             error={!!emailError}
             helperText={emailError}
+            required={!!emailDomainForDisplay}
             sx={{
               "& .MuiInputLabel-root": { color: "gray" },
-              "& .MuiOutlinedInput-root": {
+              "& .MuiOutlinedInputRoot": {
                 "& fieldset": { borderColor: "darkgray" },
               },
             }}

@@ -57,12 +57,12 @@ export default function AdminLayout({
   const navItems: NavItem[] = [
     {
       title: "Dashboard",
-      href: "/coordinators/dashboard",
+      href: "/admin/coordinators/dashboard",
       icon: BarChart3,
     },
     {
       title: "Student Management",
-      href: "/coordinators/students",
+      href: "/admin/coordinators/students",
       icon: Users,
       badge: 3,
     },
@@ -72,10 +72,10 @@ export default function AdminLayout({
       icon: Flag,
       badge: 12,
       submenu: [
-        { title: "Reported Employers", href: "/coordinators/reports/employers", badge: 5 },
-        { title: "Reported Companies", href: "/coordinators/reports/companies", badge: 3 },
-        { title: "Reported Listings", href: "/coordinators/reports/listings", badge: 2 },
-        { title: "Reported Students", href: "/coordinators/reports/students", badge: 2 },
+        { title: "Reported Employers", href: "/admin/coordinators/reports/employers", badge: 5 },
+        { title: "Reported Companies", href: "/admin/coordinators/reports/companies", badge: 3 },
+        { title: "Reported Listings", href: "/admin/coordinators/reports/listings", badge: 2 },
+        { title: "Reported Students", href: "/admin/coordinators/reports/students", badge: 2 },
       ],
     },
   ]
@@ -108,7 +108,7 @@ export default function AdminLayout({
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-slate-200 dark:border-slate-700">
         <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
-          Admin Portal
+          Coordinator Portal
         </h1>
       </div>
       <div className="flex-1 py-6 overflow-auto">

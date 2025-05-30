@@ -327,8 +327,10 @@ export default function AllyPage() {
         return "bg-yellow-500/70 text-black"
       case "resolved":
         return "bg-green-600/70 text-white"
+      case "self-fix":
+        return "bg-blue-600/70 text-white"  
       case "known-issue":
-        return "bg-blue-600/70 text-white"
+        return "bg-red-500/70 text-white"
       default:
         return "bg-purple-500/70 text-white"
     }

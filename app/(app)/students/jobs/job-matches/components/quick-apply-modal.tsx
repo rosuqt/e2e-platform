@@ -1,12 +1,132 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Badge } from "./badge";
 import { Star, FileText, Bell } from "lucide-react";
 import { FaHandSparkles } from "react-icons/fa";
 import { Button } from "@/components/ui/button"
 
+type StudentDetails = {
+  id: string
+  first_name: string
+  last_name: string
+  email: string
+  course?: string
+  year?: string
+  section?: string
+  contact_info?: {
+    email?: string[]
+    phone?: string[]
+    // ...other fields if needed
+  }
+  // ...add more fields as needed
+}
+
+type QuickApplyForm = {
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  resume: string
+  cover_letter: string
+  experience_years: string
+  portfolio: string
+  terms_accepted: boolean
+  application_answers: Record<string, unknown>
+}
+
 function QuickApplyModal({ jobId, onClose }: { jobId: number; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<"application" | "resume" | "cover" | "questions">("application");
+  const [student, setStudent] = useState<StudentDetails | null>(null)
+  const [form, setForm] = useState<QuickApplyForm>({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    resume: "",
+    cover_letter: "",
+    experience_years: "",
+    portfolio: "",
+    terms_accepted: false,
+    application_answers: {},
+  })
+  const [usePersonalEmail, setUsePersonalEmail] = useState(false);
+  const [usePersonalPhone, setUsePersonalPhone] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/students/get-student-details")
+      .then(res => res.ok ? res.json() : null)
+      .then((data: StudentDetails) => {
+        if (data) {
+          setStudent(data)
+          setForm((prev: QuickApplyForm) => ({
+            ...prev,
+            first_name: data.first_name || "",
+            last_name: data.last_name || "",
+            email: data.email || "",
+            phone: "",
+            // ...other fields if available...
+          }))
+        }
+      })
+  }, [])
+
+  useEffect(() => {
+    if (student) {
+      if (usePersonalEmail && Array.isArray(student.contact_info?.email) && student.contact_info.email[0]) {
+        setForm((prev: QuickApplyForm) => ({ ...prev, email: student.contact_info!.email![0] }))
+      } else {
+        setForm((prev: QuickApplyForm) => ({ ...prev, email: student.email || "" }))
+      }
+    }
+  }, [usePersonalEmail, student])
+
+  useEffect(() => {
+    if (student) {
+      if (usePersonalPhone && Array.isArray(student.contact_info?.phone) && student.contact_info.phone[0]) {
+        setForm((prev: QuickApplyForm) => ({ ...prev, phone: student.contact_info!.phone![0] }))
+      } else {
+        setForm((prev: QuickApplyForm) => ({ ...prev, phone: "" }))
+      }
+    }
+  }, [usePersonalPhone, student])
+
+  const handleChange = (field: keyof QuickApplyForm, value: QuickApplyForm[keyof QuickApplyForm]) => {
+    setForm((prev: QuickApplyForm) => ({ ...prev, [field]: value }))
+  }
+
+  const tabOrder: Array<"application" | "resume" | "cover" | "questions"> = [
+    "application",
+    "resume",
+    "cover",
+    "questions",
+  ];
+
+  const handleNext = () => {
+    const idx = tabOrder.indexOf(activeTab);
+    if (idx < tabOrder.length - 1) {
+      setActiveTab(tabOrder[idx + 1]);
+    }
+  };
+
+  const handlePrev = () => {
+    const idx = tabOrder.indexOf(activeTab);
+    if (idx > 0) {
+      setActiveTab(tabOrder[idx - 1]);
+    }
+  };
+
+  const handleSubmit = async () => {
+    await fetch("/api/students/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...form,
+        job_id: jobId,
+        student_id: student?.id,
+      }),
+    });
+    onClose();
+  };
 
   const jobData = {
     0: {
@@ -112,23 +232,55 @@ function QuickApplyModal({ jobId, onClose }: { jobId: number; onClose: () => voi
                 <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Name</span>
-                    <span className="text-sm font-medium">Kemly Rose</span>
+                    <span className="text-sm font-medium">
+                      <input className="bg-transparent border-none outline-none" value={form.first_name} onChange={e => handleChange("first_name", e.target.value)} />
+                      {" "}
+                      <input className="bg-transparent border-none outline-none" value={form.last_name} onChange={e => handleChange("last_name", e.target.value)} />
+                    </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Email</span>
-                    <span className="text-sm font-medium">kemly.rose@example.com</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="text-sm font-medium bg-transparent border-none outline-none"
+                        value={form.email}
+                        onChange={e => handleChange("email", e.target.value)}
+                      />
+                      <label className="flex items-center gap-1 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={usePersonalEmail}
+                          onChange={e => setUsePersonalEmail(e.target.checked)}
+                        />
+                        Use personal email
+                      </label>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Phone</span>
-                    <span className="text-sm font-medium">+63 912 345 6789</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="text-sm font-medium bg-transparent border-none outline-none"
+                        value={form.phone}
+                        onChange={e => handleChange("phone", e.target.value)}
+                      />
+                      <label className="flex items-center gap-1 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={usePersonalPhone}
+                          onChange={e => setUsePersonalPhone(e.target.checked)}
+                        />
+                        Use personal phone
+                      </label>
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Education</span>
-                    <span className="text-sm font-medium">BS Information Technology</span>
+                    {/* Remove the input for education since it's not in QuickApplyForm */}
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Resume</span>
-                    <span className="text-sm font-medium text-blue-600 cursor-pointer">KemlyRose_Resume.pdf</span>
+                    <input className="text-sm font-medium text-blue-600 bg-transparent border-none outline-none" value={form.resume} onChange={e => handleChange("resume", e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -245,18 +397,8 @@ function QuickApplyModal({ jobId, onClose }: { jobId: number; onClose: () => voi
               <textarea
                 className="w-full min-h-[300px] rounded-md border border-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Write your cover letter here..."
-                defaultValue="Dear Hiring Manager,
-
-I am writing to express my interest in the UI/UX Designer position at Fb Mark-it Place. As a fourth-year Information Technology student with a strong background in frontend development and UI/UX design, I believe I would be a valuable addition to your team.
-
-My experience includes designing and developing responsive web applications using React, Next.js, and various design tools like Figma. I have a keen eye for detail and a passion for creating intuitive, user-friendly interfaces that enhance the overall user experience.
-
-I am particularly drawn to Fb Mark-it Place because of your innovative approach to digital solutions and your commitment to user-centered design. I am excited about the opportunity to contribute to your projects and grow as a designer in your collaborative environment.
-
-Thank you for considering my application. I look forward to the possibility of discussing how my skills and experiences align with your needs.
-
-Sincerely,
-Kemly Rose"
+                value={form.cover_letter}
+                onChange={e => handleChange("cover_letter", e.target.value)}
               ></textarea>
 
               <div className="bg-blue-50 p-4 rounded-lg">
@@ -285,10 +427,13 @@ Kemly Rose"
                   <label className="block text-sm font-medium text-gray-700">
                     How many years of experience do you have in UI/UX design?
                   </label>
-                  <select className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <select className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={form.experience_years}
+                    onChange={e => handleChange("experience_years", e.target.value)}
+                  >
                     <option>Select an option</option>
                     <option>Less than 1 year</option>
-                    <option selected>1-2 years</option>
+                    <option>1-2 years</option>
                     <option>3-5 years</option>
                     <option>5+ years</option>
                   </select>
@@ -297,8 +442,9 @@ Kemly Rose"
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">Do you have experience with Figma?</label>
                   <div className="flex gap-4">
+                    {/* Remove all references to form.figma_experience */}
                     <div className="flex items-center gap-2">
-                      <input type="radio" id="figma-yes" name="figma" checked />
+                      <input type="radio" id="figma-yes" name="figma" />
                       <label htmlFor="figma-yes" className="text-sm">
                         Yes
                       </label>
@@ -316,10 +462,10 @@ Kemly Rose"
                   <label className="block text-sm font-medium text-gray-700">
                     Please describe a UI/UX project you&apos;ve worked on and your role in it.
                   </label>
+                  {/* Remove all references to form.project_description */}
                   <textarea
                     className="w-full min-h-[100px] rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Describe your experience..."
-                    defaultValue="For my capstone project, I designed and developed a student job matching platform using React and Figma. I conducted user research with 50+ students, created wireframes and prototypes, and implemented the frontend interface. The platform improved job discovery by 40% in our user testing."
                   ></textarea>
                 </div>
 
@@ -328,8 +474,9 @@ Kemly Rose"
                     Are you available to start immediately?
                   </label>
                   <div className="flex gap-4">
+                    {/* Remove all references to form.start_immediately */}
                     <div className="flex items-center gap-2">
-                      <input type="radio" id="start-yes" name="start" checked />
+                      <input type="radio" id="start-yes" name="start" />
                       <label htmlFor="start-yes" className="text-sm">
                         Yes
                       </label>
@@ -352,12 +499,23 @@ Kemly Rose"
             Save as Draft
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" className="text-blue-600 border-blue-200">
+            <Button
+              variant="outline"
+              className="text-blue-600 border-blue-200"
+              onClick={handlePrev}
+              disabled={activeTab === "application"}
+            >
               Previous
             </Button>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              {activeTab === "questions" ? "Submit Application" : "Next"}
-            </Button>
+            {activeTab === "questions" ? (
+              <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSubmit}>
+                Submit Application
+              </Button>
+            ) : (
+              <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleNext}>
+                Next
+              </Button>
+            )}
           </div>
         </div>
       </motion.div>

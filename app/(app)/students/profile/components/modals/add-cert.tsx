@@ -32,6 +32,7 @@ type AddCertModalProps = {
     description?: string;
     attachment?: File | null;
     category?: string;
+    attachmentUrl?: string;
   }) => void;
 };
 
@@ -63,13 +64,33 @@ export default function AddCertModal({
   const handleSave = async () => {
     setSaving(true);
     const studentId = (session?.user as { studentId?: string })?.studentId;
-    const attachmentUrl = "";
-    if (attachment) {
-      // upload the file to storage and get the URL 
-      // skip file upload and leave attachmentUrl empty
+    let attachmentUrl = "";
+    if (attachment && studentId) {
+      const ext = attachment.name.split(".").pop();
+      const safeTitle = title
+        .replace(/[^a-zA-Z0-9]/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .toUpperCase();
+      const fileName = `${studentId}/certs/${safeTitle}.${ext}`;
+      const form = new FormData();
+
+      form.append("file", attachment, attachment.name);
+      form.append("fileType", "cert");
+      form.append("student_id", studentId);
+      form.append("customPath", fileName);
+      form.append("certTitle", title); 
+      const res = await fetch("/api/students/student-profile/postHandlers", {
+        method: "POST",
+        body: form
+      });
+      const { data, error } = await res.json();
+      if (!error && data?.path) {
+        attachmentUrl = data.path;
+      }
     }
     if (studentId) {
-      await fetch("/api/students/student-profile/modal", {
+      await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -79,7 +100,7 @@ export default function AddCertModal({
         })
       });
     }
-    onSave?.({ title, issuer, issueDate, description, attachment, category });
+    onSave?.({ title, issuer, issueDate, description, attachment, category, attachmentUrl });
     handleClose();
   };
 

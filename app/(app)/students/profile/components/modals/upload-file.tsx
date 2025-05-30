@@ -26,6 +26,7 @@ type UploadFileModalProps = {
   onUpload?: (file: File) => void;
   header?: string;
   desc?: string;
+  uploadedFiles?: string[]; 
 };
 
 export default function UploadFileModal({
@@ -33,13 +34,15 @@ export default function UploadFileModal({
   onClose,
   onUpload,
   header = "Upload File",
-  desc = "Select a file to upload."
+  desc = "Select a file to upload.",
+  uploadedFiles = []
 }: UploadFileModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { data: session } = useSession();
+  const MAX_FILES = 3;
 
   const handleClose = () => {
     onClose?.();
@@ -77,6 +80,7 @@ export default function UploadFileModal({
 
   const handleUpload = async () => {
     if (!file) return;
+    if (uploadedFiles.length >= MAX_FILES) return;
     setUploading(true);
     const studentId = (session?.user as { studentId?: string })?.studentId;
     const fileType = header?.toLowerCase().includes("cover") ? "cover_letter" : "resume";
@@ -87,7 +91,7 @@ export default function UploadFileModal({
       formData.append("fileType", fileType);
       formData.append("student_id", studentId);
 
-      const response = await fetch("/api/students/student-profile/modal", {
+      const response = await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         body: formData,
       });
@@ -208,7 +212,7 @@ export default function UploadFileModal({
             <Button
               fullWidth
               onClick={handleUpload}
-              disabled={!file || uploading}
+              disabled={!file || uploading || uploadedFiles.length >= MAX_FILES}
               sx={{
                 background: "#2563eb",
                 color: "#fff",

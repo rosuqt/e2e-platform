@@ -1,10 +1,9 @@
 "use client"
-import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { MdWorkOutline, MdStarOutline, MdContactMail, MdOutlineEmojiObjects } from "react-icons/md"
 import { FaFacebook, FaLinkedin, FaRegBookmark, FaTwitter, FaBookmark, FaGithub, FaGlobe, FaInstagram, FaYoutube } from "react-icons/fa6";
 import { LuTrophy } from "react-icons/lu";
-import { Mail, Phone } from "lucide-react"
+import { Mail, Phone, Trash2 } from "lucide-react"
 import AddEducationalModal from "./modals/add-education";
 import AddExpertiseModal from "./modals/add-expertise";
 import UploadFileModal from "./modals/upload-file";
@@ -17,6 +16,10 @@ import { TiDelete } from "react-icons/ti"
 import { skillSuggestions } from "./data/skill-suggestions"
 import { SiIndeed } from "react-icons/si";
 import { useSession } from "next-auth/react";
+import { ExpertiseIcon } from "./data/expertise-icons"
+import { useRouter } from "next/navigation";
+import { FaGraduationCap } from "react-icons/fa";
+import { Tooltip } from "@mui/material";
 
 export default function AboutPage() {
   const [openAddEducation, setOpenAddEducation] = useState(false);
@@ -32,9 +35,9 @@ export default function AboutPage() {
     phone: string;
     socials: { key: string; url: string }[];
   }>({
-    email: "john.doe@techcorp.com",
-    countryCode: "1",
-    phone: "5551234567",
+    email: "",
+    countryCode: "",
+    phone: "",
     socials: []
   });
   type Cert = {
@@ -42,7 +45,7 @@ export default function AboutPage() {
     issuer: string;
     issueDate: string;
     description?: string;
-    attachment?: File | null;
+    attachmentUrl?: string;
     category?: string;
   };
   const [certs, setCerts] = useState<Cert[]>([]);
@@ -70,64 +73,234 @@ export default function AboutPage() {
     textColor: string;
     level?: string;
   };
-  const [educations, setEducations] = useState<Education[]>([
-    {
-      acronym: "STI",
-      school: "STI College",
-      level: "College",
-      degree: "BS - Information Technology",
-      years: "Present",
-      color: "bg-yellow-100",
-      textColor: "text-blue-800"
-    },
-
-  ]);
+  const [educations, setEducations] = useState<Education[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [showSkillInput, setShowSkillInput] = useState(false);
   const [focusedSuggestion, setFocusedSuggestion] = useState<number>(-1);
   const [savedJobs, setSavedJobs] = useState<number[]>([]);
   const [selectedCert, setSelectedCert] = useState<Cert | null>(null);
-  const [uploadedResume, setUploadedResume] = useState<{ name: string; url: string; uploadedAt: string } | null>(null);
-  const [uploadedCover, setUploadedCover] = useState<{ name: string; url: string; uploadedAt: string } | null>(null);
+  const [uploadedResume, setUploadedResume] = useState<{ name: string; url: string; uploadedAt: string }[]>([]);
+  const [uploadedCover, setUploadedCover] = useState<{ name: string; url: string; uploadedAt: string }[]>([]);
+  const [introduction, setIntroduction] = useState("");
+  const [careerGoals, setCareerGoals] = useState("");
   const { data: session } = useSession();
+  const router = useRouter();
+  const [loadingIntro, setLoadingIntro] = useState(false);
+  const [loadingCareer, setLoadingCareer] = useState(false);
+  const [deletingCertIdx, setDeletingCertIdx] = useState<number | null>(null);
+  const [deletingSkillIdx, setDeletingSkillIdx] = useState<number | null>(null);
+  const [downloadingResumeIdx, setDownloadingResumeIdx] = useState<number | null>(null);
+  const [downloadingCoverIdx, setDownloadingCoverIdx] = useState<number | null>(null);
+
+  const MAX_RESUMES = 3;
+  const MAX_COVERS = 3;
+
+  const handleDownload = async (type: "resume" | "cover", idx: number) => {
+    const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
+    if (type === "resume" && uploadedResume.length > idx) {
+      setDownloadingResumeIdx(idx);
+      try {
+        const res = await fetch(`/api/students/student-profile/getDocuments?student_id=${student_id}`);
+        const data = await res.json();
+        const urls: string[] = data.resumeUrls || [];
+        const url = urls[idx];
+        if (url) {
+          const fileRes = await fetch(url);
+          if (!fileRes.ok) throw new Error("File not found");
+          const blob = await fileRes.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = uploadedResume[idx].name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(blobUrl);
+        }
+      } finally {
+        setDownloadingResumeIdx(null);
+      }
+    }
+    if (type === "cover" && uploadedCover.length > idx) {
+      setDownloadingCoverIdx(idx);
+      try {
+        const res = await fetch(`/api/students/student-profile/getDocuments?student_id=${student_id}`);
+        const data = await res.json();
+        const urls: string[] = data.coverLetterUrls || [];
+        const url = urls[idx];
+        if (url) {
+          const fileRes = await fetch(url);
+          if (!fileRes.ok) throw new Error("File not found");
+          const blob = await fileRes.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = uploadedCover[idx].name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(blobUrl);
+        }
+      } finally {
+        setDownloadingCoverIdx(null);
+      }
+    }
+  };
+
+  const handleDeleteCert = async (idx: number) => {
+    const cert = certs[idx];
+    setDeletingCertIdx(idx);
+    try {
+      const res = await fetch("/api/students/student-profile/userActions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: cert.title,
+          issuer: cert.issuer,
+          issueDate: cert.issueDate,
+        }),
+      });
+      if (res.ok) {
+        setCerts(prev => prev.filter((_, i) => i !== idx));
+      }
+    } finally {
+      setDeletingCertIdx(null);
+    }
+  };
+
+  // Add delete handlers for resume/cover using userActions route
+  const handleDeleteResume = async (idx: number) => {
+    const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
+    const fileToDelete = uploadedResume[idx];
+    if (!fileToDelete) return;
+    await fetch("/api/students/student-profile/userActions", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        student_id,
+        fileType: "resume",
+        fileName: fileToDelete.name,
+        fileUrl: fileToDelete.url,
+      }),
+    });
+    // Refetch uploads after deletion
+    fetchUploads();
+  };
+  const handleDeleteCover = async (idx: number) => {
+    const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
+    const fileToDelete = uploadedCover[idx];
+    if (!fileToDelete) return;
+    await fetch("/api/students/student-profile/userActions", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        student_id,
+        fileType: "cover_letter",
+        fileName: fileToDelete.name,
+        fileUrl: fileToDelete.url,
+      }),
+    });
+    // Refetch uploads after deletion
+    fetchUploads();
+  };
 
   const fetchUploads = async () => {
     const student_id =
       (session?.user as { studentId?: string })?.studentId || "student_001";
-    const res = await fetch(`/api/students/student-profile/modal?student_id=${student_id}`);
+    const res = await fetch(`/api/students/student-profile/postHandlers?student_id=${student_id}`);
     if (!res.ok) {
-      setUploadedResume(null);
-      setUploadedCover(null);
+      setUploadedResume([]);
+      setUploadedCover([]);
       return;
     }
     const data = await res.json();
-    if (data?.uploaded_resume_url) {
-      const name = data.uploaded_resume_url.split("/").pop() || "resume";
-      setUploadedResume({
-        name,
-        url: `/storage/${data.uploaded_resume_url}`,
-        uploadedAt: data.updated_at || ""
-      });
-    } else {
-      setUploadedResume(null);
+
+    // Handle multiple resumes
+    let resumePaths: string[] = [];
+    if (Array.isArray(data.uploaded_resume_url)) {
+      resumePaths = data.uploaded_resume_url;
+    } else if (typeof data.uploaded_resume_url === "string" && data.uploaded_resume_url) {
+      resumePaths = [data.uploaded_resume_url];
     }
-    if (data?.uploaded_cover_letter_url) {
-      const name = data.uploaded_cover_letter_url.split("/").pop() || "cover_letter";
-      setUploadedCover({
-        name,
-        url: `/storage/${data.uploaded_cover_letter_url}`,
-        uploadedAt: data.updated_at || ""
-      });
-    } else {
-      setUploadedCover(null);
+    // Handle multiple cover letters
+    let coverPaths: string[] = [];
+    if (Array.isArray(data.uploaded_cover_letter_url)) {
+      coverPaths = data.uploaded_cover_letter_url;
+    } else if (typeof data.uploaded_cover_letter_url === "string" && data.uploaded_cover_letter_url) {
+      coverPaths = [data.uploaded_cover_letter_url];
     }
+
+    setUploadedResume(
+      resumePaths.length
+        ? resumePaths.map((path: string) => ({
+            name: path.split("/").pop() || "resume",
+            url: `/storage/${path}`,
+            uploadedAt: data.updated_at || ""
+          }))
+        : []
+    );
+    setUploadedCover(
+      coverPaths.length
+        ? coverPaths.map((path: string) => ({
+            name: path.split("/").pop() || "cover_letter",
+            url: `/storage/${path}`,
+            uploadedAt: data.updated_at || ""
+          }))
+        : []
+    );
   };
 
   useEffect(() => {
     fetchUploads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const res = await fetch("/api/students/student-profile/getHandlers");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.skills && Array.isArray(data.skills)) setSkills(data.skills);
+      if (data.expertise && Array.isArray(data.expertise)) setExpertise(data.expertise);
+      if (data.educations && Array.isArray(data.educations)) {
+        setEducations(
+          data.educations.map((edu: Record<string, unknown>) => {
+            const colorInfo = colorMap[String(edu.iconColor)] || colorMap["#2563eb"];
+            return {
+              ...edu,
+              color: colorInfo.color,
+              textColor: "text-white"
+            };
+          })
+        );
+      }
+      if (data.certs && Array.isArray(data.certs)) setCerts(data.certs);
+      if (typeof data.introduction === "string") setIntroduction(data.introduction);
+      if (typeof data.career_goals === "string") setCareerGoals(data.career_goals);
+      if (data.contact_info && typeof data.contact_info === "object") {
+        setContactInfo({
+          email: data.contact_info.email || "",
+          countryCode: data.contact_info.countryCode || "",
+          phone: data.contact_info.phone || "",
+          socials: Array.isArray(data.contact_info.socials) ? data.contact_info.socials : []
+        });
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const saveProfileField = async (field: string, value: unknown) => {
+    if (field === "introduction") setLoadingIntro(true);
+    if (field === "career_goals") setLoadingCareer(true);
+    await fetch("/api/students/student-profile/postHandlers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value }),
+    });
+    if (field === "introduction") setLoadingIntro(false);
+    if (field === "career_goals") setLoadingCareer(false);
+  };
 
   const getFileIcon = (filepath: string) => {
     const ext = filepath.split(".").pop()?.toLowerCase();
@@ -156,7 +329,7 @@ export default function AboutPage() {
   const colorMap: Record<string, { color: string; textColor: string }> = {
     "#2563eb": { color: "bg-blue-600", textColor: "text-white" },
     "#22c55e": { color: "bg-green-500", textColor: "text-white" },
-    "#facc15": { color: "bg-yellow-400", textColor: "text-slate-800" },
+    "#facc15": { color: "bg-yellow-400", textColor: "text-white" },
     "#f59e42": { color: "bg-orange-400", textColor: "text-white" },
     "#ef4444": { color: "bg-red-500", textColor: "text-white" },
     "#a855f7": { color: "bg-purple-500", textColor: "text-white" },
@@ -189,8 +362,22 @@ export default function AboutPage() {
 
   const [expertise, setExpertise] = useState<{ skill: string; mastery: number }[]>([]);
   const handleAddExpertise = (data: { skill: string; mastery: number }) => {
-    setExpertise([...expertise, data]);
+    setExpertise([data, ...expertise]);
     setOpenAddExpertise(false);
+  };
+  const handleDeleteExpertise = async (idx: number) => {
+    const exp = expertise[idx];
+    setExpertise(prev => prev.filter((_, i) => i !== idx));
+    const student_id = (session?.user as { studentId?: string })?.studentId;
+    await fetch("/api/students/student-profile/userActions", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        expertiseSkill: exp.skill,
+        expertiseMastery: exp.mastery,
+        student_id
+      }),
+    });
   };
 
   const handleAddCert = (cert: {
@@ -200,6 +387,7 @@ export default function AboutPage() {
     description?: string;
     attachment?: File | null;
     category?: string;
+    attachmentUrl?: string;
   }) => {
     setCerts(prev => [...prev, cert]);
     setOpenAddCert(false);
@@ -215,7 +403,7 @@ export default function AboutPage() {
     setOpenEditContact(false);
   };
 
-  const addSkill = (value: string) => {
+  const addSkill = async (value: string) => {
     const skill = value.trim();
     if (
       !skill ||
@@ -223,10 +411,55 @@ export default function AboutPage() {
       skill.length > 20 ||
       skills.length >= 8
     ) return;
-    setSkills([...skills, skill]);
+    const newSkills = [skill, ...skills];
+    setSkills(newSkills);
     setSkillInput("");
     setShowSkillInput(false);
     setFocusedSuggestion(-1);
+    await saveProfileField("skills", newSkills);
+  };
+
+  const removeSkill = async (idx: number) => {
+    setDeletingSkillIdx(idx);
+    const newSkills = skills.filter((_, i) => i !== idx);
+    setSkills(newSkills);
+    try {
+      await fetch("/api/students/student-profile/postHandlers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skills: newSkills }),
+      });
+    } finally {
+      setDeletingSkillIdx(null);
+    }
+  };
+
+  const handleIntroductionBlur = async (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    setIntroduction(e.target.value);
+    await saveProfileField("introduction", e.target.value);
+  };
+
+  const handleCareerGoalsBlur = async (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    setCareerGoals(e.target.value);
+    await saveProfileField("career_goals", e.target.value);
+  };
+
+  const handleIntroductionKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      setLoadingIntro(true);
+      await saveProfileField("introduction", introduction);
+      setLoadingIntro(false);
+    }
+  };
+
+  const handleCareerGoalsKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      setLoadingCareer(true);
+      await saveProfileField("career_goals", careerGoals);
+      setLoadingCareer(false);
+    }
   };
 
   const handleSkillInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -276,10 +509,6 @@ export default function AboutPage() {
     }
   };
 
-  const removeSkill = (idx: number) => {
-    setSkills(skills.filter((_, i) => i !== idx));
-  };
-
   const chipColors = [
     { color: "bg-blue-100", textColor: "text-blue-700" },
     { color: "bg-green-100", textColor: "text-green-700" },
@@ -308,9 +537,24 @@ export default function AboutPage() {
             <p className="text-sm text-gray-500 mb-3 -mt-2">Write a brief introduction about yourself and your passions.</p>
             <textarea
               className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-600 outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Write about your passions and interests..."
-             
+              placeholder="Write then Press enter to save"
+              value={introduction}
+              onChange={e => setIntroduction(e.target.value)}
+              onBlur={handleIntroductionBlur}
+              onKeyDown={handleIntroductionKeyDown}
+              disabled={loadingIntro}
             />
+            <div className="flex items-center gap-2 mt-1">
+              {loadingIntro && (
+                <span className="flex items-center text-blue-600 text-xs">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                  </svg>
+                  Saving...
+                </span>
+              )}
+            </div>
           </div>
           <hr className="border-gray-200" />
 
@@ -321,8 +565,12 @@ export default function AboutPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {educations.map((edu, idx) => (
                 <div key={idx} className="flex gap-3 items-center">
-                  <div className={`${edu.color} p-2 rounded-md`}>
-                    <span className={`text-sm font-bold ${edu.textColor}`}>{edu.acronym}</span>
+                  <div className={`${edu.color} p-2 rounded-md flex items-center justify-center`} style={{ minWidth: 40, minHeight: 40 }}>
+                    {edu.acronym && edu.acronym.trim() !== "" ? (
+                      <span className="text-sm font-bold text-white">{edu.acronym}</span>
+                    ) : (
+                      <FaGraduationCap size={20} className="text-white" />
+                    )}
                   </div>
                   <div>
                     <h4 className="font-medium">{edu.school}</h4>
@@ -356,9 +604,24 @@ export default function AboutPage() {
             <p className="text-sm text-gray-500 mb-3 -mt-2">Define your career aspirations and what you aim to achieve.</p>
             <textarea
               className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-600 outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Write about your career aspirations..."
-              
+              placeholder="Write then Press enter to save"
+              value={careerGoals}
+              onChange={e => setCareerGoals(e.target.value)}
+              onBlur={handleCareerGoalsBlur}
+              onKeyDown={handleCareerGoalsKeyDown}
+              disabled={loadingCareer}
             />
+            <div className="flex items-center gap-2 mt-1">
+              {loadingCareer && (
+                <span className="flex items-center text-blue-600 text-xs">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                  </svg>
+                  Saving...
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -378,7 +641,67 @@ export default function AboutPage() {
               <h3 className="font-medium mb-2">Skills</h3>
               <p className="text-sm text-gray-500 mb-3 -mt-2">Highlight your top skills to attract employers.</p>
               <div className="flex flex-wrap gap-2 mb-4">
-                {skills.map((skill, idx) => (
+                {skills.length < 8 && (
+                  showSkillInput ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={skillInput}
+                        onChange={handleSkillInput}
+                        onKeyDown={handleSkillKeyDown}
+                        placeholder="Type then press Enter"
+                        maxLength={20}
+                        autoFocus
+                        className="border border-blue-300 rounded-full px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        onBlur={() => { setShowSkillInput(false); setSkillInput(""); setFocusedSuggestion(-1); }}
+                        style={{ minHeight: 32 }}
+                      />
+                      {filteredSuggestions.length > 0 && (
+                        <div className="absolute left-0 z-10 mt-1 w-full bg-white border border-blue-200 rounded-lg shadow-lg max-h-56 overflow-auto">
+                          {filteredSuggestions.map((group, groupIdx) => (
+                            <div key={group.category}>
+                              <div className="px-3 py-1 text-xs font-semibold text-blue-600 bg-blue-50 sticky top-0 z-10">{group.category}</div>
+                              {group.skills.map((skill, idx) => {
+                                const flatIdx =
+                                  filteredSuggestions
+                                    .slice(0, groupIdx)
+                                    .reduce((acc, g) => acc + g.skills.length, 0) + idx;
+                                return (
+                                  <div
+                                    key={skill}
+                                    className={`px-3 py-2 cursor-pointer flex items-center ${
+                                      flatIdx === focusedSuggestion ? "bg-blue-100" : ""
+                                    }`}
+                                    onMouseDown={() => addSkill(skill)}
+                                    onMouseEnter={() => setFocusedSuggestion(flatIdx)}
+                                  >
+                                    <span>{skill}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-blue-300 text-blue-600 hover:bg-blue-50 rounded-full px-4"
+                      onClick={() => {
+                        setShowSkillInput(true);
+                        setTimeout(() => {
+                          const input = document.querySelector<HTMLInputElement>('input[placeholder="Type then press Enter"]');
+                          input?.focus();
+                        }, 0);
+                      }}
+                    >
+                      + Add Skill
+                    </Button>
+                  )
+                )}
+                {skills.slice(0, 6).map((skill, idx) => (
                   <span
                     key={skill}
                     className={`relative flex items-center px-3 py-1 rounded-full text-sm font-medium shadow-sm ${chipColors[idx % chipColors.length].color} ${chipColors[idx % chipColors.length].textColor}`}
@@ -388,72 +711,28 @@ export default function AboutPage() {
                     <button
                       type="button"
                       onClick={() => removeSkill(idx)}
-                      className="ml-2 absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full text-red-500 hover:text-red-700  focus:outline-none"
+                      className="ml-2 absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full text-red-500 hover:text-red-700 focus:outline-none"
                       style={{ fontSize: 16, lineHeight: 1 }}
                       tabIndex={-1}
+                      disabled={deletingSkillIdx === idx}
                     >
                       <TiDelete size={16} />
                     </button>
+                    {deletingSkillIdx === idx && (
+                      <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-xs text-red-500">
+                        ...
+                      </span>
+                    )}
                   </span>
                 ))}
-                {skills.length < 8 && showSkillInput && (
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={skillInput}
-                      onChange={handleSkillInput}
-                      onKeyDown={handleSkillKeyDown}
-                      placeholder="Type then press Enter"
-                      maxLength={20}
-                      autoFocus
-                      className="border border-blue-300 rounded-full px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      onBlur={() => { setShowSkillInput(false); setSkillInput(""); setFocusedSuggestion(-1); }}
-                      style={{ minHeight: 32 }}
-                    />
-                    {filteredSuggestions.length > 0 && (
-                      <div className="absolute left-0 z-10 mt-1 w-full bg-white border border-blue-200 rounded-lg shadow-lg max-h-56 overflow-auto">
-                        {filteredSuggestions.map((group, groupIdx) => (
-                          <div key={group.category}>
-                            <div className="px-3 py-1 text-xs font-semibold text-blue-600 bg-blue-50 sticky top-0 z-10">{group.category}</div>
-                            {group.skills.map((skill, idx) => {
-                              const flatIdx =
-                                filteredSuggestions
-                                  .slice(0, groupIdx)
-                                  .reduce((acc, g) => acc + g.skills.length, 0) + idx;
-                              return (
-                                <div
-                                  key={skill}
-                                  className={`px-3 py-2 cursor-pointer flex items-center ${
-                                    flatIdx === focusedSuggestion ? "bg-blue-100" : ""
-                                  }`}
-                                  onMouseDown={() => addSkill(skill)}
-                                  onMouseEnter={() => setFocusedSuggestion(flatIdx)}
-                                >
-                                  <span>{skill}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {skills.length < 8 && !showSkillInput && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-blue-300 text-blue-600 hover:bg-blue-50 rounded-full px-4"
-                    onClick={() => {
-                      setShowSkillInput(true);
-                      setTimeout(() => {
-                        const input = document.querySelector<HTMLInputElement>('input[placeholder="Type then press Enter"]');
-                        input?.focus();
-                      }, 0);
-                    }}
+                {skills.length > 6 && (
+                  <button
+                    className="px-3 py-1 rounded-full text-sm font-medium text-blue-600 bg-transparent border-none shadow-none underline hover:text-blue-800"
+                    style={{ minHeight: 32 }}
+                    onClick={() => router.push("/students/profile?tab=skills-tab")}
                   >
-                    + Add Skill
-                  </Button>
+                    {skills.length - 6} more...
+                  </button>
                 )}
               </div>
             </div>
@@ -463,25 +742,41 @@ export default function AboutPage() {
             <div>
               <h3 className="font-medium mb-2">Expertise</h3>
               <p className="text-sm text-gray-500 mb-3 -mt-2">Showcase your technical expertise and areas of proficiency.</p>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm flex items-center gap-1">
-                      <span className="inline-block w-3 h-3 bg-yellow-400 rounded-sm"></span>
-                      JavaScript
-                    </span>
+              <div className="space-y-4 mb-4">
+                {expertise.slice(0, 2).map((exp, idx) => (
+                  <div key={idx} className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <ExpertiseIcon name={exp.skill} />
+                        <span className="font-medium text-gray-800">{exp.skill}</span>
+                      </div>
+                      <span className="text-xs text-blue-600 font-semibold">{exp.mastery}%</span>
+                      <button
+                        className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
+                        title="Delete Expertise"
+                        onClick={() => handleDeleteExpertise(idx)}
+                        style={{ marginLeft: 8 }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                    <div className="w-full bg-blue-100 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${exp.mastery}%` }}
+                      />
+                    </div>
                   </div>
-                  <Progress value={75} className="h-2 bg-gray-200 [&>div]:bg-yellow-400" />
-                </div>
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm flex items-center gap-1">
-                      <span className="inline-block w-3 h-3 bg-red-500 rounded-sm"></span>
-                      HTML5
-                    </span>
-                  </div>
-                  <Progress value={65} className="h-2 bg-gray-200 [&>div]:bg-red-500" />
-                </div>
+                ))}
+                {expertise.length > 2 && (
+                  <button
+                    className="px-3 py-1 rounded-full text-sm font-medium text-blue-600 bg-transparent border-none shadow-none underline hover:text-blue-800"
+                    style={{ minHeight: 32 }}
+                    onClick={() => router.push("/students/profile?tab=skills-tab")}
+                  >
+                    {expertise.length - 2} more...
+                  </button>
+                )}
               </div>
               <div className="text-left mt-2">
                 <Button
@@ -511,41 +806,68 @@ export default function AboutPage() {
           </div>
           <div className="p-4 space-y-6">
             <div>
-              <h3 className="font-medium mb-2">Resume</h3>
-              <p className="text-sm text-gray-500 mb-3 -mt-2">Upload your latest resume to share with potential employers.</p>
-              <div className="flex items-center gap-4">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-blue-300 text-blue-600 hover:bg-blue-50"
-                  onClick={() => setOpenUploadModal("resume")}
+              <h3 className="font-medium mb-2 flex items-center justify-between">
+                Resume
+                <Tooltip
+                  title={
+                    uploadedResume.length >= MAX_RESUMES
+                      ? "You have reached the maximum of 3 resumes. Please delete one to upload a new file."
+                      : ""
+                  }
+                  arrow
+                  placement="top"
                 >
-                  Upload Resume
-                </Button>
-                {uploadedResume ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 flex items-center justify-center rounded">
-                      <img
-                        src={getFileIcon(uploadedResume.url)}
-                        alt="icon"
-                        className="w-6 h-6"
-                        onError={e => {
-                          (e.target as HTMLImageElement).src = "/images/icon/doc.png";
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-800">{uploadedResume.name}</div>
-                      <div className="text-xs text-gray-500">{formatDate(uploadedResume.uploadedAt)}</div>
-                    </div>
-                    <a
-                      href={uploadedResume.url}
-                      download
-                      className="ml-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium"
+                  <span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                      onClick={() => setOpenUploadModal("resume")}
+                      disabled={uploadedResume.length >= MAX_RESUMES}
                     >
-                      Download
-                    </a>
-                  </div>
+                      Upload New
+                    </Button>
+                  </span>
+                </Tooltip>
+              </h3>
+              <p className="text-sm text-gray-500 mb-3 -mt-2">Upload your latest resume to share with potential employers.</p>
+              <div className="flex flex-col gap-2">
+                {uploadedResume && uploadedResume.length > 0 ? (
+                  uploadedResume.map((resume, idx) => (
+                    <div key={resume.url} className="flex items-center gap-3 flex-1 border rounded p-2">
+                      <div className="w-12 h-12 flex items-center justify-center rounded">
+                        <img
+                          src={getFileIcon(resume.url)}
+                          alt="icon"
+                          className="w-10 h-10"
+                          onError={e => {
+                            (e.target as HTMLImageElement).src = "/images/icon/doc.png";
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-base text-gray-800 truncate">{resume.name}</div>
+                        <div className="text-xs text-gray-500">{formatDate(resume.uploadedAt)}</div>
+                      </div>
+                      <button
+                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-medium"
+                        onClick={e => {
+                          e.preventDefault();
+                          handleDownload("resume", idx);
+                        }}
+                        disabled={downloadingResumeIdx === idx}
+                      >
+                        {downloadingResumeIdx === idx ? "Downloading..." : "Download"}
+                      </button>
+                      <button
+                        className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
+                        title="Remove Resume"
+                        onClick={() => handleDeleteResume(idx)}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))
                 ) : (
                   <span className="text-sm text-gray-500">No file uploaded</span>
                 )}
@@ -553,41 +875,68 @@ export default function AboutPage() {
             </div>
             <hr className="border-gray-200" />
             <div>
-              <h3 className="font-medium mb-2">Cover Letter</h3>
-              <p className="text-sm text-gray-500 mb-3 -mt-2">Upload a cover letter to personalize your job applications.</p>
-              <div className="flex items-center gap-4">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-blue-300 text-blue-600 hover:bg-blue-50"
-                  onClick={() => setOpenUploadModal("cover")}
+              <h3 className="font-medium mb-2 flex items-center justify-between">
+                Cover Letter
+                <Tooltip
+                  title={
+                    uploadedCover.length >= MAX_COVERS
+                      ? "You have reached the maximum of 3 cover letters. Please delete one to upload a new file."
+                      : ""
+                  }
+                  arrow
+                  placement="top"
                 >
-                  Upload Cover Letter
-                </Button>
-                {uploadedCover ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 flex items-center justify-center rounded bg-gray-200">
-                      <img
-                        src={getFileIcon(uploadedCover.url)}
-                        alt="icon"
-                        className="w-6 h-6"
-                        onError={e => {
-                          (e.target as HTMLImageElement).src = "/images/icon/doc.png";
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-800">{uploadedCover.name}</div>
-                      <div className="text-xs text-gray-500">{formatDate(uploadedCover.uploadedAt)}</div>
-                    </div>
-                    <a
-                      href={uploadedCover.url}
-                      download
-                      className="ml-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium"
+                  <span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                      onClick={() => setOpenUploadModal("cover")}
+                      disabled={uploadedCover.length >= MAX_COVERS}
                     >
-                      Download
-                    </a>
-                  </div>
+                      Upload New
+                    </Button>
+                  </span>
+                </Tooltip>
+              </h3>
+              <p className="text-sm text-gray-500 mb-3 -mt-2">Upload a cover letter to personalize your job applications.</p>
+              <div className="flex flex-col gap-2">
+                {uploadedCover && uploadedCover.length > 0 ? (
+                  uploadedCover.map((cover, idx) => (
+                    <div key={cover.url} className="flex items-center gap-3 flex-1 border rounded p-2">
+                      <div className="w-12 h-12 flex items-center justify-center rounded">
+                        <img
+                          src={getFileIcon(cover.url)}
+                          alt="icon"
+                          className="w-10 h-10"
+                          onError={e => {
+                            (e.target as HTMLImageElement).src = "/images/icon/doc.png";
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-base text-gray-800 truncate">{cover.name}</div>
+                        <div className="text-xs text-gray-500">{formatDate(cover.uploadedAt)}</div>
+                      </div>
+                      <button
+                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-medium"
+                        onClick={e => {
+                          e.preventDefault();
+                          handleDownload("cover", idx);
+                        }}
+                        disabled={downloadingCoverIdx === idx}
+                      >
+                        {downloadingCoverIdx === idx ? "Downloading..." : "Download"}
+                      </button>
+                      <button
+                        className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
+                        title="Remove Cover Letter"
+                        onClick={() => handleDeleteCover(idx)}
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))
                 ) : (
                   <span className="text-sm text-gray-500">No file uploaded</span>
                 )}
@@ -710,8 +1059,8 @@ export default function AboutPage() {
           <p className="text-sm text-gray-500">Add your achievements to showcase your accomplishments.</p>
         </div>
         <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {certs.map((cert, idx) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+            {certs.slice(0, 4).map((cert, idx) => (
               <div key={idx} className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow min-h-[232px] flex flex-col">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
@@ -734,6 +1083,14 @@ export default function AboutPage() {
                       )}
                     </div>
                   </div>
+                  <button
+                    className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
+                    title="Delete Certificate"
+                    disabled={deletingCertIdx === idx}
+                    onClick={() => handleDeleteCert(idx)}
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
                 {cert.description && (
                   <p className="text-sm text-gray-600 mt-2">
@@ -741,7 +1098,7 @@ export default function AboutPage() {
                   </p>
                 )}
                 <div className="mt-auto flex w-full justify-end gap-2">
-                  {cert.attachment ? (
+                  {cert.attachmentUrl ? (
                     <Button
                       size="sm"
                       className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
@@ -764,35 +1121,23 @@ export default function AboutPage() {
                     </Button>
                   )}
                 </div>
-              </div>
-            ))}
-            {[1, 2].map((i) => (
-              <div key={i} className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow min-h-[232px] flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
-                    <MdStarOutline size={24} />
+                {deletingCertIdx === idx && (
+                  <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                    Deleting...
                   </div>
-                  <h3 className="font-medium text-lg text-gray-800">Student Club Hackathon Winner</h3>
-                </div>
-                <p className="text-sm text-gray-600 mb-6">
-                  Led a team of 5 to develop a mobile app solution for campus sustainability, earning first place among
-                  20 competitors.
-                </p>
-                <Button
-                  size="sm"
-                  className={`text-xs ${i === 1 ? "bg-blue-600 text-white hover:bg-blue-700" : "border-blue-300 text-blue-600 hover:bg-blue-50"}`}
-                  variant={i === 1 ? undefined : "outline"}
-                >
-                  {i === 1 ? "View Certificate" : "No Certificate"}
-                </Button>
+                )}
               </div>
             ))}
-            <div
-              className="border-dashed border-2 border-gray-300 bg-gray-50 rounded-lg p-6 flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer min-h-[232px]"
+            <div className="border-dashed border-2 border-gray-300 bg-gray-50 rounded-lg p-6 flex flex-col items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer min-h-[232px] w-full"
+              style={{ gridColumn: "span 1 / span 1" }}
               onClick={() => setOpenAddCert(true)}
             >
               <div className="flex flex-col items-center">
-                <div className="w-12 h-12  bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
+                <div className="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -807,6 +1152,24 @@ export default function AboutPage() {
                 <p className="text-sm text-blue-600 mt-2">Add Achievement</p>
               </div>
             </div>
+            <div className="flex flex-col items-center justify-center min-h-[232px] w-full"
+              style={{ gridColumn: "span 1 / span 1" }}
+            >
+              <button
+                type="button"
+                className="flex flex-col items-center focus:outline-none"
+                onClick={() => router.push("/students/profile?tab=skills-tab")}
+                tabIndex={0}
+                style={{ outline: "none" }}
+              >
+                <span className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-700 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+                <span className="text-xs text-blue-700 mt-1 font-medium">View All</span>
+              </button>
+            </div>
           </div>
           <AddCertModal
             open={openAddCert}
@@ -816,14 +1179,19 @@ export default function AboutPage() {
           <ViewCertModal
             open={openViewCert}
             onClose={() => setOpenViewCert(false)}
-            cert={selectedCert || {
-              title: "",
-              issuer: "",
-              issueDate: "",
-              description: "",
-              attachment: null,
-              category: ""
-            }}
+            cert={
+              selectedCert
+                ? { ...selectedCert, student_id: (session?.user as { studentId?: string })?.studentId || "student_001" }
+                : {
+                    student_id: (session?.user as { studentId?: string })?.studentId || "student_001",
+                    title: "",
+                    issuer: "",
+                    issueDate: "",
+                    description: "",
+                    attachment: null,
+                    category: ""
+                  }
+            }
           />
         </div>
       </div>
@@ -847,7 +1215,12 @@ export default function AboutPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-800">Email</p>
-                  <p className="text-sm text-gray-600">{contactInfo.email}</p>
+                  <p className="text-sm text-gray-600">
+                    {contactInfo.email
+                      ? contactInfo.email
+                      : <span className="italic text-gray-400">No email provided</span>
+                    }
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -857,13 +1230,16 @@ export default function AboutPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-800">Phone</p>
                   <p className="text-sm text-gray-600">
-                    +{contactInfo.countryCode} {contactInfo.phone}
+                    {contactInfo.countryCode && contactInfo.phone
+                      ? `+${contactInfo.countryCode} ${contactInfo.phone}`
+                      : <span className="italic text-gray-400">No phone number provided</span>
+                    }
                   </p>
                 </div>
               </div>
             </div>
             <div className="flex-1 flex flex-col items-center md:items-center justify-center">
-              {contactInfo.socials.length > 0 && (
+              {contactInfo.socials.length > 0 ? (
                 <div className="w-full flex flex-col items-center">
                   <p className="text-sm font-medium text-gray-800 mb-1 text-center">My Socials</p>
                   <div className="flex gap-4 flex-wrap justify-center">
@@ -885,6 +1261,11 @@ export default function AboutPage() {
                       );
                     })}
                   </div>
+                </div>
+              ) : (
+                <div className="w-full flex flex-col items-center">
+                  <p className="text-sm font-medium text-gray-800 mb-1 text-center">My Socials</p>
+                  <span className="italic text-gray-400 text-sm">No socials added</span>
                 </div>
               )}
             </div>
@@ -913,6 +1294,13 @@ export default function AboutPage() {
             : ""
         }
         onUpload={fetchUploads}
+        uploadedFiles={
+          openUploadModal === "resume"
+            ? uploadedResume.map(f => f.url)
+            : openUploadModal === "cover"
+            ? uploadedCover.map(f => f.url)
+            : []
+        }
       />
       <AddEditContactModal
         open={openEditContact}

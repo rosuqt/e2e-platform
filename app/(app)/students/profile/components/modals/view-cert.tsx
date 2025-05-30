@@ -24,11 +24,13 @@ type ViewCertModalProps = {
   open: boolean;
   onClose?: () => void;
   cert: {
+    student_id: string; 
     title: string;
     issuer: string;
     issueDate: string;
     description?: string;
     attachment?: File | null;
+    attachmentUrl?: string | null;
     category?: string;
   };
 };
@@ -38,24 +40,111 @@ export default function ViewCertModal({
   onClose,
   cert
 }: ViewCertModalProps) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchSignedUrl() {
+      if (cert.attachmentUrl && cert.attachmentUrl.startsWith("http")) {
+        setSignedUrl(cert.attachmentUrl);
+      } else if (cert.attachmentUrl && cert.attachmentUrl.length > 0) {
+        const params = new URLSearchParams();
+        params.set("student_id", cert.student_id);
+        const res = await fetch(`/api/students/student-profile/getDocuments?${params.toString()}`);
+        const { certs } = await res.json();
+        const found = Array.isArray(certs)
+          ? certs.find((c: { attachmentUrl?: string; signedUrl?: string }) => c.attachmentUrl === cert.attachmentUrl)
+          : null;
+        if (active) setSignedUrl(found?.signedUrl || null);
+      } else {
+        setSignedUrl(null);
+      }
+    }
+    fetchSignedUrl();
+    return () => { active = false; };
+  }, [cert.attachmentUrl, open]);
+
   let fileUrl: string | null = null;
-  if (cert.attachment) {
+  let fileType: string | null = null;
+  let fileName: string | null = null;
+
+  if (cert.attachment && cert.attachment instanceof File) {
     fileUrl = URL.createObjectURL(cert.attachment);
+    fileType = cert.attachment.type;
+    fileName = cert.attachment.name;
+  } else if (signedUrl) {
+    fileUrl = signedUrl;
+    fileName = cert.attachmentUrl || "";
+  } else if (cert.attachmentUrl && cert.attachmentUrl.length > 0 && cert.attachmentUrl.startsWith("http")) {
+    fileUrl = cert.attachmentUrl;
+    fileName = cert.attachmentUrl;
+  }
+
+  if (!fileType && fileName) {
+    if (/\.pdf(\?.*)?$/i.test(fileName)) fileType = "application/pdf";
+    else if (/\.(png|jpe?g|gif|bmp|webp)$/i.test(fileName)) fileType = "image";
+    else if (/\.docx(\?.*)?$/i.test(fileName)) fileType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    else fileType = "";
+  }
+
+  if (!fileType && fileUrl) {
+    if (/\.pdf(\?.*)?$/i.test(fileUrl)) fileType = "application/pdf";
+    else if (/\.(png|jpe?g|gif|bmp|webp)$/i.test(fileUrl)) fileType = "image";
+    else if (/\.docx(\?.*)?$/i.test(fileUrl)) fileType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    else fileType = "";
   }
 
   const isImage =
-    cert.attachment &&
-    ["image/png", "image/jpeg", "image/jpg"].includes(cert.attachment.type);
+    (fileType === "image" || (fileType && fileType.startsWith("image/")));
 
-  const isPdf = cert.attachment && cert.attachment.type === "application/pdf";
+  const isPdf =
+    fileType === "application/pdf";
+
+  const isDocx =
+    fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log("DEBUG ViewCertModal:", { fileUrl, fileType, fileName, cert });
+  }, [fileUrl, fileType, fileName, cert]);
 
   const [medalAnimation, setMedalAnimation] = useState<object | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
     import("../../../../../../public/animations/medal.json").then((mod) => {
       setMedalAnimation(mod.default as object);
     });
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchSignedUrl() {
+      if (cert.attachmentUrl && cert.attachmentUrl.startsWith("http")) {
+        setSignedUrl(cert.attachmentUrl);
+        setLoadingPreview(false);
+      } else if (cert.attachmentUrl && cert.attachmentUrl.length > 0) {
+        setLoadingPreview(true);
+        const params = new URLSearchParams();
+        params.set("student_id", cert.student_id);
+        const res = await fetch(`/api/students/student-profile/getDocuments?${params.toString()}`);
+        const { certs } = await res.json();
+        const found = Array.isArray(certs)
+          ? certs.find((c: { attachmentUrl?: string; signedUrl?: string }) => c.attachmentUrl === cert.attachmentUrl)
+          : null;
+        if (active) {
+          setSignedUrl(found?.signedUrl || null);
+          setLoadingPreview(false);
+        }
+      } else {
+        setSignedUrl(null);
+        setLoadingPreview(false);
+      }
+    }
+    setLoadingPreview(!!cert.attachmentUrl);
+    fetchSignedUrl();
+    return () => { active = false; };
+  }, [cert.attachmentUrl, open]);
 
   return (
     <Dialog
@@ -134,7 +223,15 @@ export default function ViewCertModal({
               {cert.description}
             </Typography>
           )}
-          {cert.attachment ? (
+          {loadingPreview ? (
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 4 }}>
+              <svg className="animate-spin h-8 w-8 text-blue-600 mb-2" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+              </svg>
+              <Typography sx={{ color: "#2563eb", fontSize: 16 }}>Loading certificate preview...</Typography>
+            </Box>
+          ) : fileUrl ? (
             <Box
               sx={{
                 border: "1px solid #e0e7ef",
@@ -150,7 +247,7 @@ export default function ViewCertModal({
               {isImage && fileUrl && (
                 <img
                   src={fileUrl}
-                  alt={cert.attachment.name}
+                  alt={cert.attachment?.name || cert.title}
                   style={{
                     maxWidth: 320,
                     maxHeight: 320,
@@ -162,23 +259,63 @@ export default function ViewCertModal({
               )}
               {isPdf && fileUrl && (
                 <Box sx={{ width: "100%", mb: 2 }}>
-                  <iframe
-                    src={fileUrl}
-                    title="Certificate PDF"
-                    style={{
-                      width: "100%",
-                      minHeight: 320,
-                      border: "none",
-                      borderRadius: 8
-                    }}
-                  />
+                  {fileUrl.startsWith("http") ? (
+                    <iframe
+                      src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
+                      title="Certificate PDF"
+                      style={{
+                        width: "100%",
+                        minHeight: 320,
+                        border: "none",
+                        borderRadius: 8
+                      }}
+                    />
+                  ) : (
+                    <iframe
+                      src={fileUrl}
+                      title="Certificate PDF"
+                      style={{
+                        width: "100%",
+                        minHeight: 320,
+                        border: "none",
+                        borderRadius: 8
+                      }}
+                    />
+                  )}
+                </Box>
+              )}
+              {isDocx && fileUrl && (
+                <Box sx={{ width: "100%", mb: 2 }}>
+                  {fileUrl.startsWith("http") ? (
+                    <iframe
+                      src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
+                      title="Certificate DOCX"
+                      style={{
+                        width: "100%",
+                        minHeight: 320,
+                        border: "none",
+                        borderRadius: 8
+                      }}
+                    />
+                  ) : (
+                    <Typography sx={{ color: "#64748b", fontSize: 15, mb: 1 }}>
+                      DOCX preview not supported for local files. Please download to view.
+                    </Typography>
+                  )}
+                </Box>
+              )}
+              {!isImage && !isPdf && !isDocx && fileUrl && (
+                <Box sx={{ width: "100%", mb: 2, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <Typography sx={{ color: "#64748b", fontSize: 15, mb: 1 }}>
+                    File preview not available. You can download the file below.
+                  </Typography>
                 </Box>
               )}
               <Button
                 variant="contained"
                 color="primary"
                 href={fileUrl || "#"}
-                download={cert.attachment.name}
+                download={cert.attachment?.name || cert.title}
                 sx={{
                   mt: 1,
                   background: "#2563eb",

@@ -103,6 +103,8 @@ export default function TestCaseFeedback() {
         commitVer: "",
         module: "",
       })
+      setTesterNameSelect("")
+      setCustomTesterName("")
     } catch {
       toast.error("Failed to submit issue.")
     }

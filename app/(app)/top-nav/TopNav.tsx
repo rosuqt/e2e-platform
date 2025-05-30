@@ -10,6 +10,7 @@ import { NotificationsModal } from '../students/notifications/components/notific
 import { RiRobot2Fill } from "react-icons/ri";
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
+import Link from 'next/link';
 
 interface TopNavProps {
   className?: string;
@@ -34,6 +35,7 @@ const TopNav: React.FC<TopNavProps> = ({
   const messagesRef = useRef<HTMLAnchorElement | null>(null); 
 
   const { data: session } = useSession();
+  console.log("TopNav session:", session); 
 
   const handleProfileClick = () => {
     setProfileModalOpen((prev) => !prev);
@@ -90,8 +92,9 @@ const TopNav: React.FC<TopNavProps> = ({
           className="flex justify-between items-center px-6 md:px-10 h-full"
         >
           <div className="flex items-center">
-            <Image src="/images/logo-test2.png" alt="Seekr Logo" width={50} height={50} />
-            <span className="text-[#1551a9] font-medium ml-4">Seekr</span>
+             <Link href="/landing" className="text-xl font-bold text-white">
+           <Image src="/images/logo.blue3.png" alt="Seekr Logo" width={100} height={100} />
+          </Link>
             <motion.a
               href="/feedback"
               target="_blank"

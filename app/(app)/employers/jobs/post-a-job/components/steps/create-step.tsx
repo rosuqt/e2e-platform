@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "../ui/card"
 import { Briefcase, MapPin, Globe, Clock, DollarSign, GraduationCap, Lightbulb } from "lucide-react"
@@ -14,6 +13,7 @@ import Checkbox from "@mui/material/Checkbox"
 import Autocomplete from "@mui/material/Autocomplete"
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank"
 import CheckBoxIcon from "@mui/icons-material/CheckBox"
+import AddressAutocomplete from "@/components/AddressAutocomplete"
 
 interface CreateStepProps {
   formData: JobPostingData
@@ -67,25 +67,31 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
 
   const payAmountError = validatePayAmount()
 
-  const commonPayAmounts = {
-    Weekly: ["500", "750", "1000", "1500", "2000"],
-    Monthly: ["2000", "3000", "4000", "5000", "6000"],
-    Yearly: ["30000", "45000", "60000", "75000", "90000", "120000"],
-  }
+
 
   const workTypes = [
-    { value: "OJT", label: "OJT" },
-    { value: "Internship", label: "Internship" },
+    { value: "OJT/Internship", label: "OJT/Internship" },
     { value: "Part-time", label: "Part-time" },
     { value: "Full-time", label: "Full-time" },
   ]
 
   const payTypes = [
-    { value: "No Pay", label: "No Pay" },
+    ...(formData.workType === "OJT/Internship"
+      ? [{ value: "No Pay", label: "No Pay" }]
+      : []),
     { value: "Weekly", label: "Weekly" },
     { value: "Monthly", label: "Monthly" },
     { value: "Yearly", label: "Yearly" },
-  ]
+  ];
+
+  function getPayPerHour(payType: string, payAmount: string) {
+    const amount = Number(payAmount);
+    if (!payAmount || isNaN(amount)) return "";
+    if (payType === "Weekly") return `Pay per hour: $${(amount / 40).toFixed(2)} / hr (est.)`;
+    if (payType === "Monthly") return `Pay per hour: $${(amount / 160).toFixed(2)} / hr (est.)`;
+    if (payType === "Yearly") return `Pay per hour: $${(amount / 2080).toFixed(2)} / hr (est.)`;
+    return "";
+  }
 
   return (
     <div className="space-y-8">
@@ -122,6 +128,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
                 error={errors.jobTitle}
                 errorMessage="Job title is required"
               />
+      
               <p className="text-xs text-gray-500 mt-2">
                 Be specific with your job title to attract the right candidates
               </p>
@@ -138,20 +145,20 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
                 Location
               </Label>
             </div>
-            <div className="p-4">
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => handleFieldChange("location", e.target.value)}
-                className={`border-gray-200 focus:ring-blue-500 ${errors.location ? "border-red-500" : ""}`}
-                placeholder="Enter location"
-              />
-              {errors.location && <p className="text-red-500 text-sm">Location is required</p>}
+            <div className="p-4" style={{ position: "relative" }}>
+              <div style={{ position: "relative" }}>
+                <AddressAutocomplete
+                  value={formData.location}
+                  onChange={(val: string) => handleFieldChange("location", val)}
+                  error={errors.location}
+                  helperText={errors.location ? "Location is required" : ""}
+                  label="Location"
+                />
+              </div>
               <p className="text-xs text-gray-500 mt-2">Enter the primary location where the job will be performed</p>
             </div>
           </CardContent>
         </Card>
-
         {/* Remote Options */}
         <Card className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-0">
@@ -227,27 +234,19 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
                     <TextField
                       id="payAmount"
                       label="Pay Amount"
-                      value={formData.payAmount}
-                      onChange={(e) => handleFieldChange("payAmount", e.target.value)}
+                      value={formData.payAmount.startsWith("₱") ? formData.payAmount : formData.payAmount ? `₱${formData.payAmount.replace(/^₱/, "")}` : ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9.]/g, "");
+                        handleFieldChange("payAmount", val ? `₱${val}` : "");
+                      }}
                       fullWidth
                       error={!!payAmountError}
                       helperText={payAmountError}
                       variant="outlined"
                     />
-                    <MUIDropdown
-                      label="Common Amounts"
-                      options={
-                        formData.payType &&
-                        formData.payType !== "No Pay" &&
-                        commonPayAmounts[formData.payType as keyof typeof commonPayAmounts]?.map((amount) => ({
-                          value: amount,
-                          label: amount,
-                        })) || []
-                      }
-                      value={formData.payAmount}
-                      onChange={(value) => handleFieldChange("payAmount", value)}
-                      error={!!payAmountError}
-                    />
+                    <div className="flex items-center text-xs text-blue-700 font-medium pl-2">
+                      {getPayPerHour(formData.payType, formData.payAmount.replace(/^₱/, ""))}
+                    </div>
                   </>
                 )}
               </div>
@@ -297,6 +296,8 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
                     helperText={errors.recommendedCourse ? "Recommended course is required" : ""}
                   />
                 )}
+                freeSolo={false}
+                filterSelectedOptions
               />
               <p className="text-xs text-gray-500 mt-2">
                 Select the educational background that best fits this position

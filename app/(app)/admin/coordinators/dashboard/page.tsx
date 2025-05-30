@@ -13,7 +13,6 @@ import {
   GraduationCap,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import MuiPopover from "@mui/material/Popover"
@@ -92,7 +91,7 @@ export default function AdminDashboard() {
               </div>
             </div>
           </MuiPopover>
-          <Button>Export Report</Button>
+
         </div>
       </div>
 
