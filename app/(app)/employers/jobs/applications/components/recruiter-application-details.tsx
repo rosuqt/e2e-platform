@@ -31,241 +31,46 @@ import { Progress } from "@/components/ui/progress"
 import type React from "react"
 
 interface RecruiterApplicationDetailsProps {
-  applicationId: number | null
+  applicant: any | null
   isModalOpen: boolean
   setIsModalOpen: (open: boolean) => void
 }
 
 export function RecruiterApplicationDetailsModal({
-  applicationId,
+  applicant,
   isModalOpen,
   setIsModalOpen,
 }: RecruiterApplicationDetailsProps) {
-  const applications = [
-    {
-      id: 1,
-      name: "Alex Johnson",
-      title: "Senior Frontend Developer",
-      status: "Interview",
-      statusColor: "bg-purple-100 text-purple-700",
-      location: "Remote",
-      experience: "5 years",
-      appliedDate: "May 10, 2025",
-      matchScore: 98,
-      skills: ["React", "TypeScript", "Next.js", "Tailwind CSS", "Redux", "GraphQL"],
-      education: [
-        {
-          degree: "B.S. Computer Science",
-          school: "University of Washington",
-          year: "2020",
-        },
-      ],
-      workHistory: [
-        {
-          company: "Acme Inc.",
-          position: "Frontend Developer",
-          duration: "2020 - Present",
-          description: "Developed and maintained multiple React applications with TypeScript and Next.js.",
-        },
-        {
-          company: "Tech Solutions",
-          position: "Junior Developer",
-          duration: "2018 - 2020",
-          description: "Worked on frontend development using React and JavaScript.",
-        },
-      ],
-      timeline: [
-        {
-          status: "Application Received",
-          date: "May 10, 2025",
-          icon: <FileText className="h-4 w-4 text-white" />,
-          iconBg: "bg-green-500",
-        },
-        {
-          status: "Resume Screened",
-          date: "May 13, 2025",
-          icon: <Search className="h-4 w-4 text-white" />,
-          iconBg: "bg-blue-500",
-        },
-        {
-          status: "Interview Scheduled",
-          date: "May 17, 2025",
-          icon: <MessageCircle className="h-4 w-4 text-white" />,
-          iconBg: "bg-purple-500",
-          current: true,
-        },
-      ],
-      notes: "Strong technical skills and relevant experience. Good cultural fit potential.",
-      contact: {
-        email: "alex.johnson@example.com",
-        phone: "123-456-7890",
-        linkedin: "linkedin.com/in/alexjohnson",
-        github: "github.com/alexjohnson",
-        portfolio: "alexjohnson.dev",
-      },
-      documents: [
-        {
-          name: "Alex_Johnson_Resume.pdf",
-          date: "May 10, 2025",
-          size: "1.2 MB",
-        },
-        {
-          name: "Alex_Johnson_Cover_Letter.pdf",
-          date: "May 10, 2025",
-          size: "0.8 MB",
-        },
-        {
-          name: "Portfolio_Projects.pdf",
-          date: "May 10, 2025",
-          size: "3.5 MB",
-        },
-      ],
-    },
-    {
-      id: 2,
-      name: "Sarah Williams",
-      title: "UI/UX Designer",
-      status: "New",
-      statusColor: "bg-yellow-100 text-yellow-700",
-      location: "San Francisco, CA",
-      experience: "4 years",
-      appliedDate: "May 12, 2025",
-      matchScore: 92,
-      skills: ["Figma", "Adobe XD", "UI Design", "User Research", "Prototyping", "Wireframing"],
-      education: [
-        {
-          degree: "B.A. Graphic Design",
-          school: "Rhode Island School of Design",
-          year: "2021",
-        },
-      ],
-      workHistory: [
-        {
-          company: "Design Studio",
-          position: "UI Designer",
-          duration: "2021 - Present",
-          description: "Created user interfaces for web and mobile applications.",
-        },
-        {
-          company: "Creative Agency",
-          position: "Junior Designer",
-          duration: "2019 - 2021",
-          description: "Assisted in designing marketing materials and website mockups.",
-        },
-      ],
-      timeline: [
-        {
-          status: "Application Received",
-          date: "May 12, 2025",
-          icon: <FileText className="h-4 w-4 text-white" />,
-          iconBg: "bg-green-500",
-          current: true,
-        },
-      ],
-      notes: "Impressive portfolio with strong visual design skills.",
-      contact: {
-        email: "sarah.williams@example.com",
-        phone: "987-654-3210",
-        linkedin: "linkedin.com/in/sarahwilliams",
-        portfolio: "sarahwilliams.design",
-      },
-      documents: [
-        {
-          name: "Sarah_Williams_Resume.pdf",
-          date: "May 12, 2025",
-          size: "0.9 MB",
-        },
-        {
-          name: "Design_Portfolio.pdf",
-          date: "May 12, 2025",
-          size: "5.2 MB",
-        },
-      ],
-    },
-    {
-      id: 3,
-      name: "Michael Chen",
-      title: "Software Engineer",
-      status: "Invited",
-      statusColor: "bg-green-100 text-green-700",
-      location: "Seattle, WA",
-      experience: "3 years",
-      appliedDate: "May 8, 2025",
-      matchScore: 95,
-      skills: ["JavaScript", "React", "Node.js", "Express", "MongoDB", "AWS"],
-      education: [
-        {
-          degree: "M.S. Computer Science",
-          school: "Stanford University",
-          year: "2022",
-        },
-        {
-          degree: "B.S. Computer Engineering",
-          school: "UC Berkeley",
-          year: "2020",
-        },
-      ],
-      workHistory: [
-        {
-          company: "Tech Innovations",
-          position: "Software Engineer",
-          duration: "2022 - Present",
-          description: "Developed full-stack applications using React, Node.js, and MongoDB.",
-        },
-        {
-          company: "Startup Inc.",
-          position: "Junior Developer",
-          duration: "2020 - 2022",
-          description: "Worked on frontend and backend development for a SaaS platform.",
-        },
-      ],
-      timeline: [
-        {
-          status: "Application Received",
-          date: "May 8, 2025",
-          icon: <FileText className="h-4 w-4 text-white" />,
-          iconBg: "bg-green-500",
-        },
-        {
-          status: "Resume Screened",
-          date: "May 10, 2025",
-          icon: <Search className="h-4 w-4 text-white" />,
-          iconBg: "bg-blue-500",
-        },
-        {
-          status: "Interview Invitation Sent",
-          date: "May 14, 2025",
-          icon: <Send className="h-4 w-4 text-white" />,
-          iconBg: "bg-green-500",
-          current: true,
-        },
-      ],
-      notes: "Strong technical background with relevant experience in our tech stack.",
-      contact: {
-        email: "michael.chen@example.com",
-        phone: "456-789-0123",
-        linkedin: "linkedin.com/in/michaelchen",
-        github: "github.com/michaelchen",
-      },
-      documents: [
-        {
-          name: "Michael_Chen_Resume.pdf",
-          date: "May 8, 2025",
-          size: "1.1 MB",
-        },
-        {
-          name: "Code_Samples.zip",
-          date: "May 8, 2025",
-          size: "2.3 MB",
-        },
-      ],
-    },
-  ]
+  if (!applicant) return null
 
-  const application = applications.find((app) => app.id === applicationId)
-
-  if (!application) {
-    return null
+  // fallback/mock fields for missing data
+  const application = {
+    name: `${applicant.first_name || "Applicant"} ${applicant.last_name || ""}`.trim(),
+    title: applicant.job_title || "Job Applicant",
+    status: applicant.status || "New",
+    statusColor:
+      (applicant.status || "").toLowerCase() === "interview"
+        ? "bg-purple-100 text-purple-700"
+        : (applicant.status || "").toLowerCase() === "invited"
+        ? "bg-green-100 text-green-700"
+        : "bg-yellow-100 text-yellow-700",
+    location: applicant.address || "N/A",
+    experience: applicant.experience_years || "N/A",
+    appliedDate: applicant.applied_date || "N/A",
+    matchScore: 90,
+    skills: applicant.skills || [],
+    education: applicant.education || [],
+    workHistory: applicant.work_history || [],
+    timeline: applicant.timeline || [],
+    notes: applicant.notes || "",
+    contact: {
+      email: applicant.email || "",
+      phone: applicant.phone || "",
+      linkedin: applicant.linkedin || "",
+      github: applicant.github || "",
+      portfolio: applicant.portfolio || "",
+    },
+    documents: applicant.documents || [],
   }
 
   return (
@@ -314,7 +119,7 @@ export function RecruiterApplicationDetailsModal({
 }
 
 interface Application {
-  id: number
+  id: string
   name: string
   title: string
   status: string
@@ -610,12 +415,17 @@ function RecruiterApplicationDetailsContent({ application }: { application: Appl
             <Mail className="h-4 w-4 mr-2" />
             Contact
           </Button>
+          {application.status.toLowerCase() === "new" && (
+            <Button variant="outline" className="text-green-700 border-green-200 hover:bg-green-50">
+              Shortlist
+            </Button>
+          )}
         </div>
         <div className="flex gap-2">
-          {application.status === "New" || application.status === "Interview" ? (
+          {["new", "interview"].includes(application.status.toLowerCase()) ? (
             <Button className="bg-green-600 hover:bg-green-700">
               <CheckCircle className="h-4 w-4 mr-2" />
-              {application.status === "New" ? "Move to Interview" : "Extend Offer"}
+              {application.status.toLowerCase() === "new" ? "Move to Interview" : "Extend Offer"}
             </Button>
           ) : (
             <Button className="bg-blue-600 hover:bg-blue-700">

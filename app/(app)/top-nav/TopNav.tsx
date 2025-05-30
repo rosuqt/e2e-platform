@@ -8,7 +8,7 @@ import { ProfileModal } from '../students/profile/components/profile-modal';
 import { MessagesModal } from './messages-modal';
 import { NotificationsModal } from '../students/notifications/components/notifications-modal';
 import { RiRobot2Fill } from "react-icons/ri";
-import { motion } from "framer-motion";
+//import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import Link from 'next/link';
 
@@ -57,7 +57,7 @@ const TopNav: React.FC<TopNavProps> = ({
         { path: '/employers/jobs/job-listings', label: 'Jobs', icon: Briefcase },
         { path: '/employers/people/candidate-matches', label: 'People', icon: Users },
         { path: '/employers/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
-        { path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true },
+        //{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true },
         { path: '/employers/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
         { path: '/employers/profile', label: 'Me', icon: User, onClick: handleProfileClick },
       ];
@@ -92,9 +92,18 @@ const TopNav: React.FC<TopNavProps> = ({
           className="flex justify-between items-center px-6 md:px-10 h-full"
         >
           <div className="flex items-center">
-             <Link href="/landing" className="text-xl font-bold text-white">
-           <Image src="/images/logo.blue3.png" alt="Seekr Logo" width={100} height={100} />
-          </Link>
+             <Link
+               href={
+                 session?.user?.role === "employer"
+                   ? "/employers/dashboard"
+                   : "/students/dashboard"
+               }
+               className="text-xl font-bold text-white"
+             >
+               <Image src="/images/logo.blue3.png" alt="Seekr Logo" width={100} height={100} />
+             </Link>
+
+            {/*
             <motion.a
               href="/feedback"
               target="_blank"
@@ -115,6 +124,7 @@ const TopNav: React.FC<TopNavProps> = ({
                 <RiRobot2Fill className="text-purple-500 w-5 h-5" />
               </span>
             </motion.a>
+            */}
           </div>
           <div
             className="flex items-center mr-8"

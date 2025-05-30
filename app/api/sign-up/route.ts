@@ -230,6 +230,7 @@ export async function POST(request: Request) {
         first_name: formData.personalDetails.firstName,
         middle_name: formData.personalDetails.middleName || null,
         last_name: formData.personalDetails.lastName,
+        suffix: formData.personalDetails.suffix || null,
         country_code: formData.personalDetails.countryCode,
         phone: formData.personalDetails.phone,
         email: formData.personalDetails.email,

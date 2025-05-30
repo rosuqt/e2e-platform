@@ -506,7 +506,7 @@ export default function MainLanding() {
                 in education and help shape future professionals.
               </p>
 
-              <Link href="/sign-in">
+              <Link href="/sti-hiring">
                 <motion.button
                   className="bg-blue-700 hover:bg-blue-800 text-white px-8 py-3 rounded-lg font-medium flex items-center gap-2"
                   whileHover={{ scale: 1.05 }}
@@ -618,6 +618,7 @@ export default function MainLanding() {
                 </motion.button>
               </Link>
 
+              {/*
               <Link href="/how-it-works">
                 <motion.button
                   className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-10 py-4 rounded-lg font-medium text-lg"
@@ -627,6 +628,7 @@ export default function MainLanding() {
                   Learn How It Works
                 </motion.button>
               </Link>
+              */}
             </motion.div>
 
             {/* Stats */}

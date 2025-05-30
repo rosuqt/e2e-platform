@@ -16,25 +16,6 @@ export default function CtaModal({ isOpen, onClose }: { isOpen: boolean; onClose
         exit={{ opacity: 0, scale: 0.9 }}
         transition={{ duration: 0.3 }}
       >
-        {/* Floating Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="floating-circles">
-            {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className={`floating-circle circle-${i + 1}`}
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 5}s`,
-                  width: `${Math.random() * 50 + 30}px`,
-                  height: `${Math.random() * 50 + 30}px`,
-                }}
-              ></div>
-            ))}
-          </div>
-        </div>
-
         <button
           className="absolute top-4 right-4 text-gray-200 hover:text-gray-400"
           onClick={onClose}
@@ -65,7 +46,7 @@ export default function CtaModal({ isOpen, onClose }: { isOpen: boolean; onClose
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          {[ 
+          {[
             "Access to all job listings",
             "Apply to unlimited jobs",
             "Get personalized job recommendations",

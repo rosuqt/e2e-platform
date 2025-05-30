@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { TextField, InputAdornment, IconButton } from "@mui/material"
+import { TextField, InputAdornment, IconButton, Select, MenuItem, FormControl, InputLabel } from "@mui/material"
 import { FaUser } from "react-icons/fa"
 import { PersonalDetails } from "../types";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -13,12 +13,12 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
 export default function PersonalDetailsForm({
-  data = { firstName: "", middleName: "", lastName: "", countryCode: "", phone: "", email: "", password: "", confirmPassword: "" },
+  data = { firstName: "", middleName: "", lastName: "", suffix: "", countryCode: "", phone: "", email: "", password: "", confirmPassword: "" },
   onChange,
   errors = {},
 }: {
-  data: PersonalDetails;
-  onChange: (data: PersonalDetails) => void;
+  data: PersonalDetails & { suffix?: string };
+  onChange: (data: PersonalDetails & { suffix?: string }) => void;
   errors: { [key: string]: string };
 }) {
   const errorAnimation = {
@@ -44,7 +44,7 @@ export default function PersonalDetailsForm({
         <h2 className="text-lg font-semibold text-gray-800">Personal Details</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 px-6">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_120px_1fr_100px] gap-3 px-6">
         <motion.div {...(errors.firstName ? errorAnimation : {})}>
           <TextField
             id="firstName"
@@ -69,7 +69,11 @@ export default function PersonalDetailsForm({
             }}
           />
         </motion.div>
-        <motion.div {...(errors.middleName ? errorAnimation : {})}>
+        <motion.div
+          className="md:col-span-1"
+          style={{ minWidth: 0, maxWidth: 120 }}
+          {...(errors.middleName ? errorAnimation : {})}
+        >
           <TextField
             id="middleName"
             label="Middle Name"
@@ -85,6 +89,7 @@ export default function PersonalDetailsForm({
             helperText={errors.middleName}
             inputProps={{ maxLength: 35 }}
             sx={{
+              width: 120,
               "& .MuiOutlinedInput-root": {
                 "& fieldset": { borderColor: "darkgray" },
                 "&:hover fieldset": { borderColor: "#2563eb" },
@@ -93,7 +98,11 @@ export default function PersonalDetailsForm({
             }}
           />
         </motion.div>
-        <motion.div {...(errors.lastName ? errorAnimation : {})}>
+        <motion.div
+          className="flex w-full"
+          style={{ minWidth: 0 }}
+          {...(errors.lastName ? errorAnimation : {})}
+        >
           <TextField
             id="lastName"
             label={<span>Last Name <span className="text-red-600">*</span></span>}
@@ -109,6 +118,8 @@ export default function PersonalDetailsForm({
             helperText={errors.lastName}
             inputProps={{ maxLength: 36, minLength: 1 }}
             sx={{
+              width: "100%",
+              flex: 1,
               "& .MuiOutlinedInput-root": {
                 "& fieldset": { borderColor: "darkgray" },
                 "&:hover fieldset": { borderColor: "#2563eb" },
@@ -117,6 +128,24 @@ export default function PersonalDetailsForm({
             }}
           />
         </motion.div>
+        <FormControl sx={{ minWidth: 80, maxWidth: 100, flexShrink: 0 }}>
+          <InputLabel id="suffix-label">Suffix</InputLabel>
+          <Select
+            labelId="suffix-label"
+            id="suffix"
+            value={data.suffix || ""}
+            label="Suffix"
+            onChange={(e) => onChange({ ...data, suffix: e.target.value })}
+            size="small"
+          >
+            <MenuItem value="">None</MenuItem>
+            <MenuItem value="Jr.">Jr.</MenuItem>
+            <MenuItem value="Sr.">Sr.</MenuItem>
+            <MenuItem value="II">II</MenuItem>
+            <MenuItem value="III">III</MenuItem>
+            <MenuItem value="IV">IV</MenuItem>
+          </Select>
+        </FormControl>
       </div>
 
       <div className="grid grid-cols-3 gap-3 px-6">
@@ -255,7 +284,23 @@ export default function PersonalDetailsForm({
             variant="outlined"
             fullWidth
             value={data.password}
-            onChange={(e) => onChange({ ...data, password: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value;
+              let passwordError = "";
+              if (value.length < 8) {
+                passwordError = "Password must be at least 8 characters";
+              } else if (!/[A-Z]/.test(value)) {
+                passwordError = "Password must contain an uppercase letter";
+              } else if (!/[a-z]/.test(value)) {
+                passwordError = "Password must contain a lowercase letter";
+              } else if (!/[0-9]/.test(value)) {
+                passwordError = "Password must contain a digit";
+              } else if (!/[!@#$%^&*(),.?":{}|<>_\-\\[\];'/`~+=]/.test(value)) {
+                passwordError = "Password must contain a special character";
+              }
+              onChange({ ...data, password: value });
+              errors.password = passwordError;
+            }}
             error={!!errors.password}
             helperText={errors.password}
             inputProps={{ maxLength: 128, minLength: 8 }}

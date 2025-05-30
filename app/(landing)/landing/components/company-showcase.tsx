@@ -1,6 +1,7 @@
 "use client"
 
 import { Marquee } from "@/components/magicui/marquee"
+import Link from "next/link"
 
 export default function CompaniesShowcase() {
   const companies = [
@@ -96,9 +97,10 @@ export default function CompaniesShowcase() {
         </div>
         <div className="mt-16 text-center animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
           <p className="text-gray-500 mb-4">And many more companies trust us with their business</p>
+          <Link href="/sign-in">
           <button className="inline-flex items-center justify-center rounded-md bg-gradient-to-r from-blue-700 to-blue-400 px-6 py-3 text-sm font-medium text-white shadow transition-all duration-300 hover:from-gray-700 hover:to-gray-800 hover:scale-105 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950">
             Join them today
-          </button>
+          </button></Link>
         </div>
       </div>
       <style jsx>{`

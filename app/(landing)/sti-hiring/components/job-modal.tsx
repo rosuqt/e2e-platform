@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { Fragment } from "react"
 import { Dialog, Transition } from "@headlessui/react"
 import { X, MapPin, Building, Clock, DollarSign, CheckCircle } from "lucide-react"
@@ -26,34 +25,80 @@ type JobModalProps = {
   onClose: () => void
 }
 
+type FormData = {
+  firstName: string
+  lastName: string
+  middleName: string
+  suffix: string
+  email: string
+  phone: string
+  resume: File | null
+  coverLetter: string
+}
+
+type FormErrors = {
+  [K in keyof FormData]?: string
+}
+
 export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
   const [activeTab, setActiveTab] = useState<"details" | "apply">("details")
-  const [formData, setFormData] = useState({
-    name: "",
+  const [formData, setFormData] = useState<FormData>({
+    firstName: "",
+    lastName: "",
+    middleName: "",
+    suffix: "",
     email: "",
     phone: "",
-    resume: null as File | null,
+    resume: null,
     coverLetter: "",
   })
+  const [formErrors, setFormErrors] = useState<FormErrors>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+
+  const namePattern = /^[A-Za-z]+([ -][A-Za-z]+)*$/
+
+  const validate = (data: FormData): FormErrors => {
+    const errors: FormErrors = {}
+    if (!data.firstName.trim()) errors.firstName = "First name is required."
+    else if (!namePattern.test(data.firstName.trim())) errors.firstName = "First name must only contain letters, spaces, or dashes."
+    if (!data.lastName.trim()) errors.lastName = "Last name is required."
+    else if (!namePattern.test(data.lastName.trim())) errors.lastName = "Last name must only contain letters, spaces, or dashes."
+    if (!data.middleName.trim()) errors.middleName = "Middle name is required."
+    else if (!namePattern.test(data.middleName.trim())) errors.middleName = "Middle name must only contain letters, spaces, or dashes."
+    if (!data.email.trim()) errors.email = "Email is required."
+    else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,}$/.test(data.email)) errors.email = "Invalid email address."
+    if (!data.phone.trim()) errors.phone = "Phone number is required."
+    else if (!/^\+?\d{10,15}$/.test(data.phone.replace(/[\s()-]/g, ""))) errors.phone = "Invalid phone number."
+    if (!data.resume) errors.resume = "Resume is required."
+    else {
+      const allowed = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+      if (!allowed.includes(data.resume.type)) errors.resume = "Accepted formats: PDF, DOC, DOCX."
+      if (data.resume.size > 2 * 1024 * 1024) errors.resume = "File size must be under 2MB."
+    }
+    if (!data.coverLetter.trim()) errors.coverLetter = "Cover letter is required."
+    return errors
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+    setFormErrors((prev) => ({ ...prev, [name]: undefined }))
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFormData((prev) => ({ ...prev, resume: e.target.files![0] }))
+      setFormErrors((prev) => ({ ...prev, resume: undefined }))
     }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const errors = validate(formData)
+    setFormErrors(errors)
+    if (Object.keys(errors).length > 0) return
     setIsSubmitting(true)
-
-    // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false)
       setIsSubmitted(true)
@@ -224,22 +269,79 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                           </Button>
                         </div>
                       ) : (
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                          <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                              Full Name
-                            </label>
-                            <input
-                              type="text"
-                              id="name"
-                              name="name"
-                              required
-                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              value={formData.name}
-                              onChange={handleInputChange}
-                            />
+                        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                                First Name
+                              </label>
+                              <input
+                                type="text"
+                                id="firstName"
+                                name="firstName"
+                                required
+                                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  formErrors.firstName ? "border-red-500" : "border-gray-300"
+                                }`}
+                                value={formData.firstName}
+                                onChange={handleInputChange}
+                              />
+                              {formErrors.firstName && (
+                                <p className="text-xs text-red-600 mt-1">{formErrors.firstName}</p>
+                              )}
+                            </div>
+                            <div>
+                              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                                Last Name
+                              </label>
+                              <input
+                                type="text"
+                                id="lastName"
+                                name="lastName"
+                                required
+                                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  formErrors.lastName ? "border-red-500" : "border-gray-300"
+                                }`}
+                                value={formData.lastName}
+                                onChange={handleInputChange}
+                              />
+                              {formErrors.lastName && (
+                                <p className="text-xs text-red-600 mt-1">{formErrors.lastName}</p>
+                              )}
+                            </div>
+                            <div>
+                              <label htmlFor="middleName" className="block text-sm font-medium text-gray-700 mb-1">
+                                Middle Name
+                              </label>
+                              <input
+                                type="text"
+                                id="middleName"
+                                name="middleName"
+                                required
+                                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  formErrors.middleName ? "border-red-500" : "border-gray-300"
+                                }`}
+                                value={formData.middleName}
+                                onChange={handleInputChange}
+                              />
+                              {formErrors.middleName && (
+                                <p className="text-xs text-red-600 mt-1">{formErrors.middleName}</p>
+                              )}
+                            </div>
+                            <div>
+                              <label htmlFor="suffix" className="block text-sm font-medium text-gray-700 mb-1">
+                                Suffix
+                              </label>
+                              <input
+                                type="text"
+                                id="suffix"
+                                name="suffix"
+                                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={formData.suffix}
+                                onChange={handleInputChange}
+                              />
+                            </div>
                           </div>
-
                           <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                               Email Address
@@ -249,12 +351,16 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                               id="email"
                               name="email"
                               required
-                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                formErrors.email ? "border-red-500" : "border-gray-300"
+                              }`}
                               value={formData.email}
                               onChange={handleInputChange}
                             />
+                            {formErrors.email && (
+                              <p className="text-xs text-red-600 mt-1">{formErrors.email}</p>
+                            )}
                           </div>
-
                           <div>
                             <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
                               Phone Number
@@ -263,12 +369,17 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                               type="tel"
                               id="phone"
                               name="phone"
-                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              required
+                              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                formErrors.phone ? "border-red-500" : "border-gray-300"
+                              }`}
                               value={formData.phone}
                               onChange={handleInputChange}
                             />
+                            {formErrors.phone && (
+                              <p className="text-xs text-red-600 mt-1">{formErrors.phone}</p>
+                            )}
                           </div>
-
                           <div>
                             <label htmlFor="resume" className="block text-sm font-medium text-gray-700 mb-1">
                               Resume/CV
@@ -279,12 +390,16 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                               name="resume"
                               required
                               accept=".pdf,.doc,.docx"
-                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                formErrors.resume ? "border-red-500" : "border-gray-300"
+                              }`}
                               onChange={handleFileChange}
                             />
-                            <p className="text-xs text-gray-500 mt-1">Accepted formats: PDF, DOC, DOCX</p>
+                            <p className="text-xs text-gray-500 mt-1">Accepted formats: PDF, DOC, DOCX. Max 2MB.</p>
+                            {formErrors.resume && (
+                              <p className="text-xs text-red-600 mt-1">{formErrors.resume}</p>
+                            )}
                           </div>
-
                           <div>
                             <label htmlFor="coverLetter" className="block text-sm font-medium text-gray-700 mb-1">
                               Cover Letter
@@ -293,12 +408,17 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                               id="coverLetter"
                               name="coverLetter"
                               rows={4}
-                              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              required
+                              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                formErrors.coverLetter ? "border-red-500" : "border-gray-300"
+                              }`}
                               value={formData.coverLetter}
                               onChange={handleInputChange}
                             ></textarea>
+                            {formErrors.coverLetter && (
+                              <p className="text-xs text-red-600 mt-1">{formErrors.coverLetter}</p>
+                            )}
                           </div>
-
                           <div className="pt-4 flex space-x-4">
                             <Button type="submit" className="bg-blue-700 hover:bg-blue-800" disabled={isSubmitting}>
                               {isSubmitting ? "Submitting..." : "Submit Application"}

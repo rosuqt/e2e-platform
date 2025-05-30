@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { ChevronDown } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import JobCard from "../components/job-card"
@@ -37,8 +36,6 @@ export default function JobsPage() {
 
   return (
     <div className="min-h-screen mt-16 bg-gradient-to-br from-blue-50 to-sky-100">
-
-
       <div className="container mx-auto py-8 px-4">
         <div className="bg-gradient-to-r from-blue-700 to-blue-500 rounded-2xl shadow-xl text-white mb-8 p-8 relative overflow-hidden">
           <div className="relative z-10">
@@ -50,29 +47,7 @@ export default function JobsPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-6 overflow-x-auto scrollbar-hide">
-          <div className="flex space-x-2">
-            {["All Jobs", "Remote", "Full-time", "Part-time", "Internship"].map((filter) => (
-              <Button
-                key={filter}
-                variant="outline"
-                className="whitespace-nowrap rounded-full border-blue-200 text-blue-600 hover:bg-blue-50"
-              >
-                {filter}
-              </Button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-blue-600 whitespace-nowrap">Sort by</span>
-            <Button
-              variant="outline"
-              className="rounded-full border-blue-200 text-blue-600 hover:bg-blue-50 flex items-center gap-1"
-            >
-              Relevance
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
+        <div className="mb-6"></div>
 
         <div className="flex gap-6">
           <div
@@ -206,9 +181,11 @@ export default function JobsPage() {
             </div>
 
             <div className="flex justify-center">
-              <Button className="w-1/2 bg-white hover:bg-yellow-500 border-2 border-blue-500 text-blue-700 font-bold py-7 rounded-full">
-                Join us now
-              </Button>
+              <a href="/sign-in" className="w-1/2">
+                <Button className="w-full bg-white hover:bg-yellow-500 border-2 border-blue-500 text-blue-700 font-bold py-7 rounded-full">
+                  Join us now
+                </Button>
+              </a>
             </div>
           </div>
         </motion.div>

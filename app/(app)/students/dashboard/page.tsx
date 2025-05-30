@@ -649,7 +649,10 @@ export default function Home() {
                               exit={{ opacity: 0, transition: { duration: 0.5 } }}
                               transition={{ duration: 0.3 }}
                             >
-                              <div className="text-white text-xl">Loading...</div>
+                              <div className="flex flex-col items-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-white border-solid mb-4"></div>
+                                <div className="text-white text-xl">Loading...</div>
+                              </div>
                             </motion.div>
                           ) : jobDetails ? (
                             <motion.div

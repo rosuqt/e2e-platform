@@ -45,11 +45,12 @@ export default function SignUpForm() {
   const [currentStep, setCurrentStep] = useState(1)
   const [showSuccess, setShowSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<SignUpFormData>({
+  const [formData, setFormData] = useState<SignUpFormData & { personalDetails: { suffix?: string } }>({
     personalDetails: {
       firstName: "",
       middleName: "",
       lastName: "",
+      suffix: "",
       countryCode: "",
       phone: "",
       email: "",
@@ -91,16 +92,19 @@ export default function SignUpForm() {
     companyRole: "",
     jobTitle: "",
   })
-  const [personalDetailsErrors, setPersonalDetailsErrors] = useState<{ [key: string]: string }>({
-    firstName: "",
-    middleName: "",
-    lastName: "",
-    countryCode: "",
-    phone: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  })
+  const [personalDetailsErrors, setPersonalDetailsErrors] = useState<{ [key: string]: string }>(
+    {
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      suffix: "",
+      countryCode: "",
+      phone: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    }
+  )
 
   const [fetchedCompanies, setFetchedCompanies] = useState<{ name: string, emailDomain?: string | null, branches?: { branch_name: string, email_domain?: string | null }[] }[]>([]);
 
@@ -157,22 +161,22 @@ export default function SignUpForm() {
 
     if (!details.firstName.trim()) {
       errors.firstName = "First Name is required.";
-    } else if (!/^[a-zA-Z]+([-.][a-zA-Z]+)*$/.test(details.firstName)) {
-      errors.firstName = "Only letters, single dash or dot allowed between names.";
+    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.firstName)) {
+      errors.firstName = "Only letters, single space or dash between names allowed.";
     } else if (details.firstName.length < 1 || details.firstName.length > 36) {
       errors.firstName = "Must be between 1 and 36 characters.";
     }
 
-    if (details.middleName && !/^[a-zA-Z]+([-.][a-zA-Z]+)*$/.test(details.middleName)) {
-      errors.middleName = "Only letters, single dash or dot allowed between names.";
+    if (details.middleName && !/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.middleName)) {
+      errors.middleName = "Only letters, single space or dash between names allowed.";
     } else if (details.middleName && details.middleName.length > 35) {
       errors.middleName = "Must not exceed 35 characters.";
     }
 
     if (!details.lastName.trim()) {
       errors.lastName = "Last Name is required.";
-    } else if (!/^[a-zA-Z]+([-.][a-zA-Z]+)*$/.test(details.lastName)) {
-      errors.lastName = "Only letters, single dash or dot allowed between names.";
+    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.lastName)) {
+      errors.lastName = "Only letters, single space or dash between names allowed.";
     } else if (details.lastName.length < 1 || details.lastName.length > 35) {
       errors.lastName = "Last Name must be between 1 and 35 characters.";
     }

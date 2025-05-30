@@ -111,7 +111,11 @@ const JobCards: React.FC<JobCardsProps> = ({
   })
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className="flex justify-center items-center h-40">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-400 border-solid"></div>
+      </div>
+    )
   }
 
   if (error) {
