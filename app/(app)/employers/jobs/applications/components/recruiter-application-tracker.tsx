@@ -10,7 +10,7 @@ import {
   MapPin,
   ChevronDown,
   FileText,
-  Bookmark, // add Bookmark icon
+  Bookmark,
   Filter,
   MoreHorizontal,
   ArrowUpRight,
@@ -28,12 +28,30 @@ import { RecruiterApplicationDetailsModal } from "./recruiter-application-detail
 import { toast } from "react-toastify"
 import Avatar from "@mui/material/Avatar"
 
+type Applicant = {
+  id: number
+  student_id: string
+  job_id: number
+  experience_years?: number
+  created_at?: string
+  status?: string
+  match_score?: number
+  first_name?: string
+  last_name?: string
+  email?: string
+  profile_img?: string | null
+  job_title?: string
+  location?: string
+}
+
 export default function RecruiterApplicationTracker() {
   const [selectedApplication, setSelectedApplication] = useState<number | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalApplicationId, setModalApplicationId] = useState<number | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
+  const [applicants, setApplicants] = useState<Applicant[]>([])
+  const [loadingApplicants, setLoadingApplicants] = useState(false)
 
   const jobPostings = [
     {
@@ -91,6 +109,31 @@ export default function RecruiterApplicationTracker() {
       return () => scrollContainer.removeEventListener("scroll", handleScroll)
     }
   }, [])
+
+  useEffect(() => {
+    async function fetchApplicants() {
+      setLoadingApplicants(true)
+      try {
+        let url = "/api/employers/applications"
+        if (selectedJob.id !== 0) {
+          url += `?job_id=${selectedJob.id}`
+        }
+        const res = await fetch(url)
+        if (res.ok) {
+          const data: Applicant[] = await res.json()
+          setApplicants(data)
+          console.log("Fetched applicants:", data)
+        } else {
+          setApplicants([])
+        }
+      } catch (err) {
+        setApplicants([])
+        console.error("Error fetching applicants:", err)
+      }
+      setLoadingApplicants(false)
+    }
+    fetchApplicants()
+  }, [selectedJob])
 
   const handleViewDetails = (id: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -188,6 +231,10 @@ export default function RecruiterApplicationTracker() {
                   <CardTitle className="mb-2 text-blue-700 text-xl">Your Applicants</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {/* Debug: show applicant count */}
+                  <div className="text-xs text-gray-400 mb-2">
+                    Applicants loaded: {applicants.length}
+                  </div>
                   <Tabs defaultValue="all" className="w-full">
                     <TabsList className="flex w-full border-b border-gray-200">
                       <TabsTrigger
@@ -241,63 +288,87 @@ export default function RecruiterApplicationTracker() {
                     </div>
 
                     <TabsContent value="all" className="mt-4 space-y-4">
-                      {generateApplicantCards(
-                        5,
-                        "all",
-                        selectedApplication,
-                        setSelectedApplication,
-                        handleViewDetails,
-                        handleInviteToInterview,
+                      {loadingApplicants ? (
+                        <div>Loading...</div>
+                      ) : (
+                        generateApplicantCards(
+                          applicants,
+                          "all",
+                          selectedApplication,
+                          setSelectedApplication,
+                          handleViewDetails,
+                          handleInviteToInterview,
+                        )
                       )}
                     </TabsContent>
                     <TabsContent value="new" className="mt-4 space-y-4">
-                      {generateApplicantCards(
-                        5,
-                        "new",
-                        selectedApplication,
-                        setSelectedApplication,
-                        handleViewDetails,
-                        handleInviteToInterview,
+                      {loadingApplicants ? (
+                        <div>Loading...</div>
+                      ) : (
+                        generateApplicantCards(
+                          applicants.filter(a => (a.status ?? "new") === "new"),
+                          "new",
+                          selectedApplication,
+                          setSelectedApplication,
+                          handleViewDetails,
+                          handleInviteToInterview,
+                        )
                       )}
                     </TabsContent>
                     <TabsContent value="review" className="mt-4 space-y-4">
-                      {generateApplicantCards(
-                        5,
-                        "review",
-                        selectedApplication,
-                        setSelectedApplication,
-                        handleViewDetails,
-                        handleInviteToInterview,
+                      {loadingApplicants ? (
+                        <div>Loading...</div>
+                      ) : (
+                        generateApplicantCards(
+                          applicants.filter(a => (a.status ?? "new") === "review"),
+                          "review",
+                          selectedApplication,
+                          setSelectedApplication,
+                          handleViewDetails,
+                          handleInviteToInterview,
+                        )
                       )}
                     </TabsContent>
                     <TabsContent value="interview" className="mt-4 space-y-4">
-                      {generateApplicantCards(
-                        5,
-                        "interview",
-                        selectedApplication,
-                        setSelectedApplication,
-                        handleViewDetails,
-                        handleInviteToInterview,
+                      {loadingApplicants ? (
+                        <div>Loading...</div>
+                      ) : (
+                        generateApplicantCards(
+                          applicants.filter(a => (a.status ?? "new") === "interview"),
+                          "interview",
+                          selectedApplication,
+                          setSelectedApplication,
+                          handleViewDetails,
+                          handleInviteToInterview,
+                        )
                       )}
                     </TabsContent>
                     <TabsContent value="invited" className="mt-4 space-y-4">
-                      {generateApplicantCards(
-                        5,
-                        "invited",
-                        selectedApplication,
-                        setSelectedApplication,
-                        handleViewDetails,
-                        handleInviteToInterview,
+                      {loadingApplicants ? (
+                        <div>Loading...</div>
+                      ) : (
+                        generateApplicantCards(
+                          applicants.filter(a => (a.status ?? "new") === "invited"),
+                          "invited",
+                          selectedApplication,
+                          setSelectedApplication,
+                          handleViewDetails,
+                          handleInviteToInterview,
+                        )
                       )}
                     </TabsContent>
                     <TabsContent value="rejected" className="mt-4 space-y-4">
-                      {generateApplicantCards(
-                        4,
-                        "rejected",
-                        selectedApplication,
-                        setSelectedApplication,
-                        handleViewDetails,
-                        handleInviteToInterview,
+                      {loadingApplicants ? (
+                        <div>Loading...</div>
+                      ) : (
+                        generateApplicantCards(
+                          applicants.filter(a => (a.status ?? "new") === "rejected"),
+                          "rejected",
+                          selectedApplication,
+                          setSelectedApplication,
+                          handleViewDetails,
+                          handleInviteToInterview,
+                        )
                       )}
                     </TabsContent>
                   </Tabs>
@@ -506,7 +577,7 @@ export default function RecruiterApplicationTracker() {
 }
 
 function generateApplicantCards(
-  count: number,
+  applicants: Applicant[],
   status: string,
   selectedApplication: number | null,
   setSelectedApplication: (id: number | null) => void,
@@ -522,50 +593,21 @@ function generateApplicantCards(
     rejected: { title: "Rejected", badge: "bg-red-100 text-red-700" },
   }
 
-  const names = [
-    "Alex Johnson",
-    "Sarah Williams",
-    "Michael Chen",
-    "Emily Zhang",
-    "David Lee",
-    "Jessica Brown",
-    "Ryan Garcia",
-    "Olivia Martinez",
-  ]
+  if (!applicants || applicants.length === 0) {
+    return <div className="text-gray-400 text-center py-8">No applicants found.</div>
+  }
 
-  const jobTitles = [
-    "Frontend Developer",
-    "UI/UX Designer",
-    "Software Engineer",
-    "Frontend Engineer",
-    "Full Stack Developer",
-    "Web Developer",
-    "JavaScript Developer",
-    "React Developer",
-  ]
-
-  const locations = ["Remote", "San Francisco, CA", "New York, NY", "Seattle, WA", "Austin, TX", "Boston, MA"]
-  const experiences = ["2 years", "3 years", "4 years", "5 years", "6 years", "7+ years"]
-  const matchScores = ["98%", "95%", "92%", "89%", "87%", "85%", "82%", "78%"]
-
-  return Array.from({ length: count }).map((_, index) => {
-    const id = index + 1
-    let cardStatus = status
-    if (status === "all") {
-      const statuses = ["new", "review", "interview", "invited", "rejected"]
-      cardStatus = statuses[index % statuses.length]
-    }
-
-    const badgeClass = statusConfig[cardStatus as keyof typeof statusConfig].badge
-
-    const daysAgo = index + 1
-    const applicationDate = new Date()
-    applicationDate.setDate(applicationDate.getDate() - daysAgo)
-    const formattedDate = applicationDate.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
+  return applicants.map((applicant, index) => {
+    const id = applicant.id
+    const cardStatus = applicant.status || status
+    const badgeClass = statusConfig[cardStatus as keyof typeof statusConfig]?.badge || ""
+    const formattedDate = applicant.created_at
+      ? new Date(applicant.created_at).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : ""
 
     return (
       <motion.div
@@ -595,31 +637,24 @@ function generateApplicantCards(
         <div className="flex justify-between items-start">
           <div className="flex gap-3">
             <Avatar
+              src={applicant.profile_img || undefined}
               sx={{
                 width: 48,
                 height: 48,
                 fontWeight: "bold",
-                bgcolor:
-                  index % 3 === 0
-                    ? "#DBEAFE"
-                    : index % 3 === 1
-                      ? "#DCFCE7"
-                      : "#F3E8FF",
-                color:
-                  index % 3 === 0
-                    ? "#2563EB"
-                    : index % 3 === 1
-                      ? "#15803D"
-                      : "#9333EA",
+                bgcolor: "#DBEAFE",
+                color: "#2563EB",
                 border: "1px solid #E5E7EB",
                 fontSize: 22,
               }}
             >
-              {names[index % names.length].charAt(0)}
+              {applicant.first_name?.charAt(0) || "A"}
             </Avatar>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-lg text-gray-800">{names[index % names.length]}</h3>
+                <h3 className="font-semibold text-lg text-gray-800">
+                  {applicant.first_name} {applicant.last_name}
+                </h3>
                 <Badge className={badgeClass}>
                   {cardStatus === "new"
                     ? "New"
@@ -633,16 +668,16 @@ function generateApplicantCards(
                 </Badge>
               </div>
               <p className="text-sm text-gray-500">
-                Applied for {jobTitles[index % jobTitles.length]}
+                Applied for {applicant.job_title || ""}
               </p>
               <div className="flex items-center gap-4 mt-1">
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <MapPin className="h-3 w-3" />
-                  <span>{locations[index % locations.length]}</span>
+                  <span>{applicant.location || "N/A"}</span>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <Briefcase className="h-3 w-3" />
-                  <span>{experiences[index % experiences.length]}</span>
+                  <span>{applicant.experience_years ? `${applicant.experience_years} years` : "N/A"}</span>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <Calendar className="h-3 w-3" />
@@ -652,12 +687,12 @@ function generateApplicantCards(
             </div>
           </div>
           <div className="flex gap-1">
-            <Badge className="bg-green-100 text-green-700">{matchScores[index % matchScores.length]} Match</Badge>
+            <Badge className="bg-green-100 text-green-700">{applicant.match_score ? `${applicant.match_score}% Match` : ""}</Badge>
             <button
               className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
               onClick={(e) => e.stopPropagation()}
             >
-              <Bookmark className="h-4 w-4" /> {/* Use Bookmark icon */}
+              <Bookmark className="h-4 w-4" />
             </button>
             <button
               className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"

@@ -28,16 +28,27 @@ type Job = {
   registered_employers?: { company_name?: string };
 };
 
+function extractCityRegionCountry(address?: string) {
+  if (!address) return "Unknown Location";
+  const parts = address.split(",").map(s => s.trim()).filter(Boolean);
+  if (parts.length === 0) return "Unknown Location";
+  if (parts.length >= 3) {
+    return parts.slice(-3).join(", ");
+  }
+  return parts.join(", ");
+}
+
 function JobCard({
-  id,
   isSelected,
   onSelect,
   onQuickApply,
+  job,
 }: {
   id: number | string;
   isSelected: boolean;
   onSelect: () => void;
   onQuickApply: () => void;
+  job: Job;
 }) {
   function getDaysLeft(deadline?: string): string {
     if (!deadline) return "N/A";
@@ -52,70 +63,6 @@ function JobCard({
     return `${days} days left`;
   }
 
-  const [job, setJob] = useState<Job | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (typeof id !== "string" || !uuidRegex.test(id)) {
-      setError("Invalid job id");
-      setJob(null);
-      setLoading(false);
-      return;
-    }
-
-    fetch(`/api/students/job-listings/${id}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Failed to fetch job details");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (!data || data.error) {
-          setError(data?.error || "No job data");
-          setJob(null);
-        } else {
-          setJob(data);
-        }
-        setLoading(false);
-      })
-      .catch((e) => {
-        setError(typeof e === "string" ? e : e.message || "Unable to load job details");
-        setLoading(false);
-      });
-  }, [id]);
-
-  const transitionDelay = typeof id === "number" ? id * 0.1 : 0;
-
-  if (loading) {
-    return (
-      <motion.div
-        className="bg-white rounded-lg shadow-sm p-5 border-l-4 border-l-transparent border-gray-200 relative overflow-hidden mt-2 animate-pulse"
-      >
-        <div className="h-6 bg-gray-200 rounded w-1/3 mb-2" />
-        <div className="h-4 bg-gray-100 rounded w-1/4 mb-4" />
-        <div className="h-4 bg-gray-100 rounded w-1/2 mb-2" />
-        <div className="h-4 bg-gray-100 rounded w-1/3" />
-      </motion.div>
-    );
-  }
-
-  if (error || !job) {
-    return (
-      <motion.div
-        className="bg-white rounded-lg shadow-sm p-5 border-l-4 border-l-transparent border-gray-200 relative overflow-hidden mt-2"
-      >
-        <div className="text-red-500">{error || "No job data"}</div>
-      </motion.div>
-    );
-  }
-
   const company =
     job.registered_employers?.company_name ||
     job.employers?.company_name ||
@@ -124,12 +71,47 @@ function JobCard({
 
   const title = job.job_title || job.title || "Untitled Position";
   const description = job.description || "";
-  const location = job.location || "Unknown Location";
+  const location = extractCityRegionCountry(job.location);
   const type = job.type || "Full-time";
   const vacancies = job.vacancies || 1;
   const deadline = job.deadline || job.application_deadline || "";
   const skills = job.skills || [];
   const matchPercentage = job.match_percentage || 80;
+
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+    async function fetchSaved() {
+      const res = await fetch("/api/students/job-listings/saved-jobs");
+      const json = await res.json();
+      if (!ignore) setSaved(json.jobIds?.map(String).includes(String(job.id)));
+    }
+    fetchSaved();
+    return () => { ignore = true; }
+  }, [job.id]);
+
+  async function toggleSave(e: React.MouseEvent) {
+    e.stopPropagation();
+    setLoading(true);
+    if (!saved) {
+      await fetch("/api/students/job-listings/saved-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id }),
+      });
+      setSaved(true);
+    } else {
+      await fetch("/api/students/job-listings/saved-jobs", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id }),
+      });
+      setSaved(false);
+    }
+    setLoading(false);
+  }
 
   return (
     <motion.div
@@ -138,7 +120,7 @@ function JobCard({
       } relative overflow-hidden mt-2`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: transitionDelay }}
+      transition={{ duration: 0.5 }}
       whileHover={{
         y: -2,
         boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
@@ -167,14 +149,13 @@ function JobCard({
           </div>
         </div>
         <motion.button
-          className={`text-gray-400 hover:text-blue-500 transition-colors ${isSelected ? "text-blue-500" : ""}`}
+          className={`text-gray-400 hover:text-blue-500 transition-colors ${saved ? "text-blue-500" : ""}`}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
+          onClick={toggleSave}
+          disabled={loading}
         >
-          <Bookmark size={20} className={isSelected ? "fill-blue-500" : ""} />
+          <Bookmark size={20} className={saved ? "fill-blue-500" : ""} />
         </motion.button>
       </div>
 

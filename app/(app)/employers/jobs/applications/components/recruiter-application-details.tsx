@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 import Avatar from "@mui/material/Avatar"
 import { Progress } from "@/components/ui/progress"
+import type React from "react"
 
 interface RecruiterApplicationDetailsProps {
   applicationId: number | null
@@ -312,7 +313,32 @@ export function RecruiterApplicationDetailsModal({
   )
 }
 
-function RecruiterApplicationDetailsContent({ application }: { application: { [key: string]: any } }) {
+interface Application {
+  id: number
+  name: string
+  title: string
+  status: string
+  statusColor: string
+  location: string
+  experience: string
+  appliedDate: string
+  matchScore: number
+  skills: string[]
+  education: { degree: string; school: string; year: string }[]
+  workHistory: { company: string; position: string; duration: string; description: string }[]
+  timeline: { status: string; date: string; icon: React.JSX.Element; iconBg: string; current?: boolean }[]
+  notes: string
+  contact: {
+    email: string
+    phone: string
+    linkedin?: string
+    github?: string
+    portfolio?: string
+  }
+  documents: { name: string; date: string; size: string }[]
+}
+
+function RecruiterApplicationDetailsContent({ application }: { application: Application }) {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="profile" className="w-full">
@@ -484,7 +510,7 @@ function RecruiterApplicationDetailsContent({ application }: { application: { [k
             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
 
             {/* Timeline events */}
-            {application.timeline.map((event: { [key: string]: any }, index: number) => (
+            {application.timeline.map((event: Application["timeline"][number], index: number) => (
               <div key={index} className="relative pl-12 pb-8">
                 <div
                   className={`absolute left-0 w-8 h-8 rounded-full flex items-center justify-center ${event.iconBg}`}
@@ -507,7 +533,7 @@ function RecruiterApplicationDetailsContent({ application }: { application: { [k
               </div>
               <div className="text-sm text-gray-600">
                 <strong>Next Steps:</strong> <br />
-                {application.status === "New" && <em>Review candidate's resume and decide whether to move forward.</em>}
+                {application.status === "New" && <em>Review candidate&apos;s resume and decide whether to move forward.</em>}
                 {application.status === "Interview" && <em>Conduct interview and provide feedback.</em>}
                 {application.status === "Invited" && <em>Waiting for candidate to confirm interview time.</em>}
               </div>
@@ -520,7 +546,7 @@ function RecruiterApplicationDetailsContent({ application }: { application: { [k
             <h3 className="text-md font-semibold text-blue-700">Recruiter Notes</h3>
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
               <p className="text-sm text-gray-700">{application.notes}</p>
-            </div>
+            </div>  
             <Button variant="outline" size="sm" className="mt-2">
               <Edit className="h-4 w-4 mr-2" />
               Edit Notes

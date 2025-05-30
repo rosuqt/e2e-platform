@@ -21,9 +21,9 @@ export async function POST(req: NextRequest) {
     email,
     phone,
     address,
-    linkedin_profile,
     application_questions,
     application_answers,
+    project_description,
   } = body
 
   if (!student_id || !job_id) {
@@ -43,9 +43,9 @@ export async function POST(req: NextRequest) {
     email,
     phone,
     address,
-    linkedin_profile,
     application_questions,
     application_answers,
+    describe_proj: project_description,
   }])
 
   if (error) {

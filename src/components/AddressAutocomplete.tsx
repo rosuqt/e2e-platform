@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import TextField from '@mui/material/TextField';
-import ReactDOM from "react-dom"
+import Popper from '@mui/material/Popper'
 
 type Location = {
   display_name: string;
@@ -20,17 +20,20 @@ export default function AddressAutocomplete({
       Address <span style={{ color: 'red' }}>*</span>
     </span>
   ),
+  height,
 }: {
   value: string;
   onChange: (val: string) => void;
   error?: boolean;
   helperText?: React.ReactNode;
   label?: React.ReactNode;
+  height?: string | number;
 }) {
   const [query, setQuery] = useState(value || '');
   const [results, setResults] = useState<Location[]>([]);
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     setQuery(value || '');
@@ -44,12 +47,16 @@ export default function AddressAutocomplete({
         )}&limit=5&dedupe=1&`
       )
         .then((res) => res.json())
-        .then((data) => setResults(data))
+        .then((data) => setResults(Array.isArray(data) ? data : []))
         .catch(() => setResults([]));
     } else if (!focused) {
       setResults([]);
     }
   }, [query, focused]);
+
+  useEffect(() => {
+    if (inputRef.current) setAnchorEl(inputRef.current);
+  }, [inputRef.current]);
 
   return (
     <div
@@ -74,7 +81,7 @@ export default function AddressAutocomplete({
               )}&limit=5&dedupe=1&`
             )
               .then((res) => res.json())
-              .then((data) => setResults(data))
+              .then((data) => setResults(Array.isArray(data) ? data : []))
               .catch(() => setResults([]));
           }
         }}
@@ -83,39 +90,40 @@ export default function AddressAutocomplete({
           onChange(e.target.value);
         }}
         autoComplete="off"
+        sx={height ? { height, '& .MuiInputBase-root': { height } } : undefined}
       />
-      {focused && results.length > 0 &&
-        ReactDOM.createPortal(
-          <ul
-            className="border border-gray-300 mt-1 rounded bg-white max-h-60 overflow-y-auto absolute z-[2] w-full left-0"
-            style={{
-              top:
-                (inputRef.current?.getBoundingClientRect()?.bottom ?? 0) +
-                window.scrollY,
-              left:
-                (inputRef.current?.getBoundingClientRect()?.left ?? 0) +
-                window.scrollX,
-              width: inputRef.current?.offsetWidth ?? "100%",
-              position: "absolute",
-            }}
-          >
-            {results.map((loc, index) => (
-              <li
-                key={index}
-                className="p-2 hover:bg-gray-100 cursor-pointer"
-                onMouseDown={() => {
-                  setQuery(loc.display_name);
-                  onChange(loc.display_name);
-                  setResults([]);
-                }}
-              >
-                {loc.display_name}
-              </li>
-            ))}
-          </ul>,
-          document.body
-        )
-      }
+      <Popper
+        open={focused && results.length > 0}
+        anchorEl={anchorEl}
+        placement="bottom-start"
+        style={{ zIndex: 1300, width: anchorEl?.offsetWidth || undefined }}
+        modifiers={[
+          {
+            name: 'offset',
+            options: {
+              offset: [0, 4],
+            },
+          },
+        ]}
+      >
+        <ul
+          className="border border-gray-300 mt-1 rounded bg-white max-h-60 overflow-y-auto w-full"
+        >
+          {Array.isArray(results) && results.map((loc, index) => (
+            <li
+              key={index}
+              className="p-2 hover:bg-gray-100 cursor-pointer"
+              onMouseDown={() => {
+                setQuery(loc.display_name);
+                onChange(loc.display_name);
+                setResults([]);
+              }}
+            >
+              {loc.display_name}
+            </li>
+          ))}
+        </ul>
+      </Popper>
     </div>
   );
 }

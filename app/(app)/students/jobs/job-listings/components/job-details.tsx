@@ -1,20 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { ArrowRight, CheckCircle, MapPin, Users, Mail, Bookmark, Briefcase, Clock } from "lucide-react";
-import { Divider as Separator } from "@mui/material";
+import { ArrowRight, CheckCircle, MapPin, Users, Mail, Bookmark, Briefcase, Clock, Globe, Home, DollarSign,  FileText, BadgeAlert, BadgeCheck as LuBadgeCheck } from "lucide-react";
+import { HiBadgeCheck } from "react-icons/hi";
+import { Divider as Separator, Tooltip, tooltipClasses, TooltipProps } from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
-import { FaWandMagicSparkles } from "react-icons/fa6";
+//import { FaWandMagicSparkles } from "react-icons/fa6";
 import { ApplicationModal } from "./application-modal";
 import clsx from "clsx";
+import dynamic from "next/dynamic";
+
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
+
+import listLoadAnimation from "../../../../../../public/animations/list-load.json";
 
 type Employer = {
   first_name?: string;
   last_name?: string;
   company_name?: string;
+  job_title?: string;
 };
 
-type Job = {
+export type Job = {
   id: string;
   title?: string;
   job_title?: string;
@@ -28,10 +37,20 @@ type Job = {
   match_percentage?: number;
   employers?: Employer;
   registered_employers?: { company_name?: string };
-  responsibilities?: string[];
+  responsibilities?: string;
   must_haves?: string[];
   nice_to_haves?: string[];
   perks?: string[];
+  remote_options?: string;
+  work_type?: string;
+  pay_type?: string;
+  pay_amount?: string;
+  recommended_course?: string;
+  job_summary?: string;
+  verification_tier?: string;
+  max_applicants?: number;
+  paused?: boolean;
+  created_at?: string;
 };
 
 function getDaysLeft(deadline?: string): string {
@@ -53,6 +72,32 @@ const progressStates = [
   { value: 98, color: "#22c55e", label: "98%" },
 ];
 
+const CustomTooltip = styled(Tooltip)<TooltipProps>(() => ({
+  [`& .${tooltipClasses.tooltip}`]: {
+    backgroundColor: "#fff",
+    color: "#222",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+    fontSize: 13,
+    borderRadius: 8,
+    padding: "8px 14px",
+    fontWeight: 500,
+    letterSpacing: 0.1,
+  },
+  [`& .${tooltipClasses.arrow}`]: {
+    color: "#fff",
+  },
+}));
+
+function extractCityRegionCountry(address?: string) {
+  if (!address) return "Unknown Location";
+  const parts = address.split(",").map(s => s.trim()).filter(Boolean);
+  if (parts.length === 0) return "Unknown Location";
+  if (parts.length >= 3) {
+    return parts.slice(-3).join(", ");
+  }
+  return parts.join(", ");
+}
+
 const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
@@ -67,6 +112,12 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
       .then(res => res.json())
       .then(data => {
         setJob(data && !data.error ? data : null);
+        // Debug log
+        if (data) {
+          console.log("MUST HAVES:", data.must_haves);
+          console.log("NICE TO HAVES:", data.nice_to_haves);
+          console.log("PERKS:", data.perks);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -86,8 +137,11 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-sm p-8">
-        Loading...
+      <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-sm p-8 flex flex-col items-center justify-center min-h-[300px]">
+        <div className="w-40 h-40 flex items-center justify-center">
+          <Lottie animationData={listLoadAnimation} loop={true} />
+        </div>
+        <div className="mt-4 text-gray-500 font-medium">Loading job details...</div>
       </div>
     );
   }
@@ -106,10 +160,9 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
     [job.employers?.first_name ?? "", job.employers?.last_name ?? ""].filter(Boolean).join(" ") ||
     "Unknown Company";
 
-  // Ensure company is always a string before using slice
   const title = job.job_title || job.title || "Untitled Position";
   const description = job.description || "";
-  const location = job.location || "Unknown Location";
+  const location = extractCityRegionCountry(job.location);
   const type = job.type || "Full-time";
   const vacancies = job.vacancies || 1;
   const deadline = job.deadline || job.application_deadline || "";
@@ -118,6 +171,13 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   const mustHaves = job.must_haves || [];
   const niceToHaves = job.nice_to_haves || [];
   const perks = job.perks || [];
+
+  const remoteOptions = job.remote_options || "Not specified";
+  const workType = job.work_type || "Not specified";
+  const payType = job.pay_type || "Not specified";
+  const payAmount = job.pay_amount || "Not specified";
+  const jobSummary = job.job_summary || "";
+  const verificationTier = job.verification_tier || "basic";
 
   return (
     <div className="max-w-5xl mx-auto bg-white rounded-lg shadow-sm">
@@ -135,7 +195,25 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold">{title}</h1>
-              <CheckCircle className="w-5 h-5 text-primary" />
+              {verificationTier === "full" ? (
+                <CustomTooltip title="Fully verified and trusted company">
+                  <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
+                    <HiBadgeCheck className="w-5 h-5 text-blue-600" />
+                  </motion.span>
+                </CustomTooltip>
+              ) : verificationTier === "standard" ? (
+                <CustomTooltip title="Partially verified, exercise some caution">
+                  <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
+                    <LuBadgeCheck className="w-5 h-5" style={{ color: "#7c3aed" }} />
+                  </motion.span>
+                </CustomTooltip>
+              ) : (
+                <CustomTooltip title="Not verified, proceed carefully">
+                  <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
+                    <BadgeAlert className="w-5 h-5 text-gray-400" />
+                  </motion.span>
+                </CustomTooltip>
+              )}
             </div>
             <div className="text-muted-foreground">{company}</div>
             <div className="text-sm text-muted-foreground flex items-center gap-1">
@@ -154,7 +232,8 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         <div className="mt-4 flex gap-3">
           <Button
             className="gap-2 rounded-full"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => setIsModalOpen(true)
+            }
           >
             <Mail className="w-4 h-4" />
             <span className="text-white px-3">Apply</span>
@@ -222,12 +301,12 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
             <Button variant="link" className="p-0 h-auto text-primary mt-2">
               View Details
             </Button>
-            <div className="mt-4 flex justify-end">
-              <div className="flex items-center gap-2 bg-yellow-100 text-yellow-600 text-xs px-3 py-1 rounded-full">
+            {/*<div className="mt-4 flex justify-end">
+              <Button className="flex items-center gap-2 bg-yellow-100 text-yellow-600 text-xs px-3 py-1 rounded-full">
                 <FaWandMagicSparkles className="w-4 h-4" />
-                <span>How can I make myself a stronger candidate?</span>
-              </div>
-            </div>
+                How can I make myself a stronger candidate?
+              </Button>
+            </div>*/}
           </div>
         </div>
       </div>
@@ -238,61 +317,90 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         <h2 className="text-lg font-semibold mb-4">Job Details</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex items-center gap-3">
-            <Briefcase className="w-3 h-3 text-muted-foreground" />
+            <Briefcase className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm">{type}</span>
           </div>
           <div className="flex items-center gap-3">
-            <Clock className="w-3 h-3 text-muted-foreground" />
+            <Clock className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm">{getDaysLeft(deadline)}</span>
           </div>
           <div className="flex items-center gap-3">
-            <Users className="w-3 h-3 text-muted-foreground" />
+            <Users className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm">{vacancies} vacancies</span>
           </div>
           <div className="flex items-center gap-3">
-            <CheckCircle className="w-3 h-3 text-muted-foreground" />
+            <CheckCircle className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm">Recommended for you</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Globe className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm">{remoteOptions}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Home className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm">{workType}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <DollarSign className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm">
+              {payAmount}
+              {payAmount !== "Not specified" && payType !== "Not specified" ? " / " : ""}
+              {payType !== "Not specified" ? payType : ""}
+            </span>
           </div>
         </div>
       </div>
-
       <Separator />
 
       <div className="p-6">
         <h2 className="text-lg font-semibold mb-4">About the Job</h2>
+        {jobSummary && (
+          <div className="mb-4 flex items-start gap-2">
+            <FileText className="w-4 h-4 text-muted-foreground mt-0.5" />
+            <div>
+              <h4 className="font-semibold mb-1 text-sm">Summary</h4>
+              <p className="text-sm text-muted-foreground">{jobSummary}</p>
+            </div>
+          </div>
+        )}
         <p className="text-sm text-muted-foreground mb-4">
           {description}
         </p>
         <h3 className="font-semibold mt-6 mb-2">Responsibilities</h3>
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
-          {responsibilities && responsibilities.filter(Boolean).length > 0
-            ? responsibilities.filter(Boolean).map((item, i) => <li key={i}>{item}</li>)
+          {Array.isArray(responsibilities) && responsibilities.length > 0
+            ? responsibilities.map((item, i) => <li key={i}>{item}</li>)
             : <li>No responsibilities listed.</li>}
         </ul>
         <h3 className="font-semibold mt-6 mb-2">Qualifications</h3>
         <h4 className="text-sm font-medium mb-2">Must-Haves:</h4>
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
-          {mustHaves && mustHaves.filter(Boolean).length > 0
-            ? mustHaves.filter(Boolean).map((item, i) => <li key={i}>{item}</li>)
+          {mustHaves && mustHaves.filter(item => item && item.trim().length > 0).length > 0
+            ? mustHaves.filter(item => item && item.trim().length > 0).map((item, i) => <li key={i}>{item}</li>)
             : <li>No must-haves listed.</li>}
         </ul>
         <h4 className="text-sm font-medium mt-4 mb-2">Nice-to-Haves:</h4>
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
-          {niceToHaves && niceToHaves.filter(Boolean).length > 0
-            ? niceToHaves.filter(Boolean).map((item, i) => <li key={i}>{item}</li>)
+          {niceToHaves && niceToHaves.filter(item => item && item.trim().length > 0).length > 0
+            ? niceToHaves.filter(item => item && item.trim().length > 0).map((item, i) => <li key={i}>{item}</li>)
             : <li>No nice-to-haves listed.</li>}
         </ul>
         <h3 className="font-semibold mt-6 mb-2">Perks and Benefits</h3>
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
-          {perks && perks.filter(Boolean).length > 0
-            ? perks.filter(Boolean).map((item, i) => <li key={i}>{item}</li>)
+          {perks && perks.filter(item => item && item.trim().length > 0).length > 0
+            ? perks.filter(item => item && item.trim().length > 0).map((item, i) => <li key={i}>{item}</li>)
             : <li>No perks listed.</li>}
         </ul>
-      </div>
+        <div className="mt-4">
+          <div className="text-sm text-muted-foreground font-semibold mb-1">Full Location</div>
+          <div className="text-sm">{job.location || "Unknown Location"}</div>
+        </div>
 
+      </div>
       <Separator />
 
       <div className="p-6">
+        <p className="mb-3 text-gray-600 text-sm font-semibold">Job Poster</p>
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200">
@@ -306,10 +414,33 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-medium">{company}</span>
-                <CheckCircle className="w-4 h-4 text-primary" />
+                
+                <span className="font-medium">
+                  {job.employers?.first_name || ""} {job.employers?.last_name || ""}
+                </span>
+                {verificationTier === "full" ? (
+                  <CustomTooltip title="Fully verified and trusted company">
+                    <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
+                      <HiBadgeCheck className="w-4 h-4 text-blue-600" />
+                    </motion.span>
+                  </CustomTooltip>
+                ) : verificationTier === "standard" ? (
+                  <CustomTooltip title="Partially verified, exercise some caution">
+                    <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
+                      <LuBadgeCheck className="w-4 h-4" style={{ color: "#7c3aed" }} />
+                    </motion.span>
+                  </CustomTooltip>
+                ) : (
+                  <CustomTooltip title="Not verified, proceed carefully">
+                    <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
+                      <BadgeAlert className="w-4 h-4 text-gray-400" />
+                    </motion.span>
+                  </CustomTooltip>
+                )}
               </div>
-              <span className="text-xs text-muted-foreground">HR Manager</span>
+              <span className="text-xs text-muted-foreground">
+                {job.employers?.job_title || "N/A"}
+              </span>
             </div>
           </div>
           <Button variant="outline" className="rounded-full text-blue-500 border-blue-500">
@@ -397,7 +528,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
       </div>
       {isModalOpen && (
         <ApplicationModal
-          jobId={job.id}
+          jobId={Number(job.id)}
           onClose={() => setIsModalOpen(false)}
         />
       )}
