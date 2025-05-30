@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -9,6 +9,7 @@ import { motion } from "framer-motion"
 import { X, FileText, Upload, CheckCircle } from "lucide-react"
 import Switch from "@mui/material/Switch"
 import { Tooltip } from "@mui/material"
+import AddressAutocomplete from "@/components/AddressAutocomplete"
 
 type StudentDetails = {
   id: string
@@ -34,8 +35,10 @@ type ApplicationForm = {
   cover_letter: string
   experience_years: string
   portfolio: string
+  portfolio_custom: string
   terms_accepted: boolean
   application_answers: Record<string, unknown>
+  project_description?: string
 }
 
 type QuestionOption = {
@@ -67,8 +70,10 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
     cover_letter: "",
     experience_years: "",
     portfolio: "",
+    portfolio_custom: "",
     terms_accepted: false,
     application_answers: {},
+    project_description: "",
   })
   const [usePersonalEmail, setUsePersonalEmail] = useState(false)
   const [uploadingResume, setUploadingResume] = useState(false)
@@ -272,12 +277,28 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
   }
 
   const handleSubmit = async () => {
-    const resumePath = existingResume?.name
-      ? student?.id + "/" + existingResume.name
-      : form.resume
-    const coverLetterPath = existingCover?.name
-      ? student?.id + "/" + existingCover.name
-      : form.cover_letter
+    let resumePath = ""
+    let coverLetterPath = ""
+    if (existingResume?.name) {
+      resumePath = student?.id + "/" + existingResume.name
+    } else if (form.resume) {
+      try {
+        const urlObj = new URL(form.resume)
+        resumePath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname
+      } catch {
+        resumePath = form.resume
+      }
+    }
+    if (existingCover?.name) {
+      coverLetterPath = student?.id + "/" + existingCover.name
+    } else if (form.cover_letter) {
+      try {
+        const urlObj = new URL(form.cover_letter)
+        coverLetterPath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname
+      } catch {
+        coverLetterPath = form.cover_letter
+      }
+    }
 
     await fetch("/api/students/apply", {
       method: "POST",
@@ -288,6 +309,11 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
         cover_letter: coverLetterPath || "",
         job_id: jobId,
         student_id: student?.id,
+        project_description: form.project_description,
+        portfolio:
+          form.portfolio === "__custom__"
+            ? form.portfolio_custom
+            : form.portfolio,
       }),
     })
     onClose()
@@ -311,6 +337,7 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
     formData.append("first_name", student.first_name)
     formData.append("last_name", student.last_name)
     formData.append("override", "true")
+    formData.append("application_upload", "true")
     setUploadingResume(type === "resume")
     setUploadingCover(type === "cover_letter")
     const res = await fetch("/api/students/student-profile/uploadDocument", {
@@ -477,10 +504,16 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
                     </div>
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                      <Input
-                        value={form.address}
-                        onChange={(e) => handleChange("address", e.target.value)}
-                      />
+                      <div className="w-full">
+                        <AddressAutocomplete
+                          value={form.address}
+                          onChange={(val: string) => handleChange("address", val)}
+                          label=""
+                          error={false}
+                          helperText={null}
+                          height="40px"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -495,10 +528,9 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
                       <TabsTrigger value="select">Select Existing</TabsTrigger>
                     </TabsList>
                     <TabsContent value="upload" className="space-y-4 pt-4">
-                      {/* Resume */}
                       <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center">
                         <div className="flex flex-col items-center justify-center">
-                          {(existingResume || form.resume) ? (
+                          {(existingResume || form.resume) && !allResumes.some(r => r.url === form.resume) ? (
                             <>
                               <div className="flex items-center gap-3">
                                 <img
@@ -585,11 +617,10 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
                           )}
                         </div>
                       </div>
-                      {/* Cover Letter */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Cover Letter (Optional)</label>
                         <div className="border-2 border-dashed border-blue-200 rounded-lg p-4 text-center flex flex-col items-center justify-center">
-                          {(existingCover || form.cover_letter) ? (
+                          {(existingCover || form.cover_letter) && !allCovers.some(c => c.url === form.cover_letter) ? (
                             <>
                               <div className="flex items-center gap-3">
                                 <img
@@ -779,8 +810,8 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
                     <textarea
                       className="w-full min-h-[100px] rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Tell us about a project that showcases your skills and experience..."
-                      value={form.cover_letter}
-                      onChange={e => handleChange("cover_letter", e.target.value)}
+                      value={form.project_description || ""}
+                      onChange={e => handleChange("project_description", e.target.value)}
                     ></textarea>
                   </div>
 
@@ -791,18 +822,55 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
                     <select
                       className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       value={form.portfolio}
-                      onChange={e => handleChange("portfolio", e.target.value)}
+                      onChange={e => {
+                        const val: string = e.target.value
+                        if (val === "__custom__") {
+                          setForm(prev => ({ ...prev, portfolio: val }))
+                        } else {
+                          const cert = certs.find(c => {
+                            if (!c.signedUrl) return false
+                            try {
+                              const urlObj = new URL(c.signedUrl)
+                              const filePath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname
+                              return filePath === val
+                            } catch {
+                              return c.signedUrl === val
+                            }
+                          })
+                          if (cert && cert.signedUrl) {
+                            const urlObj = new URL(cert.signedUrl)
+                            const filePath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname
+                            setForm(prev => ({ ...prev, portfolio: filePath, portfolio_custom: "" }))
+                          } else {
+                            setForm(prev => ({ ...prev, portfolio: val, portfolio_custom: "" }))
+                          }
+                        }
+                      }}
                     >
                       <option value="">Select a certificate...</option>
-                      {certs.map((cert, idx) => (
-                        <option key={idx} value={cert.signedUrl || ""}>
-                          {cert.name
-                            ? cert.name
-                            : cert.signedUrl
-                              ? cert.signedUrl.split("/").pop()
-                              : `Certificate #${idx + 1}`}
-                        </option>
-                      ))}
+                      {certs
+                        .map((cert, idx) => {
+                          if (!cert.signedUrl) return null
+                          let filePath = ""
+                          let displayName = ""
+                          try {
+                            const urlObj = new URL(cert.signedUrl)
+                            filePath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname
+                            displayName = cert.name
+                              ? cert.name
+                              : decodeURIComponent(urlObj.pathname.split("/").pop() || `Certificate #${idx + 1}`)
+                          } catch {
+                            filePath = cert.signedUrl
+                            displayName = cert.name || `Certificate #${idx + 1}`
+                          }
+                          if (!filePath) return null
+                          return (
+                            <option key={idx} value={filePath}>
+                              {displayName}
+                            </option>
+                          )
+                        })
+                        .filter(Boolean)}
                       <option value="__custom__">Other (enter link below)</option>
                     </select>
                     {form.portfolio === "__custom__" && (
@@ -810,7 +878,7 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
                         className="mt-2"
                         placeholder="https://yourportfolio.com"
                         value={form.portfolio_custom || ""}
-                        onChange={e => setForm(prev => ({ ...prev, portfolio: e.target.value }))}
+                        onChange={e => setForm(prev => ({ ...prev, portfolio_custom: e.target.value }))}
                       />
                     )}
                   </div>

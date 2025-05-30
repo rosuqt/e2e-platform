@@ -6,9 +6,7 @@ import {
   ChevronDown,
   CheckCircle,
   Clock,
-  Mail,
   Bookmark,
-  Wifi,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -139,6 +137,16 @@ export default function JobListingPage() {
               w-[35%] max-w-[600px]
             `}
           >
+            {/* Debug: log selected job's responsibilities */}
+            {/* 
+            {(() => {
+              const job = jobs.find(j => j.id === selectedJob);
+              if (job) {
+                console.log("DEBUG responsibilities:", job.responsibilities);
+              }
+              return null;
+            })()}
+            */}
             <JobDetails onClose={() => setSelectedJob(null)} jobId={selectedJob} />
           </div>
         )}
@@ -167,13 +175,26 @@ function UserProfile() {
 
 // Job Listings Component
 function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | null) => void; selectedJob: string | null }) {
-  type Job = { id: string; /* add more fields as needed */ }
+  type Job = {
+    id: string | number;
+    title?: string;
+    location?: string;
+    type?: string;
+    isSaved?: boolean;
+    isApplied?: boolean;
+    isRemote?: boolean;
+    [key: string]: string | number | boolean | undefined;
+  }
   const [showQuickApply, setShowQuickApply] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("recommended");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState(""); 
+  const [filters, setFilters] = useState<Record<string, string | boolean>>({});
+  const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -187,6 +208,29 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
       })
       .catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/students/job-listings/saved-jobs")
+      .then(res => res.json())
+      .then(data => setSavedJobIds(data.jobIds?.map(String) ?? []));
+  }, []);
+
+  useEffect(() => {
+    setJobs(jobs =>
+      jobs.map(job => ({
+        ...job,
+        isSaved: savedJobIds.includes(String(job.id)),
+      }))
+    );
+  }, [savedJobIds]);
+
+  const handleTabFilter = (tabId: string) => {
+    setActiveTab(tabId);
+    setFilters((prev) => {
+      if (tabId === "saved") return { ...prev, isSaved: true };
+      return {};
+    });
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -216,6 +260,59 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
       };
     }
   }, []);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+    if (e.target.value.trim() === "") {
+      setSearchQuery("");
+    }
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (search.trim() === "") {
+      setSearchQuery("");
+    } else {
+      setSearchQuery(search);
+    }
+  };
+
+  const filteredJobs = jobs.filter((job) => {
+    if (activeTab === "saved" && !job.isSaved) return false;
+    if (searchQuery.trim() !== "") {
+      const title = typeof job.title === "string" ? job.title : "";
+      const jobTitle =
+        typeof job["job_title"] === "string" ? job["job_title"] as string : "";
+      if (
+        !title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !jobTitle.toLowerCase().includes(searchQuery.toLowerCase())
+      ) return false;
+    }
+    if (filters.type) {
+      const filterTypes = String(filters.type).split(",");
+      if (!filterTypes.includes(String(job.type))) return false;
+    }
+    if (filters.location) {
+      const filterLocations = String(filters.location).split(",");
+      if (!filterLocations.includes(String(job.location))) return false;
+    }
+    if (filters.salary) {
+      const salaryValue = Number(filters.salary);
+      if (typeof job.salary === "number" && job.salary < salaryValue) return false;
+    }
+    return true;
+  });
+
+  const tabCounts = {
+    recommended: jobs.length,
+    recent: jobs.length,
+    saved: jobs.filter(j => j.isSaved).length,
+  };
+
+  // Add this handler with the correct type
+  function handleFilterModalApply(newFilters: Record<string, string | boolean>) {
+    setFilters(newFilters);
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -260,23 +357,26 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
               </motion.p>
             </motion.div>
 
-            <motion.div
+            <motion.form
               className="bg-white rounded-xl p-2 flex flex-col sm:flex-row relative z-10 items-center justify-between"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
               whileHover={{ boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              onSubmit={handleSearchSubmit}
             >
               <Input
                 type="text"
                 placeholder="Search jobs"
                 className="border-0 text-black focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 sm:mb-0 flex-1"
+                value={search}
+                onChange={handleSearchChange}
               />
-              <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+              <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" type="submit">
                 <Search className="mr-2 h-4 w-4" />
                 Search
               </Button>
-            </motion.div>
+            </motion.form>
           </motion.div>
 
           <div className="flex items-center justify-between pb-2 mb-2 scrollbar-hide">
@@ -284,8 +384,6 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
               {[{ id: "recommended", label: "Recommended", icon: <CheckCircle className="w-3 h-3" /> },
                 { id: "recent", label: "Recent", icon: <Clock className="w-3 h-3" /> },
                 { id: "saved", label: "Saved", icon: <Bookmark className="w-3 h-3" /> },
-                { id: "applied", label: "Applied", icon: <Mail className="w-3 h-3" /> },
-                { id: "remote", label: "Remote", icon: <Wifi className="w-3 h-3" /> },
               ].map((tab) => (
                 <motion.button
                   key={tab.id}
@@ -298,14 +396,16 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
                             : "bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"
                         }`
                   }`}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabFilter(tab.id)}
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   {tab.icon}
                   {selectedJob === null && <span>{tab.label}</span>}
-                  {activeTab === tab.id && selectedJob === null && (
-                    <span className="ml-1 bg-white text-blue-600 text-xs rounded-full px-1.5">24</span>
+                  {selectedJob === null && (
+                    <span className="ml-1 bg-white text-blue-600 text-xs rounded-full px-1.5">
+                      {tabCounts[tab.id as keyof typeof tabCounts]}
+                    </span>
                   )}
                 </motion.button>
               ))}
@@ -335,16 +435,19 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
         <div className="space-y-4 p-4 mb-20 ">
           {loading ? (
             <div>Loading...</div>
+          ) : filteredJobs.length === 0 ? (
+            <div>No jobs found.</div>
           ) : (
-            jobs.map((job) => (
+            filteredJobs.map((job) => (
               <JobCard
                 key={job.id}
                 id={job.id}
-                isSelected={selectedJob === job.id}
-                onSelect={() => onSelectJob(selectedJob === job.id ? null : job.id)}
+                isSelected={selectedJob === String(job.id)}
+                onSelect={() => onSelectJob(selectedJob === String(job.id) ? null : String(job.id))}
                 onQuickApply={() => {
                   setShowQuickApply(true);
                 }}
+                job={job}
               />
             ))
           )}
@@ -353,7 +456,11 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
 
       {isFilterOpen &&
         createPortal(
-          <FilterModal onClose={() => setIsFilterOpen(false)} />,
+          <FilterModal
+            onClose={() => setIsFilterOpen(false)}
+            onApply={handleFilterModalApply}
+            currentFilters={filters}
+          />,
           document.body
         )}
 

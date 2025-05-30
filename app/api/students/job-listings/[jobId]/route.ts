@@ -10,7 +10,9 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-export async function GET() {
+export async function GET(request: Request, { params }: { params: { jobId: string } }) {
+  const { jobId } = params
+
   const { data, error } = await supabase
     .from('job_postings')
     .select(`
@@ -18,14 +20,15 @@ export async function GET() {
       employers:employer_id (
         first_name,
         last_name,
+        job_title,
         company_name
       ),
       registered_employers:employer_id (
         company_name
       )
     `)
-    .eq('paused', false)
-    .order('created_at', { ascending: false })
+    .eq('id', jobId)
+    .single()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -38,44 +41,35 @@ export async function GET() {
       try {
         const parsed = JSON.parse(val);
         if (Array.isArray(parsed)) {
-
           return parsed.flatMap((s: unknown) =>
             typeof s === "string"
-              ? s.split(/\r?\n|,/).map(str => str.trim()).filter(isNonEmpty)
+              ? s.split(/\r?\n|,/).map((str: string) => str.trim()).filter(isNonEmpty)
               : []
           );
         }
       } catch {
-
         return String(val).split(/\r?\n|,/).map((s: string) => s.trim()).filter(isNonEmpty);
       }
     }
     if (Array.isArray(val)) {
-      return val.flatMap((s: unknown) =>
+      return (val as string[]).flatMap((s: string) =>
         typeof s === "string"
-          ? s.split(/\r?\n|,/).map(str => str.trim()).filter(isNonEmpty)
+          ? s.split(/\r?\n|,/).map((str: string) => str.trim()).filter(isNonEmpty)
           : []
       );
     }
     return [];
   }
 
-  const result = Array.isArray(data)
-    ? data.map(job => {
-        const mustHaves = normalizeArray(job.must_have_qualifications);
-        const niceToHaves = normalizeArray(job.nice_to_have_qualifications);
-        const perks = normalizeArray(job.perks_and_benefits);
-        return {
-          ...job,
-          responsibilities: normalizeArray(job.responsibilities),
-          must_haves: mustHaves,
-          nice_to_haves: niceToHaves,
-          perks: perks,
-        }
-      })
-    : []
+  const job = data
+    ? {
+        ...data,
+        responsibilities: normalizeArray(data.responsibilities),
+        must_haves: normalizeArray(data.must_have_qualifications),
+        nice_to_haves: normalizeArray(data.nice_to_have_qualifications),
+        perks: normalizeArray(data.perks_and_benefits),
+      }
+    : null
 
-  // console.log("API result:", JSON.stringify(result, null, 2));
-
-  return NextResponse.json(result)
+  return NextResponse.json(job)
 }
