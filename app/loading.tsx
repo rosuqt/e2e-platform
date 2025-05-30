@@ -13,11 +13,10 @@ export default function Loading() {
     <div
       style={{
         height: '100vh',
-        background: '#eee',
+        background: '#fffff',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        border: '2px solid red'
       }}
     >
       {mounted && <Loader />}

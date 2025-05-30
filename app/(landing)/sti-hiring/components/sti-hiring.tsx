@@ -347,7 +347,7 @@ export default function STIHiringPage() {
             >
               <div className="mb-4 h-40 overflow-hidden rounded-lg">
                 <Image
-                  src="/placeholder.svg?height=160&width=320"
+                  src="/images/placeholder/2.jpg"
                   alt="STI Campus"
                   width={320}
                   height={160}
@@ -385,7 +385,7 @@ export default function STIHiringPage() {
             >
               <div className="mb-4 h-40 overflow-hidden rounded-lg">
                 <Image
-                  src="/placeholder.svg?height=160&width=320"
+                  src="/images/placeholder/1.jpg"
                   alt="STI Students"
                   width={320}
                   height={160}
@@ -518,7 +518,7 @@ export default function STIHiringPage() {
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
                 <Image
-                  src="/placeholder.svg?height=300&width=500"
+                  src="/images/placeholder/3.png"
                   alt="Software Development"
                   fill
                   className="object-cover"
@@ -640,21 +640,21 @@ export default function STIHiringPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
-                name: "Maria Santos",
+                name: "Suzanne Esplana",
                 position: "IT Instructor",
                 years: "5 years",
                 quote:
                   "Working at STI has given me the opportunity to shape the next generation of IT professionals while continuously growing in my own career.",
               },
               {
-                name: "Juan Dela Cruz",
+                name: "Ally Rozu Rose",
                 position: "Academic Affairs Manager",
                 years: "8 years",
                 quote:
                   "The collaborative environment at STI encourages innovation and excellence. I'm proud to be part of an institution that values both student and employee growth.",
               },
               {
-                name: "Ana Reyes",
+                name: "Anna Aleli",
                 position: "Student Affairs Coordinator",
                 years: "3 years",
                 quote:

@@ -5,7 +5,7 @@ import { Menu, X } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence, useAnimation, useScroll } from "framer-motion"
 import Image from "next/image"
-import { RiRobot2Fill } from "react-icons/ri"
+//import { RiRobot2Fill } from "react-icons/ri"
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -69,7 +69,7 @@ export default function Navbar() {
            <Image src="/images/logo.white.png" alt="Seekr Logo" width={100} height={100} />
           </Link>
 
-          <Link href="/feedback">
+          {/*<Link href="/feedback">
           <motion.button
             type="button"
             className="ml-2 px-6 py-2 rounded-full border border-purple-500 bg-black/70 backdrop-blur-sm relative font-bold text-base shadow-lg overflow-hidden"
@@ -96,7 +96,7 @@ export default function Navbar() {
               Feedback 
               <RiRobot2Fill className="text-purple-500 w-5 h-5" />
             </span>
-            {/* Shine animation */}
+            {/* Shine animation 
             <motion.span
               className="absolute left-0 top-0 h-full w-full pointer-events-none"
               initial={{ x: "-100%" }}
@@ -113,7 +113,7 @@ export default function Navbar() {
               }}
             />
           </motion.button>
-          </Link>
+          </Link>*/}
         </div>
 
         {/* Desktop Nav */}

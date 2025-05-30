@@ -34,6 +34,17 @@ export default function ForgotPasswordPage() {
       return;
     }
 
+    const res = await fetch("/api/sign-in/passwordHandler/check-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!data.exists) {
+      setError("No account found with this email address");
+      return;
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });

@@ -3,14 +3,14 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronDown, Search } from "lucide-react"
-
+import { useRouter } from "next/navigation"
 
 export default function CourseSelector() {
   const [selectedCourse, setSelectedCourse] = useState<string>("")
   const [selectedJob, setSelectedJob] = useState<string>("")
   const [isOpenCourse, setIsOpenCourse] = useState(false)
   const [isOpenJob, setIsOpenJob] = useState(false)
-
+const router = useRouter()
   const courseOptions: string[] = ["BSIT", "BSBA", "BSTM", "BSHM"]
   const jobOptions: { [key: string]: string[] } = {
     BSIT: ["Web Developer", "Software Engineer", "System Analyst", "UI/UX Designer", "Cybersecurity Analyst"],
@@ -107,6 +107,7 @@ export default function CourseSelector() {
         className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-medium rounded-lg p-3 flex items-center justify-center gap-2 mt-auto"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
+        onClick={() => router.push("/jobs")}
       >
         <Search className="w-4 h-4" />
         <span>Find Jobs</span>

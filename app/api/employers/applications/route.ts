@@ -1,101 +1,37 @@
-import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getServerSession } from "next-auth/next"
+import { NextResponse } from "next/server"
+import supabase from "@/lib/supabase"
+import { authOptions } from "../../auth/[...nextauth]/route"
 
-const supabaseUrl = process.env.SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-const supabase = createClient(supabaseUrl!, supabaseKey!)
-
-type ApplicantRow = {
-  id: number
-  student_id: string
-  job_id: number
-  experience_years?: number
-  created_at?: string
-  status?: string
-  match_score?: number
-  first_name?: string
-  last_name?: string
-  email?: string
-  phone?: string
-  address?: string
-  registered_students?: {
-    first_name?: string
-    last_name?: string
-    course?: string
-    year?: string
-    section?: string
-    email?: string
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  const employerId = (session?.user as { employerId?: string })?.employerId
+  if (!employerId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
-  student_profile?: {
-    profile_img?: string | null
-  }
-  job_postings?: {
-    job_title?: string
-  }
-}
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const job_id = searchParams.get("job_id")
+  const { data: jobs, error: jobsError } = await supabase
+    .from("job_postings")
+    .select("id")
+    .eq("employer_id", employerId)
 
-  let query = supabase
+  if (jobsError) {
+    return NextResponse.json({ error: "Failed to fetch jobs" }, { status: 500 })
+  }
+
+  const jobIds = jobs?.map(j => j.id)
+  if (!jobIds || jobIds.length === 0) {
+    return NextResponse.json({ applicants: [] })
+  }
+
+  const { data: applicants, error: applicantsError } = await supabase
     .from("applications")
-    .select(`
-      id,
-      student_id,
-      job_id,
-      experience_years,
-      created_at,
-      status,
-      match_score,
-      first_name,
-      last_name,
-      email,
-      phone,
-      address,
-      registered_students (
-        first_name,
-        last_name,
-        course,
-        year,
-        section,
-        email
-      ),
-      student_profile (
-        profile_img
-      ),
-      job_postings (
-        job_title
-      )
-    `)
-    .order("created_at", { ascending: false })
+    .select("*")
+    .in("job_id", jobIds)
 
-  if (job_id && job_id !== "0") {
-    query = query.eq("job_id", job_id)
+  if (applicantsError) {
+    return NextResponse.json({ error: "Failed to fetch applicants" }, { status: 500 })
   }
 
-  const { data, error } = await query
-
-  if (error) {
-    return NextResponse.json([], { status: 200 })
-  }
-
-  const applicants = (data as ApplicantRow[] || []).map((app) => ({
-    id: app.id,
-    student_id: app.student_id,
-    job_id: app.job_id,
-    experience_years: app.experience_years,
-    created_at: app.created_at,
-    status: app.status || "new",
-    match_score: app.match_score || null,
-    first_name: app.first_name || app.registered_students?.first_name || "",
-    last_name: app.last_name || app.registered_students?.last_name || "",
-    email: app.email || app.registered_students?.email || "",
-    profile_img: app.student_profile?.profile_img || null,
-    job_title: app.job_postings?.job_title || "",
-    location: app.address || "",
-  }))
-
-  return NextResponse.json(applicants)
+  return NextResponse.json({ applicants })
 }

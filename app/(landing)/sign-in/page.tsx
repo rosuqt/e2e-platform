@@ -9,6 +9,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { TextField, IconButton, InputAdornment, Checkbox, FormControlLabel } from "@mui/material";
 import Image from "next/image";
 import { signIn } from "next-auth/react";
+import LegalModal from "../../../components/legal";
 
 export default function SignInPage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -18,6 +19,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -72,8 +74,12 @@ export default function SignInPage() {
     router.push("/employers/dashboard");
   };
 
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
+
   return (
-    <div className="pt-20 flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 relative overflow-y-auto pb-10">
+    <div className="pt-20 mt-2 flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 relative overflow-y-hidden pb-10">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 20 }}
@@ -168,20 +174,29 @@ export default function SignInPage() {
           transition={{ delay: 0.4, duration: 0.5 }}
         >
           By clicking Sign In, you agree to the
-          <a href="#" className="text-blue-500 hover:text-blue-700 transition-colors">
-            {" "}
+          <button
+            type="button"
+            className="text-blue-500 hover:text-blue-700 transition-colors  ml-1"
+            onClick={handleOpenModal}
+          >
             User Agreement
-          </a>
+          </button>
           ,
-          <a href="#" className="text-blue-500 hover:text-blue-700 transition-colors">
-            {" "}
+          <button
+            type="button"
+            className="text-blue-500 hover:text-blue-700 transition-colors  ml-1"
+            onClick={handleOpenModal}
+          >
             Privacy Policy
-          </a>
+          </button>
           , and
-          <a href="#" className="text-blue-500 hover:text-blue-700 transition-colors">
-            {" "}
+          <button
+            type="button"
+            className="text-blue-500 hover:text-blue-700 transition-colors  ml-1"
+            onClick={handleOpenModal}
+          >
             Cookie Policy
-          </a>
+          </button>
           .
         </motion.p>
 
@@ -232,6 +247,10 @@ export default function SignInPage() {
       <div className="absolute bottom-4 text-center text-gray-600 text-sm">
         © {new Date().getFullYear()} Test Company. All rights reserved.
       </div>
+      <LegalModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+      />
     </div>
   );
 }

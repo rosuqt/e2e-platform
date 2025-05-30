@@ -201,15 +201,9 @@ export default function CalendarPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <div className="flex items-center">
+              <div className="flex items-center mb-2">
                 <Calendar className="w-5 h-5 text-blue-500 mr-2" />
                 <h2 className="text-lg font-semibold text-blue-700">{format(currentDate, "MMMM yyyy")} Events</h2>
-                <button
-                  className="ml-auto flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                  onClick={() => handleAddEvent(selectedDate)}
-                >
-                  <Plus className="w-4 h-4" /> Add Event
-                </button>
               </div>
 
               {eventsInMonth.length > 0 ? (
@@ -331,6 +325,7 @@ export default function CalendarPage() {
                   <button
                     className="ml-auto flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs"
                     onClick={() => handleAddEvent(selectedDate)}
+                    style={{ display: "none" }}
                   >
                     <Plus className="w-3 h-3" /> Add Event
                   </button>

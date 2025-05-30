@@ -15,8 +15,6 @@ import {
   Archive,
   Moon,
   Settings,
-  Phone,
-  Video,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -276,20 +274,7 @@ export default function MessageInterface() {
                 {activeConvo.isTyping && <p className="text-xs text-blue-600">is typing...</p>}
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full text-slate-600 hover:text-blue-600 hover:bg-blue-50"
-                >
-                  <Phone className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full text-slate-600 hover:text-blue-600 hover:bg-blue-50"
-                >
-                  <Video className="h-5 w-5" />
-                </Button>
+                {/* removed Phone and Video buttons */}
                 <Button
                   variant="ghost"
                   size="icon"

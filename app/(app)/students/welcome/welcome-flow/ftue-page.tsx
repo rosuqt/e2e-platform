@@ -23,8 +23,8 @@ const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 const ConfettiFireworks = dynamic(() => import("@/components/magicui/fireworks").then(mod => mod.ConfettiFireworks), { ssr: false })
 
 interface FormData {
-  course: string
-  yearLevel: string
+  course: string | undefined
+  yearLevel: string | undefined
   section: string
   jobType: string[]
   remoteOption: string[]
@@ -35,7 +35,6 @@ const courses = [
   { value: "bsit", label: "BS - Information Technology" },
   { value: "bsba", label: "BS - Business Administration" },
   { value: "bshm", label: "BS - Hospitality Management" },
-  { value: "bscs", label: "BS - Computer Science" },
 ]
 
 const jobTypes = [
@@ -69,8 +68,8 @@ const STEP_KEY = "ftueCurrentStep"
 export default function WelcomeFlow() {
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<FormData>({
-    course: "",
-    yearLevel: "",
+    course: undefined,
+    yearLevel: undefined,
     section: "",
     jobType: [],
     remoteOption: [],
@@ -150,7 +149,7 @@ export default function WelcomeFlow() {
     }, 1200)
   }
 
-  const updateFormData = (field: keyof FormData, value: string | boolean | string[]) => {
+  const updateFormData = (field: keyof FormData, value: string | boolean | string[] | undefined) => {
     if (field === "section" && typeof value === "string") {
       if (!/^\d*$/.test(value)) return
     }
@@ -158,8 +157,8 @@ export default function WelcomeFlow() {
   }
 
   const isStep1Valid =
-    !!formData.course.trim() &&
-    !!formData.yearLevel.trim() &&
+    !!formData.course &&
+    !!formData.yearLevel &&
     !!formData.section.trim()
 
   
@@ -299,8 +298,10 @@ export default function WelcomeFlow() {
                       <Autocomplete
                         options={courses}
                         getOptionLabel={(option) => option.label}
-                        value={courses.find(c => c.value === formData.course) || null}
-                        onChange={(_, value) => updateFormData("course", value ? value.value : "")}
+                        value={courses.find(c => c.value === formData.course) || undefined}
+                        onChange={(_, value) => updateFormData("course", value ? value.value : undefined)}
+                        freeSolo={false}
+                        disableClearable={true}
                         renderInput={(params) => (
                           <TextField
                             {...params}
@@ -314,41 +315,42 @@ export default function WelcomeFlow() {
                       />
                     </Box>
                     <div className="grid grid-cols-2 gap-4">
-                      <Box>
-                        <Autocomplete
-                          options={yearLevels.flatMap(group => group.options)}
-                          getOptionLabel={(option) => option.label}
-                          groupBy={(option) => {
-                            const group = yearLevels.find(g => g.options.some(o => o.value === option.value))
-                            return group ? group.category : ""
-                          }}
-                          value={
-                            yearLevels.flatMap(g => g.options).find(l => l.value === formData.yearLevel) || null
-                          }
-                          onChange={(_, value) => updateFormData("yearLevel", value ? value.value : "")}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              placeholder="Year Level"
-                              variant="outlined"
-                              size="small"
-                              InputLabelProps={{ shrink: false }}
-                            />
-                          )}
-                          isOptionEqualToValue={(option, value) => option.value === value.value}
+                        <Box>
+                          <Autocomplete
+                            options={yearLevels.flatMap(group => group.options)}
+                            getOptionLabel={(option) => option.label}
+                            groupBy={(option) => {
+                              const group = yearLevels.find(g => g.options.some(o => o.value === option.value))
+                              return group ? group.category : ""
+                            }}
+                            value={
+                              yearLevels.flatMap(g => g.options).find(l => l.value === formData.yearLevel) || undefined
+                            }
+                            onChange={(_, value) => updateFormData("yearLevel", value ? value.value : undefined)}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder="Year Level"
+                                variant="outlined"
+                                size="small"
+                                InputLabelProps={{ shrink: false }}
+                              />
+                            )}
+                            isOptionEqualToValue={(option, value) => option.value === value.value}
+                          />
+                        </Box>
+                        <Box>
+                          <TextField
+                            placeholder="Section (e.g., 611)"
+                            variant="outlined"
+                            size="small"
+                            value={formData.section}
+                            onChange={(e) => updateFormData("section", e.target.value)}
+                            InputLabelProps={{ shrink: false }}
+                            fullWidth
+                            type="number"
                         />
-                      </Box>
-                      <Box>
-                        <TextField
-                          placeholder="Section (e.g., 611)"
-                          variant="outlined"
-                          size="small"
-                          value={formData.section}
-                          onChange={(e) => updateFormData("section", e.target.value)}
-                          InputLabelProps={{ shrink: false }}
-                          fullWidth
-                        />
-                      </Box>
+                        </Box>
                     </div>
                   </div>
                 </div>

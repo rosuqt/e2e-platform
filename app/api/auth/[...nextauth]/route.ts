@@ -189,7 +189,7 @@ export const authOptions: NextAuthOptions = {
       if (token.role === "student" && "newStudent" in token) {
         (session.user as { newStudent?: boolean }).newStudent = token.newStudent as boolean
       }
-console.log("Session callback: session after:", session)
+//console.log("Session callback: session after:", session)
       return session
     },
   },

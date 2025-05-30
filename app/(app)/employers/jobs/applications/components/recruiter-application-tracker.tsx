@@ -1,10 +1,8 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import {
-  Users,
   Search,
   Calendar,
   MapPin,
@@ -18,7 +16,6 @@ import {
   Briefcase,
   CheckCircle,
 } from "lucide-react"
-import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -28,71 +25,55 @@ import { RecruiterApplicationDetailsModal } from "./recruiter-application-detail
 import { toast } from "react-toastify"
 import Avatar from "@mui/material/Avatar"
 
-type Applicant = {
-  id: number
-  student_id: string
-  job_id: number
-  experience_years?: number
-  created_at?: string
-  status?: string
-  match_score?: number
-  first_name?: string
-  last_name?: string
-  email?: string
-  profile_img?: string | null
-  job_title?: string
-  location?: string
-}
-
 export default function RecruiterApplicationTracker() {
-  const [selectedApplication, setSelectedApplication] = useState<number | null>(null)
+  const [selectedApplication, setSelectedApplication] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalApplicationId, setModalApplicationId] = useState<number | null>(null)
+  const [modalApplicationId, setModalApplicationId] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
+  type Applicant = {
+    application_id: string
+    job_id: string
+    job_title?: string
+    status?: string
+    first_name?: string
+    last_name?: string
+    address?: string
+    experience_years?: string
+  }
+
   const [applicants, setApplicants] = useState<Applicant[]>([])
-  const [loadingApplicants, setLoadingApplicants] = useState(false)
+  const [filteredApplicants, setFilteredApplicants] = useState<Applicant[]>([])
+  const [jobPostings, setJobPostings] = useState<{ id: string; title: string }[]>([])
+  const [selectedJob, setSelectedJob] = useState<{ id: string; title: string } | null>(null)
+  const [tab, setTab] = useState("all")
+  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null)
 
-  const jobPostings = [
-    {
-      id: 0,
-      title: "All Job Postings",
-      department: "",
-      location: "",
-      applicants: 144,
-      newApplicants: 35,
-      active: true,
-    },
-    {
-      id: 1,
-      title: "Frontend Developer",
-      department: "Engineering",
-      location: "Remote",
-      applicants: 45,
-      newApplicants: 12,
-      active: true,
-    },
-    {
-      id: 2,
-      title: "UI/UX Designer",
-      department: "Design",
-      location: "On-site",
-      applicants: 32,
-      newApplicants: 8,
-      active: true,
-    },
-    {
-      id: 3,
-      title: "Software Engineer",
-      department: "Engineering",
-      location: "Hybrid",
-      applicants: 67,
-      newApplicants: 15,
-      active: true,
-    },
-  ]
+  useEffect(() => {
+    fetch("/api/employers/applications")
+      .then(res => res.json())
+      .then(data => {
+        setApplicants((data.applicants as Applicant[]) || [])
+        const jobs = Array.from(
+          new Map(
+            ((data.applicants as Applicant[]) || []).map((a) => [
+              a.job_id,
+              { id: a.job_id, title: a.job_title || "Job Posting" },
+            ])
+          ).values()
+        )
+        setJobPostings([{ id: "all", title: "All Job Postings" }, ...jobs])
+        setSelectedJob({ id: "all", title: "All Job Postings" })
+      })
+  }, [])
 
-  const [selectedJob, setSelectedJob] = useState(jobPostings[0])
+  useEffect(() => {
+    if (selectedJob?.id === "all") {
+      setFilteredApplicants(applicants)
+    } else {
+      setFilteredApplicants(applicants.filter(a => a.job_id === selectedJob?.id))
+    }
+  }, [selectedJob, applicants])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -102,7 +83,6 @@ export default function RecruiterApplicationTracker() {
         setIsHeaderCollapsed(false)
       }
     }
-
     const scrollContainer = scrollContainerRef.current
     if (scrollContainer) {
       scrollContainer.addEventListener("scroll", handleScroll)
@@ -110,41 +90,20 @@ export default function RecruiterApplicationTracker() {
     }
   }, [])
 
-  useEffect(() => {
-    async function fetchApplicants() {
-      setLoadingApplicants(true)
-      try {
-        let url = "/api/employers/applications"
-        if (selectedJob.id !== 0) {
-          url += `?job_id=${selectedJob.id}`
-        }
-        const res = await fetch(url)
-        if (res.ok) {
-          const data: Applicant[] = await res.json()
-          setApplicants(data)
-          console.log("Fetched applicants:", data)
-        } else {
-          setApplicants([])
-        }
-      } catch (err) {
-        setApplicants([])
-        console.error("Error fetching applicants:", err)
-      }
-      setLoadingApplicants(false)
-    }
-    fetchApplicants()
-  }, [selectedJob])
-
-  const handleViewDetails = (id: number, e: React.MouseEvent) => {
+  const handleViewDetails = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    setModalApplicationId(id)
+    const applicant = applicants.find(a => a.application_id === id)
+    setSelectedApplicant(applicant || null)
     setIsModalOpen(true)
   }
 
-  const handleInviteToInterview = (id: number, e: React.MouseEvent) => {
+  const handleInviteToInterview = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     toast.success("Interview invitation sent successfully!")
   }
+
+  const totalApplicants = filteredApplicants.length
+  const newApplicants = filteredApplicants.filter(a => a.status === "new").length
 
   return (
     <>
@@ -175,9 +134,9 @@ export default function RecruiterApplicationTracker() {
                   <div>
                     <select
                       className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-white border border-white/30"
-                      value={selectedJob.id}
+                      value={selectedJob?.id || ""}
                       onChange={(e) => {
-                        const job = jobPostings.find((j) => j.id === Number.parseInt(e.target.value))
+                        const job = jobPostings.find((j) => j.id === e.target.value)
                         if (job) setSelectedJob(job)
                       }}
                     >
@@ -193,11 +152,11 @@ export default function RecruiterApplicationTracker() {
                 <div className="grid grid-cols-4 gap-3 mt-6">
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
                     <p className="text-xs text-white/80">Total Applicants</p>
-                    <p className="text-xl font-bold text-white">{selectedJob.applicants}</p>
+                    <p className="text-xl font-bold text-white">{totalApplicants}</p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
                     <p className="text-xs text-white/80">New Today</p>
-                    <p className="text-xl font-bold text-white">{selectedJob.newApplicants}</p>
+                    <p className="text-xl font-bold text-white">{newApplicants}</p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
                     <p className="text-xs text-white/80">Interviews Scheduled</p>
@@ -231,46 +190,24 @@ export default function RecruiterApplicationTracker() {
                   <CardTitle className="mb-2 text-blue-700 text-xl">Your Applicants</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Debug: show applicant count */}
-                  <div className="text-xs text-gray-400 mb-2">
-                    Applicants loaded: {applicants.length}
-                  </div>
-                  <Tabs defaultValue="all" className="w-full">
+                  <Tabs value={tab} onValueChange={setTab} className="w-full">
                     <TabsList className="flex w-full border-b border-gray-200">
-                      <TabsTrigger
-                        value="all"
-                        className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600"
-                      >
+                      <TabsTrigger value="all" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
                         All
                       </TabsTrigger>
-                      <TabsTrigger
-                        value="new"
-                        className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600"
-                      >
+                      <TabsTrigger value="new" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
                         New
                       </TabsTrigger>
-                      <TabsTrigger
-                        value="review"
-                        className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600"
-                      >
+                      <TabsTrigger value="review" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
                         Under Review
                       </TabsTrigger>
-                      <TabsTrigger
-                        value="interview"
-                        className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600"
-                      >
+                      <TabsTrigger value="interview" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
                         Interview
                       </TabsTrigger>
-                      <TabsTrigger
-                        value="invited"
-                        className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600"
-                      >
+                      <TabsTrigger value="invited" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
                         Invited
                       </TabsTrigger>
-                      <TabsTrigger
-                        value="rejected"
-                        className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600"
-                      >
+                      <TabsTrigger value="rejected" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
                         Rejected
                       </TabsTrigger>
                     </TabsList>
@@ -288,87 +225,75 @@ export default function RecruiterApplicationTracker() {
                     </div>
 
                     <TabsContent value="all" className="mt-4 space-y-4">
-                      {loadingApplicants ? (
-                        <div>Loading...</div>
-                      ) : (
-                        generateApplicantCards(
-                          applicants,
-                          "all",
-                          selectedApplication,
-                          setSelectedApplication,
-                          handleViewDetails,
-                          handleInviteToInterview,
-                        )
+                      {filteredApplicants.map(app =>
+                        <ApplicantCard
+                          key={app.application_id}
+                          applicant={app}
+                          selected={selectedApplication === app.application_id}
+                          setSelected={() => setSelectedApplication(app.application_id)}
+                          handleViewDetails={handleViewDetails}
+                          handleInviteToInterview={handleInviteToInterview}
+                        />
                       )}
                     </TabsContent>
                     <TabsContent value="new" className="mt-4 space-y-4">
-                      {loadingApplicants ? (
-                        <div>Loading...</div>
-                      ) : (
-                        generateApplicantCards(
-                          applicants.filter(a => (a.status ?? "new") === "new"),
-                          "new",
-                          selectedApplication,
-                          setSelectedApplication,
-                          handleViewDetails,
-                          handleInviteToInterview,
-                        )
+                      {filteredApplicants.filter(a => a.status === "new").map(app =>
+                        <ApplicantCard
+                          key={app.application_id}
+                          applicant={app}
+                          selected={selectedApplication === app.application_id}
+                          setSelected={() => setSelectedApplication(app.application_id)}
+                          handleViewDetails={handleViewDetails}
+                          handleInviteToInterview={handleInviteToInterview}
+                        />
                       )}
                     </TabsContent>
                     <TabsContent value="review" className="mt-4 space-y-4">
-                      {loadingApplicants ? (
-                        <div>Loading...</div>
-                      ) : (
-                        generateApplicantCards(
-                          applicants.filter(a => (a.status ?? "new") === "review"),
-                          "review",
-                          selectedApplication,
-                          setSelectedApplication,
-                          handleViewDetails,
-                          handleInviteToInterview,
-                        )
+                      {filteredApplicants.filter(a => a.status === "review").map(app =>
+                        <ApplicantCard
+                          key={app.application_id}
+                          applicant={app}
+                          selected={selectedApplication === app.application_id}
+                          setSelected={() => setSelectedApplication(app.application_id)}
+                          handleViewDetails={handleViewDetails}
+                          handleInviteToInterview={handleInviteToInterview}
+                        />
                       )}
                     </TabsContent>
                     <TabsContent value="interview" className="mt-4 space-y-4">
-                      {loadingApplicants ? (
-                        <div>Loading...</div>
-                      ) : (
-                        generateApplicantCards(
-                          applicants.filter(a => (a.status ?? "new") === "interview"),
-                          "interview",
-                          selectedApplication,
-                          setSelectedApplication,
-                          handleViewDetails,
-                          handleInviteToInterview,
-                        )
+                      {filteredApplicants.filter(a => a.status === "interview").map(app =>
+                        <ApplicantCard
+                          key={app.application_id}
+                          applicant={app}
+                          selected={selectedApplication === app.application_id}
+                          setSelected={() => setSelectedApplication(app.application_id)}
+                          handleViewDetails={handleViewDetails}
+                          handleInviteToInterview={handleInviteToInterview}
+                        />
                       )}
                     </TabsContent>
                     <TabsContent value="invited" className="mt-4 space-y-4">
-                      {loadingApplicants ? (
-                        <div>Loading...</div>
-                      ) : (
-                        generateApplicantCards(
-                          applicants.filter(a => (a.status ?? "new") === "invited"),
-                          "invited",
-                          selectedApplication,
-                          setSelectedApplication,
-                          handleViewDetails,
-                          handleInviteToInterview,
-                        )
+                      {filteredApplicants.filter(a => a.status === "invited").map(app =>
+                        <ApplicantCard
+                          key={app.application_id}
+                          applicant={app}
+                          selected={selectedApplication === app.application_id}
+                          setSelected={() => setSelectedApplication(app.application_id)}
+                          handleViewDetails={handleViewDetails}
+                          handleInviteToInterview={handleInviteToInterview}
+                        />
                       )}
                     </TabsContent>
                     <TabsContent value="rejected" className="mt-4 space-y-4">
-                      {loadingApplicants ? (
-                        <div>Loading...</div>
-                      ) : (
-                        generateApplicantCards(
-                          applicants.filter(a => (a.status ?? "new") === "rejected"),
-                          "rejected",
-                          selectedApplication,
-                          setSelectedApplication,
-                          handleViewDetails,
-                          handleInviteToInterview,
-                        )
+                      {filteredApplicants.filter(a => a.status === "rejected").map(app =>
+                        <ApplicantCard
+                          key={app.application_id}
+                          applicant={app}
+                          selected={selectedApplication === app.application_id}
+                          setSelected={() => setSelectedApplication(app.application_id)}
+                          handleViewDetails={handleViewDetails}
+                          handleInviteToInterview={handleInviteToInterview}
+                        />
                       )}
                     </TabsContent>
                   </Tabs>
@@ -429,57 +354,6 @@ export default function RecruiterApplicationTracker() {
                         </button>
                       </div>
                     ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-sm border-blue-100">
-                <CardHeader className="pb-2">
-                  <CardTitle>Upcoming Interviews</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="border border-blue-100 rounded-lg p-3 hover:bg-blue-50 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-gray-800">Sarah Williams</p>
-                          <p className="text-xs text-gray-500">Frontend Developer Position</p>
-                        </div>
-                        <Badge className="bg-green-100 text-green-700 border-none">Tomorrow</Badge>
-                      </div>
-                      <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                        <Calendar className="h-3 w-3" />
-                        <span>May 12, 2025 • 10:00 AM</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                        <Users className="h-3 w-3" />
-                        <span>John Smith, Technical Lead</span>
-                      </div>
-                      <div className="mt-3">
-                        <Button size="sm" className="bg-blue-600 text-xs w-full">
-                          View Interview Details
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="border border-blue-100 rounded-lg p-3 hover:bg-blue-50 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-gray-800">David Lee</p>
-                          <p className="text-xs text-gray-500">Frontend Developer Position</p>
-                        </div>
-                        <Badge className="bg-yellow-100 text-yellow-700 border-none">3 Days</Badge>
-                      </div>
-                      <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                        <Calendar className="h-3 w-3" />
-                        <span>May 15, 2025 • 2:00 PM</span>
-                      </div>
-                      <div className="mt-3">
-                        <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 text-xs w-full">
-                          Reschedule
-                        </Button>
-                      </div>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -567,7 +441,7 @@ export default function RecruiterApplicationTracker() {
         </div>
 
         <RecruiterApplicationDetailsModal
-          applicationId={modalApplicationId}
+          applicant={selectedApplicant}
           isModalOpen={isModalOpen}
           setIsModalOpen={setIsModalOpen}
         />
@@ -576,183 +450,153 @@ export default function RecruiterApplicationTracker() {
   )
 }
 
-function generateApplicantCards(
-  applicants: Applicant[],
-  status: string,
-  selectedApplication: number | null,
-  setSelectedApplication: (id: number | null) => void,
-  handleViewDetails: (id: number, e: React.MouseEvent) => void,
-  handleInviteToInterview: (id: number, e: React.MouseEvent) => void,
-) {
-  const statusConfig = {
-    all: { title: "Mixed", badge: "" },
-    new: { title: "New", badge: "bg-yellow-100 text-yellow-700" },
-    review: { title: "Under Review", badge: "bg-blue-100 text-blue-700" },
-    interview: { title: "Interview", badge: "bg-purple-100 text-purple-700" },
-    invited: { title: "Invited", badge: "bg-green-100 text-green-700" },
-    rejected: { title: "Rejected", badge: "bg-red-100 text-red-700" },
+function ApplicantCard({
+  applicant,
+  selected,
+  setSelected,
+  handleViewDetails,
+  handleInviteToInterview,
+}: {
+  applicant: {
+    application_id: string
+    job_id: string
+    job_title?: string
+    status?: string
+    first_name?: string
+    last_name?: string
+    address?: string
+    experience_years?: string
+
   }
+  selected: boolean 
+  setSelected: () => void
+  handleViewDetails: (id: string, e: React.MouseEvent) => void
+  handleInviteToInterview: (id: string, e: React.MouseEvent) => void
+}) {
 
-  if (!applicants || applicants.length === 0) {
-    return <div className="text-gray-400 text-center py-8">No applicants found.</div>
-  }
-
-  return applicants.map((applicant, index) => {
-    const id = applicant.id
-    const cardStatus = applicant.status || status
-    const badgeClass = statusConfig[cardStatus as keyof typeof statusConfig]?.badge || ""
-    const formattedDate = applicant.created_at
-      ? new Date(applicant.created_at).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
-      : ""
-
-    return (
-      <motion.div
-        key={id}
-        className={`bg-white rounded-lg shadow-sm p-5 border-l-4 ${
-          selectedApplication === id
-            ? "border-l-blue-500 border-blue-200"
-            : cardStatus === "invited"
-              ? "border-l-green-500 border-gray-200"
-              : cardStatus === "rejected"
-                ? "border-l-red-500 border-gray-200"
-                : cardStatus === "interview"
-                  ? "border-l-purple-500 border-gray-200"
-                  : cardStatus === "review"
-                    ? "border-l-blue-500 border-gray-200"
-                    : "border-l-yellow-500 border-gray-200"
-        } relative overflow-hidden`}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: index * 0.1 }}
-        whileHover={{
-          y: -2,
-          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-        }}
-        onClick={() => setSelectedApplication(id === selectedApplication ? null : id)}
-      >
-        <div className="flex justify-between items-start">
-          <div className="flex gap-3">
-            <Avatar
-              src={applicant.profile_img || undefined}
-              sx={{
-                width: 48,
-                height: 48,
-                fontWeight: "bold",
-                bgcolor: "#DBEAFE",
-                color: "#2563EB",
-                border: "1px solid #E5E7EB",
-                fontSize: 22,
-              }}
-            >
-              {applicant.first_name?.charAt(0) || "A"}
-            </Avatar>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-lg text-gray-800">
-                  {applicant.first_name} {applicant.last_name}
-                </h3>
-                <Badge className={badgeClass}>
-                  {cardStatus === "new"
-                    ? "New"
-                    : cardStatus === "review"
-                      ? "Under Review"
-                      : cardStatus === "interview"
-                        ? "Interview"
-                        : cardStatus === "invited"
-                          ? "Invited"
-                          : "Rejected"}
-                </Badge>
+  return (
+    <div
+      className={`bg-white rounded-lg shadow-sm p-5 border-l-4 ${
+        selected ? "border-l-blue-500 border-blue-200" : "border-l-yellow-500 border-gray-200"
+      } relative overflow-hidden cursor-pointer`}
+      onClick={() => setSelected()}
+    >
+      <div className="flex justify-between items-start">
+        <div className="flex gap-3">
+          <Avatar sx={{ width: 48, height: 48, fontWeight: "bold", bgcolor: "#DBEAFE", color: "#2563EB", fontSize: 22 }}>
+            {applicant.first_name?.charAt(0) || "A"}
+          </Avatar>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-lg text-gray-800">
+                {applicant.first_name} {applicant.last_name}
+              </h3>
+              <Badge className="bg-yellow-100 text-yellow-700">{applicant.status || "New"}</Badge>
+            </div>
+            <p className="text-sm text-gray-500">
+              Applied for {applicant.job_title || "Job"}
+            </p>
+            <div className="flex items-center gap-4 mt-1">
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <MapPin className="h-3 w-3" />
+                <span>{applicant.address}</span>
               </div>
-              <p className="text-sm text-gray-500">
-                Applied for {applicant.job_title || ""}
-              </p>
-              <div className="flex items-center gap-4 mt-1">
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <MapPin className="h-3 w-3" />
-                  <span>{applicant.location || "N/A"}</span>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Briefcase className="h-3 w-3" />
-                  <span>{applicant.experience_years ? `${applicant.experience_years} years` : "N/A"}</span>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Calendar className="h-3 w-3" />
-                  <span>Applied {formattedDate}</span>
-                </div>
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Briefcase className="h-3 w-3" />
+                <span>{applicant.experience_years} experience</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Calendar className="h-3 w-3" />
+                <span>Applied</span>
               </div>
             </div>
           </div>
-          <div className="flex gap-1">
-            <Badge className="bg-green-100 text-green-700">{applicant.match_score ? `${applicant.match_score}% Match` : ""}</Badge>
-            <button
-              className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Bookmark className="h-4 w-4" />
-            </button>
-            <button
-              className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
-          </div>
         </div>
-
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs"
-              onClick={(e) => handleViewDetails(id, e)}
-            >
-              View Profile
-            </Button>
-            {cardStatus === "new" && (
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-xs" onClick={(e) => e.stopPropagation()}>
-                Review
+        <div className="flex gap-1">
+          <Badge className="bg-green-100 text-green-700">Match</Badge>
+          <button className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50" onClick={e => e.stopPropagation()}>
+            <Bookmark className="h-4 w-4" />
+          </button>
+          <button className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50" onClick={e => e.stopPropagation()}>
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex gap-2">
+          {applicant.status === "new" ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs"
+                onClick={e => {
+                  e.stopPropagation()
+                  setSelected()
+                  handleViewDetails(applicant.application_id, e)
+                }}
+              >
+                View Details
               </Button>
-            )}
-            {(cardStatus === "new" || cardStatus === "review") && (
               <Button
                 size="sm"
                 className="bg-green-600 hover:bg-green-700 text-xs"
-                onClick={(e) => handleInviteToInterview(id, e)}
+                onClick={e => {
+                  e.stopPropagation()
+                  // Review action placeholder
+                }}
               >
-                Invite to Interview
+                Review
               </Button>
-            )}
-            {cardStatus === "interview" && (
               <Button
+                variant="outline"
                 size="sm"
-                className="bg-purple-600 hover:bg-purple-700 text-xs"
-                onClick={(e) => e.stopPropagation()}
+                className="text-green-700 border-green-200 hover:bg-green-50 text-xs"
+                onClick={e => {
+                  e.stopPropagation()
+                  // Shortlist action placeholder
+                }}
               >
-                Schedule
+                Shortlist
               </Button>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">
-              {cardStatus === "new"
-                ? "New application"
-                : cardStatus === "review"
-                  ? "In review"
-                  : cardStatus === "interview"
-                    ? "Interview phase"
-                    : cardStatus === "invited"
-                      ? "Invitation sent"
-                      : "Not selected"}
-            </span>
-            <ArrowUpRight className="h-3 w-3 text-gray-600" />
-          </div>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs"
+                onClick={e => {
+                  e.stopPropagation()
+                  setSelected()
+                  handleViewDetails(applicant.application_id, e)
+                }}
+              >
+                View Details
+              </Button>
+              {(applicant.status === "review") && (
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-xs" onClick={e => handleInviteToInterview(applicant.application_id, e)}>
+                  Invite to Interview
+                </Button>
+              )}
+            </>
+          )}
         </div>
-      </motion.div>
-    )
-  })
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-gray-500">
+            {applicant.status === "new"
+              ? "New application"
+              : applicant.status === "review"
+              ? "In review"
+              : applicant.status === "interview"
+              ? "Interview phase"
+              : applicant.status === "invited"
+              ? "Invitation sent"
+              : "Not selected"}
+          </span>
+          <ArrowUpRight className="h-3 w-3 text-gray-600" />
+        </div>
+      </div>
+    </div>
+  )
 }

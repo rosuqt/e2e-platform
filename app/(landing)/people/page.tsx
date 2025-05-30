@@ -38,7 +38,7 @@ export default async function PeopleLandingPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700">
-              <Link href="/people">Get Started</Link>
+              <Link href="/sign-in">Get Started</Link>
             </Button>
           </div>
         </div>
@@ -176,7 +176,7 @@ export default async function PeopleLandingPage() {
             Start connecting with classmates, following employers, and discovering new opportunities today.
           </p>
           <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-blue-50">
-            <Link href="/people">Join us now!</Link>
+            <Link href="/sign-in">Join us now!</Link>
           </Button>
         </div>
       </section>
