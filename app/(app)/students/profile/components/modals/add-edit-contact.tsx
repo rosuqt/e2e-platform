@@ -66,7 +66,7 @@ export default function AddEditContactModal({
   const [countryCode, setCountryCode] = useState(initial?.countryCode || "");
   const [phone, setPhone] = useState(initial?.phone || "");
   const [socials, setSocials] = useState<SocialLink[]>(initial?.socials || []);
-  const [errors, setErrors] = useState<{ email?: string; phone?: string; countryCode?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; phone?: string; countryCode?: string; socials?: string }>({});
   const [saving, setSaving] = useState(false);
   const { data: session } = useSession();
 
@@ -89,7 +89,17 @@ export default function AddEditContactModal({
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = "Invalid email format";
     if (!countryCode) errs.countryCode = "Country code required";
     if (!phone) errs.phone = "Phone number required";
-    else if (!/^\d{7,15}$/.test(phone)) errs.phone = "Invalid phone number";
+    else if (
+      (countryCode === "63" || countryCode === "+63") &&
+      (!/^9\d{9}$/.test(phone))
+    ) {
+      errs.phone = "PH mobile must start with 9 and be 10 digits (e.g. 9123456789)";
+    } else if (!/^\d{7,15}$/.test(phone)) {
+      errs.phone = "Invalid phone number";
+    }
+    if (socials.some(s => !s.url || !s.url.trim())) {
+      errs.socials = "All selected socials must have a URL";
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -99,7 +109,7 @@ export default function AddEditContactModal({
     setSaving(true);
     const studentId = (session?.user as { studentId?: string })?.studentId;
     if (studentId) {
-      await fetch("/api/students/student-profile/modal", {
+      await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -301,7 +311,7 @@ export default function AddEditContactModal({
             <Typography sx={{ fontWeight: 500, fontSize: 15, mb: 1, color: "#2563eb" }}>
               My Socials
             </Typography>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2, position: "relative" }}>
               {mySocials.length === 0 ? (
                 <Typography sx={{ fontSize: 14, color: "#64748b", mb: 2 }}>
                   Select a social below to add a social.
@@ -327,7 +337,7 @@ export default function AddEditContactModal({
                         size="small"
                         value={link?.url || ""}
                         onChange={e => handleSocialUrlChange(s.key, e.target.value)}
-                        placeholder={`Enter ${s.label} link`}
+                        placeholder={`Enter link`}
                         sx={{ mt: 1, width: 110 }}
                         inputProps={{ maxLength: 100 }}
                       />
@@ -335,6 +345,29 @@ export default function AddEditContactModal({
                     </Box>
                   );
                 })
+              )}
+              {errors.socials && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    left: "50%",
+                    bottom: -32,
+                    transform: "translateX(-50%)",
+                    bgcolor: "#fff",
+                    color: "#ef4444",
+                    px: 2,
+                    py: 1,
+                    borderRadius: 2,
+                    boxShadow: 3,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    zIndex: 10,
+                    minWidth: 220,
+                    textAlign: "center"
+                  }}
+                >
+                  {errors.socials}
+                </Box>
               )}
             </Box>
           </Box>

@@ -17,6 +17,7 @@ export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -30,7 +31,11 @@ export default function SignInPage() {
     setIsVisible(true);
 
     if (searchParams?.get("error")) {
-      setError("Invalid email or password");
+      if (searchParams.get("error") === "invalid_domain") {
+        setError("Sorry! We’re only accepting sign-ins from STI College students. Please use your STI email.");
+      } else {
+        setError("Invalid email or password");
+      }
     }
 
     const handleDoubleClick = (e: MouseEvent) => {
@@ -45,19 +50,22 @@ export default function SignInPage() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     const res = await signIn("credentials", {
       redirect: false,
       email,
       password,
-      callbackUrl: "/employers/dashboard", 
     });
 
+    setLoading(false);
+
     if (res?.error) {
-      setError("Invalid email or password");
-    } else if (res?.ok) {
-      router.push("/employers/dashboard");   
+      setError(res.error || "Invalid email or password");
+      return;
     }
+
+    router.push("/employers/dashboard");
   };
 
   return (
@@ -114,7 +122,7 @@ export default function SignInPage() {
               endAdornment: (
                 <InputAdornment position="end">
                   <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
-                    {showPassword ? <EyeOff /> : <Eye />}
+                    {showPassword ? <EyeOff color="gray" /> : <Eye color="gray" />}
                   </IconButton>
                 </InputAdornment>
               ),
@@ -133,7 +141,7 @@ export default function SignInPage() {
               }
               label={<span className="text-gray-700">Remember me</span>}
             />
-            <Link href="/forgot-password" className="text-blue-500 hover:underline text-sm">
+            <Link href="sign-in/forgot-password" className="text-blue-500 hover:underline text-sm">
               Forgot password?
             </Link>
           </div>
@@ -143,8 +151,9 @@ export default function SignInPage() {
             className="w-full bg-gradient-to-r from-blue-500 to-sky-500 text-white py-4 rounded-2xl font-medium shadow-lg hover:shadow-blue-200/50 transition-all duration-200 flex items-center justify-center"
             whileHover={{ scale: 1.03, boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.5)" }}
             whileTap={{ scale: 0.97 }}
+            disabled={loading}
           >
-            <span>Sign in</span>
+            {loading ? "Signing in..." : "Sign in"}
           </motion.button>
         </motion.form>
 

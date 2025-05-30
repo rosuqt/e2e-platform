@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button"
 import type { JobPostingData } from "../../lib/types"
 import { Check, Shield, ShieldCheck, ShieldAlert, Lightbulb } from "lucide-react"
 import { motion } from "framer-motion"
+import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
 interface ValidationStepProps {
   formData: JobPostingData
@@ -11,6 +14,20 @@ interface ValidationStepProps {
 }
 
 export function ValidationStep({ formData, updateFormData }: ValidationStepProps) {
+  const { data: session } = useSession()
+  const router = useRouter()
+  const [loading, setLoading] = useState<string | null>(null)
+
+  useEffect(() => {
+    const user = session?.user as { verifyStatus?: string } | undefined
+    const verifyStatus = user?.verifyStatus
+    if (verifyStatus && !formData.verificationTier) {
+      updateFormData({ verificationTier: verifyStatus })
+    }
+  }, [session, formData.verificationTier, updateFormData])
+
+  const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus
+
   const container = {
     hidden: { opacity: 0 },
     show: {
@@ -108,14 +125,66 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
 
             <div className="pt-3">
               {formData.verificationTier === "basic" ? (
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">Current Tier</Button>
+                verifyStatus === "full" ? (
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    disabled={loading === "basic"}
+                    onClick={() => {
+                      setLoading("basic")
+                      router.push("/employers/verification/fully-verified")
+                    }}
+                  >
+                    {loading === "basic" ? (
+                      <span className="flex items-center justify-center">
+                        <span className="loader mr-2"></span>Loading...
+                      </span>
+                    ) : (
+                      "View Verification Details"
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    disabled={loading === "basic"}
+                    onClick={() => {
+                      setLoading("basic")
+                      router.push(
+                        verifyStatus === "partially_verified"
+                          ? "/employers/verification/partially-verified"
+                          : "/employers/verification/unverified"
+                      )
+                    }}
+                  >
+                    {loading === "basic" ? (
+                      <span className="flex items-center justify-center">
+                        <span className="loader mr-2"></span>Loading...
+                      </span>
+                    ) : (
+                      "Current Tier"
+                    )}
+                  </Button>
+                )
               ) : formData.verificationTier === "standard" || formData.verificationTier === "full" ? null : (
                 <Button
                   variant="outline"
                   className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
-                  onClick={() => updateFormData({ verificationTier: "basic" })}
+                  disabled={loading === "basic"}
+                  onClick={() => {
+                    setLoading("basic")
+                    router.push(
+                      verifyStatus === "partially_verified"
+                        ? "/employers/verification/partially-verified"
+                        : "/employers/verification/unverified"
+                    )
+                  }}
                 >
-                  Verify
+                  {loading === "basic" ? (
+                    <span className="flex items-center justify-center">
+                      <span className="loader mr-2"></span>Loading...
+                    </span>
+                  ) : (
+                    "Verify"
+                  )}
                 </Button>
               )}
             </div>
@@ -177,14 +246,66 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
 
             <div className="pt-3">
               {formData.verificationTier === "standard" ? (
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">Current Tier</Button>
+                verifyStatus === "full" ? (
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    disabled={loading === "standard"}
+                    onClick={() => {
+                      setLoading("standard")
+                      router.push("/employers/verification/fully-verified")
+                    }}
+                  >
+                    {loading === "standard" ? (
+                      <span className="flex items-center justify-center">
+                        <span className="loader mr-2"></span>Loading...
+                      </span>
+                    ) : (
+                      "View Verification Details"
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    disabled={loading === "standard"}
+                    onClick={() => {
+                      setLoading("standard")
+                      router.push(
+                        verifyStatus === "partially_verified"
+                          ? "/employers/verification/partially-verified"
+                          : "/employers/verification/unverified"
+                      )
+                    }}
+                  >
+                    {loading === "standard" ? (
+                      <span className="flex items-center justify-center">
+                        <span className="loader mr-2"></span>Loading...
+                      </span>
+                    ) : (
+                      "Current Tier"
+                    )}
+                  </Button>
+                )
               ) : formData.verificationTier === "full" ? null : (
                 <Button
                   variant="outline"
                   className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
-                  onClick={() => updateFormData({ verificationTier: "standard" })}
+                  disabled={loading === "standard"}
+                  onClick={() => {
+                    setLoading("standard")
+                    router.push(
+                      verifyStatus === "partially_verified"
+                        ? "/employers/verification/partially-verified"
+                        : "/employers/verification/unverified"
+                    )
+                  }}
                 >
-                  Verify
+                  {loading === "standard" ? (
+                    <span className="flex items-center justify-center">
+                      <span className="loader mr-2"></span>Loading...
+                    </span>
+                  ) : (
+                    "Verify"
+                  )}
                 </Button>
               )}
             </div>
@@ -246,14 +367,43 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
 
             <div className="pt-3">
               {formData.verificationTier === "full" ? (
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">Current Tier</Button>
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  disabled={loading === "full"}
+                  onClick={() => {
+                    setLoading("full")
+                    router.push("/employers/verification/fully-verified")
+                  }}
+                >
+                  {loading === "full" ? (
+                    <span className="flex items-center justify-center">
+                      <span className="loader mr-2"></span>Loading...
+                    </span>
+                  ) : (
+                    "View Verification Details"
+                  )}
+                </Button>
               ) : (
                 <Button
                   variant="outline"
                   className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
-                  onClick={() => updateFormData({ verificationTier: "full" })}
+                  disabled={loading === "full"}
+                  onClick={() => {
+                    setLoading("full")
+                    router.push(
+                      verifyStatus === "partially_verified"
+                        ? "/employers/verification/partially-verified"
+                        : "/employers/verification/unverified"
+                    )
+                  }}
                 >
-                  Verify
+                  {loading === "full" ? (
+                    <span className="flex items-center justify-center">
+                      <span className="loader mr-2"></span>Loading...
+                    </span>
+                  ) : (
+                    "Verify"
+                  )}
                 </Button>
               )}
             </div>

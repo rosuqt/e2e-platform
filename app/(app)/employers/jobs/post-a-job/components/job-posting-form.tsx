@@ -20,6 +20,7 @@ import Swal from "sweetalert2"
 import withReactContent from "sweetalert2-react-content"
 import { jwtDecode } from "jwt-decode"
 import { getSession } from "next-auth/react"
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction } from "@/components/ui/alert-dialog"
 
 const MySwal = withReactContent(Swal)
 
@@ -47,8 +48,10 @@ export default function JobPostingForm() {
   })
   const [employerId, setEmployerId] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, boolean>>({})
+  const [hasAttemptedNext, setHasAttemptedNext] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isPostingJob, setIsPostingJob] = useState(false)
+  const [showUnauthorized, setShowUnauthorized] = useState(false)
 
   useEffect(() => {
     async function fetchEmployerId() {
@@ -115,6 +118,7 @@ export default function JobPostingForm() {
   }
 
   const nextStep = () => {
+    setHasAttemptedNext(true)
     const isValid = validateFields()
     if (isValid) {
       if (currentStep < 5) {
@@ -135,18 +139,7 @@ export default function JobPostingForm() {
 
   const postJob = async () => {
     if (!employerId) {
-      MySwal.fire({
-        title: "Session expired",
-        text: "Please log in again.",
-        icon: "error",
-        confirmButtonText: "Go to Login",
-        confirmButtonColor: "#1D4ED8",
-        showLoaderOnConfirm: true,
-        allowOutsideClick: false,
-        preConfirm: () => {
-          router.push("/sign-in")
-        },
-      })
+      setShowUnauthorized(true)
       return
     }
 
@@ -183,21 +176,8 @@ export default function JobPostingForm() {
         setCurrentStep(6)
       } else {
         const error = await response.json()
-        console.error("Failed to post job:", error)
-
         if (error.error === "Session expired" || error.error.includes("violates foreign key constraint")) {
-          MySwal.fire({
-            title: "Session expired",
-            text: "Please log in again.",
-            icon: "error",
-            confirmButtonText: "Go to Login",
-            confirmButtonColor: "#1D4ED8",
-            showLoaderOnConfirm: true,
-            allowOutsideClick: false,
-            preConfirm: () => {
-              router.push("/sign-in")
-            },
-          })
+          setShowUnauthorized(true)
         } else {
           MySwal.fire({
             title: "Error",
@@ -224,7 +204,7 @@ export default function JobPostingForm() {
 
   const saveDraft = async () => {
     if (!employerId) {
-      console.error("Employer ID not found. Please sign in again.")
+      setShowUnauthorized(true)
       return
     }
 
@@ -316,7 +296,7 @@ export default function JobPostingForm() {
           <CreateStep
             formData={formData}
             handleFieldChange={handleFieldChange}
-            errors={errors} 
+            errors={hasAttemptedNext ? errors : {}} 
           />
         )
       case 2:
@@ -326,7 +306,7 @@ export default function JobPostingForm() {
           <WriteStep
             formData={formData}
             updateFormData={updateFormData}
-            errors={errors}
+            errors={hasAttemptedNext ? errors : {}}
             setErrors={setErrors}
           />
         )
@@ -369,7 +349,7 @@ export default function JobPostingForm() {
           <CreateStep
             formData={formData}
             handleFieldChange={handleFieldChange}
-            errors={errors} 
+            errors={hasAttemptedNext ? errors : {}} 
           />
         )
     }
@@ -383,101 +363,123 @@ export default function JobPostingForm() {
   }, [])
 
   return (
-    <div className="w-full flex justify-center items-start">
-      <div className="w-full">
-        <div className="p-0 sm:p-10 mt-0">
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-blue-100">
-            <div className="h-2 w-full bg-gradient-to-r from-blue-600 to-indigo-600" />
-            <div className="p-6 sm:p-14">
-              <div className="flex items-center justify-between mb-8">
-                <h1 className="text-2xl font-bold text-gray-800">Create a job posting</h1>
+    <>
+      <div className="w-full flex justify-center items-start">
+        <div className="w-full">
+          <div className="p-0 sm:p-10 mt-0">
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-blue-100">
+              <div className="h-2 w-full bg-gradient-to-r from-blue-600 to-indigo-600" />
+              <div className="p-6 sm:p-14">
+                <div className="flex items-center justify-between mb-8">
+                  <h1 className="text-2xl font-bold text-gray-800">Create a job posting</h1>
 
-                {currentStep >= 1 && currentStep <= 5 && (
-                  <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
-                    Step {currentStep} of 5
-                  </div>
-                )}
+                  {currentStep >= 1 && currentStep <= 5 && (
+                    <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
+                      Step {currentStep} of 5
+                    </div>
+                  )}
+                </div>
+
+                <ProgressBar currentStep={currentStep} />
+
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentStep}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                    className="mt-8"
+                  >
+                    {renderStep()}
+                  </motion.div>
+                </AnimatePresence>
               </div>
 
-              <ProgressBar currentStep={currentStep} />
-
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentStep}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.3 }}
-                  className="mt-8"
-                >
-                  {renderStep()}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            <div className="bg-gray-50 p-4 sm:p-10 flex flex-col sm:flex-row justify-between border-t border-gray-100 gap-3">
-              {currentStep !== 6 && (
-                <>
-                  {currentStep > 1 ? (
-                    <Button
-                      variant="outline"
-                      onClick={prevStep}
-                      className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-8 py-4 rounded-full flex items-center gap-2"
-                    >
-                      <FaChevronLeft />
-                      Back
-                    </Button>
-                  ) : (
-                    <div />
-                  )}
-
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={saveDraft}
-                      disabled={isFormEmpty() || isSavingDraft}
-                      className={`border-gray-200 text-gray-600 bg-white hover:bg-gray-50 flex items-center gap-2 px-8 py-4 rounded-full ${
-                        isFormEmpty() || isSavingDraft ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
-                    >
-                      {isSavingDraft ? (
-                        <span className="loader mr-2"></span>
-                      ) : (
-                        <Save size={16} />
-                      )}
-                      <span>Save draft</span>
-                    </Button>
-
-                    {currentStep < 5 ? (
+              <div className="bg-gray-50 p-4 sm:p-10 flex flex-col sm:flex-row justify-between border-t border-gray-100 gap-3">
+                {currentStep !== 6 && (
+                  <>
+                    {currentStep > 1 ? (
                       <Button
-                        onClick={nextStep}
-                        className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-full flex items-center gap-2"
+                        variant="outline"
+                        onClick={prevStep}
+                        className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-8 py-4 rounded-full flex items-center gap-2"
                       >
-                        Continue
-                        <FaChevronRight />
+                        <FaChevronLeft />
+                        Back
                       </Button>
                     ) : (
+                      <div />
+                    )}
+
+                    <div className="flex gap-3">
                       <Button
-                        onClick={postJob}
-                        disabled={isPostingJob}
-                        className={`bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-9 py-4 rounded-full flex items-center gap-2 ${
-                          isPostingJob ? "opacity-50 cursor-not-allowed" : ""
+                        variant="outline"
+                        onClick={saveDraft}
+                        disabled={isFormEmpty() || isSavingDraft}
+                        className={`border-gray-200 text-gray-600 bg-white hover:bg-gray-50 flex items-center gap-2 px-8 py-4 rounded-full ${
+                          isFormEmpty() || isSavingDraft ? "opacity-50 cursor-not-allowed" : ""
                         }`}
                       >
-                        {isPostingJob ? (
+                        {isSavingDraft ? (
                           <span className="loader mr-2"></span>
                         ) : (
-                          "Post Job"
+                          <Save size={16} />
                         )}
+                        <span>Save draft</span>
                       </Button>
-                    )}
-                  </div>
-                </>
-              )}
+
+                      {currentStep < 5 ? (
+                        <Button
+                          onClick={nextStep}
+                          className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-full flex items-center gap-2"
+                        >
+                          Continue
+                          <FaChevronRight />
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={postJob}
+                          disabled={isPostingJob}
+                          className={`bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-9 py-4 rounded-full flex items-center gap-2 ${
+                            isPostingJob ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                        >
+                          {isPostingJob ? (
+                            <span className="loader mr-2"></span>
+                          ) : (
+                            "Post Job"
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
+      <AlertDialog open={showUnauthorized}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Session expired</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are not authorized or your session has expired. Please log in again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() => {
+                setShowUnauthorized(false)
+                router.push("/sign-in")
+              }}
+            >
+              Go to Login
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <style jsx>{`
         .loader {
           border: 2px solid #f3f3f3;
@@ -492,6 +494,6 @@ export default function JobPostingForm() {
           100% { transform: rotate(360deg);}
         }
       `}</style>
-    </div>
+    </>
   )
 }

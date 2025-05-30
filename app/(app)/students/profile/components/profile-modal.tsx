@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ChevronRight, LogOut, Settings, User, Palette, AlertCircle } from "lucide-react"
 import { Avatar } from "@mui/material"
 import { useRouter } from "next/navigation"
+import { signOut } from "next-auth/react"
 
 interface ProfileModalProps {
   user: {
@@ -19,6 +20,11 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(true)
   const modalRef = useRef<HTMLDivElement>(null)
+  const [dbName, setDbName] = useState<string>("")
+  const [dbEmail, setDbEmail] = useState<string>("")
+  const [dbAvatar, setDbAvatar] = useState<string | undefined>(undefined)
+  const [loading, setLoading] = useState(true)
+  const [userType, setUserType] = useState<"student" | "employer" | null>(null)
 
   const handleClose = useCallback(() => {
     setIsOpen(false)
@@ -47,9 +53,70 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     }
   }, [handleClose])
 
+  useEffect(() => {
+    (async () => {
+      setLoading(true)
+      let detailsRes: Response | null = null
+      try {
+        detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" })
+        if (detailsRes.ok) {
+          const { first_name, last_name, email } = await detailsRes.json()
+          setDbName(
+            first_name && last_name
+              ? `${first_name} ${last_name}`
+              : first_name || last_name || ""
+          )
+          setDbEmail(email || "")
+          setDbAvatar(undefined)
+          setUserType("employer")
+          setLoading(false)
+          return
+        }
+      } catch {}
+      try {
+        detailsRes = await fetch("/api/students/get-student-details", { credentials: "include" })
+        if (detailsRes.ok) {
+          const { first_name, last_name, email, profile_img } = await detailsRes.json()
+          setDbName(
+            first_name && last_name
+              ? `${first_name} ${last_name}`
+              : ""
+          )
+          setDbEmail(email || "")
+          setDbAvatar(profile_img || undefined)
+          setUserType("student")
+        }
+      } catch {}
+      const res = await fetch("/api/students/student-profile/getHandlers")
+      if (res.ok) {
+        const profile = await res.json()
+        if (profile?.student_id) {
+          if (profile.profile_img) {
+            try {
+              const signedRes = await fetch("/api/students/get-signed-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bucket: "user.avatars", path: profile.profile_img }),
+              })
+              if (signedRes.ok) {
+                const { signedUrl } = await signedRes.json()
+                setDbAvatar(signedUrl)
+              }
+            } catch {}
+          }
+        }
+      }
+      setLoading(false)
+    })()
+  }, [user.name, user.email, user.avatarUrl])
+
   const handleProfileClick = async () => {
-    await router.prefetch("/students/profile")
-    router.push("/students/profile")
+    const profilePath =
+      userType === "employer"
+        ? "/employers/profile"
+        : "/students/profile"
+    await router.prefetch(profilePath)
+    router.push(profilePath)
     onClose()
   }
   const handleSettingsClick = async () => {
@@ -59,14 +126,13 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   }
 
   const handleLogoutClick = async () => {
-    await router.prefetch("/landing")
-    router.push("/landing")
-    onClose()
+    await signOut({ callbackUrl: "/landing" });
+    onClose();
   }
 
   const menuItems = [
     { id: "profile", label: "Profile", icon: User, onClick: handleProfileClick },
-    { id: "settings", label: "Settings", icon: Settings, onclick: handleSettingsClick },
+    { id: "settings", label: "Settings", icon: Settings, onClick: handleSettingsClick },
     { id: "theme", label: "Theme", icon: Palette, badge: "7" },
     { id: "report", label: "Report a bug", icon: AlertCircle },
   ]
@@ -94,21 +160,33 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
             </div>
 
             <div className="p-4 flex items-center space-x-3 border-b border-gray-100">
-              <Avatar
-                src={user.avatarUrl || "/placeholder.svg"}
-                alt={user.name}
-                sx={{ width: 48, height: 48, border: "2px solid #bbdefb" }}
-              >
-                {!user.avatarUrl &&
-                  user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-              </Avatar>
-              <div>
-                <div className="font-medium text-gray-800">{user.name}</div>
-                <div className="text-sm text-gray-500">{user.email}</div>
-              </div>
+              {loading ? (
+                <div className="animate-pulse flex items-center space-x-3 w-full">
+                  <div className="rounded-full bg-gray-200" style={{ width: 48, height: 48 }} />
+                  <div className="flex flex-col space-y-2 flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-3/4" />
+                    <div className="h-3 bg-gray-200 rounded w-1/2" />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <Avatar
+                    src={dbAvatar || "/placeholder.svg"}
+                    alt={dbName}
+                    sx={{ width: 48, height: 48, border: "2px solid #bbdefb" }}
+                  >
+                    {!dbAvatar &&
+                      dbName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                  </Avatar>
+                  <div>
+                    <div className="font-medium text-gray-800">{dbName}</div>
+                    <div className="text-sm text-gray-500">{dbEmail}</div>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="py-2">

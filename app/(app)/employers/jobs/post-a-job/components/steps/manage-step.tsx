@@ -53,6 +53,10 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
   const [newQuestionType, setNewQuestionType] = useState("text");
   const [newQuestionOptions, setNewQuestionOptions] = useState("");
   const [newQuestionAutoReject, setNewQuestionAutoReject] = useState(false);
+  const [newQuestionCorrectAnswer, setNewQuestionCorrectAnswer] = useState<string | string[]>("");
+  const [deadlineError, setDeadlineError] = useState<string | null>(null);
+  const [newQuestionOptionsError, setNewQuestionOptionsError] = useState<string | null>(null);
+  const [maxApplicantsError, setMaxApplicantsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!arraysEqual(selectedPerks, formData.perksAndBenefits || [])) {
@@ -108,9 +112,54 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
 
   const addQuestion = () => {
     if (newQuestion.trim()) {
+      if (newQuestionType !== "text") {
+        if (newQuestionType === "yesno") {
+          setNewQuestionOptionsError(null);
+          if (newQuestionAutoReject && (newQuestionCorrectAnswer !== "Yes" && newQuestionCorrectAnswer !== "No")) {
+            setNewQuestionOptionsError("Select the correct answer for auto-reject.");
+            return;
+          }
+        } else {
+          if (!newQuestionOptions.trim()) {
+            setNewQuestionOptionsError("Options are required for this answer type.");
+            return;
+          }
+          const optionsArr = newQuestionOptions.split(",").map((opt) => opt.trim());
+          if (optionsArr.length < 2) {
+            setNewQuestionOptionsError("Enter at least two options, separated by commas.");
+            return;
+          }
+          if (newQuestionType === "multi") {
+            const lower = optionsArr.map((o) => o.toLowerCase());
+            const hasDuplicates = new Set(lower).size !== lower.length;
+            if (hasDuplicates) {
+              setNewQuestionOptionsError("Options must not contain duplicates.");
+              return;
+            }
+            if (newQuestionAutoReject && (!Array.isArray(newQuestionCorrectAnswer) || (newQuestionCorrectAnswer as string[]).length === 0)) {
+              setNewQuestionOptionsError("Select at least one correct answer for auto-reject.");
+              return;
+            }
+          }
+          if (newQuestionType === "single" && newQuestionAutoReject && (!newQuestionCorrectAnswer || !(optionsArr.includes(newQuestionCorrectAnswer as string)))) {
+            setNewQuestionOptionsError("Select the correct answer for auto-reject.");
+            return;
+          }
+          setNewQuestionOptionsError(null);
+        }
+      }
       const options =
-        newQuestionType !== "text" && newQuestionOptions.trim()
-          ? newQuestionOptions.split(",").map((opt) => opt.trim())
+        newQuestionType === "yesno"
+          ? ["Yes", "No"]
+          : newQuestionType !== "text" && newQuestionOptions.trim()
+            ? newQuestionOptions.split(",").map((opt) => opt.trim())
+            : undefined;
+
+      const correctAnswer =
+        newQuestionAutoReject
+          ? newQuestionType === "multi"
+            ? newQuestionCorrectAnswer
+            : newQuestionCorrectAnswer
           : undefined;
 
       const updatedQuestions = [
@@ -120,6 +169,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
           type: newQuestionType,
           options,
           autoReject: newQuestionAutoReject,
+          correctAnswer,
         },
       ];
 
@@ -128,7 +178,22 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
       setNewQuestionOptions("");
       setNewQuestionAutoReject(false);
       setNewQuestionType("text");
+      setNewQuestionCorrectAnswer("");
+      setNewQuestionOptionsError(null);
     }
+  };
+
+  const validateDeadline = (date: string) => {
+    if (!date) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selected = new Date(date);
+    if (isNaN(selected.getTime())) return "Invalid date";
+    if (selected < today) return "Date must be today or in the future";
+    const year = selected.getFullYear();
+    const currentYear = today.getFullYear();
+    if (year < currentYear || year > currentYear + 10) return `Year must be between ${currentYear} and ${currentYear + 10}`;
+    return null;
   };
 
   return (
@@ -140,11 +205,14 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
         <h2 className="text-xl font-semibold text-gray-800">Manage applications</h2>
       </div>
 
-      <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-        <p className="text-sm text-blue-700 flex items-center gap-2">
+      <div className="bg-blue-50 rounded-lg p-5 border border-blue-100">
+        <p className="text-sm text-blue-700 flex items-center">
           <Lightbulb className="h-4 w-4 text-blue-500" />
-          <span className="font-medium">Pro tip:</span> Adding screening questions helps you filter candidates more
-          efficiently and reduces time spent on unsuitable applicants.
+          <span className="font-medium ">Pro tip:</span>{" "}
+          <span>
+            Adding screening questions helps you filter candidates more efficiently and reduces time spent on unsuitable applicants.{" "}
+            <span className="font-bold">You can skip it if you prefer.</span>
+          </span>
         </p>
       </div>
 
@@ -195,16 +263,21 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                           id="deadline-date"
                           type="date"
                           value={formData.applicationDeadline?.date || ""}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const err = validateDeadline(e.target.value);
+                            setDeadlineError(err);
                             updateFormData({
                               applicationDeadline: {
                                 ...formData.applicationDeadline,
                                 date: e.target.value,
                               },
-                            })
-                          }
-                          className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                            });
+                          }}
+                          className={`pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${deadlineError ? "border-red-500" : ""}`}
                         />
+                        {deadlineError && (
+                          <div className="text-xs text-red-500 mt-1">{deadlineError}</div>
+                        )}
                       </div>
                     </div>
                     <div>
@@ -281,16 +354,30 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                       min="1"
                       value={formData.maxApplicants}
                       onChange={(e) => {
-                        const value = Number.parseInt(e.target.value);
-                        if (!isNaN(value) && value > 0) {
-                          updateFormData({ maxApplicants: e.target.value });
-                        } else if (e.target.value === "") {
+                        const value = e.target.value;
+                        if (value === "") {
+                          setMaxApplicantsError(null);
                           updateFormData({ maxApplicants: "" });
+                          return;
+                        }
+                        const num = Number.parseInt(value);
+                        if (isNaN(num) || num < 1) {
+                          setMaxApplicantsError("Enter a valid number greater than 0.");
+                          updateFormData({ maxApplicants: "" });
+                        } else if (num > 10000) {
+                          setMaxApplicantsError("Number of applicants is too high.");
+                          updateFormData({ maxApplicants: value });
+                        } else {
+                          setMaxApplicantsError(null);
+                          updateFormData({ maxApplicants: value });
                         }
                       }}
                       placeholder="Number of applicants"
-                      className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      className={`pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${maxApplicantsError ? "border-red-500" : ""}`}
                     />
+                    {maxApplicantsError && (
+                      <div className="text-xs text-red-500 mt-1">{maxApplicantsError}</div>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500 mt-3">
                     Your job posting will automatically close when this number of applications is reached.
@@ -362,12 +449,13 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                           <SelectItem value="text">Text answer</SelectItem>
                           <SelectItem value="single">Single select</SelectItem>
                           <SelectItem value="multi">Multi select</SelectItem>
+                          <SelectItem value="yesno">Yes or No</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <AnimatePresence>
-                      {newQuestionType !== "text" && (
+                      {newQuestionType !== "text" && newQuestionType !== "yesno" && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
@@ -381,29 +469,128 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                             <Input
                               id="options"
                               value={newQuestionOptions}
-                              onChange={(e) => setNewQuestionOptions(e.target.value)}
+                              onChange={(e) => {
+                                setNewQuestionOptions(e.target.value);
+                                setNewQuestionOptionsError(null);
+                                setNewQuestionCorrectAnswer("");
+                              }}
                               placeholder="Option 1, Option 2, Option 3"
-                              className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                              className={`border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${newQuestionOptionsError ? "border-red-500" : ""}`}
                             />
+                            {newQuestionAutoReject && (
+                              <div className="mt-2">
+                                <Label className="text-sm text-gray-700 mb-1.5 block">
+                                  Select correct answer{newQuestionType === "multi" ? "(s)" : ""}
+                                </Label>
+                                {newQuestionType === "single" && (
+                                  <Select
+                                    value={typeof newQuestionCorrectAnswer === "string" ? newQuestionCorrectAnswer : ""}
+                                    onValueChange={setNewQuestionCorrectAnswer}
+                                  >
+                                    <SelectTrigger className="border-gray-200 focus:ring-blue-500">
+                                      <SelectValue placeholder="Select correct answer" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {newQuestionOptions
+                                        .split(",")
+                                        .map((opt) => opt.trim())
+                                        .filter((opt) => opt)
+                                        .map((opt, idx) => (
+                                          <SelectItem key={idx} value={opt}>
+                                            {opt}
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                                {newQuestionType === "multi" && (
+                                  <div className="flex flex-wrap gap-2 mt-1">
+                                    {newQuestionOptions
+                                      .split(",")
+                                      .map((opt) => opt.trim())
+                                      .filter((opt) => opt)
+                                      .map((opt, idx) => (
+                                        <label key={idx} className="flex items-center gap-1 text-sm">
+                                          <input
+                                            type="checkbox"
+                                            checked={Array.isArray(newQuestionCorrectAnswer) && newQuestionCorrectAnswer.includes(opt)}
+                                            onChange={(e) => {
+                                              if (e.target.checked) {
+                                                setNewQuestionCorrectAnswer((prev) =>
+                                                  Array.isArray(prev) ? [...prev, opt] : [opt]
+                                                );
+                                              } else {
+                                                setNewQuestionCorrectAnswer((prev) =>
+                                                  Array.isArray(prev) ? prev.filter((v) => v !== opt) : []
+                                                );
+                                              }
+                                            }}
+                                          />
+                                          {opt}
+                                        </label>
+                                      ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {newQuestionOptionsError && (
+                              <div className="text-xs text-red-500 mt-1">{newQuestionOptionsError}</div>
+                            )}
                             <p className="text-xs text-gray-500 mt-1">
                               Separate each option with a comma (e.g. Yes, No, Maybe)
                             </p>
                           </div>
                         </motion.div>
                       )}
+                      {newQuestionType === "yesno" && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div>
+                            <Label className="text-sm text-gray-700 mb-1.5 block">
+                              Options
+                            </Label>
+                            <div className="text-gray-800 text-sm mb-2">Yes, No</div>
+                            {newQuestionAutoReject && (
+                              <div>
+                                <Label className="text-sm text-gray-700 mb-1.5 block">
+                                  Select correct answer
+                                </Label>
+                                <Select
+                                  value={typeof newQuestionCorrectAnswer === "string" ? newQuestionCorrectAnswer : ""}
+                                  onValueChange={setNewQuestionCorrectAnswer}
+                                >
+                                  <SelectTrigger className="border-gray-200 focus:ring-blue-500">
+                                    <SelectValue placeholder="Select correct answer" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Yes">Yes</SelectItem>
+                                    <SelectItem value="No">No</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
                     </AnimatePresence>
 
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="autoReject"
-                        checked={newQuestionAutoReject}
-                        onCheckedChange={(checked) => setNewQuestionAutoReject(checked === true)}
-                        className="data-[state=checked]:bg-red-500 border-red-200"
-                      />
-                      <Label htmlFor="autoReject" className="text-sm text-gray-700">
-                        Auto-reject if answer doesn&apos;t match criteria
-                      </Label>
-                    </div>
+                    {newQuestionType !== "text" && (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="autoReject"
+                          checked={newQuestionAutoReject}
+                          onCheckedChange={(checked) => setNewQuestionAutoReject(checked === true)}
+                          className="data-[state=checked]:bg-red-500 border-red-200"
+                        />
+                        <Label htmlFor="autoReject" className="text-sm text-gray-700">
+                          Auto-reject if answer doesn&apos;t match criteria
+                        </Label>
+                      </div>
+                    )}
 
                     <Button
                       type="button"
@@ -441,7 +628,9 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                                       ? "Text"
                                       : q.type === "single"
                                         ? "Single select"
-                                        : "Multi select"}
+                                        : q.type === "multi"
+                                          ? "Multi select"
+                                          : "Yes/No"}
                                   </span>
                                   {q.autoReject && (
                                     <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">

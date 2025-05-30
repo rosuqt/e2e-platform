@@ -64,9 +64,9 @@ export default function Navbar() {
     >
       <div className="flex justify-between items-center px-6 md:px-10 h-full">
         <div className="flex items-center space-x-2">
-          <Image src="/images/test.png" alt="Seekr Logo" width={70} height={70} />
-          <Link href="/" className="text-xl font-bold text-white">
-            Seekr
+          
+          <Link href="/landing" className="text-xl font-bold text-white">
+           <Image src="/images/logo.white.png" alt="Seekr Logo" width={100} height={100} />
           </Link>
 
           <Link href="/feedback">

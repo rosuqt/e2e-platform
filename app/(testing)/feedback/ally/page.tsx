@@ -9,13 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Filter, Search, ArrowUpDown, Loader2, Eye, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { RiRobot2Fill } from "react-icons/ri"
+import ReactECharts from "echarts-for-react"
 
 function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div
-        className="backdrop-blur-lg bg-black/70 border border-purple-500/30 rounded-xl shadow-2xl max-w-2xl w-full p-6 relative"
+        className="backdrop-blur-lg bg-black/70 border border-purple-500/30 rounded-xl shadow-2xl max-w-5xl w-full p-8 relative"
         style={{
           boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.37)",
         }}
@@ -72,6 +73,8 @@ export default function AllyPage() {
   const [caseNotes, setCaseNotes] = useState<Record<number, CaseNote>>({})
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [breakdownOpen, setBreakdownOpen] = useState(false)
+  const [breakdownData, setBreakdownData] = useState<Record<string, number>>({})
 
   useEffect(() => {
     async function fetchTestCases() {
@@ -253,10 +256,22 @@ export default function AllyPage() {
         return "bg-yellow-500/70 text-black"
       case "resolved":
         return "bg-green-600/70 text-white"
+      case "self-fix":
+        return "bg-blue-600/70 text-white"  
+      case "known-issue":
+        return "bg-red-500/70 text-white"
       default:
         return "bg-purple-500/70 text-white"
     }
   }
+
+  useEffect(() => {
+    if (!breakdownOpen) return
+    fetch("/api/feedback/breakdown")
+      .then((res) => res.json())
+      .then((data) => setBreakdownData(data))
+      .catch(() => setBreakdownData({}))
+  }, [breakdownOpen])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black to-purple-900 p-4 md:p-8">
@@ -271,6 +286,13 @@ export default function AllyPage() {
                 </CardDescription>
               </div>
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="border-purple-500/30 text-purple-500 hover:bg-purple-900/30"
+                  onClick={() => setBreakdownOpen(true)}
+                >
+                  Breakdown
+                </Button>
                 <Button
                   variant="outline"
                   className="border-purple-500/30 text-purple-500 hover:bg-purple-900/30"
@@ -409,7 +431,13 @@ export default function AllyPage() {
                     Date
                     <ArrowUpDown className="ml-1 h-3 w-3" />
                   </div>
-                  <div className="col-span-2">Feedback</div>
+                  <div className="col-span-2 flex items-center cursor-pointer" onClick={() => setSortConfig({
+                    key: "feedback",
+                    direction: sortConfig.key === "feedback" && sortConfig.direction === "asc" ? "desc" : "asc",
+                  })}>
+                    Feedback
+                    <ArrowUpDown className="ml-1 h-3 w-3" />
+                  </div>
                   <div className="col-span-1 text-right">Actions</div>
                 </div>
                 {filteredTestCases.map((testCase) => (
@@ -465,6 +493,64 @@ export default function AllyPage() {
           </CardContent>
         </Card>
       </div>
+      <Modal open={breakdownOpen} onClose={() => setBreakdownOpen(false)}>
+        <div>
+          <h2 className="text-xl font-bold mb-2 text-white">Breakdown of issues</h2>
+          <div className="mb-2 text-purple-300">
+            This is the breakdown of most filed issue per testers.
+          </div>
+          {Object.keys(breakdownData).length > 0 && (
+            <div className="flex justify-center items-center py-4">
+              <div
+                className="w-full bg-black/30 rounded-xl p-0 flex flex-col items-center overflow-x-auto"
+                style={{ maxWidth: "100vw" }}
+              >
+                <div style={{ minWidth: 700, width: "100%", maxWidth: 1100, padding: 32 }}>
+                  <ReactECharts
+                    option={{
+                      tooltip: { trigger: "item" },
+                      legend: {
+                        orient: "horizontal",
+                        bottom: 0,
+                        left: "center",
+                        textStyle: { color: "#fff", fontSize: 14 }
+                      },
+                      grid: { left: 0, right: 0, top: 0, bottom: 60, containLabel: true },
+                      series: [
+                        {
+                          name: "Test Cases",
+                          type: "pie",
+                          radius: ["30%", "50%"],
+                          avoidLabelOverlap: false,
+                          data: Object.entries(breakdownData).map(([name, value]) => ({
+                            value,
+                            name
+                          })),
+                          label: {
+                            color: "#fff",
+                            fontSize: 14,
+                            formatter: "{b}: {c} ({d}%)"
+                          },
+                          labelLine: {
+                            length: 20,
+                            length2: 20
+                          },
+                          itemStyle: {
+                            borderColor: "#22223b",
+                            borderWidth: 2
+                          }
+                        }
+                      ]
+                    }}
+                    style={{ height: 470, width: "100%", minWidth: 700, maxWidth: 1100, background: "transparent" }}
+                    theme="dark"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
       <Modal open={modalOpen} onClose={handleCloseModal}>
         {selectedCase && (
           <div>
@@ -511,6 +597,7 @@ export default function AllyPage() {
                   <SelectItem value="not-valid">Not Valid</SelectItem>
                   <SelectItem value="processing">Processing</SelectItem>
                   <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="self-fix">Self Fix</SelectItem>
                   <SelectItem value="known-issue">Known Issue</SelectItem>
                 </SelectContent>
               </Select>

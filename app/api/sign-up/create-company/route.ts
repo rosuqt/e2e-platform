@@ -79,15 +79,16 @@ export async function POST(request: Request) {
         email_domain: formData.companyEmailDomain || null,
         company_website: formData.companyWebsite || null,
         multiple_branch: formData.multipleBranch ?? false,
-        country: formData.address.country,
-        city: formData.address.city,
-        street: formData.address.street,
-        province: formData.address.province,
+        address: formData.address.address,
+        suite_unit_floor: formData.address.suiteUnitFloor || null,
+        business_park_landmark: formData.address.businessPark || null,
+        building_name: formData.address.buildingName || null,
         contact_email: formData.address.contactEmail,
         contact_number: formData.address.contactNumber,
         exact_address: formData.address.exactAddress,
+        country_code: formData.address.countryCode,
       })
-      .select("id, company_name, company_branch")
+      .select("id, company_name, company_branch, country_code")
       .single();
 
     if (companyError) {
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
         branch_name: formData.companyBranch || "Headquarters", 
         company_id: companyData.id,
         main_branch: true,
+        country_code: formData.address.countryCode,
       });
 
     if (branchError) {

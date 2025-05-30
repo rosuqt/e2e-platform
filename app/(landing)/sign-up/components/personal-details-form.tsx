@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { TextField } from "@mui/material"
+import { TextField, InputAdornment, IconButton } from "@mui/material"
 import { FaUser } from "react-icons/fa"
 import { PersonalDetails } from "../types";
 import Autocomplete from "@mui/material/Autocomplete";
@@ -9,6 +9,8 @@ import Box from "@mui/material/Box";
 import Popper from "@mui/material/Popper";
 import { countries } from "../data/countries";
 import Image from "next/image";
+import { Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 
 export default function PersonalDetailsForm({
   data = { firstName: "", middleName: "", lastName: "", countryCode: "", phone: "", email: "", password: "", confirmPassword: "" },
@@ -24,6 +26,9 @@ export default function PersonalDetailsForm({
     animate: { x: [0, -10, 10, -10, 10, 0] },
     transition: { duration: 0.4 },
   }
+
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   return (
     <motion.div
@@ -43,7 +48,8 @@ export default function PersonalDetailsForm({
         <motion.div {...(errors.firstName ? errorAnimation : {})}>
           <TextField
             id="firstName"
-            label="First Name *"
+            label={<span>First Name <span className="text-red-600">*</span></span>}
+            placeholder="Enter your first name"
             variant="outlined"
             fullWidth
             value={data.firstName}
@@ -54,12 +60,20 @@ export default function PersonalDetailsForm({
             error={!!errors.firstName}
             helperText={errors.firstName}
             inputProps={{ maxLength: 35, minLength: 1 }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "darkgray" },
+                "&:hover fieldset": { borderColor: "#2563eb" },
+              },
+              "& .MuiInputLabel-root": { color: "gray" },
+            }}
           />
         </motion.div>
         <motion.div {...(errors.middleName ? errorAnimation : {})}>
           <TextField
             id="middleName"
             label="Middle Name"
+            placeholder="Enter your middle name (optional)"
             variant="outlined"
             fullWidth
             value={data.middleName || ""}
@@ -70,12 +84,20 @@ export default function PersonalDetailsForm({
             error={!!errors.middleName}
             helperText={errors.middleName}
             inputProps={{ maxLength: 35 }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "darkgray" },
+                "&:hover fieldset": { borderColor: "#2563eb" },
+              },
+              "& .MuiInputLabel-root": { color: "gray" },
+            }}
           />
         </motion.div>
         <motion.div {...(errors.lastName ? errorAnimation : {})}>
           <TextField
             id="lastName"
-            label="Last Name *"
+            label={<span>Last Name <span className="text-red-600">*</span></span>}
+            placeholder="Enter your last name"
             variant="outlined"
             fullWidth
             value={data.lastName}
@@ -86,6 +108,13 @@ export default function PersonalDetailsForm({
             error={!!errors.lastName}
             helperText={errors.lastName}
             inputProps={{ maxLength: 36, minLength: 1 }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "darkgray" },
+                "&:hover fieldset": { borderColor: "#2563eb" },
+              },
+              "& .MuiInputLabel-root": { color: "gray" },
+            }}
           />
         </motion.div>
       </div>
@@ -126,9 +155,17 @@ export default function PersonalDetailsForm({
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Country Code *"
+                label={<span>Country Code <span className="text-red-600">*</span></span>}
+                placeholder="Select your country code"
                 error={!!errors.countryCode}
                 helperText={errors.countryCode}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: "darkgray" },
+                    "&:hover fieldset": { borderColor: "#2563eb" },
+                  },
+                  "& .MuiInputLabel-root": { color: "gray" },
+                }}
               />
             )}
             sx={{ minWidth: 120 }}
@@ -137,17 +174,29 @@ export default function PersonalDetailsForm({
         <motion.div className="col-span-2" {...(errors.phone ? errorAnimation : {})}>
           <TextField
             id="phone"
-            label="Phone Number *"
+            label={<span>Phone Number <span className="text-red-600">*</span></span>}
+            placeholder="Enter your phone number"
             variant="outlined"
             fullWidth
             value={data.phone}
             onChange={(e) => {
-              const value = e.target.value;
+              let value = e.target.value;
+              const country = countries.find((c) => c.phone === data.countryCode);
+              if (country?.code === "PH" && value.startsWith("0")) {
+                value = value.replace(/^0+/, "");
+              }
               onChange({ ...data, phone: value });
             }}
             error={!!errors.phone}
             helperText={errors.phone}
             inputProps={{ maxLength: 15, minLength: 7 }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "darkgray" },
+                "&:hover fieldset": { borderColor: "#2563eb" },
+              },
+              "& .MuiInputLabel-root": { color: "gray" },
+            }}
           />
         </motion.div>
       </div>
@@ -155,21 +204,44 @@ export default function PersonalDetailsForm({
       <motion.div className="px-6" {...(errors.email ? errorAnimation : {})}>
         <TextField
           id="email"
-          label="Personal Email *"
+          label={<span>Personal Email <span className="text-red-600">*</span></span>}
+          placeholder="Enter your personal email"
           type="email"
           variant="outlined"
           fullWidth
           value={data.email}
           onChange={(e) => {
             const value = e.target.value;
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            const emailError = emailRegex.test(value) ? "" : "Invalid email format";
+            const emailRegex = /^[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
+            const domainPart = value.split('@')[1];
+            let emailError = "";
+            if (!emailRegex.test(value)) {
+              emailError = "Invalid email format";
+            } else if (
+              domainPart &&
+              domainPart
+                .split('.')
+                .some(
+                  label =>
+                    label.startsWith('-') ||
+                    label.endsWith('-')
+                )
+            ) {
+              emailError = "Invalid email format";
+            }
             onChange({ ...data, email: value });
             errors.email = emailError;
           }}
           error={!!errors.email}
           helperText={errors.email}
           inputProps={{ maxLength: 254, minLength: 6 }}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              "& fieldset": { borderColor: "darkgray" },
+              "&:hover fieldset": { borderColor: "#2563eb" },
+            },
+            "& .MuiInputLabel-root": { color: "gray" },
+          }}
         />
       </motion.div>
 
@@ -177,8 +249,9 @@ export default function PersonalDetailsForm({
         <motion.div {...(errors.password ? errorAnimation : {})}>
           <TextField
             id="password"
-            label="Password *"
-            type="password"
+            label={<span>Password <span className="text-red-600">*</span></span>}
+            placeholder="Enter your password"
+            type={showPassword ? "text" : "password"}
             variant="outlined"
             fullWidth
             value={data.password}
@@ -186,13 +259,38 @@ export default function PersonalDetailsForm({
             error={!!errors.password}
             helperText={errors.password}
             inputProps={{ maxLength: 128, minLength: 8 }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    tabIndex={-1}
+                    onClick={() => setShowPassword((v) => !v)}
+                    edge="end"
+                  >
+                    {showPassword ? (
+                      <Eye className="text-gray-500 w-5 h-5" />
+                    ) : (
+                      <EyeOff className="text-gray-500 w-5 h-5" />
+                    )}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "darkgray" },
+                "&:hover fieldset": { borderColor: "#2563eb" },
+              },
+              "& .MuiInputLabel-root": { color: "gray" },
+            }}
           />
         </motion.div>
         <motion.div {...(errors.confirmPassword ? errorAnimation : {})}>
           <TextField
             id="confirmPassword"
-            label="Confirm Password *"
-            type="password"
+            label={<span>Confirm Password <span className="text-red-600">*</span></span>}
+            placeholder="Re-enter your password"
+            type={showConfirmPassword ? "text" : "password"}
             variant="outlined"
             fullWidth
             value={data.confirmPassword}
@@ -205,6 +303,30 @@ export default function PersonalDetailsForm({
             error={!!errors.confirmPassword}
             helperText={errors.confirmPassword}
             inputProps={{ maxLength: 128, minLength: 8 }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    tabIndex={-1}
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    edge="end"
+                  >
+                    {showConfirmPassword ? (
+                      <Eye className="text-gray-500 w-5 h-5" />
+                    ) : (
+                      <EyeOff className="text-gray-500 w-5 h-5" />
+                    )}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "darkgray" },
+                "&:hover fieldset": { borderColor: "#2563eb" },
+              },
+              "& .MuiInputLabel-root": { color: "gray" },
+            }}
           />
         </motion.div>
       </div>

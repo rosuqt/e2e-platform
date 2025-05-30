@@ -151,6 +151,9 @@ export default function WelcomeFlow() {
   }
 
   const updateFormData = (field: keyof FormData, value: string | boolean | string[]) => {
+    if (field === "section" && typeof value === "string") {
+      if (!/^\d*$/.test(value)) return
+    }
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 

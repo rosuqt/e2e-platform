@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "../../side-nav/sidebar";
 import BaseLayout from "../../base-layout";
 import { TbSettings, TbBug } from "react-icons/tb";
@@ -23,24 +23,39 @@ import DialogContent from "@mui/material/DialogContent";
 import Button from "@mui/material/Button";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import Skeleton from "@mui/material/Skeleton";
+import { motion } from "framer-motion";
+import Tooltip from "@mui/material/Tooltip";
 
 export default function ProfileLayout() {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams?.get("tab");
   const [activeTab, setActiveTab] = useState(0);
   const [bio, setBio] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [coverDialogOpen, setCoverDialogOpen] = useState(false);
   const [coverMenuAnchor, setCoverMenuAnchor] = useState<null | HTMLElement>(null);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [studentId, setStudentId] = useState<string | null>(null);
+  const [year, setYear] = useState<string | null>(null);
+  const [section, setSection] = useState<string | null>(null);
+  const [course, setCourse] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploadingProfile, setUploadingProfile] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const bioRef = useRef<HTMLTextAreaElement>(null);
 
   const menuItems = useMemo(
     () => [
-      { icon: FaUser, text: "Me", href: "/student/profile" },
-      { icon: FiCalendar, text: "Calendar", href: "student/calendar" },
-      { icon: TbBug, text: "Report a bug", href: "/calendar" },
-      { icon: TbSettings, text: "Settings", href: "student/settings" },
+      { icon: FaUser, text: "Me", href: "/students/profile" },
+      { icon: FiCalendar, text: "Calendar", href: "/students/calendar" },
+      { icon: TbBug, text: "Report a bug", href: "#" }, 
+      { icon: TbSettings, text: "Settings", href: "/students/settings" },
       { icon: LogOut, text: "Logout", href: "/landing" },
     ],
     []
@@ -50,7 +65,7 @@ export default function ProfileLayout() {
     "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
     "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80",
     "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80",
-"https://plus.unsplash.com/premium_photo-1667680403630-014f531d9664?q=80&w=2021&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+    "https://plus.unsplash.com/premium_photo-1667680403630-014f531d9664?q=80&w=2021&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
   ];
 
   useEffect(() => {
@@ -66,49 +81,119 @@ export default function ProfileLayout() {
   }, [pathname]);
 
   useEffect(() => {
+    if (tabParam === "skills-tab") setActiveTab(1);
+    else if (tabParam === "ratings-tab") setActiveTab(2);
+    else if (tabParam === "activity-tab") setActiveTab(3);
+    else setActiveTab(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam]);
+
+  useEffect(() => {
     menuItems.forEach((item) => {
       router.prefetch(item.href);
     });
   }, [menuItems, router]);
 
   useEffect(() => {
-    const savedProfile = localStorage.getItem("profileImage");
-    if (savedProfile) setProfileImage(savedProfile);
-    const savedCover = localStorage.getItem("coverImage");
-    if (savedCover) setCoverImage(savedCover);
+    (async () => {
+      const res = await fetch("/api/students/get-student-details");
+      if (!res.ok) {
+        setLoading(false);
+        return;
+      }
+      const details = await res.json();
+      setFirstName(details.first_name || "");
+      setLastName(details.last_name || "");
+      setYear(details.year ? String(details.year) : "");
+      setSection(details.section ? String(details.section) : "");
+      setCourse(details.course ? String(details.course) : "");
+      setProfileImage(details.profile_img || null);
+      setCoverImage(details.cover_image || null);
+      setStudentId(details.id || null);
+      setBio(details.short_bio || "");
+      setLoading(false);
+    })();
   }, []);
 
-  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      setProfileImage(result);
-      localStorage.setItem("profileImage", result);
-    };
-    reader.readAsDataURL(file);
+    if (!file || !studentId) return;
+    setUploadingProfile(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("bucket", "user.avatars");
+    formData.append("student_id", studentId);
+    const uploadRes = await fetch("/api/students/upload-avatar", { method: "POST", body: formData });
+    if (uploadRes.ok) {
+      const { publicUrl } = await uploadRes.json();
+      let resolvedProfileImg = null;
+      try {
+        const signedRes = await fetch("/api/students/get-signed-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bucket: "user.avatars", path: publicUrl }),
+        });
+        if (signedRes.ok) {
+          const { signedUrl } = await signedRes.json();
+          resolvedProfileImg = signedUrl;
+        }
+      } catch {}
+      setProfileImage(resolvedProfileImg ?? publicUrl);
+      await fetch("/api/students/student-profile/postHandlers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId, profile_img: publicUrl }),
+      });
+    }
+    setUploadingProfile(false);
   };
 
   const closeCoverDialog = () => setCoverDialogOpen(false);
 
-  const handlePresetCover = (url: string) => {
+  const handlePresetCover = async (url: string) => {
     setCoverImage(url);
-    localStorage.setItem("coverImage", url);
+    if (studentId) {
+      await fetch("/api/students/student-profile/postHandlers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId, cover_image: url }),
+      });
+    }
     setCoverDialogOpen(false);
   };
 
-  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      setCoverImage(result);
-      localStorage.setItem("coverImage", result);
-      setCoverDialogOpen(false);
-    };
-    reader.readAsDataURL(file);
+    if (!file || !studentId) return;
+    setUploadingCover(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("bucket", "user.covers");
+    formData.append("student_id", studentId);
+    const uploadRes = await fetch("/api/students/upload-avatar", { method: "POST", body: formData });
+    if (uploadRes.ok) {
+      const { publicUrl } = await uploadRes.json();
+      let resolvedCoverImg = null;
+      try {
+        const signedRes = await fetch("/api/students/get-signed-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bucket: "user.covers", path: publicUrl }),
+        });
+        if (signedRes.ok) {
+          const { signedUrl } = await signedRes.json();
+          resolvedCoverImg = signedUrl;
+        }
+      } catch {}
+      setCoverImage(resolvedCoverImg ?? publicUrl);
+      await fetch("/api/students/student-profile/postHandlers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId, cover_image: publicUrl }),
+      });
+    }
+    setUploadingCover(false);
+    setCoverDialogOpen(false);
   };
 
   const triggerProfileInput = () => {
@@ -117,6 +202,16 @@ export default function ProfileLayout() {
 
   const triggerCoverInput = () => {
     document.getElementById("cover-image-input")?.click();
+  };
+
+  const handleMuiTabChange = (_: React.SyntheticEvent, v: number) => {
+    setActiveTab(v);
+    let tab = "about-tab";
+    if (v === 1) tab = "skills-tab";
+    else if (v === 2) tab = "ratings-tab";
+    else if (v === 3) tab = "activity-tab";
+    else tab = "about-tab";
+    router.push(`/students/profile?tab=${tab}`);
   };
 
   const renderContent = () => {
@@ -145,6 +240,18 @@ export default function ProfileLayout() {
   const handleCoverMenuPreset = () => {
     closeCoverMenu();
     setCoverDialogOpen(true);
+  };
+
+  const handleBioKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && studentId) {
+      e.preventDefault();
+      await fetch("/api/students/student-profile/postHandlers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId, short_bio: bio }),
+      });
+      if (bioRef.current) bioRef.current.blur();
+    }
   };
 
   return (
@@ -209,11 +316,14 @@ export default function ProfileLayout() {
           <div className="bg-white rounded-xl shadow-md border border-blue-200 overflow-hidden mb-6">
             {/* Cover Image */}
             <div className="h-40 relative">
-              {coverImage ? (
+              {(loading || uploadingCover) ? (
+                <Skeleton variant="rectangular" width="100%" height="100%" sx={{ position: "absolute", top: 0, left: 0, height: "100%", width: "100%", zIndex: 10 }} />
+              ) : coverImage ? (
                 <img
                   src={coverImage}
                   alt="Cover"
                   className="w-full h-full object-cover"
+                  onError={e => { e.currentTarget.src = ""; }}
                 />
               ) : (
                 <div
@@ -236,15 +346,20 @@ export default function ProfileLayout() {
                   <div className="relative w-full h-full">
                     {/* Profile initials or image */}
                     <div className="w-full h-full rounded-full bg-white border-4 border-white flex items-center justify-center overflow-hidden">
-                      {profileImage ? (
+                      {(loading || uploadingProfile) ? (
+                        <Skeleton variant="circular" width={128} height={128} />
+                      ) : profileImage ? (
                         <img
                           src={profileImage}
                           alt="Profile"
                           className="w-full h-full object-cover rounded-full"
+                          onError={e => { e.currentTarget.src = ""; }}
                         />
                       ) : (
                         <div className="w-full h-full rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-3xl select-none">
-                          KR
+                          {(firstName && lastName)
+                            ? `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase()
+                            : "SKR"}
                         </div>
                       )}
                     </div>
@@ -253,6 +368,7 @@ export default function ProfileLayout() {
                       className="absolute -top-2 -right-2 bg-white border border-blue-300 text-blue-600 hover:bg-blue-50 rounded-full p-2 shadow"
                       title="Change profile picture"
                       onClick={triggerProfileInput}
+                      disabled={uploadingProfile}
                     >
                       <Camera className="w-5 h-5" />
                     </button>
@@ -262,32 +378,63 @@ export default function ProfileLayout() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h1 className="text-2xl font-bold">Kemly Rose</h1>
-                        <span className="bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                        {loading ? (
+                          <Skeleton variant="text" width={180} height={36} />
+                        ) : (
+                          <h1 className="text-2xl font-bold">
+                            {(firstName && lastName)
+                              ? `${firstName} ${lastName}`
+                              : "Full Name"}
+                          </h1>
+                        )}
+                        <motion.span
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.98 }}
+                          className="bg-green-500 text-white text-xs px-2 py-1 rounded-full cursor-pointer"
+                        >
                           Available to work
-                        </span>
+                        </motion.span>
+                        <Tooltip title="This reflects your work status and cannot be changed. It is based on your actual workflow and progress." arrow>
+                          <span className="ml-1 text-blue-500 cursor-help">🛈</span>
+                        </Tooltip>
                       </div>
-                      <p className="text-gray-600">
-                        4th Year | BS- Information Technology
-                      </p>
+                      {loading ? (
+                        <Skeleton variant="text" width={220} height={24} />
+                      ) : (
+                        <>
+                          <p className="text-gray-600">
+                            {course || "Course not specified"}
+                          </p>
+                          <p className="text-gray-600">
+                            {(year || section)
+                              ? `${year || "Year"}${year && section ? " | " : ""}${section || "Section"}`
+                              : "Year and Section"}
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
 
                   <div className="mt-2 relative w-full text-sm">
                     <div className="relative w-full">
-                      {!bio && (
+                      {loading ? (
+                        <Skeleton variant="text" width={180} height={28} />
+                      ) : !bio ? (
                         <div className="absolute left-0 top-0 flex items-center text-gray-400 pointer-events-none px-1 py-1">
                           <span>Add a short bio</span>
                           <MdEdit className="ml-1 h-4 w-4" />
                         </div>
-                      )}
+                      ) : null}
                       <textarea
+                        ref={bioRef}
                         className="w-full bg-transparent focus:outline-none text-gray-600 resize-none px-1 py-1"
                         value={bio}
-                        onChange={(e) => setBio(e.target.value)}
+                        onChange={e => setBio(e.target.value)}
+                        onKeyDown={handleBioKeyDown}
                         maxLength={50}
                         rows={1}
                         style={{ minHeight: "1.5em" }}
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -306,7 +453,7 @@ export default function ProfileLayout() {
                 >
                   <Tabs
                     value={activeTab}
-                    onChange={(_, v) => setActiveTab(v)}
+                    onChange={handleMuiTabChange}
                     textColor="primary"
                     indicatorColor="primary"
                     aria-label="student profile tabs"
@@ -359,6 +506,7 @@ export default function ProfileLayout() {
           <div className="mb-8">{renderContent()}</div>
         </div>
       </div>
+     
     </BaseLayout>
   );
 }

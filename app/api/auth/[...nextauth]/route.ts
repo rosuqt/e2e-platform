@@ -4,6 +4,9 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import supabase from "@/lib/supabase"
 import bcrypt from "bcryptjs"
 
+
+//NOTE DONT DELETE COMMENTED OUT CODE BELOW
+
 export const authOptions: NextAuthOptions = {
   providers: [
     AzureADProvider({
@@ -27,16 +30,27 @@ export const authOptions: NextAuthOptions = {
         const { email, password } = credentials ?? {}
         if (!email || !password) return null
 
-        const { data: user } = await supabase
+        const { data: user, error } = await supabase
           .from("registered_employers")
-          .select("id, email, password")
+          .select("id, email, password, first_name, last_name, verify_status")
           .eq("email", email)
-          .single()
+          .maybeSingle() 
 
+        if (error) {
+          console.error("CredentialsProvider authorize: error from db:", error)
+        }
         console.log("CredentialsProvider authorize: user from db:", user)
 
         if (user && bcrypt.compareSync(password, user.password)) {
-          const userWithRole = { id: user.id, email: user.email, role: "employer" }
+
+          const userWithRole = {
+            id: user.id,
+            email: user.email,
+            role: "employer",
+            firstName: user.first_name,
+            lastName: user.last_name,
+            verifyStatus: user.verify_status
+          }
           console.log("CredentialsProvider authorize: returning userWithRole:", userWithRole)
           return userWithRole
         }
@@ -55,16 +69,20 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "azure-ad") {
         const u = user as UserWithNewStudent;
         if (u.email) {
+          if (!u.email.endsWith("@alabang.sti.edu.ph")) {
+            return "/sign-in?error=invalid_domain"
+          }
           let firstName = ""
           let lastName = ""
           if (u.name) {
-            const nameParts = u.name.trim().split(/\s+/)
-            if (nameParts.length === 1) {
-              firstName = nameParts[0]
-              lastName = ""
+            const nameNoParen = u.name.replace(/\(.*?\)/g, "").trim()
+            const parts = nameNoParen.split(",")
+            if (parts.length === 2) {
+              lastName = parts[0].trim()
+              firstName = parts[1].trim()
             } else {
-              firstName = nameParts.slice(0, -1).join(" ")
-              lastName = nameParts[nameParts.length - 1]
+              firstName = nameNoParen.trim()
+              lastName = ""
             }
           }
           const { data: existingStudent } = await supabase
@@ -105,9 +123,26 @@ export const authOptions: NextAuthOptions = {
             token.studentId = student.id
           }
         }
-      } else if ((user as UserWithNewStudent)?.role) {
-        token.role = (user as UserWithNewStudent).role
-        token.employerId = (user as UserWithNewStudent).id
+      } else if ((user as UserWithNewStudent)?.role === "employer") {
+
+        type EmployerUser = {
+          id: string;
+          email: string;
+          role: string;
+          firstName: string;
+          lastName: string;
+          verifyStatus?: string;
+        };
+        const employerUser = user as EmployerUser;
+        token.role = employerUser.role;
+        token.employerId = employerUser.id;
+        token.firstName = employerUser.firstName;
+        token.lastName = employerUser.lastName;
+        if (employerUser.verifyStatus) {
+          token.verifyStatus = employerUser.verifyStatus;
+        }
+      } else if (token.role === "employer" && token.employerId) {
+
       }
       if ((user as unknown as { studentId?: string })?.studentId) {
         token.studentId = (user as unknown as { studentId: string }).studentId
@@ -117,13 +152,18 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      console.log("Session callback: session before:", session, "token:", token)
+      //console.log("Session callback: session before:", session, "token:", token)
       if (!session.user) {
         session.user = {}
       }
       (session.user as { role?: string }).role = token.role as string
       if (token.role === "employer" && token.employerId) {
         (session.user as { employerId?: string }).employerId = token.employerId as string
+        (session.user as { firstName?: string }).firstName = token.firstName as string
+        (session.user as { lastName?: string }).lastName = token.lastName as string
+        if (token.verifyStatus) {
+          (session.user as { verifyStatus?: string }).verifyStatus = token.verifyStatus as string
+        }
       }
       if (token.role === "student" && token.studentId) {
         (session.user as { studentId?: string }).studentId = token.studentId as string
@@ -149,7 +189,7 @@ export const authOptions: NextAuthOptions = {
       if (token.role === "student" && "newStudent" in token) {
         (session.user as { newStudent?: boolean }).newStudent = token.newStudent as boolean
       }
-      console.log("Session callback: session after:", session)
+console.log("Session callback: session after:", session)
       return session
     },
   },

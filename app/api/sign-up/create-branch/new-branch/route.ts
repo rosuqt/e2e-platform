@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: newBranch, error: insertError } = await supabase
+    const { error: insertError } = await supabase
       .from("pending_branches")
       .insert({
         company_id: companyId,
@@ -45,17 +45,43 @@ export async function POST(req: NextRequest) {
         street,
         province,
         exact_address: exactAddress,
-        main_branch: false, 
-      })
-      .select()
-      .single();
+        main_branch: false,
+      });
 
     if (insertError) {
       console.error("Error inserting new branch:", insertError); 
       return NextResponse.json({ message: "Error creating branch.", details: insertError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ branch: newBranch }, { status: 200 });
+    const { data: registeredBranch, error: regError } = await supabase
+      .from("registered_branches")
+      .insert({
+        company_id: companyId,
+        branch_name: normalizedBranchName,
+        branch_phone: branchPhone,
+        email_domain: branchEmailDomain,
+        country,
+        city,
+        street,
+        province,
+        exact_address: exactAddress,
+        main_branch: false,
+      })
+      .select()
+      .single();
+
+    if (regError) {
+      console.error("Error moving branch to registered:", regError); 
+      return NextResponse.json({ message: "Error moving branch to registered.", details: regError.message }, { status: 500 });
+    }
+
+    await supabase
+      .from("pending_branches")
+      .delete()
+      .eq("company_id", companyId)
+      .eq("branch_name", normalizedBranchName);
+
+    return NextResponse.json({ branch: registeredBranch }, { status: 200 });
   } catch (error) {
     if (error instanceof Error) {
       console.error("Error creating branch:", error.message);

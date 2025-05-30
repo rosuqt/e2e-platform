@@ -3,6 +3,14 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import supabase from "../../../../src/lib/supabase";
 
+interface ApplicationQuestion {
+    question: string;
+    type: string;
+    options?: string[];
+    autoReject: boolean;
+    correctAnswer?: string | string[];
+}
+
 interface FormData {
     jobTitle: string;
     location: string;
@@ -18,7 +26,7 @@ interface FormData {
     jobSummary: string;
     applicationDeadline: { date: string; time: string };
     maxApplicants: number | null;
-    applicationQuestions: string[];
+    applicationQuestions: ApplicationQuestion[];
     perksAndBenefits: string[];
     responsibilities: string[];
 }
@@ -144,7 +152,6 @@ export async function POST(request: Request) {
                         ? `${formData.applicationDeadline.date} ${formData.applicationDeadline.time || ""}`
                         : null,
                     max_applicants: formData.maxApplicants,
-                    application_questions: JSON.stringify(formData.applicationQuestions),
                     perks_and_benefits: formData.perksAndBenefits,
                     responsibilities: formData.responsibilities,
                     verification_tier: formData.verificationTier,
@@ -155,6 +162,53 @@ export async function POST(request: Request) {
             if (error) {
                 console.error("Database error while publishing job:", error.message);
                 return NextResponse.json({ error: "Database error", details: error.message }, { status: 500 });
+            }
+
+            if (formData.applicationQuestions && formData.applicationQuestions.length > 0 && data?.id) {
+                for (const q of formData.applicationQuestions) {
+                    const dbType = q.type === "yesno" ? "single" : q.type;
+                    const { data: questionRow, error: questionError } = await supabase
+                        .from("application_questions")
+                        .insert({
+                            job_id: data.id,
+                            question: q.question,
+                            type: dbType,
+                            auto_reject: q.autoReject,
+                            correct_answer:
+                                q.correctAnswer !== undefined && q.correctAnswer !== "" && q.autoReject
+                                    ? Array.isArray(q.correctAnswer)
+                                        ? (q.correctAnswer.length > 0 ? JSON.stringify(q.correctAnswer) : null)
+                                        : (q.correctAnswer ? q.correctAnswer : null)
+                                    : null,
+                        })
+                        .select("id")
+                        .single();
+
+                    if (questionError) {
+                        console.error("Error inserting application_question:", questionError);
+                        return NextResponse.json({ error: "Database error", details: questionError.message }, { status: 500 });
+                    }
+
+                    if (q.options && q.options.length > 0 && questionRow?.id) {
+                        const optionsToInsert = q.options.map((opt) => ({
+                            question_id: questionRow.id,
+                            option_value: opt,
+                            is_correct: q.autoReject
+                                ? (Array.isArray(q.correctAnswer)
+                                    ? (q.correctAnswer as string[]).includes(opt)
+                                    : q.correctAnswer === opt)
+                                : false,
+                        }));
+                        const { error: optionsError } = await supabase
+                            .from("question_options")
+                            .insert(optionsToInsert);
+
+                        if (optionsError) {
+                            console.error("Error inserting question_options:", optionsError);
+                            return NextResponse.json({ error: "Database error", details: optionsError.message }, { status: 500 });
+                        }
+                    }
+                }
             }
 
             console.log("Job posted successfully");

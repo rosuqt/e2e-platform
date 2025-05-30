@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { TextField, MenuItem, Button, Switch, Tabs, Tab, Tooltip, CircularProgress } from "@mui/material"
+import { TextField, MenuItem, Button, Switch, Tabs, Tab, Tooltip, CircularProgress, Autocomplete, Popper, Box } from "@mui/material"
 import { InfoOutlined } from "@mui/icons-material";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Autocomplete from "@mui/material/Autocomplete";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 import { countries } from "../data/countries";
 import Image from "next/image";
+
 
 const shakeAnimation = {
   initial: { x: 0 },
@@ -22,16 +23,36 @@ const validateLength = (field: string, value: string, min: number, max: number) 
   return "";
 };
 
+type AddressData = {
+  address: string;
+  contactEmail: string;
+  contactNumber: string;
+  suiteUnitFloor: string;
+  businessPark: string;
+  buildingName: string;
+  countryCode: string;
+};
+
+type AddressErrors = {
+  contactEmail: string;
+  contactNumber: string;
+  countryCode: string;
+  address: string; 
+};
+
 export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?: { companyName: string; companyBranch: string }) => void }) {
   const [activeTab, setActiveTab] = useState(0)
   const [isNextDisabled, setIsNextDisabled] = useState(false)
   const [noBranches] = useState(false)
   const [companyNameError, setCompanyNameError] = useState("");
-  const [addressErrors, setAddressErrors] = useState({
+  const [addressErrors, setAddressErrors] = useState<AddressErrors>({
     contactEmail: "",
     contactNumber: "",
+    countryCode: "",
+    address: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showAddressErrors, setShowAddressErrors] = useState(false);
   
   const [formData, setFormData] = useState({
     companyName: "",
@@ -42,14 +63,14 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
     companyWebsite: "",
     multipleBranch: true, 
     address: {
-      country: "",
-      city: "",
-      street: "",
-      province: "",
+      address: "",
       contactEmail: "",
       contactNumber: "",
-      exactAddress: "",
-    },
+      suiteUnitFloor: "",
+      businessPark: "",
+      buildingName: "",
+      countryCode: "",
+    } as AddressData,
   })
 
   useEffect(() => {
@@ -154,17 +175,66 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
 
     if (activeTab === 1) {
       const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.address.contactEmail);
-      const numberValid = /^[0-9+\-()\s]+$/.test(formData.address.contactNumber);
+      const countryCode = formData.address.countryCode;
+      const phone = formData.address.contactNumber;
+      let numberValid = false;
+      if (countryCode === "63" || countryCode === "+63") {
+        numberValid = /^9\d{9}$/.test(phone);
+      } else {
+        numberValid = /^\d{7,15}$/.test(phone);
+      }
+
+      const requiredFields = [
+        { key: "address", label: "Address" },
+        { key: "contactEmail", label: "Contact Email" },
+        { key: "contactNumber", label: "Contact Number" },
+        { key: "countryCode", label: "Country Code" },
+      ] as const;
+      let missing = false;
+      const newAddressErrors: { contactEmail: string; contactNumber: string; countryCode: string; address: string; [key: string]: string } = {
+        contactEmail: addressErrors.contactEmail ?? "",
+        contactNumber: addressErrors.contactNumber ?? "",
+        countryCode: addressErrors.countryCode ?? "",
+        address: addressErrors.address ?? "",
+      };
+      requiredFields.forEach(field => {
+        const value = (formData.address as Record<string, string>)[field.key] ?? "";
+        if (!value) {
+          newAddressErrors[field.key] = `${field.label} is required`;
+          missing = true;
+        } else {
+          newAddressErrors[field.key] = "";
+        }
+      });
+      newAddressErrors.contactEmail = emailValid ? "" : "Invalid email format";
+      if (!countryCode) {
+        newAddressErrors.countryCode = "Country code required";
+        missing = true;
+      }
+      if (countryCode === "63" || countryCode === "+63") {
+        newAddressErrors.contactNumber = /^9\d{9}$/.test(phone)
+          ? ""
+          : "PH mobile must start with 9 and be 10 digits (e.g. 9123456789)";
+      } else {
+        newAddressErrors.contactNumber = /^\d{7,15}$/.test(phone)
+          ? ""
+          : "Invalid phone number";
+      }
+      if (!emailValid || !numberValid) missing = true;
 
       setAddressErrors({
-        contactEmail: emailValid ? "" : "Invalid email format",
-        contactNumber: numberValid ? "" : "Invalid phone number format",
+        contactEmail: newAddressErrors.contactEmail,
+        contactNumber: newAddressErrors.contactNumber,
+        countryCode: newAddressErrors.countryCode,
+        address: newAddressErrors.address,
       });
 
-      if (!emailValid || !numberValid) {
+      if (missing || !emailValid || !numberValid) {
+        setShowAddressErrors(true);
         setIsLoading(false);
         return;
       }
+      setShowAddressErrors(false);
     }
 
     setIsNextDisabled(false);
@@ -185,23 +255,6 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
       }
       setIsLoading(false);
     }, 300);
-  }
-
-  const handleSkipAddress = () => {
-    setFormData({
-      ...formData,
-      address: {
-        country: "",
-        city: "",
-        street: "",
-        province: "",
-        contactEmail: "",
-        contactNumber: "",
-        exactAddress: "",
-      },
-    });
-    console.log("Address section skipped");
-    setActiveTab(2);
   }
 
   const handleSubmit = async () => {
@@ -265,13 +318,36 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 return;
               }
             }
+            if (newValue === 2) {
+              const addressValid =
+                !!formData.address.address &&
+                !!formData.address.contactEmail &&
+                /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.address.contactEmail) &&
+                !!formData.address.contactNumber &&
+                /^[0-9+\-()\s]+$/.test(formData.address.contactNumber);
+              if (!addressValid) {
+                setShowAddressErrors(true);
+                setIsNextDisabled(true);
+                return;
+              }
+            }
             setActiveTab(newValue);
           }}
           className="mb-4"
         >
           <Tab label="Company Information" />
           <Tab label="Company Address" disabled={activeTab === 0 && isNextDisabled} />
-          <Tab label="Preview" disabled={activeTab === 0 && isNextDisabled} />
+          <Tab
+            label="Preview"
+            disabled={
+              (activeTab === 0 && isNextDisabled) ||
+              !formData.address.address ||
+              !formData.address.contactEmail ||
+              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.address.contactEmail) ||
+              !formData.address.contactNumber ||
+              !/^[0-9+\-()\s]+$/.test(formData.address.contactNumber)
+            }
+          />
         </Tabs>
 
         {activeTab === 0 && (
@@ -287,7 +363,8 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
               >
                 <TextField
                   id="companyName"
-                  label="Company Name *"
+                  label={<span>Company Name <span style={{ color: "red"  }}>*</span></span>}
+                  placeholder="Enter the full name of the company"
                   variant="outlined"
                   fullWidth
                   value={formData.companyName}
@@ -302,9 +379,15 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                       "& fieldset": {
                         borderColor: companyNameError || (isNextDisabled && !formData.companyName) ? "red" : "darkgray", 
                       },
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
                     },
                     "& .MuiInputLabel-root": {
                       color: companyNameError || (isNextDisabled && !formData.companyName) ? "red" : "gray",
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
                     },
                   }}
                 />
@@ -315,7 +398,8 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
               >
                 <TextField
                   id="companyBranch"
-                  label="Company Branch Name *"
+                  label={<span>Company Branch Name <span style={{ color: "red" }}>*</span></span>}
+                  placeholder="Enter the main branch name"
                   variant="outlined"
                   fullWidth
                   value={noBranches ? "Headquarters" : formData.companyBranch}
@@ -326,6 +410,18 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                     companyNameError || 
                     (isNextDisabled && !formData.companyBranch ? "Company Branch Name is required" : "")
                   }
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
+                    },
+                  }}
                 />
                 <div className="flex items-center mt-2">
                   <Tooltip title="This will be the main branch in the app, used as the primary reference point. It doesn't necessarily reflect the actual main office of the company." arrow>
@@ -363,7 +459,8 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 <TextField
                   id="companyIndustry"
                   select
-                  label="Industry *"
+                  label={<span>Industry <span style={{ color: "red" }}>*</span></span>}
+                  placeholder="Select the industry"
                   variant="outlined"
                   fullWidth
                   value={formData.companyIndustry}
@@ -375,6 +472,18 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                   }}
                   error={isNextDisabled && !formData.companyIndustry}
                   helperText={isNextDisabled && !formData.companyIndustry ? "Industry is required" : ""}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
+                    },
+                  }}
                 >
                   <MenuItem value="technology">Technology</MenuItem>
                   <MenuItem value="healthcare">Healthcare</MenuItem>
@@ -391,12 +500,25 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                   id="companySize"
                   select
                   label="Company Size (Optional)"
+                  placeholder="Select company size"
                   variant="outlined"
                   fullWidth
                   value={formData.companySize}
                   onChange={(e) =>
                     setFormData({ ...formData, companySize: e.target.value })
                   }
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
+                    },
+                  }}
                 >
                   <MenuItem value="1-10">1-10 employees</MenuItem>
                   <MenuItem value="11-50">11-50 employees</MenuItem>
@@ -421,10 +543,23 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                     borderBottomRightRadius: 0,
                   },
                 }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: "#2563eb",
+                    },
+                  },
+                  "& .MuiInputLabel-root": {
+                    "&:hover": {
+                      color: "#2563eb",
+                    },
+                  },
+                }}
               />
               <TextField
                 id="companyEmailDomain"
                 label="Company Email Domain (if applicable)"
+                placeholder="e.g. company.com"
                 variant="outlined"
                 fullWidth
                 value={formData.companyEmailDomain.startsWith("@") ? formData.companyEmailDomain.slice(1) : formData.companyEmailDomain}
@@ -445,29 +580,21 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                     borderBottomLeftRadius: 0,
                   },
                 }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: "#2563eb",
+                    },
+                  },
+                  "& .MuiInputLabel-root": {
+                    "&:hover": {
+                      color: "#2563eb",
+                    },
+                  },
+                }}
               />
             </div>
             <label htmlFor="companyEmailDomain" className="text-sm text-gray-600">Provide the email domain used by the company (e.g company.com)</label>
-            <TextField
-              id="companyWebsite"
-              label="Company Website (if applicable)"
-              variant="outlined"
-              fullWidth
-              value={formData.companyWebsite}
-              onChange={handleChange}
-              error={
-                !!formData.companyWebsite &&
-                !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyWebsite)
-              }
-              helperText={
-                formData.companyWebsite &&
-                !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyWebsite)
-                  ? "Invalid website format (e.g., example.com)"
-                  : ""
-              }
-            />
-            <label htmlFor="companyWebsite" className="text-sm text-gray-600">Enter the company&apos;s official website URL</label>
-
             <div className="flex justify-end">
               <Button
                 variant="contained"
@@ -489,103 +616,216 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="grid grid-cols-2 gap-4">
+            <div className="w-full">
+              <AddressAutocomplete
+                value={formData.address.address}
+                onChange={(val: string) =>
+                  setFormData({
+                    ...formData,
+                    address: { ...formData.address, address: val },
+                  })
+                }
+                error={!!(addressErrors as Record<string, string>).address || (showAddressErrors && !formData.address.address)}
+                helperText={
+                  (addressErrors as Record<string, string>).address ||
+                  ((showAddressErrors && !formData.address.address) ? "Address is required" : "")
+                }
+              />
+              <p className="text-xs text-gray-500 mt-1">Enter the full address of the company.</p>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
               <div>
-                <Autocomplete
-                  id="companyCountry"
-                  options={countries}
-                  getOptionLabel={(option) => option.label}
-                  value={countries.find((country) => country.label === formData.address.country) || null}
-                  onChange={(event, newValue) =>
+                <TextField
+                  id="suiteUnitFloor"
+                  label="Suite / Unit / Floor (optional)"
+                  placeholder="e.g. Suite 401, 3rd Floor"
+                  variant="outlined"
+                  fullWidth
+                  value={formData.address.suiteUnitFloor || ""}
+                  onChange={e =>
                     setFormData({
                       ...formData,
-                      address: { ...formData.address, country: newValue ? newValue.label : "" },
+                      address: { ...formData.address, suiteUnitFloor: e.target.value },
                     })
                   }
-                  renderOption={(props, option) => (
-                    <li
-                      {...props}
-                      style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                    >
-                      <Image
-                        loading="lazy"
-                        width={20}
-                        height={15}
-                        src={`https://flagcdn.com/w20/${option.code.toLowerCase()}.png`}
-                        alt=""
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
+                    },
+                  }}
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter suite, unit, or floor</p>
+              </div>
+              <div>
+                <TextField
+                  id="businessPark"
+                  label="Landmark"
+                  placeholder="e.g. Technohub Business Park"
+                  variant="outlined"
+                  fullWidth
+                  value={formData.address.businessPark || ""}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      address: { ...formData.address, businessPark: e.target.value },
+                    })
+                  }
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
+                    },
+                  }}
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter business park or landmark</p>
+              </div>
+              <div>
+                <TextField
+                  id="buildingName"
+                  label="Building Name"
+                  placeholder="e.g. Cyber One Tower"
+                  variant="outlined"
+                  fullWidth
+                  value={formData.address.buildingName || ""}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      address: { ...formData.address, buildingName: e.target.value },
+                    })
+                  }
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
+                    },
+                  }}
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter building name</p>
+              </div>
+            </div>
+            <div className="w-full flex flex-col gap-4">
+              <div>
+                <div className="flex gap-2 w-full">
+                  <Autocomplete
+                    id="companyCountryCode"
+                    options={countries}
+                    autoHighlight
+                    disablePortal
+                    PopperComponent={(props) => <Popper {...props} placement="bottom-start" />}
+                    getOptionLabel={(option) => `${option.code} (+${option.phone})`}
+                    renderOption={(props, option) => {
+                      const { key, ...optionProps } = props;
+                      return (
+                        <Box
+                          key={key}
+                          component="li"
+                          sx={{ '& > img': { mr: 2, flexShrink: 0 } }}
+                          {...optionProps}
+                        >
+                          <Image
+                            loading="lazy"
+                            width={20}
+                            height={15}
+                            src={`https://flagcdn.com/w20/${option.code.toLowerCase()}.png`}
+                            alt=""
+                          />
+                          {option.code} (+{option.phone})
+                        </Box>
+                      );
+                    }}
+                    value={countries.find((c) => c.phone === formData.address.countryCode) || null}
+                    onChange={(event, newValue) => {
+                      setFormData({
+                        ...formData,
+                        address: { ...formData.address, countryCode: newValue?.phone || "" },
+                      });
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Country Code *"
+                        placeholder="Select country code"
+                        error={!!addressErrors.countryCode}
+                        helperText={addressErrors.countryCode}
+                        sx={{
+                          minWidth: 120,
+                          "& .MuiOutlinedInput-root": {
+                            "&:hover fieldset": {
+                              borderColor: "#2563eb",
+                            },
+                          },
+                          "& .MuiInputLabel-root": {
+                            "&:hover": {
+                              color: "#2563eb",
+                            },
+                          },
+                        }}
                       />
-                      {option.label}
-                    </li>
-                  )}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Country"
-                      variant="outlined"
-                      fullWidth
-                    />
-                  )}
-                />
-                <p className="text-xs text-gray-500 mt-1">Select the country where the company is located.</p>
+                    )}
+                    sx={{ minWidth: 120, flex: "0 0 180px" }}
+                  />
+                  <TextField
+                    id="companyContactNumber"
+                    label={<span>Contact Number <span style={{ color: "red" }}>*</span></span>}
+                    placeholder="Enter company phone number"
+                    variant="outlined"
+                    value={formData.address.contactNumber}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        address: {
+                          ...formData.address,
+                          contactNumber: e.target.value.replace(/\D/g, ""),
+                        },
+                      })
+                    }
+                    error={!!(addressErrors as Record<string, string>).contactNumber || (showAddressErrors && !formData.address.contactNumber)}
+                    helperText={
+                      (addressErrors as Record<string, string>).contactNumber ||
+                      ((showAddressErrors && !formData.address.contactNumber) ? "Contact Number is required" : "")
+                    }
+                    inputProps={{ maxLength: 15, minLength: 7 }}
+                    className="flex-1"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "&:hover fieldset": {
+                          borderColor: "#2563eb",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        "&:hover": {
+                          color: "#2563eb",
+                        },
+                      },
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Provide a phone number for contacting the company.</p>
               </div>
-              <div>
-                <TextField
-                  id="companyCity"
-                  label="City/Region"
-                  variant="outlined"
-                  fullWidth
-                  value={formData.address.city}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, city: e.target.value },
-                    })
-                  }
-                />
-                <p className="text-xs text-gray-500 mt-1">Enter the city or region of the company&apos;s address.</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <TextField
-                  id="companyStreet"
-                  label="Street"
-                  variant="outlined"
-                  fullWidth
-                  value={formData.address.street}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, street: e.target.value },
-                    })
-                  }
-                />
-                <p className="text-xs text-gray-500 mt-1">Provide the street name or number of the company&apos;s address.</p>
-              </div>
-              <div>
-                <TextField
-                  id="companyProvince"
-                  label="Province/State"
-                  variant="outlined"
-                  fullWidth
-                  value={formData.address.province}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, province: e.target.value },
-                    })
-                  }
-                />
-                <p className="text-xs text-gray-500 mt-1">Enter the province or state of the company&apos;s address.</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div>
                 <TextField
                   id="companyContactEmail"
-                  label="Contact Email"
+                  label={<span>Contact Email <span style={{ color: "red" }}>*</span></span>}
+                  placeholder="Enter company contact email"
                   type="email"
                   variant="outlined"
                   fullWidth
@@ -596,48 +836,62 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                       address: { ...formData.address, contactEmail: e.target.value },
                     })
                   }
-                  error={!!addressErrors.contactEmail}
-                  helperText={addressErrors.contactEmail}
+                  error={!!(addressErrors as Record<string, string>).contactEmail || (showAddressErrors && !formData.address.contactEmail)}
+                  helperText={
+                    (addressErrors as Record<string, string>).contactEmail ||
+                    ((showAddressErrors && !formData.address.contactEmail) ? "Contact Email is required" : "")
+                  }
+                  sx={{
+                    mt: 0,
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
+                    },
+                  }}
                 />
                 <p className="text-xs text-gray-500 mt-1">Provide an email address for contacting the company.</p>
               </div>
-              <div>
-                <TextField
-                  id="companyContactNumber"
-                  label="Contact Number"
-                  variant="outlined"
-                  fullWidth
-                  value={formData.address.contactNumber}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, contactNumber: e.target.value },
-                    })
-                  }
-                  error={!!addressErrors.contactNumber}
-                  helperText={addressErrors.contactNumber}
-                />
-                <p className="text-xs text-gray-500 mt-1">Provide a phone number for contacting the company.</p>
-              </div>
             </div>
-
             <div>
               <TextField
-                id="companyExactAddress"
-                label="Exact Address"
+                id="companyWebsite"
+                label="Company Website (if applicable)"
+                placeholder="e.g. example.com"
                 variant="outlined"
                 fullWidth
-                value={formData.address.exactAddress}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    address: { ...formData.address, exactAddress: e.target.value },
-                  })
+                value={formData.companyWebsite}
+                onChange={handleChange}
+                error={
+                  !!formData.companyWebsite &&
+                  !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyWebsite)
                 }
+                helperText={
+                  formData.companyWebsite &&
+                  !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyWebsite)
+                    ? "Invalid website format (e.g., example.com)"
+                    : ""
+                }
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "&:hover fieldset": {
+                      borderColor: "#2563eb",
+                    },
+                  },
+                  "& .MuiInputLabel-root": {
+                    "&:hover": {
+                      color: "#2563eb",
+                    },
+                  },
+                }}
               />
-              <p className="text-xs text-gray-500 mt-1">Provide the full exact address of the company.</p>
+              <label htmlFor="companyWebsite" className="text-sm text-gray-600">Enter the company&apos;s official website URL</label>
             </div>
-
             <div className="flex justify-between items-center">
               <Button
                 variant="outlined"
@@ -648,12 +902,6 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 Back
               </Button>
               <div className="flex items-center gap-4">
-                <button
-                  onClick={handleSkipAddress}
-                  className="text-blue-600 hover:underline"
-                >
-                  Skip
-                </button>
                 <Button
                   variant="contained"
                   color="primary"
@@ -716,20 +964,20 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 <h4 className="text-lg font-medium text-blue-600 mb-4">Address Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                   <div>
-                    <p className="font-semibold">Country:</p>
-                    <p>{formData.address.country || "Not Provided"}</p>
+                    <p className="font-semibold">Address:</p>
+                    <p>{formData.address.address || "Not Provided"}</p>
                   </div>
                   <div>
-                    <p className="font-semibold">City:</p>
-                    <p>{formData.address.city || "Not Provided"}</p>
+                    <p className="font-semibold">Suite / Unit / Floor:</p>
+                    <p>{formData.address.suiteUnitFloor || "Not Provided"}</p>
                   </div>
                   <div>
-                    <p className="font-semibold">Street:</p>
-                    <p>{formData.address.street || "Not Provided"}</p>
+                    <p className="font-semibold">Business Park / Landmark:</p>
+                    <p>{formData.address.businessPark || "Not Provided"}</p>
                   </div>
                   <div>
-                    <p className="font-semibold">Province:</p>
-                    <p>{formData.address.province || "Not Provided"}</p>
+                    <p className="font-semibold">Building Name:</p>
+                    <p>{formData.address.buildingName || "Not Provided"}</p>
                   </div>
                   <div>
                     <p className="font-semibold">Contact Email:</p>
@@ -737,11 +985,12 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                   </div>
                   <div>
                     <p className="font-semibold">Contact Number:</p>
-                    <p>{formData.address.contactNumber || "Not Provided"}</p>
-                  </div>
-                  <div className="col-span-1 md:col-span-2">
-                    <p className="font-semibold">Exact Address:</p>
-                    <p>{formData.address.exactAddress || "Not Provided"}</p>
+                    <p>
+                      {formData.address.countryCode
+                        ? `+${formData.address.countryCode} `
+                        : ""}
+                      {formData.address.contactNumber || "Not Provided"}
+                    </p>
                   </div>
                 </div>
               </div>

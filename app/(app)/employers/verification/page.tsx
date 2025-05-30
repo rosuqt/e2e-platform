@@ -5,7 +5,7 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       <header className="bg-white border-b">
         <div className="container mx-auto py-4">
-          <h1 className="text-2xl font-bold">Job Platform</h1>
+          <h1 className="text-2xl font-bold">TEst Seekr</h1>
         </div>
       </header>
       <main className="flex-1 container mx-auto py-12">

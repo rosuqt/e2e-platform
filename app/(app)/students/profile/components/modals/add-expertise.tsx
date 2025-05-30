@@ -134,7 +134,7 @@ export default function AddExpertiseModal({
     setSaving(true);
     const studentId = (session?.user as { studentId?: string })?.studentId;
     if (studentId) {
-      await fetch("/api/students/student-profile/modal", {
+      await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

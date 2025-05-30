@@ -45,7 +45,7 @@ export async function GET(req: Request) {
 
     const { data: registeredBranches, error: registeredBranchesError } = await supabase
       .from("registered_branches")
-      .select("branch_name")
+      .select("branch_name, email_domain")
       .eq("company_id", company_id);
 
     if (registeredBranchesError) {
@@ -54,7 +54,7 @@ export async function GET(req: Request) {
 
     const { data: pendingBranches, error: pendingBranchesError } = await supabase
       .from("pending_branches")
-      .select("branch_name")
+      .select("branch_name, email_domain")
       .eq("company_id", company_id);
 
     if (pendingBranchesError) {

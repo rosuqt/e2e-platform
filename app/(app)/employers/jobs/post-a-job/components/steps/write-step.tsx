@@ -112,6 +112,8 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
           <div className="bg-white/20 p-2 rounded-lg">
             <FileText className="h-5 w-5 text-white" />
           </div>
+
+          
           <p className="text-sm">Write clear, detailed job descriptions with AI based on your job title.</p>
         </div>
         <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full border-none shadow-lg">

@@ -22,9 +22,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { DashboardHeader, DashboardLayout, DashboardMain, DashboardSection } from "./dashboard-layout"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { useRouter } from "next/navigation"
 
 export default function EmployeeDashboard() {
   const [selectedApplicant, setSelectedApplicant] = useState<number | null>(null)
+  const router = useRouter()
 
   // Mock data for analytics
   const analyticsData = {
@@ -192,6 +194,7 @@ export default function EmployeeDashboard() {
                 <Button
                   size="lg"
                   className="h-12 px-6 bg-white text-blue-600 font-bold shadow-md border border-blue-300 hover:bg-blue-50 hover:shadow-lg"
+                  onClick={() => router.push("/employers/jobs/post-a-job")}
                 >
                   <PlusCircle className="h-5 w-5 mr-2" />
                   <span>Post Job</span>
@@ -470,7 +473,8 @@ export default function EmployeeDashboard() {
                   </Tabs>
                 </CardContent>
                 <CardFooter className="border-t bg-gradient-to-b from-white to-blue-50 p-4">
-                  <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white">
+                  <Button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                  onClick={() => router.push("/employers/jobs/applications")}>
                     View All Applicants
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>

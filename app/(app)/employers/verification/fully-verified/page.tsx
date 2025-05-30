@@ -120,7 +120,7 @@ export default function FullyVerifiedPage() {
                 { name: "Candidate Matches", value: "Locked", included: false },
                 { name: "Invitations", value: "Locked", included: false },
               ]}
-              buttonText="Downgrade"
+              buttonText="Previous"
               buttonDisabled={true}
             />
 
@@ -137,7 +137,7 @@ export default function FullyVerifiedPage() {
                 { name: "Candidate Matches", value: "Unlocked", included: true },
                 { name: "Invitations", value: "Locked", included: false },
               ]}
-              buttonText="Downgrade"
+              buttonText="Previous"
               buttonDisabled={true}
             />
 

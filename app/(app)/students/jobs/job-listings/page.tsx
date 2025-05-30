@@ -31,9 +31,9 @@ export default function JobListingPage() {
     };
   }, []);
 
-  const [selectedJob, setSelectedJob] = useState<number | null>(null)
+  const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
-  const [showProfileColumn, setShowProfileColumn] = useState(true) // NEW STATE
+  const [showProfileColumn, setShowProfileColumn] = useState(true)
 
   const rightSectionRef = useRef<HTMLDivElement | null>(null)
   const leftSectionRef = useRef<HTMLDivElement | null>(null)
@@ -62,8 +62,6 @@ export default function JobListingPage() {
 
 
       </div>
-
-      {/* Main Content Area with 3 columns */}
       <div
         className={`
           flex flex-col md:flex-row h-[calc(100vh-56px)] md:h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100
@@ -72,7 +70,6 @@ export default function JobListingPage() {
         {/* Left Column - User Profile - Hidden on mobile, visible on md and up */}
         {showProfileColumn && (
           <div className="hidden md:block w-80 flex-shrink-0 overflow-y-auto border-r border-blue-200 relative">
-            {/* Toggle button to hide column */}
             <button
               className="absolute top-2 right-2 z-20 bg-white border border-blue-200 rounded-full p-1 shadow hover:bg-blue-50 transition-colors"
               title="Hide Column"
@@ -96,7 +93,7 @@ export default function JobListingPage() {
             <UserProfile />
           </div>
         )}
-        {/* Show button when column is hidden */}
+
         {!showProfileColumn && (
           <div className="hidden md:flex w-6 flex-shrink-0 items-start justify-center pt-4">
             <button
@@ -130,9 +127,9 @@ export default function JobListingPage() {
             ${selectedJob !== null ? "lg:basis-2/3" : ""}
           `}
         >
+
           <JobListings selectedJob={selectedJob} onSelectJob={setSelectedJob} />
         </div>
-
         {/* Right Column - Job Details - Only visible when a job is selected */}
         {selectedJob !== null && (
           <div
@@ -142,7 +139,7 @@ export default function JobListingPage() {
               w-[35%] max-w-[600px]
             `}
           >
-            <JobDetails onClose={() => setSelectedJob(null)} />
+            <JobDetails onClose={() => setSelectedJob(null)} jobId={selectedJob} />
           </div>
         )}
       </div>
@@ -169,14 +166,27 @@ function UserProfile() {
 }
 
 // Job Listings Component
-function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | null) => void; selectedJob: number | null }) {
+function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | null) => void; selectedJob: string | null }) {
+  type Job = { id: string; /* add more fields as needed */ }
   const [showQuickApply, setShowQuickApply] = useState(false);
-  const [currentJobId, setCurrentJobId] = useState<number | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("recommended");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/students/job-listings")
+      .then(res => res.json())
+      .then(data => {
+        setJobs(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -322,19 +332,22 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
           </div>
         </div>
 
-        <div className="space-y-4 p-4 ">
-          {[0, 1, 2, 3, 4].map((id) => (
-            <JobCard
-              key={id}
-              id={id}
-              isSelected={selectedJob === id}
-              onSelect={() => onSelectJob(selectedJob === id ? null : id)}
-              onQuickApply={() => {
-                setCurrentJobId(id);
-                setShowQuickApply(true);
-              }}
-            />
-          ))}
+        <div className="space-y-4 p-4 mb-20 ">
+          {loading ? (
+            <div>Loading...</div>
+          ) : (
+            jobs.map((job) => (
+              <JobCard
+                key={job.id}
+                id={job.id}
+                isSelected={selectedJob === job.id}
+                onSelect={() => onSelectJob(selectedJob === job.id ? null : job.id)}
+                onQuickApply={() => {
+                  setShowQuickApply(true);
+                }}
+              />
+            ))
+          )}
         </div>
       </div>
 
@@ -345,13 +358,16 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
         )}
 
       {showQuickApply &&
-        createPortal(<QuickApplyModal jobId={currentJobId!} onClose={() => setShowQuickApply(false)} />, document.body)}
+        createPortal(
+          <QuickApplyModal onClose={() => setShowQuickApply(false)} />,
+          document.body
+        )}
     </div>
   );
 }
 
 // Quick Apply Modal
-function QuickApplyModal({ jobId, onClose }: { jobId: number; onClose: () => void }) {
+function QuickApplyModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState(1)
   const totalSteps = 3
 
@@ -392,13 +408,7 @@ function QuickApplyModal({ jobId, onClose }: { jobId: number; onClose: () => voi
               <span className="sr-only">Close</span>
             </Button>
           </div>
-          <p className="text-blue-100 text-sm">
-            {jobId === 0
-              ? "UI/UX Designer at Fb Mark-it Place"
-              : jobId === 1
-                ? "Frontend Developer at Meta"
-                : "Product Manager at Google"}
-          </p>
+       
 
           {/* Progress bar */}
           <div className="mt-4 h-1.5 bg-white/30 rounded-full overflow-hidden">

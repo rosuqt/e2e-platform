@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../../src/lib/utils";
 import { StatusDropdown } from "./status-dropdown";
 import { StatusIcon } from "./status-icon";
+import Skeleton from "@mui/material/Skeleton";
 
 type Status = "active" | "idle" | "unavailable";
 
@@ -18,6 +19,13 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
   const [expanded, setExpanded] = useState(true);
   const [status, setStatus] = useState<Status>("active");
   const [hoveredItem, setHoveredItem] = useState<number | null>(null);
+  const [studentName, setStudentName] = useState<string | null>(null);
+  const [profileImg, setProfileImg] = useState<string | null>(null);
+  const [course, setCourse] = useState<string | null>(null);
+  const [jobTitle, setJobTitle] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [role, setRole] = useState<"student" | "employer" | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (onToggle) {
@@ -32,6 +40,76 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
       onToggle(newExpandedState);
     }
   };
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      let detailsRes: Response | null = null;
+      try {
+        detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" });
+        if (detailsRes.ok) {
+          setRole("employer");
+          const { first_name, last_name, email, job_title } = await detailsRes.json();
+          setStudentName(
+            first_name && last_name
+              ? `${first_name} ${last_name}`
+              : first_name || last_name || null
+          );
+          setEmail(email || null);
+          setJobTitle(job_title || null);
+          setProfileImg(null);
+          setCourse(null);
+          setLoading(false);
+          return;
+        }
+      } catch {}
+      try {
+        detailsRes = await fetch("/api/students/get-student-details", { credentials: "include" });
+        if (detailsRes.ok) {
+          setRole("student");
+          const { first_name, last_name, course, profile_img } = await detailsRes.json();
+          setStudentName(
+            first_name && last_name
+              ? `${first_name} ${last_name}`
+              : null
+          );
+          setCourse(course || null);
+          setJobTitle(null);
+          setEmail(null);
+
+          if (profile_img) {
+            try {
+              const signedRes = await fetch("/api/students/get-signed-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bucket: "user.avatars", path: profile_img }),
+                credentials: "include",
+              });
+              if (signedRes.ok) {
+                const { signedUrl } = await signedRes.json();
+                setProfileImg(signedUrl);
+              } else {
+                setProfileImg(null);
+              }
+            } catch {
+              setProfileImg(null);
+            }
+          } else {
+            setProfileImg(null);
+          }
+          setLoading(false);
+          return;
+        }
+      } catch {}
+      setRole(null);
+      setStudentName(null);
+      setEmail(null);
+      setJobTitle(null);
+      setProfileImg(null);
+      setCourse(null);
+      setLoading(false);
+    })();
+  }, []);
 
   return (
     <div className="flex">
@@ -110,8 +188,25 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
           )}
         >
           <motion.div className="relative" whileHover={{ scale: 1.05 }} layout>
-            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl font-bold shadow-lg">
-              KR
+            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl font-bold shadow-lg overflow-hidden">
+              {loading ? (
+                <Skeleton variant="circular" width={48} height={48} />
+              ) : profileImg ? (
+                <img
+                  src={profileImg}
+                  alt="Profile"
+                  className="w-12 h-12 object-cover rounded-full"
+                  onError={e => { e.currentTarget.src = ""; }}
+                />
+              ) : (
+                (studentName
+                  ? studentName
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                  : "?")
+              )}
             </div>
             <motion.div className="absolute -top-1 -right-1" layout>
               <StatusIcon status={status} size="sm" />
@@ -127,8 +222,20 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                 transition={{ duration: 0.3, ease: "easeOut" }}
                 className="ml-3 overflow-hidden"
               >
-                <div className="font-medium">Kemly Rose</div>
-                <div className="text-xs text-white/70">BS-Information Technology</div>
+                {loading ? (
+                  <Skeleton variant="text" width={120} height={24} />
+                ) : (
+                  <div className="font-medium">
+                    {studentName || "Full Name"}
+                  </div>
+                )}
+                <div className="text-xs text-white/70">
+                  {loading
+                    ? <Skeleton variant="text" width={140} height={18} />
+                    : role === "employer"
+                      ? (jobTitle || email || "Job Title")
+                      : (course || "Course")}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
