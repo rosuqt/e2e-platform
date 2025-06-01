@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { MdWorkOutline, MdStarOutline, MdContactMail, MdOutlineEmojiObjects } from "react-icons/md"
 import { FaFacebook, FaLinkedin, FaRegBookmark, FaTwitter, FaBookmark, FaGithub, FaGlobe, FaInstagram, FaYoutube } from "react-icons/fa6";
@@ -20,6 +21,16 @@ import { ExpertiseIcon } from "./data/expertise-icons"
 import { useRouter } from "next/navigation";
 import { FaGraduationCap } from "react-icons/fa";
 import { Tooltip } from "@mui/material";
+
+const colorMap: Record<string, { color: string; textColor: string }> = {
+  "#2563eb": { color: "bg-blue-600", textColor: "text-white" },
+  "#22c55e": { color: "bg-green-500", textColor: "text-white" },
+  "#facc15": { color: "bg-yellow-400", textColor: "text-white" },
+  "#f59e42": { color: "bg-orange-400", textColor: "text-white" },
+  "#ef4444": { color: "bg-red-500", textColor: "text-white" },
+  "#a855f7": { color: "bg-purple-500", textColor: "text-white" },
+  "#64748b": { color: "bg-slate-500", textColor: "text-white" }
+};
 
 export default function AboutPage() {
   const [openAddEducation, setOpenAddEducation] = useState(false);
@@ -169,7 +180,6 @@ export default function AboutPage() {
     }
   };
 
-  // Add delete handlers for resume/cover using userActions route
   const handleDeleteResume = async (idx: number) => {
     const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
     const fileToDelete = uploadedResume[idx];
@@ -184,7 +194,6 @@ export default function AboutPage() {
         fileUrl: fileToDelete.url,
       }),
     });
-    // Refetch uploads after deletion
     fetchUploads();
   };
   const handleDeleteCover = async (idx: number) => {
@@ -201,7 +210,7 @@ export default function AboutPage() {
         fileUrl: fileToDelete.url,
       }),
     });
-    // Refetch uploads after deletion
+
     fetchUploads();
   };
 
@@ -216,14 +225,12 @@ export default function AboutPage() {
     }
     const data = await res.json();
 
-    // Handle multiple resumes
     let resumePaths: string[] = [];
     if (Array.isArray(data.uploaded_resume_url)) {
       resumePaths = data.uploaded_resume_url;
     } else if (typeof data.uploaded_resume_url === "string" && data.uploaded_resume_url) {
       resumePaths = [data.uploaded_resume_url];
     }
-    // Handle multiple cover letters
     let coverPaths: string[] = [];
     if (Array.isArray(data.uploaded_cover_letter_url)) {
       coverPaths = data.uploaded_cover_letter_url;
@@ -324,16 +331,6 @@ export default function AboutPage() {
     github: { label: "GitHub", icon: <FaGithub size={28} />, color: "bg-gray-800", text: "text-white" },
     youtube: { label: "YouTube", icon: <FaYoutube size={28} />, color: "bg-red-500", text: "text-white" },
     website: { label: "Website", icon: <FaGlobe size={28} />, color: "bg-green-200", text: "text-green-700" }
-  };
-
-  const colorMap: Record<string, { color: string; textColor: string }> = {
-    "#2563eb": { color: "bg-blue-600", textColor: "text-white" },
-    "#22c55e": { color: "bg-green-500", textColor: "text-white" },
-    "#facc15": { color: "bg-yellow-400", textColor: "text-white" },
-    "#f59e42": { color: "bg-orange-400", textColor: "text-white" },
-    "#ef4444": { color: "bg-red-500", textColor: "text-white" },
-    "#a855f7": { color: "bg-purple-500", textColor: "text-white" },
-    "#64748b": { color: "bg-slate-500", textColor: "text-white" }
   };
 
   const handleAddEducation = (data: {
@@ -836,13 +833,13 @@ export default function AboutPage() {
                   uploadedResume.map((resume, idx) => (
                     <div key={resume.url} className="flex items-center gap-3 flex-1 border rounded p-2">
                       <div className="w-12 h-12 flex items-center justify-center rounded">
-                        <img
+                        <Image
                           src={getFileIcon(resume.url)}
                           alt="icon"
+                          width={40}
+                          height={40}
                           className="w-10 h-10"
-                          onError={e => {
-                            (e.target as HTMLImageElement).src = "/images/icon/doc.png";
-                          }}
+                          onError={() => {}}
                         />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -905,13 +902,13 @@ export default function AboutPage() {
                   uploadedCover.map((cover, idx) => (
                     <div key={cover.url} className="flex items-center gap-3 flex-1 border rounded p-2">
                       <div className="w-12 h-12 flex items-center justify-center rounded">
-                        <img
+                        <Image
                           src={getFileIcon(cover.url)}
                           alt="icon"
+                          width={40}
+                          height={40}
                           className="w-10 h-10"
-                          onError={e => {
-                            (e.target as HTMLImageElement).src = "/images/icon/doc.png";
-                          }}
+                          onError={() => {}}
                         />
                       </div>
                       <div className="flex-1 min-w-0">

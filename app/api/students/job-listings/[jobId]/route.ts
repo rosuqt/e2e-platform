@@ -10,8 +10,8 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-export async function GET(request: Request, { params }: { params: { jobId: string } }) {
-  const { jobId } = params
+export async function GET(request: Request, { params }: { params: Promise<{ jobId: string }> }) {
+  const { jobId } = await params
 
   const { data, error } = await supabase
     .from('job_postings')

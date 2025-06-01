@@ -7,8 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
   FileText,
-  Search,
-  MessageCircle,
   Mail,
   Phone,
   Download,
@@ -20,7 +18,6 @@ import {
   CheckCircle,
   XCircle,
   Calendar,
-  Send,
   ExternalLink,
   Linkedin,
   Github,
@@ -30,8 +27,31 @@ import Avatar from "@mui/material/Avatar"
 import { Progress } from "@/components/ui/progress"
 import type React from "react"
 
+interface Applicant {
+  application_id: string
+  job_id: string
+  job_title?: string
+  status?: string
+  first_name?: string
+  last_name?: string
+  address?: string
+  experience_years?: string
+  applied_date?: string
+  skills?: string[]
+  education?: { degree: string; school: string; year: string }[]
+  work_history?: { company: string; position: string; duration: string; description: string }[]
+  timeline?: { status: string; date: string; icon: React.JSX.Element; iconBg: string; current?: boolean }[]
+  notes?: string
+  email?: string
+  phone?: string
+  linkedin?: string
+  github?: string
+  portfolio?: string
+  documents?: { name: string; date: string; size: string }[]
+}
+
 interface RecruiterApplicationDetailsProps {
-  applicant: any | null
+  applicant: Applicant | null
   isModalOpen: boolean
   setIsModalOpen: (open: boolean) => void
 }
@@ -43,8 +63,8 @@ export function RecruiterApplicationDetailsModal({
 }: RecruiterApplicationDetailsProps) {
   if (!applicant) return null
 
-  // fallback/mock fields for missing data
   const application = {
+    id: applicant.application_id, 
     name: `${applicant.first_name || "Applicant"} ${applicant.last_name || ""}`.trim(),
     title: applicant.job_title || "Job Applicant",
     status: applicant.status || "New",

@@ -5,7 +5,6 @@ import { motion } from "framer-motion"
 import { User, Book, Sun, Bell, Shield, Globe, FileText, Save, Moon } from "lucide-react"
 import { MenuItem, Select, FormControl, InputLabel } from "@mui/material"
 
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -412,20 +411,22 @@ export default function SettingsPage() {
               </motion.div>
             )}
 
+            {/* Save Button with animation */}
             <motion.div
               className="flex justify-end mt-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.9 }}
             >
-              <Button
+              <motion.button
                 className="bg-gradient-to-r from-blue-500 to-sky-500 text-white px-8 py-6 rounded-2xl font-medium shadow-lg hover:shadow-blue-200/50 transition-all duration-200 flex items-center justify-center"
                 whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.5)" }}
                 whileTap={{ scale: 0.95 }}
+                type="button"
               >
                 <Save className="mr-2 h-5 w-5" />
                 Save Changes
-              </Button>
+              </motion.button>
             </motion.div>
           </div>
         </div>

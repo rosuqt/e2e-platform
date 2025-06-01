@@ -33,7 +33,7 @@ export default function JobListingPage() {
 
   const [selectedJob, setSelectedJob] = useState<number | null>(null)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
-  const [showProfileColumn, setShowProfileColumn] = useState(true) // NEW STATE
+  const [showProfileColumn, setShowProfileColumn] = useState(true) 
 
   const rightSectionRef = useRef<HTMLDivElement | null>(null)
   const leftSectionRef = useRef<HTMLDivElement | null>(null)
@@ -72,7 +72,7 @@ export default function JobListingPage() {
         {/* Left Column - User Profile - Hidden on mobile, visible on md and up */}
         {showProfileColumn && (
           <div className="hidden md:block w-80 flex-shrink-0 overflow-y-auto border-r border-blue-200 relative">
-            {/* Toggle button to hide column */}
+
             <button
               className="absolute top-2 right-2 z-20 bg-white border border-blue-200 rounded-full p-1 shadow hover:bg-blue-50 transition-colors"
               title="Hide Column"
@@ -322,24 +322,40 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
         </div>
 
         <div className="space-y-4 p-4 ">
-          {[0, 1, 2, 3, 4].map((id) => (
-            <JobCard
-              key={id}
-              id={id}
-              isSelected={selectedJob === id}
-              onSelect={() => onSelectJob(selectedJob === id ? null : id)}
-              onQuickApply={() => {
-                setCurrentJobId(id);
-                setShowQuickApply(true);
-              }}
-            />
-          ))}
+          {[0, 1, 2, 3, 4].map((id) => {
+            const job = {
+              id,
+              title: `Job Title ${id + 1}`,
+              company: `Company ${id + 1}`,
+              location: "Metro Manila",
+              salary: "₱30,000/mo",
+              type: "Full-time",
+  
+            };
+            return (
+              <JobCard
+                key={id}
+                id={id}
+                job={job}
+                isSelected={selectedJob === id}
+                onSelect={() => onSelectJob(selectedJob === id ? null : id)}
+                onQuickApply={() => {
+                  setCurrentJobId(id);
+                  setShowQuickApply(true);
+                }}
+              />
+            );
+          })}
         </div>
       </div>
 
       {isFilterOpen &&
         createPortal(
-          <FilterModal onClose={() => setIsFilterOpen(false)} />,
+          <FilterModal
+            onClose={() => setIsFilterOpen(false)}
+            onApply={() => setIsFilterOpen(false)}
+            currentFilters={{}}
+          />,
           document.body
         )}
 

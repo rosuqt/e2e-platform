@@ -25,23 +25,22 @@ import { RecruiterApplicationDetailsModal } from "./recruiter-application-detail
 import { toast } from "react-toastify"
 import Avatar from "@mui/material/Avatar"
 
+type Applicant = {
+  application_id: string
+  job_id: string
+  job_title?: string
+  status?: string
+  first_name?: string
+  last_name?: string
+  address?: string
+  experience_years?: string
+}
+
 export default function RecruiterApplicationTracker() {
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalApplicationId, setModalApplicationId] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
-  type Applicant = {
-    application_id: string
-    job_id: string
-    job_title?: string
-    status?: string
-    first_name?: string
-    last_name?: string
-    address?: string
-    experience_years?: string
-  }
-
   const [applicants, setApplicants] = useState<Applicant[]>([])
   const [filteredApplicants, setFilteredApplicants] = useState<Applicant[]>([])
   const [jobPostings, setJobPostings] = useState<{ id: string; title: string }[]>([])
@@ -457,17 +456,7 @@ function ApplicantCard({
   handleViewDetails,
   handleInviteToInterview,
 }: {
-  applicant: {
-    application_id: string
-    job_id: string
-    job_title?: string
-    status?: string
-    first_name?: string
-    last_name?: string
-    address?: string
-    experience_years?: string
-
-  }
+  applicant: Applicant
   selected: boolean 
   setSelected: () => void
   handleViewDetails: (id: string, e: React.MouseEvent) => void
@@ -543,7 +532,6 @@ function ApplicantCard({
                 className="bg-green-600 hover:bg-green-700 text-xs"
                 onClick={e => {
                   e.stopPropagation()
-                  // Review action placeholder
                 }}
               >
                 Review
@@ -554,7 +542,6 @@ function ApplicantCard({
                 className="text-green-700 border-green-200 hover:bg-green-50 text-xs"
                 onClick={e => {
                   e.stopPropagation()
-                  // Shortlist action placeholder
                 }}
               >
                 Shortlist

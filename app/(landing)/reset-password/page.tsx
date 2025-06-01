@@ -40,7 +40,7 @@ export default function ResetPasswordPage() {
         setError("Your reset link is invalid, expired, or the session is missing. Please request a new password reset email and use the link directly from your email.");
       }
     });
-  }, []);
+  }, [supabase.auth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

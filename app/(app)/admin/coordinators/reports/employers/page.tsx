@@ -20,16 +20,9 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import Image from "next/image"
+import { AlertDialogHeader, AlertDialogFooter } from "@/components/ui/alert-dialog"
+import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from "@radix-ui/react-alert-dialog"
 
 interface Report {
   id: number
@@ -147,7 +140,6 @@ export default function ReportedEmployers() {
     console.log(`Accepting report #${selectedReport.id} with reason: ${actionReason}`)
     setIsAcceptDialogOpen(false)
     setIsViewDialogOpen(false)
-    // In a real app, you would update the report status in the database
   }
 
   const handleRejectReport = () => {
@@ -155,7 +147,7 @@ export default function ReportedEmployers() {
     console.log(`Rejecting report #${selectedReport.id} with reason: ${actionReason}`)
     setIsRejectDialogOpen(false)
     setIsViewDialogOpen(false)
-    // In a real app, you would update the report status in the database
+
   }
 
   const handleContactUser = () => {
@@ -236,7 +228,12 @@ export default function ReportedEmployers() {
             <div className="grid gap-6 py-4">
               <div className="flex items-start gap-4">
                 <Avatar className="h-12 w-12">
-                  <img src="/placeholder.svg?height=48&width=48" alt="Employer" />
+                  <Image
+                    src="/placeholder.svg"
+                    alt="Employer"
+                    width={48}
+                    height={48}
+                  />
                 </Avatar>
                 <div>
                   <h3 className="text-lg font-bold">{selectedReport.employerName}</h3>

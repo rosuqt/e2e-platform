@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import "echarts-wordcloud"
 import {
   BarChart,
   Bar,
@@ -22,7 +21,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, Users, Eye, MousePointerClick, FileText } from "lucide-react"
 import Chip from "@mui/material/Chip"
-import ReactECharts from "echarts-for-react"
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar"
 import "react-circular-progressbar/dist/styles.css"
 
@@ -71,27 +69,8 @@ const upcomingInterviews = [
   },
 ]
 
-const topSkills = [
-  { text: "UI Design", value: 18 },
-  { text: "Figma", value: 20 },
-  { text: "UX Research", value: 12 },
-  { text: "Prototyping", value: 15 },
-  { text: "Adobe XD", value: 9 },
-  { text: "Wireframing", value: 14 },
-  { text: "User Testing", value: 11 },
-  { text: "Sketch", value: 8 },
-  { text: "Information Architecture", value: 10 },
-  { text: "Visual Design", value: 13 },
-  { text: "Interaction Design", value: 12 },
-  { text: "Usability Testing", value: 9 },
-  { text: "Design Systems", value: 7 },
-  { text: "Adobe Illustrator", value: 6 },
-  { text: "Adobe Photoshop", value: 8 },
-]
-
 export default function JobAnalytics() {
   const [timeRange, setTimeRange] = useState("month");
-  const isClient = typeof window !== "undefined";
 
   return (
     <div className="space-y-6">
@@ -329,48 +308,6 @@ export default function JobAnalytics() {
                 <Line type="monotone" dataKey="applicants" stroke="#eab308" name="Applicants" /> {/* Bright Yellow */}
               </LineChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        
-        {/* Word Cloud of Top Skills */}
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Top Skills of Applicants</CardTitle>
-            <CardDescription>Most common skills among applicants</CardDescription>
-          </CardHeader>
-          <CardContent className="h-80">
-            {isClient && (
-              <ReactECharts
-                option={{
-                  tooltip: {},
-                  series: [
-                    {
-                      type: "wordCloud",
-                      shape: "circle",
-                      left: "center",
-                      top: "center",
-                      width: "100%",
-                      height: "100%",
-                      sizeRange: [12, 50],
-                      rotationRange: [-90, 90],
-                      textStyle: {
-                        fontFamily: "sans-serif",
-                        fontWeight: "bold",
-                        color: () => {
-                          const colors = ["#3b82f6", "#6366f1", "#8b5cf6", "#a78bfa"];
-                          return colors[Math.floor(Math.random() * colors.length)];
-                        },
-                      },
-                      data: topSkills.map((skill) => ({
-                        name: skill.text,
-                        value: skill.value,
-                      })),
-                    },
-                  ],
-                }}
-                style={{ height: "100%", width: "100%" }}
-              />
-            )}
           </CardContent>
         </Card>
         

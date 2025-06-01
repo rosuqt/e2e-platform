@@ -22,14 +22,12 @@ type JobListing = {
 }
 
 export default function JobListingsTab() {
-  const [selectedJob, setSelectedJob] = useState<number | null>(null)
   const [showJobDetails, setShowJobDetails] = useState(false)
   const [quickEditOpen, setQuickEditOpen] = useState(false)
   const [quickEditJob, setQuickEditJob] = useState<JobListing | null>(null)
   const router = useRouter()
 
-  const handleViewDetails = (jobId: number) => {
-    setSelectedJob(jobId)
+  const handleViewDetails = () => {
     setShowJobDetails(true)
   }
 
@@ -182,7 +180,7 @@ export default function JobListingsTab() {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            onClick={() => handleViewDetails(job.id)}
+                            onClick={handleViewDetails}
                           >
                             <EyeIcon className="h-4 w-4" />
                           </Button>
@@ -255,7 +253,7 @@ export default function JobListingsTab() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" className="w-full gap-1" onClick={() => handleViewDetails(job.id)}>
+                      <Button size="sm" className="w-full gap-1" onClick={handleViewDetails}>
                         <EyeIcon className="h-3 w-3" />
                         Details
                       </Button>

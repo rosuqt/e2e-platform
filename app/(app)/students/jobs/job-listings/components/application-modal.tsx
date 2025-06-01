@@ -10,6 +10,7 @@ import { X, FileText, Upload, CheckCircle } from "lucide-react"
 import Switch from "@mui/material/Switch"
 import { Tooltip } from "@mui/material"
 import AddressAutocomplete from "@/components/AddressAutocomplete"
+import Image from "next/image"
 
 type StudentDetails = {
   id: string
@@ -533,13 +534,15 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
                           {(existingResume || form.resume) && !allResumes.some(r => r.url === form.resume) ? (
                             <>
                               <div className="flex items-center gap-3">
-                                <img
+                                <Image
                                   src={
                                     (existingResume?.name?.toLowerCase().endsWith('.pdf') || existingResume?.url?.toLowerCase().endsWith('.pdf'))
                                       ? "/images/icon/pdf.png"
                                       : "/images/icon/doc.png"
                                   }
                                   alt="icon"
+                                  width={32}
+                                  height={32}
                                   className="w-8 h-8"
                                 />
                                 <span className="text-base text-gray-800 flex items-center gap-2">
@@ -623,13 +626,15 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
                           {(existingCover || form.cover_letter) && !allCovers.some(c => c.url === form.cover_letter) ? (
                             <>
                               <div className="flex items-center gap-3">
-                                <img
+                                <Image
                                   src={
                                     (existingCover?.name?.toLowerCase().endsWith('.pdf') || existingCover?.url?.toLowerCase().endsWith('.pdf'))
                                       ? "/images/icon/pdf.png"
                                       : "/images/icon/doc.png"
                                   }
                                   alt="icon"
+                                  width={32}
+                                  height={32}
                                   className="w-8 h-8"
                                 />
                                 <span className="text-base text-gray-800">
@@ -719,13 +724,15 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
                                   checked={form.resume === resume.url}
                                   onChange={() => setForm(prev => ({ ...prev, resume: resume.url }))}
                                 />
-                                <img
+                                <Image
                                   src={
                                     (resume.name?.toLowerCase().endsWith('.pdf') || resume.url?.toLowerCase().endsWith('.pdf'))
                                       ? "/images/icon/pdf.png"
                                       : "/images/icon/doc.png"
                                   }
                                   alt="icon"
+                                  width={24}
+                                  height={24}
                                   className="w-6 h-6"
                                 />
                                 <span className="text-sm">{resume.name}</span>
@@ -756,13 +763,15 @@ export function ApplicationModal({ jobId, onClose }: { jobId: number; onClose: (
                                   checked={form.cover_letter === cover.url}
                                   onChange={() => setForm(prev => ({ ...prev, cover_letter: cover.url }))}
                                 />
-                                <img
+                                <Image
                                   src={
                                     (cover.name?.toLowerCase().endsWith('.pdf') || cover.url?.toLowerCase().endsWith('.pdf'))
                                       ? "/images/icon/pdf.png"
                                       : "/images/icon/doc.png"
                                   }
                                   alt="icon"
+                                  width={24}
+                                  height={24}
                                   className="w-6 h-6"
                                 />
                                 <span className="text-sm">{cover.name}</span>

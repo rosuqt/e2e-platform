@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 
 import type React from "react"
 
@@ -485,7 +486,7 @@ export default function StudentManagement() {
             <div className="grid gap-6 py-4">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
-                  <img src="/placeholder.svg?height=64&width=64" alt="Student" />
+                  <Image src="/placeholder.svg?height=64&width=64" alt="Student" width={64} height={64} />
                 </Avatar>
                 <div>
                   <h3 className="text-xl font-bold">{selectedStudent.name}</h3>
@@ -623,7 +624,7 @@ export default function StudentManagement() {
               <>
                 <div className="flex items-center gap-4">
                   <Avatar className="h-12 w-12">
-                    <img src="/placeholder.svg?height=48&width=48" alt="Student" />
+                    <Image src="/placeholder.svg?height=48&width=48" alt="Student" width={48} height={48} />
                   </Avatar>
                   <div>
                     <h3 className="font-medium">{selectedStudent.name}</h3>

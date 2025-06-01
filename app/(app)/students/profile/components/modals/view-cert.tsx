@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import type { SlideProps } from "@mui/material";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
@@ -62,7 +63,7 @@ export default function ViewCertModal({
     }
     fetchSignedUrl();
     return () => { active = false; };
-  }, [cert.attachmentUrl, open]);
+  }, [cert.attachmentUrl, cert.student_id, open]);
 
   let fileUrl: string | null = null;
   let fileType: string | null = null;
@@ -104,7 +105,6 @@ export default function ViewCertModal({
     fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
     console.log("DEBUG ViewCertModal:", { fileUrl, fileType, fileName, cert });
   }, [fileUrl, fileType, fileName, cert]);
 
@@ -144,7 +144,7 @@ export default function ViewCertModal({
     setLoadingPreview(!!cert.attachmentUrl);
     fetchSignedUrl();
     return () => { active = false; };
-  }, [cert.attachmentUrl, open]);
+  }, [cert.attachmentUrl, cert.student_id, open]);
 
   return (
     <Dialog
@@ -245,15 +245,19 @@ export default function ViewCertModal({
               }}
             >
               {isImage && fileUrl && (
-                <img
+                <Image
                   src={fileUrl}
                   alt={cert.attachment?.name || cert.title}
+                  width={320}
+                  height={320}
                   style={{
                     maxWidth: 320,
                     maxHeight: 320,
                     borderRadius: 8,
                     marginBottom: 12,
-                    boxShadow: "0 2px 8px #0001"
+                    boxShadow: "0 2px 8px #0001",
+                    height: "auto",
+                    width: "auto"
                   }}
                 />
               )}

@@ -1,4 +1,3 @@
-// pages/auth/callback.tsx
 import { useEffect } from 'react'
 import supabase from '@/lib/supabase'
 import { useRouter } from 'next/router'
@@ -17,7 +16,7 @@ export default function AuthCallback() {
       }
     }
     getSession()
-  }, [])
+  }, [router])
 
   return <p>Loading...</p>
 }

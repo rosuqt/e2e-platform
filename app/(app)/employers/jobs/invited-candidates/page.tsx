@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 
 import { useState } from "react"
 import {
@@ -713,10 +714,13 @@ function CandidateCard({ candidate, onToggleFavorite, onRemoveCandidate, onViewI
     <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group">
       {/* Cover Photo */}
       <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-500 overflow-hidden">
-        <img
+        <Image
           src={candidate.coverPhoto || "/placeholder.svg"}
           alt="Cover"
+          fill
           className="w-full h-full object-cover opacity-80"
+          style={{ objectFit: "cover" }}
+          priority
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
 
@@ -944,10 +948,13 @@ function SuggestedCandidateCard({ candidate, onInvite }: SuggestedCandidateProps
     <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group">
       {/* Cover Photo */}
       <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-500 overflow-hidden">
-        <img
+        <Image
           src={candidate.coverPhoto || "/placeholder.svg"}
           alt="Cover"
+          fill
           className="w-full h-full object-cover opacity-80"
+          style={{ objectFit: "cover" }}
+          priority
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
 

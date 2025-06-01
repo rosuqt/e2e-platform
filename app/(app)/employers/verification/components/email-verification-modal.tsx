@@ -68,10 +68,10 @@ export function EmailVerificationModal({ open, onOpenChange }: EmailVerification
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
             <p>
-              We've sent a verification link to <strong>{email}</strong>
+              We&apos;ve sent a verification link to <strong>{email}</strong>
             </p>
             <p className="text-sm text-muted-foreground">
-              Please check your inbox and click the link to verify your email address. If you don't see the email, check
+              Please check your inbox and click the link to verify your email address. If you don&apos;t see the email, check
               your spam folder.
             </p>
             <Button onClick={handleClose} className="w-full">

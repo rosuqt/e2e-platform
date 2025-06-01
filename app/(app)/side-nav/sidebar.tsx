@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -192,11 +193,15 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
               {loading ? (
                 <Skeleton variant="circular" width={48} height={48} />
               ) : profileImg ? (
-                <img
+                <Image
                   src={profileImg}
                   alt="Profile"
+                  width={48}
+                  height={48}
                   className="w-12 h-12 object-cover rounded-full"
-                  onError={e => { e.currentTarget.src = ""; }}
+                  onError={() => {}}
+                  style={{ objectFit: "cover" }}
+                  priority
                 />
               ) : (
                 (studentName

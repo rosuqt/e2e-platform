@@ -22,7 +22,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-// MUI imports
 import Avatar from "@mui/material/Avatar"
 import MenuMUI from "@mui/material/Menu"
 import MenuItem from "@mui/material/MenuItem"
@@ -39,6 +38,48 @@ interface NavItem {
   submenu?: { title: string; href: string; badge?: number }[]
 }
 
+const navItems: NavItem[] = [
+  {
+    title: "Dashboard",
+    href: "/superadmin/dashboard",
+    icon: BarChart3,
+  },
+  {
+    title: "Account Management",
+    href: "#",
+    icon: Users,
+    badge: 8,
+    submenu: [
+      { title: "Admins", href: "/superadmin/accounts/admins", badge: 2 },
+      { title: "Students", href: "/superadmin/accounts/students", badge: 3 },
+      { title: "Employers", href: "/superadmin/accounts/employers", badge: 1 },
+      { title: "Companies", href: "/superadmin/accounts/companies", badge: 2 },
+    ],
+  },
+  {
+    title: "Hiring Management",
+    href: "#",
+    icon: Briefcase,
+    badge: 5,
+    submenu: [
+      { title: "Career Opportunities", href: "/superadmin/hiring/opportunities", badge: 3 },
+      { title: "Applications", href: "/superadmin/hiring/applications", badge: 2 },
+    ],
+  },
+  {
+    title: "Report Management",
+    href: "#",
+    icon: FileText,
+    badge: 15,
+    submenu: [
+      { title: "Bugs", href: "/superadmin/reports/bugs", badge: 3 },
+      { title: "Reported Employers", href: "/superadmin/reports/employers", badge: 3 },
+      { title: "Reported Companies", href: "/superadmin/reports/companies", badge: 2 },
+      { title: "Reported Listings", href: "/superadmin/reports/listings", badge: 3 },
+    ],
+  },
+]
+
 export default function SuperadminLayout({
   children,
 }: {
@@ -54,48 +95,6 @@ export default function SuperadminLayout({
       setOpenSubmenu(currentSubmenu.title)
     }
   }, [pathname])
-
-  const navItems: NavItem[] = [
-    {
-      title: "Dashboard",
-      href: "/superadmin/dashboard",
-      icon: BarChart3,
-    },
-    {
-      title: "Account Management",
-      href: "#",
-      icon: Users,
-      badge: 8,
-      submenu: [
-        { title: "Admins", href: "/superadmin/accounts/admins", badge: 2 },
-        { title: "Students", href: "/superadmin/accounts/students", badge: 3 },
-        { title: "Employers", href: "/superadmin/accounts/employers", badge: 1 },
-        { title: "Companies", href: "/superadmin/accounts/companies", badge: 2 },
-      ],
-    },
-    {
-      title: "Hiring Management",
-      href: "#",
-      icon: Briefcase,
-      badge: 5,
-      submenu: [
-        { title: "Career Opportunities", href: "/superadmin/hiring/opportunities", badge: 3 },
-        { title: "Applications", href: "/superadmin/hiring/applications", badge: 2 },
-      ],
-    },
-    {
-      title: "Report Management",
-      href: "#",
-      icon: FileText,
-      badge: 15,
-      submenu: [
-        { title: "Bugs", href: "/superadmin/reports/bugs", badge: 3 },
-        { title: "Reported Employers", href: "/superadmin/reports/employers", badge: 3 },
-        { title: "Reported Companies", href: "/superadmin/reports/companies", badge: 2 },
-        { title: "Reported Listings", href: "/superadmin/reports/listings", badge: 3 },
-      ],
-    },
-  ]
 
   const toggleSubmenu = (title: string) => {
     if (openSubmenu === title) {
@@ -118,7 +117,6 @@ export default function SuperadminLayout({
     router.push("/login")
   }
 
-  // MUI Dropdown Menu state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const openMenu = Boolean(anchorEl)
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -128,7 +126,6 @@ export default function SuperadminLayout({
     setAnchorEl(null)
   }
 
-  // Sidebar minimize state
   const [sidebarMinimized, setSidebarMinimized] = useState(false)
   const handleSidebarMinimize = () => setSidebarMinimized((prev) => !prev)
 

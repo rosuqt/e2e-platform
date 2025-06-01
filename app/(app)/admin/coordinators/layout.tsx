@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, useMemo, Suspense } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { BarChart3, Users, LogOut, Menu, ChevronDown, Search, Bell, Flag, Settings } from "lucide-react"
@@ -36,25 +36,8 @@ export default function AdminLayout({
   const pathname = usePathname()
   const router = useRouter()
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
-  const [isMobile, setIsMobile] = useState(false)
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024)
-    }
-    checkMobile()
-    window.addEventListener("resize", checkMobile)
-    return () => window.removeEventListener("resize", checkMobile)
-  }, [])
-
-  useEffect(() => {
-    const currentSubmenu = navItems.find((item) => item.submenu?.some((subItem) => pathname === subItem.href))
-    if (currentSubmenu) {
-      setOpenSubmenu(currentSubmenu.title)
-    }
-  }, [pathname])
-
-  const navItems: NavItem[] = [
+  const navItems: NavItem[] = useMemo(() => [
     {
       title: "Dashboard",
       href: "/admin/coordinators/dashboard",
@@ -78,7 +61,14 @@ export default function AdminLayout({
         { title: "Reported Students", href: "/admin/coordinators/reports/students", badge: 2 },
       ],
     },
-  ]
+  ], [])
+
+  useEffect(() => {
+    const currentSubmenu = navItems.find((item) => item.submenu?.some((subItem) => pathname === subItem.href))
+    if (currentSubmenu) {
+      setOpenSubmenu(currentSubmenu.title)
+    }
+  }, [pathname, navItems])
 
   const toggleSubmenu = (title: string) => {
     if (openSubmenu === title) {
@@ -97,10 +87,8 @@ export default function AdminLayout({
   }
 
   const handleLogout = () => {
-    // In a real application, you would clear authentication tokens/cookies here
     console.log("Logging out...")
 
-    // Redirect to login page
     router.push("/login")
   }
 

@@ -56,10 +56,8 @@ export default function CompanyAssociationForm({
   const [searchInput, setSearchInput] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [branchInput, setBranchInput] = useState("");
-  const [requiredEmailDomain, setRequiredEmailDomain] = useState<string | null>(null);
-  const [selectedBranchDomain, setSelectedBranchDomain] = useState<string | null>(null);
 
-  const saveCompanyAssociation = (updated: CompanyAssociation) => {
+  const saveCompanyAssociation = useCallback((updated: CompanyAssociation) => {
     const prev = sessionStorage.getItem("signUpFormData");
     let merged: Record<string, unknown>;
     if (prev) {
@@ -69,7 +67,7 @@ export default function CompanyAssociationForm({
       merged = { companyAssociation: updated };
     }
     sessionStorage.setItem("signUpFormData", JSON.stringify(merged));
-  };
+  }, []);
 
   const fetchCompanies = useCallback(async (): Promise<Company[]> => {
     setLoadingCompanies(true);
@@ -152,7 +150,7 @@ export default function CompanyAssociationForm({
       setSelectedCompanyId(newCompanyData.id);
       fetchBranches(newCompanyData.id);
     }
-  }, [data, fetchBranches, onChange]);
+  }, [data, fetchBranches, onChange, saveCompanyAssociation]);
 
   const handleBranchModalClose = useCallback((newBranch?: { branchName: string }) => {
     setBranchModalOpen(false);
@@ -173,14 +171,13 @@ export default function CompanyAssociationForm({
       onChange(updatedData);
       saveCompanyAssociation(updatedData);
     }
-  }, [data, fetchBranches, onChange, selectedCompanyId]);
+  }, [data, fetchBranches, onChange, selectedCompanyId, saveCompanyAssociation]);
 
   useEffect(() => {
     const savedData = sessionStorage.getItem("signUpFormData");
     if (savedData) {
       const parsedData = JSON.parse(savedData);
       if (parsedData?.companyAssociation) {
-        onChange(parsedData.companyAssociation);
         setSearchInput(parsedData.companyAssociation.companyName || "");
         setBranchInput(parsedData.companyAssociation.companyBranch || "");
         if (parsedData.companyAssociation.companyId) {
@@ -194,7 +191,7 @@ export default function CompanyAssociationForm({
         setSelectedCompanyId(data.companyId);
       }
     }
-  }, []);
+  }, [data.companyName, data.companyBranch, data.companyId]);
 
   useEffect(() => {
     if (fetchedCompanies.length === 0) {
@@ -213,15 +210,9 @@ export default function CompanyAssociationForm({
     setBranchInput(data.companyBranch || "");
   }, [data.companyName, data.companyBranch]);
 
-  const emailDomainForDisplay =
-    selectedBranchDomain && selectedBranchDomain.trim() !== ""
-      ? selectedBranchDomain
-      : requiredEmailDomain && requiredEmailDomain.trim() !== ""
-      ? requiredEmailDomain
-      : "";
-
   useEffect(() => {
     onChange({ ...data, __emailError: emailError } as CompanyAssociationWithError);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emailError]);
 
   const handleCompanyChange = async (value: string) => {
@@ -232,8 +223,6 @@ export default function CompanyAssociationForm({
 
     const selectedCompany = fetchedCompanies.find((company) => company.name === value);
     if (selectedCompany) {
-      setRequiredEmailDomain(selectedCompany.emailDomain || null);
-      setSelectedBranchDomain(null);
       if (selectedCompanyId !== selectedCompany.id) {
         setSelectedCompanyId(selectedCompany.id);
         setFetchedBranches([]);
@@ -261,8 +250,6 @@ export default function CompanyAssociationForm({
     } else {
       setSelectedCompanyId(null);
       setFetchedBranches([]);
-      setRequiredEmailDomain(null);
-      setSelectedBranchDomain(null);
       const updatedData = { ...data, companyName: "", companyId: undefined, companyBranch: "", companyEmail: "" };
       onChange(updatedData);
       saveCompanyAssociation(updatedData);
@@ -277,21 +264,25 @@ export default function CompanyAssociationForm({
       onChange({ ...data, companyBranch: "" });
       saveCompanyAssociation({ ...data, companyBranch: "" });
       setBranchInput("");
-      setSelectedBranchDomain(null);
     } else {
       onChange({ ...data, companyBranch: newValue || "" });
       saveCompanyAssociation({ ...data, companyBranch: newValue || "" });
       setBranchInput(newValue || "");
-      if (newValue) {
-        const branch = fetchedBranches.find(
-          (b) => b.branch_name === newValue
-        );
-        setSelectedBranchDomain(branch && branch.email_domain && branch.email_domain.trim() !== "" ? branch.email_domain : null);
-      } else {
-        setSelectedBranchDomain(null);
-      }
     }
   };
+
+  const emailDomainForDisplay =
+    (() => {
+      const company = fetchedCompanies.find(c => c.id === selectedCompanyId);
+      const branch = fetchedBranches.find(b => b.branch_name === data.companyBranch);
+      if (branch && branch.email_domain && branch.email_domain.trim() !== "") {
+        return branch.email_domain;
+      }
+      if (company && company.emailDomain && company.emailDomain.trim() !== "") {
+        return company.emailDomain;
+      }
+      return "";
+    })();
 
   return (
     <>
@@ -478,7 +469,6 @@ export default function CompanyAssociationForm({
                     onChange({ ...data, companyBranch: "" });
                     saveCompanyAssociation({ ...data, companyBranch: "" });
                     setBranchInput("");
-                    setSelectedBranchDomain(null);
                   } else {
                     setBranchInput(newInputValue);
                   }
