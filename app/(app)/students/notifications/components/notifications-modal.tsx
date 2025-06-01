@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@mui/material";
 import { AiOutlineBell } from "react-icons/ai";
+import { useSession } from "next-auth/react";
 
 interface NotificationsModalProps {
   notifications: { id: string; title: string; message: string; timestamp: string; avatarUrl?: string; isUnread?: boolean }[];
@@ -14,6 +15,7 @@ interface NotificationsModalProps {
 
 export function NotificationsModal({ notifications, onClose, positionRef }: NotificationsModalProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(true);
   const modalRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -56,7 +58,12 @@ export function NotificationsModal({ notifications, onClose, positionRef }: Noti
   }, [positionRef]);
 
   const handleViewAllClick = () => {
-    router.push("/students/notifications");
+    const role = (session?.user as { role?: string })?.role;
+    const path =
+      role === "employer"
+        ? "/employers/notifications"
+        : "/students/notifications";
+    router.push(path);
     onClose();
   };
 

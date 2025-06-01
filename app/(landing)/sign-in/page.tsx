@@ -157,49 +157,28 @@ export default function SignInPage() {
           </div>
 
           <motion.button
-            type="submit"
             className="w-full bg-gradient-to-r from-blue-500 to-sky-500 text-white py-4 rounded-2xl font-medium shadow-lg hover:shadow-blue-200/50 transition-all duration-200 flex items-center justify-center"
             whileHover={{ scale: 1.03, boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.5)" }}
             whileTap={{ scale: 0.97 }}
             disabled={loading}
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? "Signing in..." : "Sign in as Employer"}
           </motion.button>
         </motion.form>
 
         <motion.p
-          className="text-xs text-gray-700 text-center mt-4"
+          className="text-center text-gray-700 mt-2 text-base"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
         >
-          By clicking Sign In, you agree to the
-          <button
-            type="button"
-            className="text-blue-500 hover:text-blue-700 transition-colors  ml-1"
-            onClick={handleOpenModal}
-          >
-            User Agreement
-          </button>
-          ,
-          <button
-            type="button"
-            className="text-blue-500 hover:text-blue-700 transition-colors  ml-1"
-            onClick={handleOpenModal}
-          >
-            Privacy Policy
-          </button>
-          , and
-          <button
-            type="button"
-            className="text-blue-500 hover:text-blue-700 transition-colors  ml-1"
-            onClick={handleOpenModal}
-          >
-            Cookie Policy
-          </button>
-          .
+          New Employer?{" "}
+          <Link href="/sign-up" className="text-blue-500 font-medium hover:text-blue-700 transition-colors">
+            Sign Up Today
+          </Link>
         </motion.p>
 
+       
         <div className="flex items-center my-4">
           <div className="flex-1 h-px bg-blue-200"></div>
           <span className="mx-3 text-gray-700">or</span>
@@ -233,19 +212,41 @@ export default function SignInPage() {
         </motion.button>
 
         <motion.p
-          className="text-center text-gray-700 mt-6"
+          className="text-xs text-gray-700 text-center mt-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
         >
-          New Employer?{" "}
-          <Link href="/sign-up" className="text-blue-500 font-medium hover:text-blue-700 transition-colors">
-            Sign Up Today
-          </Link>
+          By clicking Sign In, you agree to the
+          <button
+            type="button"
+            className="text-blue-500 hover:text-blue-700 transition-colors  ml-1"
+            onClick={handleOpenModal}
+          >
+            User Agreement
+          </button>
+          ,
+          <button
+            type="button"
+            className="text-blue-500 hover:text-blue-700 transition-colors  ml-1"
+            onClick={handleOpenModal}
+          >
+            Privacy Policy
+          </button>
+          , and
+          <button
+            type="button"
+            className="text-blue-500 hover:text-blue-700 transition-colors  ml-1"
+            onClick={handleOpenModal}
+          >
+            Cookie Policy
+          </button>
+          .
         </motion.p>
+     
       </motion.div>
       <div className="absolute bottom-4 text-center text-gray-600 text-sm">
-        © {new Date().getFullYear()} Test Company. All rights reserved.
+        © {new Date().getFullYear()} Seekr. All rights reserved.
       </div>
       <LegalModal
         open={isModalOpen}

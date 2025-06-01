@@ -1,4 +1,4 @@
-import { MapPin, Mail, Phone, Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
+import { MapPin, Mail, Phone, Facebook, Twitter, Instagram } from "lucide-react"
 import Link from "next/link"
 
 const LandingFooter = () => {
@@ -23,9 +23,7 @@ const LandingFooter = () => {
               <a href="#" className="text-gray-500 hover:text-blue-700">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-500 hover:text-blue-700">
-                <Linkedin className="w-5 h-5" />
-              </a>
+
             </div>
           </div>
 
@@ -48,9 +46,6 @@ const LandingFooter = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-gray-600 hover:text-blue-700">
-                  Contact Us
-                </Link>
               </li>
             </ul>
           </div>
