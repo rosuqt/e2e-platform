@@ -228,7 +228,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
   const [collapsed, setCollapsed] = useState(false)
   const [jobs, setJobs] = useState<EmployerJobCardJob[]>([])
   const [loading, setLoading] = useState(true)
-  const [listLoadAnimation, setListLoadAnimation] = useState<any>(null)
+  const [listLoadAnimation, setListLoadAnimation] = useState<object | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

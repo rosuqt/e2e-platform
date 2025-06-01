@@ -56,7 +56,7 @@ export default function AddressAutocomplete({
 
   useEffect(() => {
     if (inputRef.current) setAnchorEl(inputRef.current);
-  }, [inputRef.current]);
+  }, []);
 
   return (
     <div

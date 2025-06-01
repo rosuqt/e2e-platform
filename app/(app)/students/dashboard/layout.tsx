@@ -13,10 +13,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   const menuItems = [
-    { icon: TbCards, text: "Interview Practice", href: "/students/interview-practice" },
-    { icon: TbFileStar, text: "Job Matches", href: "/students/job-matches" },
-    { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/students/applications" },
-    { icon: TbUsers, text: "Connections", href: "/students/connections" },
+    { icon: TbCards, text: "Interview Practice", href: "/students/jobs/interview-practice" },
+    { icon: TbFileStar, text: "Job Matches", href: "/students/jobs/job-matches" },
+    { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/students/jobs/applications" },
+    { icon: TbUsers, text: "Connections", href: "/students/people/connections" },
     { icon: FiCalendar, text: "Calendar", href: "/students/calendar" },
   ];
 

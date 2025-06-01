@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -84,7 +85,6 @@ export default function ProfileLayout() {
     else if (tabParam === "ratings-tab") setActiveTab(2);
     else if (tabParam === "activity-tab") setActiveTab(3);
     else setActiveTab(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabParam]);
 
   useEffect(() => {
@@ -294,12 +294,15 @@ export default function ProfileLayout() {
           <div className="mb-4">
             <div className="flex flex-wrap gap-2">
               {presetCovers.map((url, i) => (
-                <img
+                <Image
                   key={i}
                   src={url}
                   alt={`Preset ${i + 1}`}
+                  width={96}
+                  height={64}
                   className="w-24 h-16 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500"
                   onClick={() => handlePresetCover(url)}
+                  style={{ objectFit: "cover" }}
                 />
               ))}
             </div>
@@ -318,11 +321,15 @@ export default function ProfileLayout() {
               {(loading || uploadingCover) ? (
                 <Skeleton variant="rectangular" width="100%" height="100%" sx={{ position: "absolute", top: 0, left: 0, height: "100%", width: "100%", zIndex: 10 }} />
               ) : coverImage ? (
-                <img
+                <Image
                   src={coverImage}
                   alt="Cover"
+                  fill
                   className="w-full h-full object-cover"
-                  onError={e => { e.currentTarget.src = ""; }}
+                  onError={() => {}}
+                  style={{ objectFit: "cover" }}
+                  sizes="100vw"
+                  priority
                 />
               ) : (
                 <div
@@ -348,11 +355,15 @@ export default function ProfileLayout() {
                       {(loading || uploadingProfile) ? (
                         <Skeleton variant="circular" width={128} height={128} />
                       ) : profileImage ? (
-                        <img
+                        <Image
                           src={profileImage}
                           alt="Profile"
+                          width={128}
+                          height={128}
                           className="w-full h-full object-cover rounded-full"
-                          onError={e => { e.currentTarget.src = ""; }}
+                          onError={() => {}}
+                          style={{ objectFit: "cover" }}
+                          priority
                         />
                       ) : (
                         <div className="w-full h-full rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-3xl select-none">

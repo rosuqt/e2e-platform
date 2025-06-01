@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 
 import { useState } from "react"
 import {
@@ -282,7 +283,7 @@ export default function ApplicationsManagement() {
             <div className="grid gap-6 py-4">
               <div className="flex items-start gap-4">
                 <Avatar sx={{ width: 64, height: 64 }}>
-                  <img src="/placeholder.svg?height=64&width=64" alt="Applicant" />
+                  <Image src="/placeholder.svg?height=64&width=64" alt="Applicant" width={64} height={64} />
                 </Avatar>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold">{selectedApplication.applicantName}</h3>

@@ -166,7 +166,7 @@ export default function AllyPage() {
     })
 
     setFilteredTestCases(result)
-  }, [filters, testCases, sortConfig])
+  }, [filters, testCases, sortConfig, caseNotes])
 
   const handleFilterChange = (field: string, value: string) => {
     setFilters({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "../../../../lib/authOptions";
 import supabase from "@/lib/supabase";
 
 async function getEmployerIdAndRoleFromSession(req: NextRequest): Promise<{ employerId: string | null, role: string | null }> {

@@ -2,6 +2,7 @@
 
 import { Marquee } from "@/components/magicui/marquee"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function CompaniesShowcase() {
   const companies = [
@@ -48,7 +49,7 @@ export default function CompaniesShowcase() {
   function ReviewCard({ logo, name, rating, quote, logoHeight }: typeof companies[0]) {
     return (
       <figure className="relative h-full w-64 cursor-pointer overflow-hidden rounded-xl border p-4 border-gray-950/[.1] bg-gray-950/[.01] hover:bg-gray-950/[.05] dark:border-gray-50/[.1] dark:bg-gray-50/[.10] dark:hover:bg-gray-50/[.15] flex flex-col items-center">
-        <img className="rounded-full mb-2" width={logoHeight * 2} height={logoHeight} alt={name} src={logo} />
+        <Image className="rounded-full mb-2" width={logoHeight * 2} height={logoHeight} alt={name} src={logo} />
         <figcaption className="text-sm font-medium dark:text-white text-center">{name}</figcaption>
         <div className="mt-1 flex flex-row items-center gap-0.5">
           {Array.from({ length: 5 }).map((_, i) => (

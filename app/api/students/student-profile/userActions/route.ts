@@ -19,7 +19,7 @@ export async function DELETE(req: NextRequest) {
     if (!student_id) {
       try {
         const { getServerSession } = await import("next-auth");
-        const { authOptions } = await import("../../../auth/[...nextauth]/route");
+        const { authOptions } = await import("../../../../../lib/authOptions");
         const session = await getServerSession(authOptions);
         student_id = (session?.user as { studentId?: string })?.studentId;
       } catch {}

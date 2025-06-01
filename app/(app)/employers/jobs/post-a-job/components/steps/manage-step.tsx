@@ -62,13 +62,13 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
     if (!arraysEqual(selectedPerks, formData.perksAndBenefits || [])) {
       setSelectedPerks(formData.perksAndBenefits || []);
     }
-  }, [formData.perksAndBenefits]);
+  }, [formData.perksAndBenefits, selectedPerks]);
 
   useEffect(() => {
     if (!arraysEqual(questions, formData.applicationQuestions || [])) {
       setQuestions(formData.applicationQuestions || []);
     }
-  }, [formData.applicationQuestions]);
+  }, [formData.applicationQuestions, questions]);
 
   useEffect(() => {
     if (!arraysEqual(selectedPerks, formData.perksAndBenefits || [])) {

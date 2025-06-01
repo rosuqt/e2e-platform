@@ -1,4 +1,5 @@
 "use client"
+import Image from "next/image"
 
 import { useState } from "react"
 import {
@@ -204,12 +205,6 @@ export default function SavedCandidatesPage() {
     setCandidates((prev) => prev.filter((candidate) => candidate.id !== candidateId))
   }
 
-  const handleUpdateStatus = (candidateId: string, newStatus: Candidate["status"]) => {
-    setCandidates((prev) =>
-      prev.map((candidate) => (candidate.id === candidateId ? { ...candidate, status: newStatus } : candidate)),
-    )
-  }
-
   // Filter candidates based on search, status, job, and favorites
   const filteredCandidates = candidates.filter((candidate) => {
     const matchesSearch =
@@ -266,7 +261,7 @@ export default function SavedCandidatesPage() {
             </div>
             <Button className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm">
               <Sparkles className="h-4 w-4 mr-2" />
-              I'm Feeling Lucky
+              I&apos;m Feeling Lucky
             </Button>
           </div>
         </div>
@@ -360,10 +355,8 @@ export default function SavedCandidatesPage() {
                   <CandidateCard
                     key={candidate.id}
                     candidate={candidate}
-                    jobListings={jobListings}
                     onToggleFavorite={handleToggleFavorite}
                     onRemove={handleRemoveCandidate}
-                    onUpdateStatus={handleUpdateStatus}
                     getStatusColor={getStatusColor}
                     getTopMatch={getTopMatch}
                   />
@@ -375,10 +368,8 @@ export default function SavedCandidatesPage() {
                   <CandidateListItem
                     key={candidate.id}
                     candidate={candidate}
-                    jobListings={jobListings}
                     onToggleFavorite={handleToggleFavorite}
                     onRemove={handleRemoveCandidate}
-                    onUpdateStatus={handleUpdateStatus}
                     getStatusColor={getStatusColor}
                     getTopMatch={getTopMatch}
                   />
@@ -394,20 +385,16 @@ export default function SavedCandidatesPage() {
 
 interface CandidateCardProps {
   candidate: Candidate
-  jobListings: JobListing[]
   onToggleFavorite: (id: string) => void
   onRemove: (id: string) => void
-  onUpdateStatus: (id: string, status: Candidate["status"]) => void
   getStatusColor: (status: Candidate["status"]) => string
-  getTopMatch: (candidate: Candidate) => { match: any; job: JobListing | undefined }
+  getTopMatch: (candidate: Candidate) => { match: Candidate["jobMatches"][number] | undefined; job: JobListing | undefined }
 }
 
 function CandidateCard({
   candidate,
-  jobListings,
   onToggleFavorite,
   onRemove,
-  onUpdateStatus,
   getStatusColor,
   getTopMatch,
 }: CandidateCardProps) {
@@ -417,10 +404,12 @@ function CandidateCard({
     <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group">
       {/* Cover Photo */}
       <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-500 overflow-hidden">
-        <img
+        <Image
           src={candidate.coverPhoto || "/placeholder.svg"}
           alt="Cover"
-          className="w-full h-full object-cover opacity-80"
+          layout="fill"
+          objectFit="cover"
+          className="opacity-80"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
 
@@ -550,10 +539,8 @@ function CandidateCard({
 
 function CandidateListItem({
   candidate,
-  jobListings,
   onToggleFavorite,
   onRemove,
-  onUpdateStatus,
   getStatusColor,
   getTopMatch,
 }: CandidateCardProps) {

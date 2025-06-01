@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const { getServerSession } = await import("next-auth");
-      const { authOptions } = await import("../../../auth/[...nextauth]/route");
+      const authOptions = (await import("../../../../../lib/authOptions")).authOptions;
       const session = await getServerSession(authOptions);
       student_id = (session?.user as { studentId?: string })?.studentId;
     } catch {

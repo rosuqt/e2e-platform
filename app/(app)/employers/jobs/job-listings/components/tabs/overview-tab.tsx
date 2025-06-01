@@ -473,11 +473,11 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-6">
-            <JobAnalytics jobId={jobData.id} />
+            <JobAnalytics />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
-            {jobData.id !== null ? (
+            {typeof jobData.id === "number" ? (
               <JobSettings jobId={jobData.id} />
             ) : (
               <div>No settings available for this job.</div>

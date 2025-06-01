@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../../auth/[...nextauth]/route";
+import { authOptions } from "../../../../../lib/authOptions";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies as nextCookies } from "next/headers";
 
 export async function GET(req: Request) {
-  const cookieStore = await nextCookies();
+  const cookieStore = nextCookies();
 
   const supabase = createServerComponentClient({
     cookies: () => cookieStore,
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   const filePath = url.searchParams.get("file");
 
   if (filePath) {
-    // Remove any leading slash from filePath
+
     const normalizedPath = filePath.replace(/^\/+/, "");
     const { data, error } = await supabase.storage
       .from("student.documents")

@@ -215,7 +215,39 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
   )
 }
 
-function ApplicationDetailsContent({ application }: { application: { [key: string]: any } }) {
+interface Application {
+  id: number
+  company: string
+  position: string
+  status: string
+  statusColor: string
+  location: string
+  salary: string
+  appliedDate: string
+  description: string
+  timeline: {
+    status: string
+    date: string
+    icon: React.ReactNode
+    iconBg: string
+    current?: boolean
+  }[]
+  notes: string
+  contacts: {
+    name: string
+    role: string
+    email: string
+    phone: string
+  }[]
+  documents: {
+    name: string
+    date: string
+    time: string
+    phone: string
+  }[]
+}
+
+function ApplicationDetailsContent({ application }: { application: Application }) {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="overview" className="w-full">
@@ -304,7 +336,7 @@ function ApplicationDetailsContent({ application }: { application: { [key: strin
             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
 
             {/* Timeline events */}
-            {application.timeline.map((event: { [key: string]: string }, index: number) => (
+            {application.timeline.map((event, index) => (
               <div key={index} className="relative pl-12 pb-8">
                 <div
                   className={`absolute left-0 w-8 h-8 rounded-full flex items-center justify-center ${event.iconBg}`}

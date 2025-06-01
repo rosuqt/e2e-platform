@@ -8,11 +8,9 @@ import { Search, Briefcase, Clock, MapPin, Calendar, Filter, EyeIcon, Plus } fro
 import JobDetails from "../../../../students/jobs/job-listings/components/job-details"
 
 export default function JobListingsTab() {
-  const [selectedJob, setSelectedJob] = useState<number | null>(null)
   const [showJobDetails, setShowJobDetails] = useState(false)
 
-  const handleViewDetails = (jobId: number) => {
-    setSelectedJob(jobId)
+  const handleViewDetails = () => {
     setShowJobDetails(true)
   }
 
@@ -145,7 +143,7 @@ export default function JobListingsTab() {
                         Posted: {job.postedDate}
                       </div>
                     </div>
-                    <Button className="w-full gap-2" onClick={() => handleViewDetails(job.id)}>
+                    <Button className="w-full gap-2" onClick={handleViewDetails}>
                       <EyeIcon className="h-4 w-4" />
                       View Details
                     </Button>

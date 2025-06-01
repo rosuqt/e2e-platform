@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -78,13 +78,12 @@ export default function AllyPage() {
   const [viewFeedbackModalOpen, setViewFeedbackModalOpen] = useState(false)
   const [viewFeedbackText, setViewFeedbackText] = useState<string | null>(null)
 
-  const testerOrder = ["Suzanne Esplana", "Adrian Sevilla", "Allyza Rose"]
-  const getTesterOrderIndex = (name: string) => {
+  const getTesterOrderIndex = useCallback((name: string) => {
+    const testerOrder = ["Suzanne Esplana", "Adrian Sevilla", "Allyza Rose"]
     const idx = testerOrder.indexOf(name)
     return idx === -1 ? 999 : idx
-  }
+  }, [])
 
-  // Fetch test cases from API
   const fetchTestCases = async () => {
     setLoading(true)
     try {
@@ -176,7 +175,7 @@ export default function AllyPage() {
     })
 
     setFilteredTestCases(result)
-  }, [filters, testCases, sortConfig])
+  }, [filters, testCases, sortConfig, getTesterOrderIndex])
 
   const handleFilterChange = (field: string, value: string) => {
     setFilters({

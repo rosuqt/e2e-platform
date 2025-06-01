@@ -326,13 +326,14 @@ export default function Home() {
       handleScroll();
     });
 
-    if (rightSectionRef.current) {
-      resizeObserver.observe(rightSectionRef.current);
+    const observed: Element | null = rightSectionRef.current;
+    if (observed) {
+      resizeObserver.observe(observed);
     }
 
     return () => {
-      if (rightSectionRef.current) {
-        resizeObserver.unobserve(rightSectionRef.current);
+      if (observed) {
+        resizeObserver.unobserve(observed);
       }
     };
   }, []);

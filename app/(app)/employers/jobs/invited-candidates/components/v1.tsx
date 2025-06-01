@@ -1,4 +1,4 @@
-"use client"
+{/*"use client"
 
 import type React from "react"
 
@@ -271,7 +271,6 @@ export default function InvitedCandidatesPage() {
           </Button>
         </div>
 
-        {/* Search Results Section */}
         {searchActive && (
           <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
             <div className="border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100 flex justify-between items-center">
@@ -312,7 +311,6 @@ export default function InvitedCandidatesPage() {
           </div>
         )}
 
-        {/* Favorites Section */}
         {favoriteCandidates.length > 0 && (
           <div className="bg-white rounded-xl shadow-md overflow-hidden border border-blue-200">
             <div className="flex justify-between items-center p-4 border-b border-blue-100">
@@ -370,7 +368,6 @@ export default function InvitedCandidatesPage() {
           </div>
         )}
 
-        {/* Pending Candidates Section */}
         {pendingCandidates.length > 0 && (
           <div className="bg-white rounded-xl shadow-md overflow-hidden border border-blue-200">
             <div className="flex justify-between items-center p-4 border-b border-blue-100">
@@ -435,7 +432,6 @@ export default function InvitedCandidatesPage() {
           </div>
         )}
 
-        {/* Accepted Candidates Section */}
         {acceptedCandidates.length > 0 && (
           <div className="bg-white rounded-xl shadow-md overflow-hidden border border-blue-200">
             <div className="flex justify-between items-center p-4 border-b border-blue-100">
@@ -498,7 +494,6 @@ export default function InvitedCandidatesPage() {
           </div>
         )}
 
-        {/* Declined Candidates Section */}
         {declinedCandidates.length > 0 && (
           <div className="bg-white rounded-xl shadow-md overflow-hidden border border-blue-200">
             <div className="flex justify-between items-center p-4 border-b border-blue-100">
@@ -561,7 +556,6 @@ export default function InvitedCandidatesPage() {
           </div>
         )}
 
-        {/* Suggested Candidates Section */}
         <div className="bg-white rounded-xl shadow-md overflow-hidden border border-blue-200">
           <div className="flex justify-between items-center p-4 border-b border-blue-100">
             <h2 className="text-blue-700 font-medium">Suggested Candidates</h2>
@@ -932,4 +926,4 @@ function SuggestedCandidateCard({ candidate, onInvite }: SuggestedCandidateProps
       </div>
     </div>
   )
-}
+}*/}
