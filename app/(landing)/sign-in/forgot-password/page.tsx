@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
             animate={{ opacity: 1, y: 0 }}
             className="p-4 mb-4 bg-green-100 text-green-600 rounded-xl text-center"
           >
-            If an account exists for{" "}
+            {" "}
             <span className="font-semibold">{email}</span>, you will receive a password reset email shortly.
           </motion.div>
         ) : (

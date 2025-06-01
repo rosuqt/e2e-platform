@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import supabase from "@/lib/supabase";
-import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
   const formData = await request.json();
@@ -221,8 +220,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const hashedPassword = await bcrypt.hash(formData.personalDetails.password, 10);
-
     const { data: employerData, error: employerError } = await supabase
       .from("registered_employers")
       .insert({
@@ -234,7 +231,6 @@ export async function POST(request: Request) {
         country_code: formData.personalDetails.countryCode,
         phone: formData.personalDetails.phone,
         email: formData.personalDetails.email,
-        password: hashedPassword,
         company_id: companyId,
         company_name: formData.companyAssociation.companyName,
         company_branch: formData.companyAssociation.companyBranch,

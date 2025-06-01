@@ -8,7 +8,7 @@ import { TbSettings, TbBug } from "react-icons/tb";
 import { FiCalendar } from "react-icons/fi";
 import { FaUser } from "react-icons/fa";
 import { MdEdit } from "react-icons/md";
-import { Camera, LogOut } from "lucide-react";
+import { Camera} from "lucide-react";
 import AboutPage from "./components/profile-page";
 import SkillsPage from "./components/tabs/skills-tab";
 import RatingsPage from "./components/tabs/ratings-tab";
@@ -56,7 +56,6 @@ export default function ProfileLayout() {
       { icon: FiCalendar, text: "Calendar", href: "/students/calendar" },
       { icon: TbBug, text: "Report a bug", href: "#" }, 
       { icon: TbSettings, text: "Settings", href: "/students/settings" },
-      { icon: LogOut, text: "Logout", href: "/landing" },
     ],
     []
   );
