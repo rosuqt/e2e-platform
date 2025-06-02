@@ -1,21 +1,13 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import supabase from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: false,
-      },
-    }
-  );
-
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
   if (userError || !user) {
     return NextResponse.redirect(
@@ -24,7 +16,7 @@ export async function GET() {
   }
 
   await supabase.auth.updateUser({
-    data: { role: "student" }
+    data: { role: "student" },
   });
 
   const { data: student } = await supabase

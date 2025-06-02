@@ -17,12 +17,7 @@ import Switch from "@mui/material/Switch"
 import { styled } from "@mui/material/styles"
 import { RiRobot2Fill } from "react-icons/ri"
 import Tooltip from "@mui/material/Tooltip"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import supabase from "@/lib/supabase"
 
 const PurpleSwitch = styled(Switch)({
   "& .MuiSwitch-switchBase.Mui-checked": {

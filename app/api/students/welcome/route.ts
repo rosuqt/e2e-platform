@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "../../../../lib/authOptions"
-import { createClient } from "@supabase/supabase-js"
+import supabase from "@/lib/supabase"
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -14,11 +14,6 @@ export async function POST(req: NextRequest) {
   }
 
   const { course, yearLevel, section, jobType, remoteOption, unrelatedJobRecommendations } = await req.json()
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
 
   const { error } = await supabase
     .from("registered_students")

@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
 import { ArrowRight, CheckCircle, Globe, Briefcase, GraduationCap, Users, Search, ChevronUp } from "lucide-react"
-import { createClient } from "@supabase/supabase-js"
+import supabase from "@/lib/supabase"
 
 import CompanyCard from "./components/company-showcase"
 import FeatureCard from "./components/feature-card"
@@ -13,15 +13,6 @@ import InterviewCard from "./components/interview-card"
 import HowItWorksSection from "./components/how-it-works"
 import CourseSelector from "./components/course-selector"
 import LandingFooter from "./components/landing-footer"
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error("Supabase environment variables are not set.");
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey)
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 60 },
