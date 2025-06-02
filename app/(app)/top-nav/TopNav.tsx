@@ -11,6 +11,12 @@ import { RiRobot2Fill } from "react-icons/ri";
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import Link from 'next/link';
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 interface TopNavProps {
   className?: string;
@@ -32,10 +38,23 @@ const TopNav: React.FC<TopNavProps> = ({
   const [isProfileModalOpen, setProfileModalOpen] = useState(false);
   const [isNotificationsModalOpen, setNotificationsModalOpen] = useState(false);
   const [isMessagesModalOpen, setMessagesModalOpen] = useState(false);
+  const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const messagesRef = useRef<HTMLAnchorElement | null>(null); 
 
   const { data: session } = useSession();
   console.log("TopNav session:", session); 
+
+  useEffect(() => {
+    const fetchSetting = async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("show_feedback_button")
+        .limit(1)
+        .single()
+      if (data) setShowFeedback(data.show_feedback_button)
+    }
+    fetchSetting()
+  }, [])
 
   const navItems = useMemo(() => {
     const handleProfileClick = () => setProfileModalOpen((prev) => !prev);
@@ -49,7 +68,7 @@ const TopNav: React.FC<TopNavProps> = ({
         { path: '/employers/jobs/job-listings', label: 'Jobs', icon: Briefcase },
         { path: '/employers/people/candidate-matches', label: 'People', icon: Users },
         { path: '/employers/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
-        { path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true },
+        ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
         { path: '/employers/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
         { path: '/employers/profile', label: 'Me', icon: User, onClick: handleProfileClick },
       ];
@@ -59,11 +78,11 @@ const TopNav: React.FC<TopNavProps> = ({
       { path: '/students/people/suggestions', label: 'People', icon: Users },
       { path: '/students/jobs/job-listings', label: 'Jobs', icon: Briefcase },
       { path: '/students/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
-      { path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true },
+      ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
       { path: '/students/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
       { path: '/students/profile', label: 'Me', icon: User, onClick: handleProfileClick },
     ];
-  }, [session]);
+  }, [session, showFeedback]);
 
   useEffect(() => {
     Promise.all(navItems.map((item) => router.prefetch(item.path)));
@@ -95,28 +114,29 @@ const TopNav: React.FC<TopNavProps> = ({
                <Image src="/images/logo.blue3.png" alt="Seekr Logo" width={100} height={100} />
              </Link>
 
-     
-            <motion.a
-              href="/feedback"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-3 relative border border-purple-500 rounded-full shadow-lg overflow-hidden flex items-center justify-center"
-              style={{
-                background: "black",
-                width: 40,
-                height: 40,
-                padding: 0,
-                display: "flex"
-              }}
-              whileHover={{ scale: 1.08 }}
-              initial={false}
-              aria-label="Robot"
-            >
-              <span className="relative z-10 flex items-center justify-center w-full h-full">
-                <RiRobot2Fill className="text-purple-500 w-5 h-5" />
-              </span>
-            </motion.a>
-   
+             {/* Feedback button (robot) */}
+             {showFeedback && (
+               <motion.a
+                 href="/feedback"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="ml-3 relative border border-purple-500 rounded-full shadow-lg overflow-hidden flex items-center justify-center"
+                 style={{
+                   background: "black",
+                   width: 40,
+                   height: 40,
+                   padding: 0,
+                   display: "flex"
+                 }}
+                 whileHover={{ scale: 1.08 }}
+                 initial={false}
+                 aria-label="Robot"
+               >
+                 <span className="relative z-10 flex items-center justify-center w-full h-full">
+                   <RiRobot2Fill className="text-purple-500 w-5 h-5" />
+                 </span>
+               </motion.a>
+             )}
           </div>
           <div
             className="flex items-center mr-8"
