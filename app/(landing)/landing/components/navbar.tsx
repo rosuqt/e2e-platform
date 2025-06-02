@@ -5,10 +5,17 @@ import { Menu, X } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence, useAnimation, useScroll } from "framer-motion"
 import Image from "next/image"
-//import { RiRobot2Fill } from "react-icons/ri"
+import { RiRobot2Fill } from "react-icons/ri"
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showFeedback, setShowFeedback] = useState<boolean>(false)
   const controls = useAnimation()
   const { scrollY } = useScroll()
 
@@ -22,6 +29,18 @@ export default function Navbar() {
     })
     return () => unsubscribe()
   }, [scrollY, controls])
+
+  useEffect(() => {
+    const fetchSetting = async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("show_feedback_button")
+        .limit(1)
+        .single()
+      if (data) setShowFeedback(data.show_feedback_button)
+    }
+    fetchSetting()
+  }, [])
 
   const navVariants = {
     expanded: {
@@ -64,56 +83,57 @@ export default function Navbar() {
     >
       <div className="flex justify-between items-center px-6 md:px-10 h-full">
         <div className="flex items-center space-x-2">
-          
           <Link href="/landing" className="text-xl font-bold text-white">
-           <Image src="/images/logo.white.png" alt="Seekr Logo" width={100} height={100} />
+            <Image src="/images/logo.white.png" alt="Seekr Logo" width={100} height={100} />
           </Link>
 
-          {/*<Link href="/feedback">
-          <motion.button
-            type="button"
-            className="ml-2 px-6 py-2 rounded-full border border-purple-500 bg-black/70 backdrop-blur-sm relative font-bold text-base shadow-lg overflow-hidden"
-            style={{
-              backgroundImage: `
-                linear-gradient(90deg, rgba(0,0,0,0.7), rgba(30,41,59,0.7)),
-                url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='20' height='20' fill='black'/%3E%3Ccircle cx='5' cy='5' r='0.5' fill='white' fill-opacity='0.04'/%3E%3Ccircle cx='15' cy='10' r='0.5' fill='white' fill-opacity='0.04'/%3E%3Ccircle cx='10' cy='15' r='0.5' fill='white' fill-opacity='0.04'/%3E%3C/svg%3E")
-              `,
-            }}
-            whileHover={{
-              scale: 1.08,
-
-              transition: { duration: 0.2 }
-            }}
-            initial={false}
-          >
-            <span
-              className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent relative z-10 flex items-center gap-2"
-              style={{
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              Feedback 
-              <RiRobot2Fill className="text-purple-500 w-5 h-5" />
-            </span>
-            {/* Shine animation 
-            <motion.span
-              className="absolute left-0 top-0 h-full w-full pointer-events-none"
-              initial={{ x: "-100%" }}
-              animate={{ x: "100%" }}
-              transition={{
-                repeat: Infinity,
-                duration: 4,
-                ease: "linear"
-              }}
-              style={{
-                background: "linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
-                filter: "blur(1px)",
-                width: "120%",
-              }}
-            />
-          </motion.button>
-          </Link>*/}
+          {/* Feedback button */}
+          {showFeedback && (
+            <Link href="/feedback">
+              <motion.button
+                type="button"
+                className="ml-2 px-6 py-2 rounded-full border border-purple-500 bg-black/70 backdrop-blur-sm relative font-bold text-base shadow-lg overflow-hidden"
+                style={{
+                  backgroundImage: `
+                    linear-gradient(90deg, rgba(0,0,0,0.7), rgba(30,41,59,0.7)),
+                    url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='20' height='20' fill='black'/%3E%3Ccircle cx='5' cy='5' r='0.5' fill='white' fill-opacity='0.04'/%3E%3Ccircle cx='15' cy='10' r='0.5' fill='white' fill-opacity='0.04'/%3E%3Ccircle cx='10' cy='15' r='0.5' fill='white' fill-opacity='0.04'/%3E%3C/svg%3E")
+                  `,
+                }}
+                whileHover={{
+                  scale: 1.08,
+                  transition: { duration: 0.2 }
+                }}
+                initial={false}
+              >
+                <span
+                  className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent relative z-10 flex items-center gap-2"
+                  style={{
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  Feedback
+                  <RiRobot2Fill className="text-purple-500 w-5 h-5" />
+                </span>
+                {/* Shine animation */}
+                <motion.span
+                  className="absolute left-0 top-0 h-full w-full pointer-events-none"
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "100%" }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 4,
+                    ease: "linear"
+                  }}
+                  style={{
+                    background: "linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
+                    filter: "blur(1px)",
+                    width: "120%",
+                  }}
+                />
+              </motion.button>
+            </Link>
+          )}
         </div>
 
         {/* Desktop Nav */}

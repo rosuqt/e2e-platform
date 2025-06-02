@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import {
   BarChart3,
   Users,
@@ -9,26 +8,92 @@ import {
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
-  Calendar,
-  ChevronDown,
+
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import Popover from "@mui/material/Popover"
-import MenuItem from "@mui/material/MenuItem"
+import { useState, useEffect } from "react"
+import Switch from "@mui/material/Switch"
+import { styled } from "@mui/material/styles"
+import { RiRobot2Fill } from "react-icons/ri"
+import Tooltip from "@mui/material/Tooltip"
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+const PurpleSwitch = styled(Switch)({
+  "& .MuiSwitch-switchBase.Mui-checked": {
+    color: "#a21caf",
+  },
+  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+    backgroundColor: "#a21caf",
+  },
+  "& .MuiSwitch-track": {
+    backgroundColor: "#e9d5ff",
+  },
+  "& .MuiSwitch-thumb": {
+    backgroundColor: "#a21caf",
+  },
+})
 
 export default function Dashboard() {
-  const [dateRange, setDateRange] = useState("This Month")
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [showFeedback, setShowFeedback] = useState<boolean>(false)
+  const [loading, setLoading] = useState(false)
+  const [settingId, setSettingId] = useState<string | null>(null)
 
-  const handlePopoverOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget)
+  useEffect(() => {
+    const fetchSetting = async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("id, show_feedback_button")
+        .order("id", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (data && typeof data.show_feedback_button === "boolean") {
+        setShowFeedback(data.show_feedback_button)
+        setSettingId(data.id)
+      } else {
+  
+        const { data: inserted } = await supabase
+          .from("site_settings")
+          .insert([{ show_feedback_button: true }])
+          .select("id, show_feedback_button")
+          .single()
+        if (inserted && typeof inserted.show_feedback_button === "boolean") {
+          setShowFeedback(inserted.show_feedback_button)
+          setSettingId(inserted.id)
+        } else {
+          setShowFeedback(true)
+        }
+      }
+    }
+    fetchSetting()
+  }, [])
+
+  const handleToggle = async () => {
+    setLoading(true)
+    if (settingId) {
+      await supabase
+        .from("site_settings")
+        .update({ show_feedback_button: !showFeedback })
+        .eq("id", settingId)
+      setShowFeedback(!showFeedback)
+    } else {
+      const { data } = await supabase
+        .from("site_settings")
+        .insert([{ show_feedback_button: !showFeedback }])
+        .select("id, show_feedback_button")
+        .single()
+      if (data) {
+        setShowFeedback(data.show_feedback_button)
+        setSettingId(data.id)
+      }
+    }
+    setLoading(false)
   }
-  const handlePopoverClose = () => {
-    setAnchorEl(null)
-  }
-  const open = Boolean(anchorEl)
 
   return (
     <div className="space-y-6">
@@ -38,47 +103,18 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Overview of system performance and key metrics</p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center gap-2">
-          {/* MUI Popover for date range */}
-          <Button
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={handlePopoverOpen}
-          >
-            <Calendar className="h-4 w-4" />
-            {dateRange}
-            <ChevronDown className="h-4 w-4" />
-          </Button>
-          <Popover
-            open={open}
-            anchorEl={anchorEl}
-            onClose={handlePopoverClose}
-            anchorOrigin={{
-              vertical: "bottom",
-              horizontal: "left",
-            }}
-            transformOrigin={{
-              vertical: "top",
-              horizontal: "left",
-            }}
-            PaperProps={{ style: { minWidth: 160, padding: 0 } }}
-          >
-            <div className="p-2">
-              {["Today", "Yesterday", "This Week", "This Month", "This Year", "All Time"].map((range) => (
-                <MenuItem
-                  key={range}
-                  selected={dateRange === range}
-                  onClick={() => {
-                    setDateRange(range)
-                    handlePopoverClose()
-                  }}
-                  sx={{ fontWeight: dateRange === range ? 600 : 400 }}
-                >
-                  {range}
-                </MenuItem>
-              ))}
-            </div>
-          </Popover>
-          <Button>Export Report</Button>
+          <Tooltip title="This will make the feedback button in the system visible" arrow>
+            <span className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-base bg-black/90">
+              <RiRobot2Fill className="text-purple-500 text-2xl" />
+              <PurpleSwitch
+                checked={!!showFeedback}
+                onChange={handleToggle}
+                inputProps={{ "aria-label": "Testing Mode" }}
+                disabled={loading}
+              />
+              <span className="text-purple-400 font-bold">Testing Mode</span>
+            </span>
+          </Tooltip>
         </div>
       </div>
 
@@ -111,7 +147,7 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Job Listings</CardTitle>
+            <CardTitle className="text-sm font-medium">Companies</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -142,7 +178,6 @@ export default function Dashboard() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -216,46 +251,31 @@ export default function Dashboard() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>System Health</CardTitle>
-                <CardDescription>Current system status and metrics</CardDescription>
+                <CardTitle>Pending Company Verification</CardTitle>
+                <CardDescription>Companies awaiting verification</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">Server Uptime</p>
-                      <p className="text-sm text-green-500">99.9%</p>
-                    </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-green-500 w-[99.9%]"></div>
-                    </div>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-medium">Total Pending</p>
+                    <p className="text-sm text-yellow-500">7</p>
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">Database Load</p>
-                      <p className="text-sm text-yellow-500">68%</p>
-                    </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-yellow-500 w-[68%]"></div>
-                    </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-yellow-500 w-[35%]"></div>
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">API Response Time</p>
-                      <p className="text-sm text-green-500">120ms</p>
-                    </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-green-500 w-[85%]"></div>
-                    </div>
+                  <div className="flex items-center justify-between mb-1 mt-4">
+                    <p className="text-sm font-medium">Verified This Month</p>
+                    <p className="text-sm text-green-500">15</p>
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">Storage Usage</p>
-                      <p className="text-sm text-blue-500">42%</p>
-                    </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500 w-[42%]"></div>
-                    </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500 w-[75%]"></div>
+                  </div>
+                  <div className="flex items-center justify-between mb-1 mt-4">
+                    <p className="text-sm font-medium">Rejected</p>
+                    <p className="text-sm text-red-500">2</p>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-red-500 w-[10%]"></div>
                   </div>
                 </div>
               </CardContent>
@@ -284,19 +304,6 @@ export default function Dashboard() {
             <CardContent>
               <div className="h-[400px] flex items-center justify-center bg-slate-50 rounded-md">
                 <p className="text-muted-foreground">Reports content</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>System Notifications</CardTitle>
-              <CardDescription>Important alerts and notifications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px] flex items-center justify-center bg-slate-50 rounded-md">
-                <p className="text-muted-foreground">Notifications content</p>
               </div>
             </CardContent>
           </Card>
