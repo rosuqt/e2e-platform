@@ -6,12 +6,7 @@ import Link from "next/link"
 import { motion, AnimatePresence, useAnimation, useScroll } from "framer-motion"
 import Image from "next/image"
 import { RiRobot2Fill } from "react-icons/ri"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import supabase from "@/lib/supabase"
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)

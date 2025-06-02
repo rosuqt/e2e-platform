@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { RiRobot2Fill } from 'react-icons/ri';
-import supabase from '../../lib/supabase';
+import supabase from '@/lib/supabase';
 
 export function useNotifications() {
   useEffect(() => {
