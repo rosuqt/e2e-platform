@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import supabase from '@/lib/supabase';
 import { toast } from 'react-hot-toast';
 
 export function useNotifications() {
