@@ -125,19 +125,7 @@ export default function ProfileLayout() {
     const uploadRes = await fetch("/api/students/upload-avatar", { method: "POST", body: formData });
     if (uploadRes.ok) {
       const { publicUrl } = await uploadRes.json();
-      let resolvedProfileImg = null;
-      try {
-        const signedRes = await fetch("/api/students/get-signed-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bucket: "user.avatars", path: publicUrl }),
-        });
-        if (signedRes.ok) {
-          const { signedUrl } = await signedRes.json();
-          resolvedProfileImg = signedUrl;
-        }
-      } catch {}
-      setProfileImage(resolvedProfileImg ?? publicUrl);
+      setProfileImage(publicUrl);
       await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -172,19 +160,7 @@ export default function ProfileLayout() {
     const uploadRes = await fetch("/api/students/upload-avatar", { method: "POST", body: formData });
     if (uploadRes.ok) {
       const { publicUrl } = await uploadRes.json();
-      let resolvedCoverImg = null;
-      try {
-        const signedRes = await fetch("/api/students/get-signed-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bucket: "user.covers", path: publicUrl }),
-        });
-        if (signedRes.ok) {
-          const { signedUrl } = await signedRes.json();
-          resolvedCoverImg = signedUrl;
-        }
-      } catch {}
-      setCoverImage(resolvedCoverImg ?? publicUrl);
+      setCoverImage(publicUrl);
       await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -354,14 +330,14 @@ export default function ProfileLayout() {
                     <div className="w-full h-full rounded-full bg-white border-4 border-white flex items-center justify-center overflow-hidden">
                       {(loading || uploadingProfile) ? (
                         <Skeleton variant="circular" width={128} height={128} />
-                      ) : profileImage ? (
+                      ) : profileImage && /^https?:\/\//.test(profileImage) ? (
                         <Image
                           src={profileImage}
                           alt="Profile"
                           width={128}
                           height={128}
                           className="w-full h-full object-cover rounded-full"
-                          onError={() => {}}
+                          onError={() => setProfileImage(null)}
                           style={{ objectFit: "cover" }}
                           priority
                         />

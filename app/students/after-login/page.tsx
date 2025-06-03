@@ -18,10 +18,10 @@ export default function AfterLogin() {
         } else if (user.newStudent === false) {
           router.replace("/students/dashboard");
         } else {
-          router.replace("/students/test");
+          router.replace("/students/landing");
         }
       } else {
-        router.replace("/students/test");
+        router.replace("/students/landing");
       }
     };
     checkSession();
