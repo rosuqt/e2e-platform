@@ -44,19 +44,25 @@ export async function POST(req: NextRequest) {
 
   const educations = [{
     level: "College",
-    years: yearLevel,
+    years: yearLevel ? String(yearLevel) : "present",
     degree: "BS - Information Technology",
     school: "STI College Alabang",
     acronym: "STI",
     iconColor: "#facc15"
   }];
 
-  await supabase
+  const { error: profileError } = await supabase
     .from("student_profile")
-    .upsert([{
+    .insert([{
       student_id,
       educations
-    }], { onConflict: "student_id" });
+    }]);
+
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 500 })
+  }
+
+  console.log("Inserted student_profile for:", student_id, "educations:", educations);
 
   return NextResponse.json({ success: true })
 }

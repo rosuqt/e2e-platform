@@ -32,14 +32,18 @@ interface FormData {
 }
 
 const courses = [
-  { value: "bsit", label: "BS - Information Technology" },
-  { value: "bsba", label: "BS - Business Administration" },
-  { value: "bshm", label: "BS - Hospitality Management" },
+  
+  { value: "BS - Information Technology", label: "BS - Information Technology" },
+  { value: "BS - Business Administration", label: "BS - Business Administration" },
+  { value: "BS - Hospitality Management", label: "BS - Hospitality Management" },
+  { value: "ABM", label: "ABM" },
+  { value: "HUMSS", label: "HUMSS" },
+  { value: "IT Mobile app and Web Development", label: "IT Mobile app and Web Development" },
 ]
 
 const jobTypes = [
   { value: "part-time", label: "Part Time" },
-  { value: "ojt", label: "OJT" },
+  { value: "internship", label: "internship" },
   { value: "full-time", label: "Full Time" },
 ]
 
@@ -161,7 +165,15 @@ export default function WelcomeFlow() {
     !!formData.yearLevel &&
     !!formData.section.trim()
 
-  
+  const seniorHighCourses = [
+    "ABM",
+    "HUMSS",
+    "IT Mobile app and Web Development"
+  ]
+  const isSeniorHigh = seniorHighCourses.includes(formData.course || "")
+  const filteredYearLevels = isSeniorHigh
+    ? yearLevels.filter(y => y.category === "Senior High")
+    : yearLevels.filter(y => y.category === "College")
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
@@ -317,14 +329,14 @@ export default function WelcomeFlow() {
                     <div className="grid grid-cols-2 gap-4">
                         <Box>
                           <Autocomplete
-                            options={yearLevels.flatMap(group => group.options)}
+                            options={filteredYearLevels.flatMap(group => group.options)}
                             getOptionLabel={(option) => option.label}
                             groupBy={(option) => {
-                              const group = yearLevels.find(g => g.options.some(o => o.value === option.value))
+                              const group = filteredYearLevels.find(g => g.options.some(o => o.value === option.value))
                               return group ? group.category : ""
                             }}
                             value={
-                              yearLevels.flatMap(g => g.options).find(l => l.value === formData.yearLevel) || undefined
+                              filteredYearLevels.flatMap(g => g.options).find(l => l.value === formData.yearLevel) || undefined
                             }
                             onChange={(_, value) => updateFormData("yearLevel", value ? value.value : undefined)}
                             renderInput={(params) => (
@@ -351,7 +363,7 @@ export default function WelcomeFlow() {
                             type="number"
                         />
                         </Box>
-                    </div>
+                  </div>
                   </div>
                 </div>
               )}
@@ -486,10 +498,7 @@ export default function WelcomeFlow() {
                     disabled={isPosting}
                   >
                     {isPosting ? (
-                      <span className="flex items-center justify-center">
-                        <Loader2 className="animate-spin w-8 h-8 mr-2" />
-                        Opening...
-                      </span>
+                      <Loader2 className="animate-spin w-8 h-8" />
                     ) : (
                       "Start Exploring"
                     )}

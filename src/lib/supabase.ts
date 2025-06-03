@@ -9,4 +9,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export function getAdminSupabase() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey || !supabaseUrl) {
+    throw new Error('Missing Supabase service role key or URL');
+  }
+  return createClient(supabaseUrl, serviceRoleKey);
+}
+
 export default supabase;

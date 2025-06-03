@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import supabase from "@/lib/supabase";
+import supabase, { getAdminSupabase } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -80,11 +80,13 @@ export async function POST(req: NextRequest) {
       storagePath = `${student_id}/${subfolder}/${fileName}`;
     }
 
-    const { error: uploadError } = await supabase.storage
+    const adminSupabase = getAdminSupabase();
+    const { error: uploadError } = await adminSupabase.storage
       .from("student.documents")
-      .upload(storagePath, file, { upsert: true });
+      .upload(storagePath, file, { upsert: true, contentType: file.type });
 
     if (uploadError) {
+      console.error("Upload error:", uploadError, "storagePath:", storagePath, "fileType:", fileType, "fileName:", file?.name);
       return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 

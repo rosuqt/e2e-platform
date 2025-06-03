@@ -21,11 +21,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log("get-signed-url bucket:", bucket, "filePath:", filePath);
+    if (filePath === "default.png" || filePath === "/default.png") {
+      filePath = "default.png";
+    }
+
+    const { data: listData, error: listError } = await supabase
+      .storage
+      .from(bucket)
+      .list("", { limit: 100 });
+
+    if (listData) {
+      console.log("Files in bucket root:", listData.map(f => f.name));
+    }
+
+    const fileExists = listData?.some(f => f.name === filePath);
+
+    if (listError || !fileExists) {
+      console.error("get-signed-url file not found:", filePath, "in bucket:", bucket);
+      return NextResponse.json({
+        error: `File not found: ${filePath}. Files in bucket root: ${listData?.map(f => f.name).join(", ")}`,
+        debug: { filePath, bucket }
+      }, { status: 404 });
+    }
 
     const { data, error } = await supabase.storage
       .from(bucket)
-      .createSignedUrl(filePath, 60 * 60); 
+      .createSignedUrl(filePath, 60 * 60);
 
     if (error || !data?.signedUrl) {
       console.error("get-signed-url error:", error, "bucket:", bucket, "filePath:", filePath);
