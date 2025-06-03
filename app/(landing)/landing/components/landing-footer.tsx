@@ -3,7 +3,7 @@ import Link from "next/link"
 
 const LandingFooter = () => {
   return (
-    <footer className="bg-white border-t border-gray-200 pointer-events-none">
+    <footer className="bg-white border-t border-gray-200">
       <div className="container mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
@@ -31,7 +31,7 @@ const LandingFooter = () => {
             <h3 className="font-semibold text-lg mb-4">Quick Links</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/about" className="text-gray-600 hover:text-blue-700">
+                <Link href="/about-us" className="text-gray-600 hover:text-blue-700">
                   About Us
                 </Link>
               </li>
@@ -54,18 +54,23 @@ const LandingFooter = () => {
             <h3 className="font-semibold text-lg mb-4">Legal</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/privacy-policy" className="text-gray-600 hover:text-blue-700">
+                <Link href="/legal#privacy-policy" className="text-gray-600 hover:text-blue-700">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms-conditions" className="text-gray-600 hover:text-blue-700">
+                <Link href="/legal#terms-and-conditions" className="text-gray-600 hover:text-blue-700">
                   Terms and Conditions
                 </Link>
               </li>
               <li>
-                <Link href="/user-agreement" className="text-gray-600 hover:text-blue-700">
+                <Link href="/legal#user-agreement" className="text-gray-600 hover:text-blue-700">
                   User Agreement
+                </Link>
+              </li>
+              <li>
+                <Link href="/legal#platform-guidelines" className="text-gray-600 hover:text-blue-700">
+                  Platform Guidelines
                 </Link>
               </li>
             </ul>
