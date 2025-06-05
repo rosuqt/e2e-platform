@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import supabase from "@/lib/supabase";
+import supabase, { getAdminSupabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,7 +25,9 @@ export async function POST(req: NextRequest) {
       filePath = "default.png";
     }
 
-    const { data: listData, error: listError } = await supabase
+    // Use admin supabase for storage list and signed URL
+    const adminSupabase = getAdminSupabase();
+    const { data: listData, error: listError } = await adminSupabase
       .storage
       .from(bucket)
       .list("", { limit: 100 });
@@ -44,7 +46,7 @@ export async function POST(req: NextRequest) {
       }, { status: 404 });
     }
 
-    const { data, error } = await supabase.storage
+    const { data, error } = await adminSupabase.storage
       .from(bucket)
       .createSignedUrl(filePath, 60 * 60);
 

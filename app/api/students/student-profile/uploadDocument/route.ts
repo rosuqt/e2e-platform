@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import supabase from "@/lib/supabase"
+import supabase, { getAdminSupabase } from "@/lib/supabase"
 
 
 function sanitizeName(name: string) {
@@ -74,7 +74,9 @@ export async function POST(req: NextRequest) {
     path = `${student_id}/${subfolder}/${filename}`
   }
 
-  const { error: uploadError } = await supabase.storage
+  // Use admin supabase for storage upload (fix for Vercel/production)
+  const adminSupabase = getAdminSupabase();
+  const { error: uploadError } = await adminSupabase.storage
     .from(bucket)
     .upload(path, buffer, {
       contentType: file.type,
@@ -85,7 +87,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 })
   }
 
-  const { data, error: urlError } = await supabase.storage
+  const { data, error: urlError } = await adminSupabase.storage
     .from(bucket)
     .createSignedUrl(path, 60 * 60)
 

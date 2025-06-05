@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
       storagePath = `${student_id}/${subfolder}/${fileName}`;
     }
 
+    // Use admin supabase for storage upload (fix for Vercel/production)
     const adminSupabase = getAdminSupabase();
     const { error: uploadError } = await adminSupabase.storage
       .from("student.documents")
