@@ -125,12 +125,18 @@ export default function ProfileLayout() {
     const uploadRes = await fetch("/api/students/upload-avatar", { method: "POST", body: formData });
     if (uploadRes.ok) {
       const { publicUrl } = await uploadRes.json();
-      setProfileImage(publicUrl);
+      // Save the storage path to the profile, not the signed URL
       await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId, profile_img: publicUrl }),
       });
+      // Refetch details to get the new signed URL
+      const res = await fetch("/api/students/get-student-details");
+      if (res.ok) {
+        const details = await res.json();
+        setProfileImage(details.profile_img || null);
+      }
     }
     setUploadingProfile(false);
   };

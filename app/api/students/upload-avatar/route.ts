@@ -32,14 +32,8 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
-    const { data, error: signedUrlError } = await adminSupabase.storage
-      .from(bucket)
-      .createSignedUrl(storagePath, 60 * 60);
-
-    if (signedUrlError || !data?.signedUrl) {
-      return NextResponse.json({ error: "Failed to get signed URL" }, { status: 500 });
-    }
-    return NextResponse.json({ publicUrl: data.signedUrl });
+    // Return the storage path, not the signed URL
+    return NextResponse.json({ publicUrl: storagePath });
   } catch (err) {
     console.error("Unexpected error in upload-avatar:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

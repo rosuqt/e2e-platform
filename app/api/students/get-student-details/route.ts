@@ -41,9 +41,10 @@ async function getStudentDetails(student_id: string) {
     let signedCoverImgUrl: string | null = null;
 
     if (profile?.profile_img) {
+      const cleanProfileImg = profile.profile_img.replace(/^\/+/, "");
       const { data: signed, error: signedErr } = await supabase.storage
         .from("user.avatars")
-        .createSignedUrl(profile.profile_img, 60 * 60);
+        .createSignedUrl(cleanProfileImg, 60 * 60);
       if (!signedErr && signed?.signedUrl) {
         signedProfileImgUrl = signed.signedUrl;
       } else {
@@ -51,9 +52,10 @@ async function getStudentDetails(student_id: string) {
       }
     }
     if (profile?.cover_image) {
+      const cleanCoverImg = profile.cover_image.replace(/^\/+/, "");
       const { data: signed, error: signedErr } = await supabase.storage
         .from("user.covers")
-        .createSignedUrl(profile.cover_image, 60 * 60);
+        .createSignedUrl(cleanCoverImg, 60 * 60);
       if (!signedErr && signed?.signedUrl) {
         signedCoverImgUrl = signed.signedUrl;
       } else {
