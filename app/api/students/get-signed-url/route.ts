@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       filePath = "default.png";
     }
 
-    // Use admin supabase for storage list and signed URL
+ 
     const adminSupabase = getAdminSupabase();
     const { data: listData, error: listError } = await adminSupabase
       .storage
