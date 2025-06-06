@@ -21,6 +21,7 @@ import { ExpertiseIcon } from "./data/expertise-icons"
 import { useRouter } from "next/navigation";
 import { FaGraduationCap } from "react-icons/fa";
 import { Tooltip } from "@mui/material";
+import { Pencil } from "lucide-react"
 
 const colorMap: Record<string, { color: string; textColor: string }> = {
   "#2563eb": { color: "bg-blue-600", textColor: "text-white" },
@@ -103,6 +104,12 @@ export default function AboutPage() {
   const [deletingSkillIdx, setDeletingSkillIdx] = useState<number | null>(null);
   const [downloadingResumeIdx, setDownloadingResumeIdx] = useState<number | null>(null);
   const [downloadingCoverIdx, setDownloadingCoverIdx] = useState<number | null>(null);
+  const [renamingResumeIdx, setRenamingResumeIdx] = useState<number | null>(null);
+  const [renamingCoverIdx, setRenamingCoverIdx] = useState<number | null>(null);
+  const [renameResumeValue, setRenameResumeValue] = useState("");
+  const [renameCoverValue, setRenameCoverValue] = useState("");
+  const [savingRenameResume, setSavingRenameResume] = useState(false);
+  const [savingRenameCover, setSavingRenameCover] = useState(false);
 
   const MAX_RESUMES = 3;
   const MAX_COVERS = 3;
@@ -358,10 +365,61 @@ export default function AboutPage() {
   };
 
   const [expertise, setExpertise] = useState<{ skill: string; mastery: number }[]>([]);
-  const handleAddExpertise = (data: { skill: string; mastery: number }) => {
-    setExpertise([data, ...expertise]);
+  const [expertiseError, setExpertiseError] = useState<string | null>(null);
+  const [editingExpertiseIdx, setEditingExpertiseIdx] = useState<number | null>(null);
+  const [editingExpertise, setEditingExpertise] = useState<{ skill: string; mastery: number } | null>(null);
+
+  const handleAddExpertise = async (data: { skill: string; mastery: number }) => {
+    if (
+      expertise.some(
+        (e, idx) =>
+          e.skill.trim().toLowerCase() === data.skill.trim().toLowerCase() &&
+          (editingExpertiseIdx === null || idx !== editingExpertiseIdx)
+      )
+    ) {
+      setExpertiseError("Expertise already exists.");
+      return;
+    }
+    if (editingExpertiseIdx !== null) {
+      const newExpertise = expertise.map((e, idx) =>
+        idx === editingExpertiseIdx ? { skill: data.skill, mastery: data.mastery } : e
+      );
+      setExpertise(newExpertise);
+      setEditingExpertiseIdx(null);
+      setEditingExpertise(null);
+      const student_id = (session?.user as { studentId?: string })?.studentId;
+      await fetch("/api/students/student-profile/postHandlers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id,
+          type: "expertise_update",
+          data: newExpertise
+        }),
+      });
+    } else {
+      setExpertise([data, ...expertise]);
+      const student_id = (session?.user as { studentId?: string })?.studentId;
+      await fetch("/api/students/student-profile/postHandlers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "expertise",
+          student_id,
+          data
+        }),
+      });
+    }
+    setExpertiseError(null);
     setOpenAddExpertise(false);
   };
+
+  const handleEditExpertise = (idx: number) => {
+    setEditingExpertiseIdx(idx);
+    setEditingExpertise(expertise[idx]);
+    setOpenAddExpertise(true);
+  };
+
   const handleDeleteExpertise = async (idx: number) => {
     const exp = expertise[idx];
     setExpertise(prev => prev.filter((_, i) => i !== idx));
@@ -516,6 +574,86 @@ export default function AboutPage() {
     { color: "bg-slate-100", textColor: "text-slate-700" },
     { color: "bg-red-100", textColor: "text-red-700" },
   ];
+
+  const handleRenameResume = async (idx: number) => {
+    if (!uploadedResume[idx]) return;
+    setSavingRenameResume(true);
+    try {
+      const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
+      const oldName = uploadedResume[idx].name;
+      const newName = renameResumeValue.trim();
+      if (!newName || newName === oldName) {
+        setRenamingResumeIdx(null);
+        setSavingRenameResume(false);
+        return;
+      }
+      const fileUrl = uploadedResume[idx].url;
+      const payload = {
+        action: "rename",
+        fileType: "resume",
+        student_id,
+        oldName,
+        newName,
+        fileUrl,
+      };
+      console.log("[RENAME] Sending payload to API:", payload);
+      const res = await fetch("/api/students/student-profile/postHandlers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      console.log("[RENAME] API response status:", res.status);
+      if (res.ok) {
+        await fetchUploads();
+        setRenamingResumeIdx(null);
+      } else {
+        const err = await res.json();
+        console.error("[RENAME] API error:", err);
+      }
+    } finally {
+      setSavingRenameResume(false);
+    }
+  };
+
+  const handleRenameCover = async (idx: number) => {
+    if (!uploadedCover[idx]) return;
+    setSavingRenameCover(true);
+    try {
+      const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
+      const oldName = uploadedCover[idx].name;
+      const newName = renameCoverValue.trim();
+      if (!newName || newName === oldName) {
+        setRenamingCoverIdx(null);
+        setSavingRenameCover(false);
+        return;
+      }
+      const fileUrl = uploadedCover[idx].url;
+      const payload = {
+        action: "rename",
+        fileType: "cover_letter",
+        student_id,
+        oldName,
+        newName,
+        fileUrl,
+      };
+      console.log("[RENAME] Sending payload to API:", payload);
+      const res = await fetch("/api/students/student-profile/postHandlers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      console.log("[RENAME] API response status:", res.status);
+      if (res.ok) {
+        await fetchUploads();
+        setRenamingCoverIdx(null);
+      } else {
+        const err = await res.json();
+        console.error("[RENAME] API error:", err);
+      }
+    } finally {
+      setSavingRenameCover(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -740,7 +878,7 @@ export default function AboutPage() {
               <h3 className="font-medium mb-2">Expertise</h3>
               <p className="text-sm text-gray-500 mb-3 -mt-2">Showcase your technical expertise and areas of proficiency.</p>
               <div className="space-y-4 mb-4">
-                {expertise.slice(0, 2).map((exp, idx) => (
+                {expertise.slice(0, 3).map((exp, idx) => (
                   <div key={idx} className="flex flex-col gap-1">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
@@ -748,14 +886,24 @@ export default function AboutPage() {
                         <span className="font-medium text-gray-800">{exp.skill}</span>
                       </div>
                       <span className="text-xs text-blue-600 font-semibold">{exp.mastery}%</span>
-                      <button
-                        className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
-                        title="Delete Expertise"
-                        onClick={() => handleDeleteExpertise(idx)}
-                        style={{ marginLeft: 8 }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center gap-1 ml-2">
+                        <button
+                          className="flex items-center justify-center text-blue-500 hover:text-blue-700"
+                          title="Edit Expertise"
+                          onClick={() => handleEditExpertise(idx)}
+                          style={{ marginLeft: 0 }}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          className="flex items-center justify-center text-red-500 hover:text-red-700"
+                          title="Delete Expertise"
+                          onClick={() => handleDeleteExpertise(idx)}
+                          style={{ marginLeft: 8 }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                     <div className="w-full bg-blue-100 rounded-full h-2">
                       <div
@@ -765,13 +913,13 @@ export default function AboutPage() {
                     </div>
                   </div>
                 ))}
-                {expertise.length > 2 && (
+                {expertise.length > 3 && (
                   <button
                     className="px-3 py-1 rounded-full text-sm font-medium text-blue-600 bg-transparent border-none shadow-none underline hover:text-blue-800"
                     style={{ minHeight: 32 }}
                     onClick={() => router.push("/students/profile?tab=skills-tab")}
                   >
-                    {expertise.length - 2} more...
+                    {expertise.length - 3} more...
                   </button>
                 )}
               </div>
@@ -780,14 +928,26 @@ export default function AboutPage() {
                   size="sm"
                   variant="outline"
                   className="border-blue-300 text-blue-600 hover:bg-blue-50"
-                  onClick={() => setOpenAddExpertise(true)}
+                  onClick={() => {
+                    setEditingExpertiseIdx(null);
+                    setEditingExpertise(null);
+                    setOpenAddExpertise(true);
+                  }}
                 >
                   + Add Expertise
                 </Button>
                 <AddExpertiseModal
                   open={openAddExpertise}
-                  onClose={() => setOpenAddExpertise(false)}
+                  onClose={() => {
+                    setOpenAddExpertise(false);
+                    setExpertiseError(null);
+                    setEditingExpertiseIdx(null);
+                    setEditingExpertise(null);
+                  }}
                   onSave={handleAddExpertise}
+                  error={expertiseError}
+                  initial={editingExpertise}
+                  editMode={editingExpertiseIdx !== null}
                 />
               </div>
             </div>
@@ -843,7 +1003,49 @@ export default function AboutPage() {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-base text-gray-800 truncate">{resume.name}</div>
+                        {renamingResumeIdx === idx ? (
+                          <form
+                            onSubmit={e => {
+                              e.preventDefault();
+                              handleRenameResume(idx);
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <input
+                              type="text"
+                              value={renameResumeValue}
+                              onChange={e => setRenameResumeValue(e.target.value)}
+                              className="border border-blue-300 rounded px-2 py-1 text-sm w-40"
+                              maxLength={60}
+                              autoFocus
+                              disabled={savingRenameResume}
+                              onBlur={() => setRenamingResumeIdx(null)}
+                            />
+                            <Button
+                              size="sm"
+                              className="px-2 py-1"
+                              type="submit"
+                              disabled={savingRenameResume}
+                            >
+                              Save
+                            </Button>
+                          </form>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="text-base text-gray-800 truncate">{resume.name}</div>
+                            <button
+                              className="text-blue-500 hover:text-blue-700"
+                              onClick={() => {
+                                setRenamingResumeIdx(idx);
+                                setRenameResumeValue(resume.name);
+                              }}
+                              tabIndex={-1}
+                              type="button"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                          </div>
+                        )}
                         <div className="text-xs text-gray-500">{formatDate(resume.uploadedAt)}</div>
                       </div>
                       <button
@@ -912,7 +1114,49 @@ export default function AboutPage() {
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-base text-gray-800 truncate">{cover.name}</div>
+                        {renamingCoverIdx === idx ? (
+                          <form
+                            onSubmit={e => {
+                              e.preventDefault();
+                              handleRenameCover(idx);
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <input
+                              type="text"
+                              value={renameCoverValue}
+                              onChange={e => setRenameCoverValue(e.target.value)}
+                              className="border border-blue-300 rounded px-2 py-1 text-sm w-40"
+                              maxLength={60}
+                              autoFocus
+                              disabled={savingRenameCover}
+                              onBlur={() => setRenamingCoverIdx(null)}
+                            />
+                            <Button
+                              size="sm"
+                              className="px-2 py-1"
+                              type="submit"
+                              disabled={savingRenameCover}
+                            >
+                              Save
+                            </Button>
+                          </form>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="text-base text-gray-800 truncate">{cover.name}</div>
+                            <button
+                              className="text-blue-500 hover:text-blue-700"
+                              onClick={() => {
+                                setRenamingCoverIdx(idx);
+                                setRenameCoverValue(cover.name);
+                              }}
+                              tabIndex={-1}
+                              type="button"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                          </div>
+                        )}
                         <div className="text-xs text-gray-500">{formatDate(cover.uploadedAt)}</div>
                       </div>
                       <button

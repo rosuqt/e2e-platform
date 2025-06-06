@@ -14,14 +14,25 @@ export async function POST(req: NextRequest) {
     if (!ext) {
       return NextResponse.json({ error: "File extension missing" }, { status: 400 });
     }
-    const fileName = `${student_id}_${Date.now()}.${ext}`;
+    const fileType = formData.get("fileType") as string | null;
+    let fileName: string;
+    if (fileType === "cover") {
+      fileName = `cover.${ext}`;
+    } else if (fileType === "avatar") {
+      fileName = `avatar.${ext}`;
+    } else {
+      fileName = `${student_id}_${Date.now()}.${ext}`;
+    }
     const storagePath = `${student_id}/${fileName}`;
 
     const adminSupabase = getAdminSupabase();
 
+    const fileBuffer = await file.arrayBuffer();
+    const blob = new Blob([fileBuffer], { type: file.type });
+
     const { error: uploadError } = await adminSupabase.storage
       .from(bucket)
-      .upload(storagePath, file, { upsert: true });
+      .upload(storagePath, blob, { upsert: true });
 
     if (uploadError) {
       console.error("Supabase upload error:", uploadError);
@@ -32,7 +43,6 @@ export async function POST(req: NextRequest) {
       }, { status: 500 });
     }
 
-    // Return the storage path, not the signed URL
     return NextResponse.json({ publicUrl: storagePath });
   } catch (err) {
     console.error("Unexpected error in upload-avatar:", err);

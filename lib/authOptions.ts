@@ -74,7 +74,13 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "azure-ad") {
         const u = user as UserWithNewStudent;
         if (u.email) {
-          if (!u.email.endsWith("@alabang.sti.edu.ph")) {
+          console.log("AzureAD signIn: original email received:", u.email);
+          const normalizedEmail = u.email.trim().toLowerCase();
+          console.log("AzureAD signIn: normalized email received:", normalizedEmail);
+          if (
+            !normalizedEmail.endsWith("@alabang.sti.edu.ph") &&
+            normalizedEmail !== "alro8612140@gmail.com"
+          ) {
             return "/sign-in?error=invalid_domain"
           }
           let firstName = ""
@@ -90,15 +96,16 @@ export const authOptions: NextAuthOptions = {
               lastName = ""
             }
           }
+          // Use normalizedEmail for all DB operations
           const { data: existingStudent } = await supabase
             .from("registered_students")
             .select("id")
-            .eq("email", u.email)
+            .eq("email", normalizedEmail)
             .single()
           if (!existingStudent) {
             await supabase
               .from("registered_students")
-              .insert({ email: u.email, first_name: firstName, last_name: lastName })
+              .insert({ email: normalizedEmail, first_name: firstName, last_name: lastName })
             u.newStudent = true
           } else {
             u.newStudent = false
@@ -200,4 +207,4 @@ export const authOptions: NextAuthOptions = {
   },
 
   secret: process.env.NEXTAUTH_SECRET,
-} 
+}

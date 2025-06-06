@@ -6,23 +6,28 @@ import { cookies as nextCookies } from "next/headers";
 
 export async function GET(req: Request) {
   const cookieStore = nextCookies();
-
   const supabase = createServerComponentClient({
     cookies: () => cookieStore,
   });
 
-  const session = await getServerSession({ req, ...authOptions });
-  const studentId = (session?.user as { studentId?: string })?.studentId;
+  const url = new URL(req.url);
+  const filePath = url.searchParams.get("file");
+  const studentIdParam = url.searchParams.get("student_id");
+
+  let studentId: string | undefined;
+
+  if (studentIdParam) {
+    studentId = studentIdParam;
+  } else {
+    const session = await getServerSession({ req, ...authOptions });
+    studentId = (session?.user as { studentId?: string })?.studentId;
+  }
 
   if (!studentId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const url = new URL(req.url);
-  const filePath = url.searchParams.get("file");
-
   if (filePath) {
-
     const normalizedPath = filePath.replace(/^\/+/, "");
     const { data, error } = await supabase.storage
       .from("student.documents")

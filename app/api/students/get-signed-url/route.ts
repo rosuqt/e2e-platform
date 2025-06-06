@@ -25,24 +25,27 @@ export async function POST(req: NextRequest) {
       filePath = "default.png";
     }
 
- 
+    const lastSlash = filePath.lastIndexOf("/");
+    const directory = lastSlash !== -1 ? filePath.slice(0, lastSlash) : "";
+
     const adminSupabase = getAdminSupabase();
     const { data: listData, error: listError } = await adminSupabase
       .storage
       .from(bucket)
-      .list("", { limit: 100 });
+      .list(directory, { limit: 100 });
 
     if (listData) {
-      console.log("Files in bucket root:", listData.map(f => f.name));
+      //console.log(`Files in bucket "${bucket}" directory "${directory}":`, listData.map(f => f.name));
     }
 
-    const fileExists = listData?.some(f => f.name === filePath);
+    const fileName = lastSlash !== -1 ? filePath.slice(lastSlash + 1) : filePath;
+    const fileExists = listData?.some(f => f.name === fileName);
 
     if (listError || !fileExists) {
-      console.error("get-signed-url file not found:", filePath, "in bucket:", bucket);
+      //console.error("get-signed-url file not found:", filePath, "in bucket:", bucket, "directory:", directory);
       return NextResponse.json({
-        error: `File not found: ${filePath}. Files in bucket root: ${listData?.map(f => f.name).join(", ")}`,
-        debug: { filePath, bucket }
+        error: `File not found: ${filePath}. Files in bucket directory "${directory}": ${listData?.map(f => f.name).join(", ")}`,
+        debug: { filePath, bucket, directory }
       }, { status: 404 });
     }
 
@@ -51,7 +54,7 @@ export async function POST(req: NextRequest) {
       .createSignedUrl(filePath, 60 * 60);
 
     if (error || !data?.signedUrl) {
-      console.error("get-signed-url error:", error, "bucket:", bucket, "filePath:", filePath);
+     // console.error("get-signed-url error:", error, "bucket:", bucket, "filePath:", filePath);
       return NextResponse.json({ error: "Could not generate signed URL" }, { status: 500 });
     }
 
