@@ -1,5 +1,5 @@
 "use client";
-import { useState, forwardRef } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -42,12 +42,18 @@ type AddExpertiseModalProps = {
     skill: string;
     mastery: number;
   }) => void;
+  error?: string | null;
+  initial?: { skill: string; mastery: number } | null;
+  editMode?: boolean;
 };
 
 export default function AddExpertiseModal({
   open,
   onClose,
-  onSave
+  onSave,
+  error,
+  initial,
+  editMode
 }: AddExpertiseModalProps) {
   const [skill, setSkill] = useState("");
   const [mastery, setMastery] = useState(50);
@@ -56,7 +62,20 @@ export default function AddExpertiseModal({
   const [skillInput, setSkillInput] = useState("");
   const [showSkillInput, setShowSkillInput] = useState(false);
   const [focusedSuggestion, setFocusedSuggestion] = useState<number>(-1);
+  const [localError, setLocalError] = useState<string | null>(null);
   const { data: session } = useSession();
+
+  useEffect(() => {
+    if (open && initial) {
+      setSkill(initial.skill);
+      setSkillInput(initial.skill);
+      setMastery(initial.mastery);
+    } else if (open && !initial) {
+      setSkill("");
+      setSkillInput("");
+      setMastery(50);
+    }
+  }, [open, initial]);
 
   const filteredSuggestions = skillInput
     ? categories
@@ -83,8 +102,6 @@ export default function AddExpertiseModal({
   const handleSkillInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSkillInput(e.target.value);
     setFocusedSuggestion(-1);
-    // update skll if user selects from sggstions or preses enter
-    // setSkill(e.target.value);
   };
 
   const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -128,13 +145,15 @@ export default function AddExpertiseModal({
     setShowGauge(false);
     setShowSkillInput(false);
     setFocusedSuggestion(-1);
+    setLocalError(null);
   };
 
   const handleSave = async () => {
     setSaving(true);
+    setLocalError(null);
     const studentId = (session?.user as { studentId?: string })?.studentId;
-    if (studentId) {
-      await fetch("/api/students/student-profile/postHandlers", {
+    if (studentId && !editMode) {
+      const res = await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -143,6 +162,12 @@ export default function AddExpertiseModal({
           data: { skill, mastery }
         })
       });
+      if (!res.ok) {
+        const data = await res.json();
+        setLocalError(data?.error || "Failed to add expertise.");
+        setSaving(false);
+        return;
+      }
     }
     onSave?.({ skill, mastery });
     handleClose();
@@ -208,7 +233,7 @@ export default function AddExpertiseModal({
             </Box>
             <Box>
               <Typography sx={{ fontWeight: 600, fontSize: 22, color: "#fff" }}>
-                Add Expertise
+                {editMode ? "Edit Expertise" : "Add Expertise"}
               </Typography>
               <Typography sx={{ color: "#dbeafe", fontSize: 15 }}>
                 Enter your skill and mastery level
@@ -241,6 +266,8 @@ export default function AddExpertiseModal({
                 }}
                 inputProps={{ maxLength: 50 }}
                 autoComplete="off"
+                error={!!localError || !!error}
+                helperText={localError || error || ""}
               />
               {showSkillInput && (
                 <Box

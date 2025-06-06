@@ -50,6 +50,8 @@ export default function ProfileLayout() {
   const [uploadingProfile, setUploadingProfile] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const bioRef = useRef<HTMLTextAreaElement>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
 
   const menuItems = useMemo(
     () => [
@@ -67,6 +69,45 @@ export default function ProfileLayout() {
     "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80",
     "https://plus.unsplash.com/premium_photo-1667680403630-014f531d9664?q=80&w=2021&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
   ];
+
+  async function getSignedUrlIfNeeded(img: string | null, bucket: string): Promise<string | null> {
+    if (!img) return null;
+    if (/^https?:\/\//.test(img)) return img;
+    const res = await fetch("/api/students/get-signed-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bucket, path: img }),
+    });
+    if (!res.ok) return null;
+    const { signedUrl } = await res.json();
+    return signedUrl || null;
+  }
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      if (!profileImage) {
+        setProfileImageUrl(null);
+        return;
+      }
+      const url = await getSignedUrlIfNeeded(profileImage, "user.avatars");
+      if (!ignore) setProfileImageUrl(url);
+    })();
+    return () => { ignore = true; };
+  }, [profileImage]);
+
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      if (!coverImage) {
+        setCoverImageUrl(null);
+        return;
+      }
+      const url = await getSignedUrlIfNeeded(coverImage, "user.covers");
+      if (!ignore) setCoverImageUrl(url);
+    })();
+    return () => { ignore = true; };
+  }, [coverImage]);
 
   useEffect(() => {
     if (pathname === "/profile") {
@@ -122,16 +163,15 @@ export default function ProfileLayout() {
     formData.append("file", file);
     formData.append("bucket", "user.avatars");
     formData.append("student_id", studentId);
+    formData.append("fileType", "avatar");
     const uploadRes = await fetch("/api/students/upload-avatar", { method: "POST", body: formData });
     if (uploadRes.ok) {
       const { publicUrl } = await uploadRes.json();
-      // Save the storage path to the profile, not the signed URL
       await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId, profile_img: publicUrl }),
       });
-      // Refetch details to get the new signed URL
       const res = await fetch("/api/students/get-student-details");
       if (res.ok) {
         const details = await res.json();
@@ -163,6 +203,7 @@ export default function ProfileLayout() {
     formData.append("file", file);
     formData.append("bucket", "user.covers");
     formData.append("student_id", studentId);
+    formData.append("fileType", "cover");
     const uploadRes = await fetch("/api/students/upload-avatar", { method: "POST", body: formData });
     if (uploadRes.ok) {
       const { publicUrl } = await uploadRes.json();
@@ -296,23 +337,28 @@ export default function ProfileLayout() {
       </Dialog>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
         <div className="container mx-auto px-4 py-8">
-          {/* Profile Header */}
           <div className="bg-white rounded-xl shadow-md border border-blue-200 overflow-hidden mb-6">
-            {/* Cover Image */}
             <div className="h-40 relative">
               {(loading || uploadingCover) ? (
                 <Skeleton variant="rectangular" width="100%" height="100%" sx={{ position: "absolute", top: 0, left: 0, height: "100%", width: "100%", zIndex: 10 }} />
-              ) : coverImage ? (
-                <Image
-                  src={coverImage}
-                  alt="Cover"
-                  fill
-                  className="w-full h-full object-cover"
-                  onError={() => {}}
-                  style={{ objectFit: "cover" }}
-                  sizes="100vw"
-                  priority
-                />
+              ) : coverImageUrl ? (
+                <div className="w-full h-full relative">
+                  <Image
+                    src={coverImageUrl}
+                    alt="Cover"
+                    fill
+                    className="w-full h-full object-cover"
+                    onError={() => {}}
+                    style={{ objectFit: "cover" }}
+                    sizes="100vw"
+                    priority
+                  />
+                  {uploadingCover && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-20">
+                      <span className="loader" />
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div
                   className="w-full h-full bg-gradient-to-r from-blue-600 to-blue-400"
@@ -326,27 +372,31 @@ export default function ProfileLayout() {
                 <Camera className="h-5 w-5" />
               </button>
             </div>
-
-            {/* Profile Info */}
             <div className="relative px-6 pb-6 pt-4">
               <div className="flex flex-col md:flex-row md:items-end">
                 <div className="absolute -top-16 left-6 w-32 h-32">
                   <div className="relative w-full h-full">
-                    {/* Profile initials or image */}
-                    <div className="w-full h-full rounded-full bg-white border-4 border-white flex items-center justify-center overflow-hidden">
+                    <div className="w-full h-full rounded-full bg-white border-4 border-white flex items-center justify-center overflow-hidden relative">
                       {(loading || uploadingProfile) ? (
                         <Skeleton variant="circular" width={128} height={128} />
-                      ) : profileImage && /^https?:\/\//.test(profileImage) ? (
-                        <Image
-                          src={profileImage}
-                          alt="Profile"
-                          width={128}
-                          height={128}
-                          className="w-full h-full object-cover rounded-full"
-                          onError={() => setProfileImage(null)}
-                          style={{ objectFit: "cover" }}
-                          priority
-                        />
+                      ) : profileImageUrl ? (
+                        <>
+                          <Image
+                            src={profileImageUrl}
+                            alt="Profile"
+                            width={128}
+                            height={128}
+                            className="w-full h-full object-cover rounded-full"
+                            onError={() => setProfileImage(null)}
+                            style={{ objectFit: "cover" }}
+                            priority
+                          />
+                          {uploadingProfile && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-20 rounded-full">
+                              <span className="loader" />
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="w-full h-full rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-3xl select-none">
                           {(firstName && lastName)
@@ -355,7 +405,6 @@ export default function ProfileLayout() {
                         </div>
                       )}
                     </div>
-                    {/* Floating camera button */}
                     <button
                       className="absolute -top-2 -right-2 bg-white border border-blue-300 text-blue-600 hover:bg-blue-50 rounded-full p-2 shadow"
                       title="Change profile picture"
@@ -433,7 +482,6 @@ export default function ProfileLayout() {
                 </div>
               </div>
 
-              {/* MUI Tabs */}
               <div className="flex mt-6">
                 <Box
                   sx={{
@@ -494,11 +542,9 @@ export default function ProfileLayout() {
             </div>
           </div>
 
-          {/* Tab Content */}
           <div className="mb-8">{renderContent()}</div>
         </div>
       </div>
-     
     </BaseLayout>
   );
 }
