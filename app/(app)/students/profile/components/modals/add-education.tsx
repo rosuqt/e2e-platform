@@ -1,5 +1,5 @@
 "use client";
-import { useState, forwardRef } from "react";
+import { useState, forwardRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,21 +36,73 @@ type AddEducationalModalProps = {
     level: string;
     iconColor?: string;
   }) => void;
+  initial?: {
+    school: string;
+    acronym?: string;
+    degree: string;
+    years: string;
+    level: string;
+    iconColor?: string;
+  } | null;
+  editMode?: boolean;
 };
 
 export default function AddEducationalModal({
   open,
   onClose,
-  onSave
+  onSave,
+  initial,
+  editMode
 }: AddEducationalModalProps) {
-  const [school, setSchool] = useState("");
-  const [acronym, setAcronym] = useState("");
-  const [degree, setDegree] = useState("");
-  const [years, setYears] = useState("");
-  const [level, setLevel] = useState(""); 
-  const [iconColor, setIconColor] = useState("#2563eb");
+  const [school, setSchool] = useState(initial?.school || "");
+  const [acronym, setAcronym] = useState(initial?.acronym || "");
+  const [degree, setDegree] = useState(initial?.degree || "");
+  const [years, setYears] = useState(initial?.years || "");
+  const [level, setLevel] = useState(initial?.level || "");
+  const [iconColor, setIconColor] = useState(initial?.iconColor || "#2563eb");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [yearsError, setYearsError] = useState<string | null>(null);
+  const [startYear, setStartYear] = useState(() => {
+    if (initial?.years) {
+      const match = initial.years.match(/^(\d{4})-(\d{4})$/);
+      return match ? match[1] : "";
+    }
+    return "";
+  });
+  const [endYear, setEndYear] = useState(() => {
+    if (initial?.years) {
+      const match = initial.years.match(/^(\d{4})-(\d{4})$/);
+      return match ? match[2] : "";
+    }
+    return "";
+  });
   const { data: session } = useSession();
+
+  useEffect(() => {
+    setSchool(initial?.school || "");
+    setAcronym(initial?.acronym || "");
+    setDegree(initial?.degree || "");
+    setYears(initial?.years || "");
+    setLevel(initial?.level || "");
+    setIconColor(initial?.iconColor || "#2563eb");
+    setError(null);
+    setYearsError(null);
+    if (initial?.years) {
+      const match = initial.years.match(/^(\d{4})-(\d{4})$/);
+      setStartYear(match ? match[1] : "");
+      setEndYear(match ? match[2] : "");
+    } else {
+      setStartYear("");
+      setEndYear("");
+    }
+  }, [open, initial]);
+
+  useEffect(() => {
+    if (level === "Junior High") {
+      setDegree("None");
+    }
+  }, [level]);
 
   const handleClose = () => {
     onClose?.();
@@ -61,23 +113,67 @@ export default function AddEducationalModal({
     setLevel("");
     setIconColor("#2563eb");
     setSaving(false);
+    setError(null);
+    setStartYear("");
+    setEndYear("");
+  };
+
+  const handleStartYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/[^\d]/g, "");
+    if (value.length > 4) value = value.slice(0, 4);
+    setStartYear(value);
+    setYearsError(null);
+  };
+
+  const handleEndYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/[^\d]/g, "");
+    if (value.length > 4) value = value.slice(0, 4);
+    setEndYear(value);
+    setYearsError(null);
+  };
+
+  const validateYears = (start: string, end: string) => {
+    if (!/^\d{4}$/.test(start) || !/^\d{4}$/.test(end)) return false;
+    const s = parseInt(start, 10);
+    const e = parseInt(end, 10);
+    return s <= e && s > 1900 && e < 2100;
   };
 
   const handleSave = async () => {
     setSaving(true);
+    setError(null);
+    setYearsError(null);
+    if (!validateYears(startYear, endYear)) {
+      setYearsError("Enter valid years");
+      setSaving(false);
+      return;
+    }
+    const yearsValue = `${startYear}-${endYear}`;
+    const acronymValue = acronym ? acronym.toUpperCase() : "";
     const studentId = (session?.user as { studentId?: string })?.studentId;
-    if (studentId) {
-      await fetch("/api/students/student-profile/postHandlers", {
+    if (studentId && !editMode) {
+      const res = await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "education",
           student_id: studentId,
-          data: { school, acronym, degree, years, level, iconColor }
+          data: { school, acronym: acronymValue, degree, years: yearsValue, level, iconColor }
         })
       });
+      const result = await res.json();
+      if (!res.ok && result?.error === "DUPLICATE_EDUCATION") {
+        setError("This educational background already exists.");
+        setSaving(false);
+        return;
+      }
+      if (!res.ok) {
+        setError(result?.error || "Failed to save.");
+        setSaving(false);
+        return;
+      }
     }
-    onSave?.({ school, acronym, degree, years, level, iconColor });
+    onSave?.({ school, acronym: acronymValue, degree, years: yearsValue, level, iconColor });
     handleClose();
   };
 
@@ -141,7 +237,7 @@ export default function AddEducationalModal({
             </Box>
             <Box>
               <Typography sx={{ fontWeight: 600, fontSize: 22, color: "#fff" }}>
-                Add Education Background
+                {editMode ? "Edit Education Background" : "Add Education Background"}
               </Typography>
               <Typography sx={{ color: "#dbeafe", fontSize: 15 }}>
                 Enter your school, degree, and years attended
@@ -271,29 +367,36 @@ export default function AddEducationalModal({
                   fontSize: 15,
                   "& .MuiOutlinedInput-root": { fontSize: 15 }
                 }}
+                disabled={level === "Junior High"}
               >
                 <MenuItem value="" disabled>
                   Select Strand/Degree
                 </MenuItem>
-                <MenuItem value="None">None</MenuItem>
-                <ListSubheader>College Courses</ListSubheader>
-                <MenuItem value="BS - Information Technology">BS - Information Technology</MenuItem>
-                <MenuItem value="BS - Computer Science">BS - Computer Science</MenuItem>
-                <MenuItem value="BS - Business Administration">BS - Business Administration</MenuItem>
-                <MenuItem value="BS - Accountancy">BS - Accountancy</MenuItem>
-                <MenuItem value="BS - Hospitality Management">BS - Hospitality Management</MenuItem>
-                <MenuItem value="BS - Tourism Management">BS - Tourism Management</MenuItem>
-                <MenuItem value="BS - Engineering">BS - Engineering</MenuItem>
-                <MenuItem value="BA - Communication">BA - Communication</MenuItem>
-                <ListSubheader>SHS Strands</ListSubheader>
-                <MenuItem value="STEM">STEM</MenuItem>
-                <MenuItem value="ABM">ABM</MenuItem>
-                <MenuItem value="HUMSS">HUMSS</MenuItem>
-                <MenuItem value="GAS">GAS</MenuItem>
-                <MenuItem value="TVL">TVL</MenuItem>
-                <MenuItem value="ICT">ICT</MenuItem>
-                <MenuItem value="Sports">Sports</MenuItem>
-                <MenuItem value="Arts and Design">Arts and Design</MenuItem>
+                {level === "Junior High" && (
+                  <MenuItem value="None">None</MenuItem>
+                )}
+                {level === "College" && [
+                  <ListSubheader key="college-header">College Courses</ListSubheader>,
+                  <MenuItem key="it" value="BS - Information Technology">BS - Information Technology</MenuItem>,
+                  <MenuItem key="cs" value="BS - Computer Science">BS - Computer Science</MenuItem>,
+                  <MenuItem key="ba" value="BS - Business Administration">BS - Business Administration</MenuItem>,
+                  <MenuItem key="acct" value="BS - Accountancy">BS - Accountancy</MenuItem>,
+                  <MenuItem key="hm" value="BS - Hospitality Management">BS - Hospitality Management</MenuItem>,
+                  <MenuItem key="tm" value="BS - Tourism Management">BS - Tourism Management</MenuItem>,
+                  <MenuItem key="eng" value="BS - Engineering">BS - Engineering</MenuItem>,
+                  <MenuItem key="comm" value="BA - Communication">BA - Communication</MenuItem>
+                ]}
+                {level === "Senior High" && [
+                  <ListSubheader key="shs-header">SHS Strands</ListSubheader>,
+                  <MenuItem key="stem" value="STEM">STEM</MenuItem>,
+                  <MenuItem key="abm" value="ABM">ABM</MenuItem>,
+                  <MenuItem key="humss" value="HUMSS">HUMSS</MenuItem>,
+                  <MenuItem key="gas" value="GAS">GAS</MenuItem>,
+                  <MenuItem key="tvl" value="TVL">TVL</MenuItem>,
+                  <MenuItem key="ict" value="ICT">ICT</MenuItem>,
+                  <MenuItem key="sports" value="Sports">Sports</MenuItem>,
+                  <MenuItem key="arts" value="Arts and Design">Arts and Design</MenuItem>
+                ]}
               </TextField>
             </Box>
           </Box>
@@ -305,7 +408,7 @@ export default function AddEducationalModal({
               <TextField
                 fullWidth
                 value={acronym}
-                onChange={e => setAcronym(e.target.value)}
+                onChange={e => setAcronym(e.target.value.slice(0, 5).toUpperCase())}
                 variant="outlined"
                 placeholder="e.g. STI"
                 sx={{
@@ -315,7 +418,7 @@ export default function AddEducationalModal({
                   fontSize: 15,
                   "& .MuiOutlinedInput-root": { fontSize: 15 }
                 }}
-                inputProps={{ maxLength: 10 }}
+                inputProps={{ maxLength: 5 }}
               />
             </Box>
             <Box sx={{ flex: 1 }}>
@@ -350,22 +453,52 @@ export default function AddEducationalModal({
             <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
               Years Attended
             </Typography>
-            <TextField
-              fullWidth
-              value={years}
-              onChange={e => setYears(e.target.value)}
-              variant="outlined"
-              placeholder="e.g. 2019 - Present"
-              sx={{
-                background: "#fff",
-                borderRadius: 2,
-                mb: 2,
-                fontSize: 15,
-                "& .MuiOutlinedInput-root": { fontSize: 15 }
-              }}
-              inputProps={{ maxLength: 30 }}
-            />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <TextField
+                value={startYear}
+                onChange={handleStartYearChange}
+                variant="outlined"
+                placeholder="YYYY"
+                sx={{
+                  background: "#fff",
+                  borderRadius: 2,
+                  mb: 2,
+                  fontSize: 15,
+                  width: 110,
+                  "& .MuiOutlinedInput-root": { fontSize: 15 }
+                }}
+                inputProps={{ maxLength: 4, inputMode: "numeric", pattern: "\\d{4}" }}
+                error={!!yearsError}
+              />
+              <Typography sx={{ mb: 2, fontWeight: 600, fontSize: 18, color: "#64748b" }}>-</Typography>
+              <TextField
+                value={endYear}
+                onChange={handleEndYearChange}
+                variant="outlined"
+                placeholder="YYYY"
+                sx={{
+                  background: "#fff",
+                  borderRadius: 2,
+                  mb: 2,
+                  fontSize: 15,
+                  width: 110,
+                  "& .MuiOutlinedInput-root": { fontSize: 15 }
+                }}
+                inputProps={{ maxLength: 4, inputMode: "numeric", pattern: "\\d{4}" }}
+                error={!!yearsError}
+              />
+              {yearsError && (
+                <Typography sx={{ color: "#ef4444", fontWeight: 500, fontSize: 13, ml: 2, mb: 2, whiteSpace: "nowrap" }}>
+                  {yearsError}
+                </Typography>
+              )}
+            </Box>
           </Box>
+          {error && (
+            <Typography sx={{ color: "#ef4444", mb: 2, fontWeight: 500, fontSize: 15, textAlign: "center" }}>
+              {error}
+            </Typography>
+          )}
           <Box sx={{ display: "flex", gap: 2, pt: 2 }}>
             <Button
               variant="outlined"
@@ -384,7 +517,7 @@ export default function AddEducationalModal({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!school || !years || !level || saving}
+              disabled={!school || !startYear || !endYear || !level || saving}
               sx={{
                 flex: 1,
                 background: "#2563eb",
@@ -397,7 +530,7 @@ export default function AddEducationalModal({
                 "&:hover": { background: "#1e40af" }
               }}
             >
-              Save
+              {editMode ? "Update" : "Save"}
             </Button>
           </Box>
         </Box>

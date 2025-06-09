@@ -17,15 +17,126 @@ import {
   Star,
   Building2,
 } from "lucide-react"
-import { FaLinkedin, FaFacebook, FaTwitter } from "react-icons/fa"
+import { FaLinkedin, FaFacebook, FaTwitter, FaInstagram, FaGithub, FaYoutube } from "react-icons/fa"
 import dynamic from "next/dynamic"
 import Image from "next/image"
-import { MarqueeDemo } from "./marquee-ratings"
+import { RatingsCards } from "./marquee-ratings"
 import { Star as StarIcon } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
+import AddEditContactModal from "./add-edit-contact"
+import AvailabilityModal from "./availability-modal"
+import { SiIndeed } from "react-icons/si"
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false })
 
+type SessionUser = {
+  name?: string | null
+  email?: string | null
+  image?: string | null
+  role?: string | null
+  employerId?: string
+}
+
+type SocialLink = { key: string; url: string }
+type ContactInfo = {
+  email?: string
+  countryCode?: string
+  phone?: string
+  socials?: SocialLink[]
+  website?: string
+} | null
+
+type RegisteredEmployer = {
+  email?: string
+  phone?: string
+  countryCode?: string
+  company_email?: string
+}
+type RegisteredCompany = {
+  company_website?: string
+}
+
 export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => void }) {
+  const { data: session } = useSession()
+  const employerID = (session?.user as SessionUser)?.employerId
+
+  const [about, setAbout] = useState("")
+  const [hiringPhilosophy, setHiringPhilosophy] = useState("")
+  const [contactInfo, setContactInfo] = useState<ContactInfo>(null)
+  const [registeredEmployer, setRegisteredEmployer] = useState<RegisteredEmployer | null>(null)
+  const [registeredCompany, setRegisteredCompany] = useState<RegisteredCompany | null>(null)
+  const [contactModalOpen, setContactModalOpen] = useState(false)
+  const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [availability, setAvailability] = useState<{
+    days?: string[];
+    start?: string;
+    end?: string;
+    timezone?: string;
+  } | null>(null)
+
+  useEffect(() => {
+    if (!employerID) return
+    fetch(`/api/employers/employer-profile/getHandlers?employerID=${employerID}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setAbout(data.about || "")
+        setHiringPhilosophy(data.hiring_philosophy || "")
+        setContactInfo(data.contact_info as ContactInfo || null)
+        setRegisteredEmployer(
+          data.registered_employer
+            ? {
+                ...data.registered_employer,
+                countryCode: data.registered_employer.country_code || data.registered_employer.countryCode,
+                company_email: data.registered_employer.company_email
+              }
+            : null
+        )
+        setRegisteredCompany(data.registered_company || null)
+        setAvailability(data.availability || null)
+      })
+  }, [employerID, refreshKey])
+
+  async function saveProfileField(field: "about" | "hiring_philosophy", value: string) {
+    if (!employerID) return
+    await fetch("/api/employers/employer-profile/postHandlers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employerID, [field]: value }),
+    })
+  }
+
+  async function saveContactInfo(data: ContactInfo) {
+    if (!employerID) return
+    await fetch("/api/employers/employer-profile/postHandlers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employerID, contact_info: data }),
+    })
+    setContactInfo(data)
+    setRefreshKey((k) => k + 1)
+  }
+
+  function handleAboutChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setAbout(e.target.value)
+  }
+  function handleAboutKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      saveProfileField("about", about)
+    }
+  }
+  function handleHiringPhilosophyChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setHiringPhilosophy(e.target.value)
+  }
+  function handleHiringPhilosophyKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      saveProfileField("hiring_philosophy", hiringPhilosophy)
+    }
+  }
+
   const company = {
     logo: "/placeholder.svg?height=64&width=64",
     name: "TechCorp Inc.",
@@ -69,9 +180,9 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
   ]
 
   const hiringMetrics = [
-    { label: "Response Rate", value: 92, color: "#3b82f6" },
-    { label: "Interview Rate", value: 78, color: "#10b981" },
-    { label: "Offer Acceptance", value: 85, color: "#f59e0b" },
+    { label: "Response Rate", value: 0, color: "#3b82f6" },
+    { label: "Interview Rate", value: 0, color: "#10b981" },
+    { label: "Offer Acceptance", value: 0, color: "#f59e0b" },
   ]
 
   const analyticsOption = {
@@ -91,10 +202,10 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
         emphasis: { label: { show: true, fontSize: 14, fontWeight: "bold" } },
         labelLine: { show: false },
         data: [
-          { value: 45, name: "Applications" },
-          { value: 25, name: "Interviews" },
-          { value: 15, name: "Final Round" },
-          { value: 15, name: "Offers" },
+          { value: 0, name: "Applications" },
+          { value: 0, name: "Interviews" },
+          { value: 0, name: "Final Round" },
+          { value: 0, name: "Offers" },
         ],
       },
     ],
@@ -114,7 +225,7 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
     },
     series: [
       {
-        data: [12, 8, 15, 10, 18, 14],
+        data: [0, 0, 0, 0, 0, 0],
         type: "line",
         smooth: true,
         lineStyle: { color: "#3b82f6", width: 3 },
@@ -124,6 +235,17 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
     ],
     grid: { left: 40, right: 20, top: 20, bottom: 40 },
   }
+
+  const SOCIALS = [
+    { key: "linkedin", icon: <FaLinkedin size={20} />, color: "bg-blue-100", text: "text-blue-600" },
+    { key: "facebook", icon: <FaFacebook size={20} />, color: "bg-blue-600", text: "text-white" },
+    { key: "twitter", icon: <FaTwitter size={20} />, color: "bg-blue-400", text: "text-white" },
+    { key: "instagram", icon: <FaInstagram size={20} />, color: "bg-pink-400", text: "text-white" },
+    { key: "github", icon: <FaGithub size={20} />, color: "bg-gray-800", text: "text-white" },
+    { key: "youtube", icon: <FaYoutube size={20} />, color: "bg-red-500", text: "text-white" },
+    { key: "indeed", icon: <SiIndeed size={20} />, color: "bg-blue-900", text: "text-white" },
+    { key: "website", icon: <Globe className="w-5 h-5" />, color: "bg-green-200", text: "text-green-700" }
+  ]
 
   return (
     <div className="space-y-6">
@@ -155,8 +277,10 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
             </h3>
             <textarea
               className="w-full p-3 border border-gray-300 rounded-lg text-sm text-gray-700 min-h-[100px] resize-none"
-              placeholder="Write about your role and responsibilities..."
-              defaultValue="Experienced HR Manager with over 10 years in the tech industry. Specialized in talent acquisition and employee development programs. Passionate about creating inclusive work environments and implementing innovative HR strategies that drive company growth."
+              placeholder="Write about your role and responsibilities. Press Enter to save."
+              value={about}
+              onChange={handleAboutChange}
+              onKeyDown={handleAboutKeyDown}
             />
           </div>
 
@@ -170,14 +294,29 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
             </h3>
             <textarea
               className="w-full p-3 border border-gray-300 rounded-lg text-sm text-gray-700 min-h-[120px] resize-none"
-              placeholder="Describe your hiring philosophy..."
-              defaultValue="I believe in looking beyond just technical skills to find candidates who align with our company culture and values. I focus on potential, adaptability, and a growth mindset when building diverse and high-performing teams. Every hiring decision is made with long-term growth and development in mind, both for the individual and the organization."
+              placeholder="Describe your hiring philosophy. Press Enter to save."
+              value={hiringPhilosophy}
+              onChange={handleHiringPhilosophyChange}
+              onKeyDown={handleHiringPhilosophyKeyDown}
             />
           </div>
 
           <Separator />
 
-  
+          <div className="flex items-center gap-3">
+            <span className="font-semibold text-blue-700 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-blue-600" />
+              Availability
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-blue-300 text-blue-600 hover:bg-blue-50"
+              onClick={() => setAvailabilityModalOpen(true)}
+            >
+              Edit
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -208,7 +347,7 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
             </div>
             <p className="text-xs text-gray-600">Based on 127 candidate reviews</p>
           </div>
-          <MarqueeDemo />
+          <RatingsCards />
         </div>
       </section>
 
@@ -352,7 +491,11 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">Email</p>
-                  <p className="text-sm text-gray-600">john.doe@techcorp.com</p>
+                  <p className="text-sm text-gray-600">
+                    {contactInfo?.email ||
+                      registeredEmployer?.email ||
+                      "—"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -361,7 +504,13 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">Phone</p>
-                  <p className="text-sm text-gray-600">+1 (555) 123-4567</p>
+                  <p className="text-sm text-gray-600">
+                    {registeredEmployer?.phone
+                      ? `+${registeredEmployer.countryCode || ""} ${registeredEmployer.phone}`
+                      : contactInfo?.phone
+                      ? `+${contactInfo.countryCode || ""} ${contactInfo.phone}`
+                      : "—"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -370,35 +519,77 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">Company Website</p>
-                  <p className="text-sm text-gray-600">www.techcorp.com</p>
+                  <p className="text-sm text-gray-600">
+                    {registeredCompany?.company_website?.trim()
+                      ? registeredCompany.company_website
+                      : "Not provided"}
+                  </p>
                 </div>
               </div>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Social Media</h4>
-              <div className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full hover:bg-blue-200 transition-colors cursor-pointer">
-                    <FaLinkedin size={20} />
-                  </div>
-                  <p className="text-xs text-gray-600 mt-2">LinkedIn</p>
-                </div>
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-blue-600 text-white flex items-center justify-center rounded-full hover:bg-blue-700 transition-colors cursor-pointer">
-                    <FaFacebook size={20} />
-                  </div>
-                  <p className="text-xs text-gray-600 mt-2">Facebook</p>
-                </div>
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-blue-400 text-white flex items-center justify-center rounded-full hover:bg-blue-500 transition-colors cursor-pointer">
-                    <FaTwitter size={20} />
-                  </div>
-                  <p className="text-xs text-gray-600 mt-2">Twitter</p>
-                </div>
+              <div className="flex gap-4 flex-wrap">
+                {(contactInfo?.socials || []).filter((s: SocialLink) => s.key !== "website").map((s: SocialLink) => {
+                  const social = SOCIALS.find((soc) => soc.key === s.key);
+                  const url = s.url ? (s.url.startsWith("http") ? s.url : `https://${s.url}`) : undefined;
+                  return (
+                    <div key={s.key} className="flex flex-col items-center">
+                      {url ? (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`w-12 h-12 flex items-center justify-center rounded-full ${social?.color ?? "bg-blue-100"} ${social?.text ?? "text-blue-600"}`}
+                          style={{ textDecoration: "none" }}
+                        >
+                          {social?.icon}
+                        </a>
+                      ) : (
+                        <div className={`w-12 h-12 flex items-center justify-center rounded-full ${social?.color ?? "bg-blue-100"} ${social?.text ?? "text-blue-600"}`}>
+                          {social?.icon}
+                        </div>
+                      )}
+                      {url ? (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs mt-2 font-medium text-black"
+                          style={{ textDecoration: "none" }}
+                        >
+                          {s.key.charAt(0).toUpperCase() + s.key.slice(1)}
+                        </a>
+                      ) : (
+                        <p className="text-xs mt-2 font-medium text-black">{s.key.charAt(0).toUpperCase() + s.key.slice(1)}</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <Button variant="outline" size="sm" className="border-blue-300 text-blue-600 hover:bg-blue-50 mt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-blue-300 text-blue-600 hover:bg-blue-50 mt-6"
+                onClick={() => setContactModalOpen(true)}
+              >
                 Edit Contact Info
               </Button>
+              <AddEditContactModal
+                open={contactModalOpen}
+                onClose={() => setContactModalOpen(false)}
+                onSave={saveContactInfo}
+                initial={{
+        
+                  email: contactInfo?.email || registeredEmployer?.email || "",
+                  personal_email: registeredEmployer?.email || "", 
+                  countryCode: contactInfo?.countryCode || registeredEmployer?.countryCode || "",
+                  phone: contactInfo?.phone || registeredEmployer?.phone || "",
+                  socials: contactInfo?.socials || [],
+                  website: contactInfo?.website || registeredCompany?.company_website || "",
+                  company_email: registeredEmployer?.company_email
+                }}
+              />
             </div>
             <div>
               <h4 className="font-semibold mb-4 flex items-center gap-2">
@@ -408,14 +599,92 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm font-medium">Typically replies within 2 hours</span>
+                  <span className="text-medium font-medium">
+                    No response data yet
+                  </span>
                 </div>
-                <p className="text-xs text-gray-600">Available Monday - Friday, 9 AM - 6 PM PST</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">
+                    {(() => {
+                      if (
+                        availability &&
+                        Array.isArray(availability.days) &&
+                        availability.days.length > 0 &&
+                        availability.start &&
+                        availability.end &&
+                        availability.timezone
+                      ) {
+                        const days = availability.days;
+                        const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+                        if (days.length === 6) {
+                          const missing = week.find(d => !days.includes(d));
+                          if (missing) {
+                            return (
+                              <>
+                                {`Available anytime except ${missing}`}
+                                <br />
+                                {`${availability.start} - ${availability.end} ${availability.timezone}`}
+                              </>
+                            );
+                          }
+                        }
+                        const indices = days.map(d => week.indexOf(d)).sort((a, b) => a - b);
+                        if (days.length === 1) {
+                          return (
+                            <>
+                              {days[0]}
+                              <br />
+                              {`${availability.start} - ${availability.end} ${availability.timezone}`}
+                            </>
+                          );
+                        }
+                        if (
+                          days.length > 1 &&
+                          indices.every((v, i, arr) => i === 0 || v === arr[i - 1] + 1)
+                        ) {
+                          return (
+                            <>
+                              {`${days[0]} - ${days[days.length - 1]}`}
+                              <br />
+                              {`${availability.start} - ${availability.end} ${availability.timezone}`}
+                            </>
+                          );
+                        }
+                        return (
+                          <>
+                            {days.join(", ")}
+                            <br />
+                            {`${availability.start} - ${availability.end} ${availability.timezone}`}
+                          </>
+                        );
+                      }
+                      return "Anytime";
+                    })()}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="border-blue-300 text-blue-600 hover:bg-blue-50 p-1 ml-2"
+                    onClick={() => setAvailabilityModalOpen(true)}
+                  >
+                    <svg width={18} height={18} viewBox="0 0 20 20" fill="none">
+                      <path d="M12.5 5.5l2 2m0 0l-7.5 7.5H5v-2l7.5-7.5m2 2l-2-2" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      <AvailabilityModal
+        open={availabilityModalOpen}
+        onClose={() => {
+          setAvailabilityModalOpen(false)
+          setRefreshKey((k) => k + 1)
+        }}
+      />
     </div>
   )
 }

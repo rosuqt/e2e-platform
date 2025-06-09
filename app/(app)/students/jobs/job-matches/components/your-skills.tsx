@@ -1,13 +1,55 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Progress } from "../components/progress"
 import { Badge } from "../components/badge"
-import { Sliders, Code, Database, PenTool, Smartphone, Cpu } from "lucide-react"
 import { Dialog } from "@mui/material"
+import ViewSkillsModal from "./view-skills"
+
+type Skill = {
+  name?: string
+  level?: string
+  value?: number
+}
+
+type RawExpertise = { 
+  skill: string
+  mastery: number
+}
 
 export function YourSkills() {
   const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false)
+  const [skills, setSkills] = useState<Skill[]>([])
+  const [expertise, setExpertise] = useState<Skill[]>([])
+  const [isViewAllOpen, setIsViewAllOpen] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/students/student-profile/getHandlers")
+      .then(res => res.json())
+      .then(data => {
+        setSkills(Array.isArray(data.skills) ? data.skills : [])
+        if (Array.isArray(data.expertise)) {
+          setExpertise(
+            data.expertise.map((e: RawExpertise) => ({
+              name: e.skill,
+              value: e.mastery,
+              level:
+                e.mastery >= 80
+                  ? "Expert"
+                  : e.mastery >= 60
+                  ? "Advanced"
+                  : e.mastery >= 40
+                  ? "Intermediate"
+                  : e.mastery >= 20
+                  ? "Beginner"
+                  : "Novice"
+            }))
+          )
+        } else {
+          setExpertise([])
+        }
+      })
+  }, [])
 
   const handleOpenSkillsModal = () => setIsSkillsModalOpen(true)
   const handleCloseSkillsModal = () => setIsSkillsModalOpen(false)
@@ -21,85 +63,99 @@ export function YourSkills() {
         transition={{ duration: 0.5, delay: 0.1 }}
       >
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-blue-700">Your Skills</h3>
+          <h3 className="text-lg font-semibold text-blue-700">Your Skills & Expertise</h3>
           <motion.button
             className="text-blue-500 hover:text-blue-700 transition-colors"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Sliders className="h-4 w-4" />
           </motion.button>
         </div>
 
+        {/* Expertise with progress bars */}
         <div className="space-y-3">
-          {/* Display only the first 3 skills */}
-          {[{ skill: "Frontend Development", level: "Expert", value: 95, icon: Code },
-            { skill: "Backend Development", level: "Advanced", value: 80, icon: Database },
-            { skill: "UI/UX Design", level: "Intermediate", value: 70, icon: PenTool }]
-            .map(({ skill, level, value, icon: Icon }, index) => (
-              <div key={index} className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-700">{skill}</span>
-                  </div>
-                  <span className="text-xs font-medium text-blue-600">{level}</span>
+          {expertise.length === 0 && (
+            <div className="text-sm text-gray-400">No expertise added yet.</div>
+          )}
+          {expertise.slice(0, 3).map((item, idx) => (
+            <div key={`expertise-bar-${idx}`} className="space-y-1">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-blue-700">
+                    {typeof item === "string" ? item : item.name}
+                  </span>
                 </div>
-                <Progress value={value} className="h-1.5" />
+                {typeof item !== "string" && item.level && (
+                  <span className="text-xs font-medium text-blue-600">{item.level}</span>
+                )}
               </div>
-            ))}
-
-          {/* View More Button */}
-          <button
-            className="text-blue-600 text-sm hover:underline mt-2"
-            onClick={handleOpenSkillsModal}
-          >
-            View More
-          </button>
+              {typeof item !== "string" && item.value && (
+                <Progress value={item.value} className="h-1.5" />
+              )}
+            </div>
+          ))}
+          {expertise.length > 3 && (
+            <button
+              className="text-blue-600 text-sm hover:underline mt-2"
+              onClick={handleOpenSkillsModal}
+            >
+              View More
+            </button>
+          )}
         </div>
 
-        {/* Pill-shaped skills */}
+        {/* Skills as badges */}
         <div className="mt-4 flex flex-wrap gap-2">
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">React</Badge>
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">Next.js</Badge>
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">TypeScript</Badge>
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">Node.js</Badge>
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">Figma</Badge>
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">Tailwind</Badge>
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">MongoDB</Badge>
-          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">+5 more</Badge>
+          {skills.slice(0, 8).map((item, idx) => (
+            <Badge key={idx} className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
+              {typeof item === "string" ? item : item.name}
+            </Badge>
+          ))}
+          {skills.length > 8 && (
+            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
+              +{skills.length - 8} more
+            </Badge>
+          )}
         </div>
-
-        {/* Update Skills Button */}
-        <div className="mt-4">
-          <Button variant="outline" className="w-full text-blue-600 border-blue-200 hover:bg-blue-50">
-            Update Skills
+        <div className="mt-4 flex flex-col gap-2">
+          <Button
+            variant="outline"
+            className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
+            onClick={() => setIsViewAllOpen(true)}
+          >
+            View All
           </Button>
         </div>
       </motion.div>
 
-      {/* Skills Modal */}
       <Dialog open={isSkillsModalOpen} onClose={handleCloseSkillsModal}>
         <div className="p-6">
-          <h3 className="text-lg font-semibold text-blue-700 mb-4">All Skills</h3>
+          <h3 className="text-lg font-semibold text-blue-700 mb-4">All Expertise & Skills</h3>
           <div className="space-y-3">
-            {[{ skill: "Frontend Development", level: "Expert", value: 95, icon: Code },
-              { skill: "Backend Development", level: "Advanced", value: 80, icon: Database },
-              { skill: "UI/UX Design", level: "Intermediate", value: 70, icon: PenTool },
-              { skill: "Mobile Development", level: "Beginner", value: 40, icon: Smartphone },
-              { skill: "Machine Learning", level: "Beginner", value: 30, icon: Cpu }]
-              .map(({ skill, level, value, icon: Icon }, index) => (
-                <div key={index} className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Icon className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-700">{skill}</span>
-                    </div>
-                    <span className="text-xs font-medium text-blue-600">{level}</span>
+            {expertise.map((item, idx) => (
+              <div key={`expertise-modal-${idx}`} className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-blue-700">
+                      {typeof item === "string" ? item : item.name}
+                    </span>
                   </div>
-                  <Progress value={value} className="h-1.5" />
+                  {typeof item !== "string" && item.level && (
+                    <span className="text-xs font-medium text-blue-600">{item.level}</span>
+                  )}
                 </div>
+                {typeof item !== "string" && item.value && (
+                  <Progress value={item.value} className="h-1.5" />
+                )}
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-2 mt-4">
+              {skills.map((item, idx) => (
+                <Badge key={`skill-modal-${idx}`} className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
+                  {typeof item === "string" ? item : item.name}
+                </Badge>
               ))}
+            </div>
           </div>
           <div className="mt-4">
             <Button
@@ -112,6 +168,13 @@ export function YourSkills() {
           </div>
         </div>
       </Dialog>
+
+      <ViewSkillsModal
+        open={isViewAllOpen}
+        onClose={() => setIsViewAllOpen(false)}
+        skills={skills}
+        expertise={expertise}
+      />
     </>
   )
 }

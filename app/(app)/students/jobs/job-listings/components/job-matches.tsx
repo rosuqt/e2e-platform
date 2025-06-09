@@ -1,6 +1,9 @@
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 export default function JobMatches() {
+  const router = useRouter();
+
   return (
     <motion.div
       className="bg-white rounded-2xl shadow-lg mb-[30px] p-4 border-2 border-blue-200 relative overflow-hidden"
@@ -77,6 +80,7 @@ export default function JobMatches() {
           className="text-blue-600 text-sm font-medium hover:text-blue-800 transition-colors"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={() => router.push("/students/jobs/job-matches")}
         >
           View All
         </motion.button>

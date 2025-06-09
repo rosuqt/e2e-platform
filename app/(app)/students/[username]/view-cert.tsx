@@ -22,15 +22,12 @@ const SlideUp = forwardRef(function Transition(
 });
 
 type CertType = {
-  student_id: string;
   title: string;
-  issuer: string;
-  issueDate: string;
+  issuer?: string;
+  issueDate?: string;
   description?: string;
-  attachment?: File | null;
-  attachmentUrl?: string | null;
+  attachmentUrl?: string;
   category?: string;
-  signedUrl?: string | null;
 };
 
 type ViewCertModalProps = {
@@ -60,7 +57,7 @@ function getProxyUrl(fileUrl: string | null) {
   return `/api/proxy-image?path=${encodeURIComponent(fileUrl)}`;
 }
 
-export default function ViewCertModal({
+export default function PublicViewCertModal({
   open,
   onClose,
   cert
@@ -74,25 +71,17 @@ export default function ViewCertModal({
     (async () => {
       setLoadingPreview(true);
       setImgError(false);
-      if (cert.attachment && cert.attachment instanceof File) {
-        setFileUrl(URL.createObjectURL(cert.attachment));
-        setLoadingPreview(false);
-        return;
-      }
-      const url = await getSignedUrlIfNeeded(cert.attachmentUrl || cert.signedUrl || null);
+      const url = await getSignedUrlIfNeeded(cert.attachmentUrl || null);
       if (!ignore) setFileUrl(url);
       setLoadingPreview(false);
     })();
     return () => { ignore = true; };
-  }, [cert.attachment, cert.attachmentUrl, cert.signedUrl]);
+  }, [cert.attachmentUrl]);
 
   let fileType: string | null = null;
   let fileName: string | null = null;
 
-  if (cert.attachment && cert.attachment instanceof File) {
-    fileType = cert.attachment.type;
-    fileName = cert.attachment.name;
-  } else if (fileUrl) {
+  if (fileUrl) {
     fileName = fileUrl;
   }
 
@@ -103,20 +92,6 @@ export default function ViewCertModal({
     else if (/^blob:|^https?:\/\//.test(fileName) && /\.(png|jpe?g|gif|bmp|webp)$/i.test(fileName)) fileType = "image";
     else fileType = "";
   }
-
-  if (!fileType && fileUrl) {
-    if (/\.pdf(\?.*)?$/i.test(fileUrl)) fileType = "application/pdf";
-    else if (/\.(png|jpe?g|gif|bmp|webp)$/i.test(fileUrl)) fileType = "image";
-    else if (/\.docx(\?.*)?$/i.test(fileUrl)) fileType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    else if (/^blob:|^https?:\/\//.test(fileUrl) && /\.(png|jpe?g|gif|bmp|webp)$/i.test(fileUrl)) fileType = "image";
-    else fileType = "";
-  }
-
-  useEffect(() => {
-    if (fileUrl) {
-      console.log("fileUrl:", fileUrl, "fileType:", fileType);
-    }
-  }, [fileUrl, fileType]);
 
   const isImage =
     (fileType === "image" || (fileType && fileType.startsWith("image/"))) ||
@@ -131,7 +106,7 @@ export default function ViewCertModal({
   const [medalAnimation, setMedalAnimation] = useState<object | null>(null);
 
   useEffect(() => {
-    import("../../../../../../public/animations/medal.json").then((mod) => {
+    import("../../../../public/animations/medal.json").then((mod) => {
       setMedalAnimation(mod.default as object);
     });
   }, []);
@@ -237,7 +212,7 @@ export default function ViewCertModal({
               {isImage && fileUrl && !imgError && (
                 <Image
                   src={getProxyUrl(fileUrl) || ""}
-                  alt={cert.attachment?.name || cert.title}
+                  alt={cert.title}
                   width={320}
                   height={320}
                   style={{
@@ -305,27 +280,10 @@ export default function ViewCertModal({
               {!isImage && !isPdf && !isDocx && fileUrl && (
                 <Box sx={{ width: "100%", mb: 2, display: "flex", flexDirection: "column", alignItems: "center" }}>
                   <Typography sx={{ color: "#64748b", fontSize: 15, mb: 1 }}>
-                    File preview not available. You can download the file below.
+                    File preview not available.
                   </Typography>
                 </Box>
               )}
-              <Button
-                variant="contained"
-                color="primary"
-                href={fileUrl || "#"}
-                download={cert.attachment?.name || cert.title}
-                sx={{
-                  mt: 1,
-                  background: "#2563eb",
-                  color: "#fff",
-                  fontWeight: 500,
-                  fontSize: 15,
-                  px: 3,
-                  "&:hover": { background: "#1e40af" }
-                }}
-              >
-                Download Certificate
-              </Button>
             </Box>
           ) : (
             <Typography sx={{ color: "#64748b", fontSize: 15, textAlign: "center", mb: 2 }}>
