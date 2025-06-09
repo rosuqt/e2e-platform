@@ -83,29 +83,31 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               : ""
           )
           setDbEmail(email || "")
-          setDbAvatar(profile_img || undefined)
           setUserType("student")
-        }
-      } catch {}
-      const res = await fetch("/api/students/student-profile/getHandlers")
-      if (res.ok) {
-        const profile = await res.json()
-        if (profile?.student_id) {
-          if (profile.profile_img) {
+          if (profile_img) {
             try {
               const signedRes = await fetch("/api/students/get-signed-url", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ bucket: "user.avatars", path: profile.profile_img }),
+                body: JSON.stringify({ bucket: "user.avatars", path: profile_img }),
+                credentials: "include",
               })
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json()
                 setDbAvatar(signedUrl)
+              } else {
+                setDbAvatar(undefined)
               }
-            } catch {}
+            } catch {
+              setDbAvatar(undefined)
+            }
+          } else {
+            setDbAvatar(undefined)
           }
+          setLoading(false)
+          return
         }
-      }
+      } catch {}
       setLoading(false)
     })()
   }, [user.name, user.email, user.avatarUrl])

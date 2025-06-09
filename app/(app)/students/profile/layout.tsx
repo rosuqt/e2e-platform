@@ -27,6 +27,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Skeleton from "@mui/material/Skeleton";
 import { motion } from "framer-motion";
 import Tooltip from "@mui/material/Tooltip";
+import ProfileCompletion from "./components/profile-completion";
 
 export default function ProfileLayout() {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
@@ -339,7 +340,7 @@ export default function ProfileLayout() {
         <div className="container mx-auto px-4 py-8">
           <div className="bg-white rounded-xl shadow-md border border-blue-200 overflow-hidden mb-6">
             <div className="h-40 relative">
-              {(loading || uploadingCover) ? (
+              {loading || uploadingCover ? (
                 <Skeleton variant="rectangular" width="100%" height="100%" sx={{ position: "absolute", top: 0, left: 0, height: "100%", width: "100%", zIndex: 10 }} />
               ) : coverImageUrl ? (
                 <div className="w-full h-full relative">
@@ -352,6 +353,7 @@ export default function ProfileLayout() {
                     style={{ objectFit: "cover" }}
                     sizes="100vw"
                     priority
+                    unoptimized
                   />
                   {uploadingCover && (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-20">
@@ -377,7 +379,7 @@ export default function ProfileLayout() {
                 <div className="absolute -top-16 left-6 w-32 h-32">
                   <div className="relative w-full h-full">
                     <div className="w-full h-full rounded-full bg-white border-4 border-white flex items-center justify-center overflow-hidden relative">
-                      {(loading || uploadingProfile) ? (
+                      {loading || uploadingProfile ? (
                         <Skeleton variant="circular" width={128} height={128} />
                       ) : profileImageUrl ? (
                         <>
@@ -390,6 +392,7 @@ export default function ProfileLayout() {
                             onError={() => setProfileImage(null)}
                             style={{ objectFit: "cover" }}
                             priority
+                            unoptimized
                           />
                           {uploadingProfile && (
                             <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-20 rounded-full">
@@ -415,69 +418,73 @@ export default function ProfileLayout() {
                     </button>
                   </div>
                 </div>
-                <div className="mt-16 md:mt-0 md:ml-36 flex-1">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
+                <div className="mt-16 md:mt-0 md:ml-36 flex-1 flex flex-col md:flex-row md:items-start gap-6">
+                  <div className="flex-1">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          {loading ? (
+                            <Skeleton variant="text" width={180} height={36} />
+                          ) : (
+                            <h1 className="text-2xl font-bold">
+                              {(firstName && lastName)
+                                ? `${firstName} ${lastName}`
+                                : "Full Name"}
+                            </h1>
+                          )}
+                          <motion.span
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="bg-green-500 text-white text-xs px-2 py-1 rounded-full cursor-pointer"
+                          >
+                            Available to work
+                          </motion.span>
+                          <Tooltip title="This reflects your work status and cannot be changed. It is based on your actual workflow and progress." arrow>
+                            <span className="ml-1 text-blue-500 cursor-help">🛈</span>
+                          </Tooltip>
+                        </div>
                         {loading ? (
-                          <Skeleton variant="text" width={180} height={36} />
+                          <Skeleton variant="text" width={220} height={24} />
                         ) : (
-                          <h1 className="text-2xl font-bold">
-                            {(firstName && lastName)
-                              ? `${firstName} ${lastName}`
-                              : "Full Name"}
-                          </h1>
+                          <>
+                            <p className="text-gray-600">
+                              {course || "Course not specified"}
+                            </p>
+                            <p className="text-gray-600">
+                              {(year || section)
+                                ? `${year || "Year"}${year && section ? " | " : ""}${section || "Section"}`
+                                : "Year and Section"}
+                            </p>
+                          </>
                         )}
-                        <motion.span
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="bg-green-500 text-white text-xs px-2 py-1 rounded-full cursor-pointer"
-                        >
-                          Available to work
-                        </motion.span>
-                        <Tooltip title="This reflects your work status and cannot be changed. It is based on your actual workflow and progress." arrow>
-                          <span className="ml-1 text-blue-500 cursor-help">🛈</span>
-                        </Tooltip>
                       </div>
-                      {loading ? (
-                        <Skeleton variant="text" width={220} height={24} />
-                      ) : (
-                        <>
-                          <p className="text-gray-600">
-                            {course || "Course not specified"}
-                          </p>
-                          <p className="text-gray-600">
-                            {(year || section)
-                              ? `${year || "Year"}${year && section ? " | " : ""}${section || "Section"}`
-                              : "Year and Section"}
-                          </p>
-                        </>
-                      )}
+                    </div>
+                    <div className="mt-2 relative w-full text-sm">
+                      <div className="relative w-full">
+                        {loading ? (
+                          <Skeleton variant="text" width={180} height={28} />
+                        ) : !bio ? (
+                          <div className="absolute left-0 top-0 flex items-center text-gray-400 pointer-events-none px-1 py-1">
+                            <span>Add a short bio</span>
+                            <MdEdit className="ml-1 h-4 w-4" />
+                          </div>
+                        ) : null}
+                        <textarea
+                          ref={bioRef}
+                          className="w-full bg-transparent focus:outline-none text-gray-600 resize-none px-1 py-1"
+                          value={bio}
+                          onChange={e => setBio(e.target.value)}
+                          onKeyDown={handleBioKeyDown}
+                          maxLength={50}
+                          rows={1}
+                          style={{ minHeight: "1.5em" }}
+                          disabled={loading}
+                        />
+                      </div>
                     </div>
                   </div>
-
-                  <div className="mt-2 relative w-full text-sm">
-                    <div className="relative w-full">
-                      {loading ? (
-                        <Skeleton variant="text" width={180} height={28} />
-                      ) : !bio ? (
-                        <div className="absolute left-0 top-0 flex items-center text-gray-400 pointer-events-none px-1 py-1">
-                          <span>Add a short bio</span>
-                          <MdEdit className="ml-1 h-4 w-4" />
-                        </div>
-                      ) : null}
-                      <textarea
-                        ref={bioRef}
-                        className="w-full bg-transparent focus:outline-none text-gray-600 resize-none px-1 py-1"
-                        value={bio}
-                        onChange={e => setBio(e.target.value)}
-                        onKeyDown={handleBioKeyDown}
-                        maxLength={50}
-                        rows={1}
-                        style={{ minHeight: "1.5em" }}
-                        disabled={loading}
-                      />
-                    </div>
+                  <div className="w-full md:w-72 lg:w-80 shrink-0 mt-6 md:mt-0">
+                    <ProfileCompletion />
                   </div>
                 </div>
               </div>
@@ -541,7 +548,6 @@ export default function ProfileLayout() {
               </div>
             </div>
           </div>
-
           <div className="mb-8">{renderContent()}</div>
         </div>
       </div>

@@ -12,7 +12,6 @@ import {
   FormHelperText
 } from "@mui/material";
 import type { SlideProps } from "@mui/material";
-import { Award } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 const SlideUp = forwardRef(function Transition(
@@ -22,23 +21,21 @@ const SlideUp = forwardRef(function Transition(
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
-type AddCertModalProps = {
+type AddPortfolioModalProps = {
   open: boolean;
   onClose?: () => void;
   onSave?: (data: {
     title: string;
-    issuer: string;
-    issueDate: string;
     description?: string;
+    link?: string;
     attachment?: File | null;
     category?: string;
     attachmentUrl?: string;
   }) => void;
   initial?: {
     title: string;
-    issuer: string;
-    issueDate: string;
     description?: string;
+    link?: string;
     attachment?: File | null;
     category?: string;
     attachmentUrl?: string;
@@ -46,55 +43,89 @@ type AddCertModalProps = {
   editMode?: boolean;
 };
 
-export default function AddCertModal({
+export default function AddPortfolioModal({
   open,
   onClose,
   onSave,
   initial,
   editMode
-}: AddCertModalProps) {
+}: AddPortfolioModalProps) {
   const [title, setTitle] = useState("");
-  const [issuer, setIssuer] = useState("");
-  const [issueDate, setIssueDate] = useState("");
   const [description, setDescription] = useState("");
+  const [link, setLink] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [category, setCategory] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { data: session } = useSession();
 
   useEffect(() => {
     if (open && initial) {
       setTitle(initial.title || "");
-      setIssuer(initial.issuer || "");
-      setIssueDate(initial.issueDate || "");
       setDescription(initial.description || "");
+      setLink(initial.link || "");
       setAttachment(null);
       setCategory(initial.category || "");
+      setError(null);
     } else if (open && !initial) {
       setTitle("");
-      setIssuer("");
-      setIssueDate("");
       setDescription("");
+      setLink("");
       setAttachment(null);
       setCategory("");
+      setError(null);
     }
   }, [open, initial]);
 
   const handleClose = () => {
     onClose?.();
     setTitle("");
-    setIssuer("");
-    setIssueDate("");
     setDescription("");
+    setLink("");
     setAttachment(null);
     setCategory("");
     setSaving(false);
+    setError(null);
   };
 
   const handleSave = async () => {
     setSaving(true);
+    setError(null);
+    // Validate link if provided
+    if (link.trim()) {
+      try {
+        // Throws if not a valid URL
+        new URL(link.trim());
+      } catch {
+        setError("Please enter a valid URL (e.g. https://example.com).");
+        setSaving(false);
+        return;
+      }
+    }
     const studentId = (session?.user as { studentId?: string })?.studentId;
     let attachmentUrl = initial?.attachmentUrl || "";
+
+    // Duplicate check
+    let isDuplicate = false;
+    if (studentId) {
+      const res = await fetch("/api/students/student-profile/getHandlers");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.portfolio)) {
+          isDuplicate = data.portfolio.some(
+            (item: { title?: string }) =>
+              item.title?.trim().toLowerCase() === title.trim().toLowerCase() &&
+              (!editMode || (initial && item.title !== initial.title))
+          );
+        }
+      }
+    }
+    if (isDuplicate) {
+      setError("A portfolio item with this title already exists.");
+      setSaving(false);
+      return;
+    }
+
     if (attachment && studentId) {
       const ext = attachment.name.split(".").pop();
       const safeTitle = title
@@ -102,14 +133,14 @@ export default function AddCertModal({
         .replace(/_+/g, "_")
         .replace(/^_+|_+$/g, "")
         .toUpperCase();
-      const fileName = `${studentId}/certs/${safeTitle}.${ext}`;
+      const fileName = `${studentId}/portfolio/${safeTitle}.${ext}`;
       const form = new FormData();
 
       form.append("file", attachment, attachment.name);
-      form.append("fileType", "cert");
+      form.append("fileType", "portfolio");
       form.append("student_id", studentId);
       form.append("customPath", fileName);
-      form.append("certTitle", title); 
+      form.append("portfolioTitle", title);
       const res = await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         body: form
@@ -125,14 +156,9 @@ export default function AddCertModal({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            type: "cert_update",
+            type: "portfolio_update",
             student_id: studentId,
-            old: {
-              title: initial.title,
-              issuer: initial.issuer,
-              issueDate: initial.issueDate
-            },
-            data: { title, issuer, issueDate, description, attachmentUrl, category }
+            data: { title, description, link, attachmentUrl, category }
           })
         });
       } else {
@@ -140,14 +166,14 @@ export default function AddCertModal({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            type: "cert",
+            type: "portfolio",
             student_id: studentId,
-            data: { title, issuer, issueDate, description, attachmentUrl, category }
+            data: { title, description, link, attachmentUrl, category }
           })
         });
       }
     }
-    onSave?.({ title, issuer, issueDate, description, attachment, category, attachmentUrl });
+    onSave?.({ title, description, link, attachment, category, attachmentUrl });
     handleClose();
   };
 
@@ -197,41 +223,28 @@ export default function AddCertModal({
               <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
             </svg>
           </Button>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Box
-              sx={{
-                p: 1.5,
-                background: "rgba(255,255,255,0.18)",
-                borderRadius: 2,
-                display: "flex",
-                alignItems: "center"
-              }}
-            >
-              <Award size={28} color="#fff" />
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 600, fontSize: 22, color: "#fff" }}>
-                {editMode ? "Edit Certificate or Achievement" : "Add Certificate or Achievement"}
-              </Typography>
-              <Typography sx={{ color: "#dbeafe", fontSize: 15 }}>
-                {editMode
-                  ? "Update details about your certification or achievement"
-                  : "Enter details about your certification or achievement"}
-              </Typography>
-            </Box>
+          <Box>
+            <Typography sx={{ fontWeight: 600, fontSize: 22, color: "#fff" }}>
+              {editMode ? "Edit Portfolio Item" : "Add Portfolio Item"}
+            </Typography>
+            <Typography sx={{ color: "#dbeafe", fontSize: 15 }}>
+              {editMode
+                ? "Update details about your portfolio project"
+                : "Enter details about your portfolio project"}
+            </Typography>
           </Box>
         </Box>
         <Box sx={{ p: 4, pt: 3 }}>
           <Box sx={{ mb: 2 }}>
             <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
-              Title/Name of Certification or Achievement <span style={{ color: "#ef4444" }}>*</span>
+              Title/Name <span style={{ color: "#ef4444" }}>*</span>
             </Typography>
             <TextField
               fullWidth
               value={title}
               onChange={e => setTitle(e.target.value)}
               variant="outlined"
-              placeholder="e.g. Top Performer Award"
+              placeholder="e.g. My Web App"
               sx={{
                 background: "#fff",
                 borderRadius: 2,
@@ -244,47 +257,7 @@ export default function AddCertModal({
           </Box>
           <Box sx={{ mb: 2 }}>
             <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
-              Issuer/Organization Name <span style={{ color: "#ef4444" }}>*</span>
-            </Typography>
-            <TextField
-              fullWidth
-              value={issuer}
-              onChange={e => setIssuer(e.target.value)}
-              variant="outlined"
-              placeholder="e.g. Coursera, Google, Microsoft, University Name"
-              sx={{
-                background: "#fff",
-                borderRadius: 2,
-                mb: 2,
-                fontSize: 15,
-                "& .MuiOutlinedInput-root": { fontSize: 15 }
-              }}
-              inputProps={{ maxLength: 100 }}
-            />
-          </Box>
-          <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
-              Issue Date <span style={{ color: "#ef4444" }}>*</span>
-            </Typography>
-            <TextField
-              fullWidth
-              type="date"
-              value={issueDate}
-              onChange={e => setIssueDate(e.target.value)}
-              variant="outlined"
-              sx={{
-                background: "#fff",
-                borderRadius: 2,
-                mb: 2,
-                fontSize: 15,
-                "& .MuiOutlinedInput-root": { fontSize: 15 }
-              }}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Box>
-          <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
-              Description (optional)
+              Description
             </Typography>
             <TextField
               fullWidth
@@ -293,7 +266,7 @@ export default function AddCertModal({
               value={description}
               onChange={e => setDescription(e.target.value)}
               variant="outlined"
-              placeholder="Brief info about what was achieved, skills gained, or context"
+              placeholder="Brief info about the project"
               sx={{
                 background: "#fff",
                 borderRadius: 2,
@@ -302,6 +275,26 @@ export default function AddCertModal({
                 "& .MuiOutlinedInput-root": { fontSize: 15 }
               }}
               inputProps={{ maxLength: 300 }}
+            />
+          </Box>
+          <Box sx={{ mb: 2 }}>
+            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
+              Link (optional)
+            </Typography>
+            <TextField
+              fullWidth
+              value={link}
+              onChange={e => setLink(e.target.value)}
+              variant="outlined"
+              placeholder="e.g. https://github.com/myproject"
+              sx={{
+                background: "#fff",
+                borderRadius: 2,
+                mb: 2,
+                fontSize: 15,
+                "& .MuiOutlinedInput-root": { fontSize: 15 }
+              }}
+              inputProps={{ maxLength: 200 }}
             />
           </Box>
           <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -345,7 +338,7 @@ export default function AddCertModal({
             </Box>
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
-                Category or Type (optional)
+                Category (optional)
               </Typography>
               <TextField
                 select
@@ -363,15 +356,33 @@ export default function AddCertModal({
                 }}
               >
                 <MenuItem value="">Select Category</MenuItem>
-                <MenuItem value="Academic">Academic</MenuItem>
-                <MenuItem value="Technical">Technical</MenuItem>
-                <MenuItem value="Professional">Professional</MenuItem>
-                <MenuItem value="Award">Award</MenuItem>
-                <MenuItem value="Online Course">Online Course</MenuItem>
+                <MenuItem value="Software Project">Software Project</MenuItem>
+                <MenuItem value="Mobile App">Mobile App</MenuItem>
+                <MenuItem value="Web App">Web App</MenuItem>
+                <MenuItem value="UI/UX Design">UI/UX Design</MenuItem>
+                <MenuItem value="Research Paper">Research Paper</MenuItem>
+                <MenuItem value="Business Plan">Business Plan</MenuItem>
+                <MenuItem value="Event Proposal">Event Proposal</MenuItem>
+                <MenuItem value="Tour Package">Tour Package</MenuItem>
+                <MenuItem value="Hotel Management">Hotel Management</MenuItem>
+                <MenuItem value="Marketing Campaign">Marketing Campaign</MenuItem>
+                <MenuItem value="Financial Analysis">Financial Analysis</MenuItem>
+                <MenuItem value="Operations Plan">Operations Plan</MenuItem>
+                <MenuItem value="Culinary Portfolio">Culinary Portfolio</MenuItem>
+                <MenuItem value="Travel Itinerary">Travel Itinerary</MenuItem>
+                <MenuItem value="Presentation">Presentation</MenuItem>
+                <MenuItem value="Internship Report">Internship Report</MenuItem>
+                <MenuItem value="Feasibility Study">Feasibility Study</MenuItem>
+                <MenuItem value="Case Study">Case Study</MenuItem>
                 <MenuItem value="Other">Other</MenuItem>
               </TextField>
             </Box>
           </Box>
+          {error && (
+            <Typography sx={{ color: "#ef4444", mb: 2, fontSize: 15 }}>
+              {error}
+            </Typography>
+          )}
           <Box sx={{ display: "flex", gap: 2, pt: 2 }}>
             <Button
               variant="outlined"
@@ -390,7 +401,7 @@ export default function AddCertModal({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!title || !issuer || !issueDate || saving}
+              disabled={!title || saving}
               sx={{
                 flex: 1,
                 background: "#2563eb",

@@ -21,6 +21,7 @@ import JobCard from "../job-listings/components/job-cards"
 import JobDetails from "../job-listings/components/job-details"
 import YourSkills from "./components/your-skills"
 import RecoSkills from "./components/reco-skills"
+import { useRouter } from "next/navigation"
 
 export default function JobListingPage() {
   useEffect(() => {
@@ -34,6 +35,7 @@ export default function JobListingPage() {
   const [selectedJob, setSelectedJob] = useState<number | null>(null)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
   const [showProfileColumn, setShowProfileColumn] = useState(true) 
+  const router = useRouter();
 
   const rightSectionRef = useRef<HTMLDivElement | null>(null)
   const leftSectionRef = useRef<HTMLDivElement | null>(null)
@@ -72,9 +74,9 @@ export default function JobListingPage() {
         {/* Left Column - User Profile - Hidden on mobile, visible on md and up */}
         {showProfileColumn && (
           <div className="hidden md:block w-80 flex-shrink-0 overflow-y-auto border-r border-blue-200 relative">
-
+            {/* Go Back Button */}
             <button
-              className="absolute top-2 right-2 z-20 bg-white border border-blue-200 rounded-full p-1 shadow hover:bg-blue-50 transition-colors"
+              className="absolute right-2 z-20 bg-white border border-blue-200 rounded-full p-1 shadow hover:bg-blue-50 transition-colors"
               title="Hide Column"
               onClick={() => setShowProfileColumn(false)}
             >
@@ -93,7 +95,7 @@ export default function JobListingPage() {
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </button>
-            <UserProfile />
+            <UserProfile router={router} />
           </div>
         )}
         {/* Show button when column is hidden */}
@@ -152,11 +154,13 @@ export default function JobListingPage() {
 
 // Mobile User Profile Component
 function MobileUserProfile() {
-  return <UserProfile />
+
+  const router = useRouter();
+  return <UserProfile router={router} />
 }
 
 // User Profile Component
-function UserProfile() {
+function UserProfile({ router }: { router?: ReturnType<typeof useRouter> }) {
   return (
     <div className="p-4 mt-1">
       {/* Your Skills */}
@@ -164,6 +168,31 @@ function UserProfile() {
 
       {/* Recommended Skills */}
       <RecoSkills />
+
+      {/* Go Back Button */}
+      {router && (
+        <button
+          className="flex items-center gap-2 px-3 py-2 -mt-4 bg-white border border-blue-200 rounded-full text-blue-600 hover:bg-blue-50 transition-colors"
+          onClick={() => router.push("/students/jobs/job-listings")}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="lucide lucide-arrow-left"
+          >
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Go Back to Job Listings
+        </button>
+      )}
     </div>
   )
 }

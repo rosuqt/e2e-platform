@@ -12,6 +12,8 @@ import QuickViewModal from "./modals/quick-view";
 import AddCertModal from "./modals/add-cert";
 import ViewCertModal from "./modals/view-cert";
 import AddEditContactModal from "./modals/add-edit-contact";
+import AddPortfolioModal from "./modals/add-portfolio";
+import ViewPortfolioModal from "./modals/view-portfolio";
 import { useState, useEffect } from "react";
 import { TiDelete } from "react-icons/ti"
 import { skillSuggestions } from "./data/skill-suggestions"
@@ -22,6 +24,8 @@ import { useRouter } from "next/navigation";
 import { FaGraduationCap } from "react-icons/fa";
 import { Tooltip } from "@mui/material";
 import { Pencil } from "lucide-react"
+import { TbFileSmile } from "react-icons/tb";
+import { PiFiles } from "react-icons/pi";
 
 const colorMap: Record<string, { color: string; textColor: string }> = {
   "#2563eb": { color: "bg-blue-600", textColor: "text-white" },
@@ -41,6 +45,8 @@ export default function AboutPage() {
   const [openAddCert, setOpenAddCert] = useState(false);
   const [openViewCert, setOpenViewCert] = useState(false);
   const [openEditContact, setOpenEditContact] = useState(false);
+  const [openAddPortfolio, setOpenAddPortfolio] = useState(false);
+  const [openViewPortfolio, setOpenViewPortfolio] = useState(false);
   const [contactInfo, setContactInfo] = useState<{
     email: string;
     countryCode: string;
@@ -110,6 +116,25 @@ export default function AboutPage() {
   const [renameCoverValue, setRenameCoverValue] = useState("");
   const [savingRenameResume, setSavingRenameResume] = useState(false);
   const [savingRenameCover, setSavingRenameCover] = useState(false);
+  const [editingEducationIdx, setEditingEducationIdx] = useState<number | null>(null);
+  const [deletingEducationIdx, setDeletingEducationIdx] = useState<number | null>(null);
+  const [expertise, setExpertise] = useState<{ skill: string; mastery: number }[]>([]);
+  const [expertiseError, setExpertiseError] = useState<string | null>(null);
+  const [editingExpertiseIdx, setEditingExpertiseIdx] = useState<number | null>(null);
+  const [editingExpertise, setEditingExpertise] = useState<{ skill: string; mastery: number } | null>(null);
+  const [editingCertIdx, setEditingCertIdx] = useState<number | null>(null);
+  type Portfolio = {
+    title: string;
+    description?: string;
+    link?: string;
+    attachment?: File | null;
+    category?: string;
+    attachmentUrl?: string;
+  };
+  const [portfolio, setPortfolio] = useState<Portfolio[]>([]);
+  const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
+  const [editingPortfolioIdx, setEditingPortfolioIdx] = useState<number | null>(null);
+  const [deletingPortfolioIdx, setDeletingPortfolioIdx] = useState<number | null>(null);
 
   const MAX_RESUMES = 3;
   const MAX_COVERS = 3;
@@ -300,6 +325,7 @@ export default function AboutPage() {
           socials: Array.isArray(data.contact_info.socials) ? data.contact_info.socials : []
         });
       }
+      if (data.portfolio && Array.isArray(data.portfolio)) setPortfolio(data.portfolio);
     };
     fetchProfile();
   }, []);
@@ -330,7 +356,7 @@ export default function AboutPage() {
   };
 
   const SOCIALS = {
-        indeed: { label: "Indeed", icon: <SiIndeed  size={28} />, color: "bg-black", text: "text-white" },
+        indeed: { label: "Indeed", icon: <SiIndeed  size={28} />, color: "bg-blue-900", text: "text-white" },
     linkedin: { label: "LinkedIn", icon: <FaLinkedin size={28} />, color: "bg-blue-100", text: "text-blue-600" },
     facebook: { label: "Facebook", icon: <FaFacebook size={28} />, color: "bg-blue-600", text: "text-white" },
     twitter: { label: "Twitter", icon: <FaTwitter size={28} />, color: "bg-blue-400", text: "text-white" },
@@ -349,25 +375,64 @@ export default function AboutPage() {
     iconColor?: string;
   }) => {
     const colorInfo = colorMap[data.iconColor || "#2563eb"] || colorMap["#2563eb"];
-    setEducations([
-      ...educations,
-      {
-        acronym: data.acronym || "?",
-        school: data.school,
-        degree: data.degree && data.degree !== "None" ? data.degree : "",
-        years: data.years,
-        color: colorInfo.color,
-        textColor: colorInfo.textColor,
-        level: data.level
-      }
-    ]);
+    if (editingEducationIdx !== null) {
+      const newEducations = educations.map((edu, idx) =>
+        idx === editingEducationIdx
+          ? {
+              acronym: data.acronym || "",
+              school: data.school,
+              degree: data.degree && data.degree !== "None" ? data.degree : "",
+              years: data.years,
+              color: colorInfo.color,
+              textColor: colorInfo.textColor,
+              level: data.level
+            }
+          : edu
+      );
+      setEducations(newEducations);
+      setEditingEducationIdx(null);
+      saveProfileField("educations", newEducations);
+    } else {
+      setEducations([
+        ...educations,
+        {
+          acronym: data.acronym || "",
+          school: data.school,
+          degree: data.degree && data.degree !== "None" ? data.degree : "",
+          years: data.years,
+          color: colorInfo.color,
+          textColor: colorInfo.textColor,
+          level: data.level
+        }
+      ]);
+      saveProfileField("educations", [
+        ...educations,
+        {
+          acronym: data.acronym || "",
+          school: data.school,
+          degree: data.degree && data.degree !== "None" ? data.degree : "",
+          years: data.years,
+          color: colorInfo.color,
+          textColor: colorInfo.textColor,
+          level: data.level
+        }
+      ]);
+    }
     setOpenAddEducation(false);
   };
 
-  const [expertise, setExpertise] = useState<{ skill: string; mastery: number }[]>([]);
-  const [expertiseError, setExpertiseError] = useState<string | null>(null);
-  const [editingExpertiseIdx, setEditingExpertiseIdx] = useState<number | null>(null);
-  const [editingExpertise, setEditingExpertise] = useState<{ skill: string; mastery: number } | null>(null);
+  const handleEditEducation = (idx: number) => {
+    setEditingEducationIdx(idx);
+    setOpenAddEducation(true);
+  };
+
+  const handleDeleteEducation = async (idx: number) => {
+    setDeletingEducationIdx(idx);
+    const newEducations = educations.filter((_, i) => i !== idx);
+    setEducations(newEducations);
+    await saveProfileField("educations", newEducations);
+    setDeletingEducationIdx(null);
+  };
 
   const handleAddExpertise = async (data: { skill: string; mastery: number }) => {
     if (
@@ -444,8 +509,34 @@ export default function AboutPage() {
     category?: string;
     attachmentUrl?: string;
   }) => {
-    setCerts(prev => [...prev, cert]);
+    if (editingCertIdx !== null) {
+      setCerts(prev =>
+        prev.map((c, idx) => (idx === editingCertIdx ? cert : c))
+      );
+      setEditingCertIdx(null);
+    } else {
+      setCerts(prev => [...prev, cert]);
+    }
     setOpenAddCert(false);
+  };
+
+  const handleAddPortfolio = (item: {
+    title: string;
+    description?: string;
+    link?: string;
+    attachment?: File | null;
+    category?: string;
+    attachmentUrl?: string;
+  }) => {
+    if (editingPortfolioIdx !== null) {
+      setPortfolio(prev =>
+        prev.map((c, idx) => (idx === editingPortfolioIdx ? item : c))
+      );
+      setEditingPortfolioIdx(null);
+    } else {
+      setPortfolio(prev => [...prev, item]);
+    }
+    setOpenAddPortfolio(false);
   };
 
   const handleSaveContact = (data: {
@@ -462,9 +553,8 @@ export default function AboutPage() {
     const skill = value.trim();
     if (
       !skill ||
-      skills.includes(skill) ||
-      skill.length > 20 ||
-      skills.length >= 8
+      skills.some(s => s.toLowerCase() === skill.toLowerCase()) ||
+      skill.length > 20
     ) return;
     const newSkills = [skill, ...skills];
     setSkills(newSkills);
@@ -655,6 +745,18 @@ export default function AboutPage() {
     }
   };
 
+  const handleDeletePortfolio = async (idx: number) => {
+    setDeletingPortfolioIdx(idx);
+    const newPortfolio = portfolio.filter((_, i) => i !== idx);
+    setPortfolio(newPortfolio);
+    await fetch("/api/students/student-profile/postHandlers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "portfolio_update", data: newPortfolio }),
+    });
+    setDeletingPortfolioIdx(null);
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
@@ -699,7 +801,7 @@ export default function AboutPage() {
             <p className="text-sm text-gray-500 mb-3 -mt-2">Highlight your academic achievements and institutions attended.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {educations.map((edu, idx) => (
-                <div key={idx} className="flex gap-3 items-center">
+                <div key={idx} className="flex gap-3 items-center relative">
                   <div className={`${edu.color} p-2 rounded-md flex items-center justify-center`} style={{ minWidth: 40, minHeight: 40 }}>
                     {edu.acronym && edu.acronym.trim() !== "" ? (
                       <span className="text-sm font-bold text-white">{edu.acronym}</span>
@@ -712,6 +814,32 @@ export default function AboutPage() {
                     <p className="text-sm text-gray-600">{(edu.level ? edu.level : "Level") + " | " + (edu.degree || "Degree")}</p>
                     <p className="text-xs text-gray-500">{edu.years}</p>
                   </div>
+                  {!(idx === 0 && edu.school === "STI College Alabang") && (
+                    <div className="flex items-center gap-1 absolute right-2 top-2">
+                      <button
+                        className="flex items-center justify-center text-blue-500 hover:text-blue-700"
+                        title="Edit Education"
+                        onClick={() => handleEditEducation(idx)}
+                        style={{ marginLeft: 0 }}
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        className="flex items-center justify-center text-red-500 hover:text-red-700"
+                        title="Delete Education"
+                        disabled={deletingEducationIdx === idx}
+                        onClick={() => handleDeleteEducation(idx)}
+                        style={{ marginLeft: 8 }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  )}
+                  {deletingEducationIdx === idx && (
+                    <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-xs text-red-500">
+                      ...
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -720,14 +848,36 @@ export default function AboutPage() {
                 size="sm"
                 variant="outline"
                 className="border-blue-300 text-blue-600 hover:bg-blue-50"
-                onClick={() => setOpenAddEducation(true)}
+                onClick={() => {
+                  setEditingEducationIdx(null);
+                  setOpenAddEducation(true);
+                }}
               >
                 Add Educational Background
               </Button>
               <AddEducationalModal
                 open={openAddEducation}
-                onClose={() => setOpenAddEducation(false)}
+                onClose={() => {
+                  setOpenAddEducation(false);
+                  setEditingEducationIdx(null);
+                }}
                 onSave={handleAddEducation}
+                initial={
+                  editingEducationIdx !== null
+                    ? {
+                        school: educations[editingEducationIdx]?.school || "",
+                        acronym: educations[editingEducationIdx]?.acronym || "",
+                        degree: educations[editingEducationIdx]?.degree || "",
+                        years: educations[editingEducationIdx]?.years || "",
+                        level: educations[editingEducationIdx]?.level || "",
+                        iconColor:
+                          Object.entries(colorMap).find(
+                            ([, v]) => v.color === educations[editingEducationIdx]?.color
+                          )?.[0] || "#2563eb"
+                      }
+                    : undefined
+                }
+                editMode={editingEducationIdx !== null}
               />
             </div>
           </div>
@@ -776,8 +926,8 @@ export default function AboutPage() {
               <h3 className="font-medium mb-2">Skills</h3>
               <p className="text-sm text-gray-500 mb-3 -mt-2">Highlight your top skills to attract employers.</p>
               <div className="flex flex-wrap gap-2 mb-4">
-                {skills.length < 8 && (
-                  showSkillInput ? (
+                <div>
+                  {showSkillInput ? (
                     <div className="relative">
                       <input
                         type="text"
@@ -788,7 +938,14 @@ export default function AboutPage() {
                         maxLength={20}
                         autoFocus
                         className="border border-blue-300 rounded-full px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                        onBlur={() => { setShowSkillInput(false); setSkillInput(""); setFocusedSuggestion(-1); }}
+                        onBlur={e => {
+            
+                          if (e.relatedTarget == null) {
+                            setShowSkillInput(false);
+                            setSkillInput("");
+                            setFocusedSuggestion(-1);
+                          }
+                        }}
                         style={{ minHeight: 32 }}
                       />
                       {filteredSuggestions.length > 0 && (
@@ -834,8 +991,8 @@ export default function AboutPage() {
                     >
                       + Add Skill
                     </Button>
-                  )
-                )}
+                  )}
+                </div>
                 {skills.slice(0, 6).map((skill, idx) => (
                   <span
                     key={skill}
@@ -1187,6 +1344,448 @@ export default function AboutPage() {
         </div>
       </div>
 
+     
+      <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
+        <div className="flex justify-between items-center p-4 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100">
+          <h2 className="text-blue-700 font-semibold text-lg flex items-center gap-2">
+            <LuTrophy  className="text-blue-600" size={20} />
+            Achievements
+          </h2>
+          <p className="text-sm text-gray-500">Add your achievements to showcase your accomplishments.</p>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+            {certs.slice(0, 4).map((cert, idx) => (
+              <div key={idx} className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow min-h-[232px] flex flex-col">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
+                    <MdStarOutline size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-lg text-gray-800">{cert.title}</h3>
+                      {cert.category && (
+                        <span className="ml-2 px-2 py-1 rounded bg-blue-50 text-blue-600 text-xs font-medium">{cert.category}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600 mt-1">
+                      <span>{cert.issuer}</span>
+                      {cert.issueDate && (
+                        <>
+                          <span className="mx-2 text-gray-400">|</span>
+                          <span className="text-xs text-gray-500">{cert.issueDate}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    className="ml-2 flex items-center justify-center text-blue-500 hover:text-blue-700"
+                    title="Edit Certificate"
+                    onClick={() => {
+                      setEditingCertIdx(idx);
+                      setOpenAddCert(true);
+                    }}
+                  >
+                    <Pencil size={18} />
+                  </button>
+                  <button
+                    className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
+                    title="Delete Certificate"
+                    disabled={deletingCertIdx === idx}
+                    onClick={() => handleDeleteCert(idx)}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+                {cert.description && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    {cert.description}
+                  </p>
+                )}
+                <div className="mt-auto flex w-full justify-end gap-2">
+                  {cert.attachmentUrl ? (
+                    <Button
+                      size="sm"
+                      className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
+                      variant="default"
+                      style={{ minHeight: 32 }}
+                      onClick={() => {
+                        setSelectedCert(cert);
+                        setOpenViewCert(true);
+                      }}
+                    >
+                      View Certificate
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="w-full text-xs border-blue-300 text-blue-600 hover:bg-blue-50"
+                      variant="outline"
+                    >
+                      No Certificate
+                    </Button>
+                  )}
+                </div>
+                {deletingCertIdx === idx && (
+                  <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                    Deleting...
+                  </div>
+                )}
+              </div>
+            ))}
+            <div className="border-dashed border-2 border-gray-300 bg-gray-50 rounded-lg p-6 flex flex-col items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer min-h-[232px] w-full"
+              style={{ gridColumn: "span 1 / span 1" }}
+              onClick={() => setOpenAddCert(true)}
+            >
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-blue-600 text-white flex items-center justify-center rounded-full">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="2"
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                </div>
+                <p className="text-sm text-blue-600 mt-2">Add Achievement</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-center min-h-[232px] w-full"
+              style={{ gridColumn: "span 1 / span 1" }}
+            >
+              <button
+                type="button"
+                className="flex flex-col items-center focus:outline-none"
+                onClick={() => router.push("/students/profile?tab=skills-tab")}
+                tabIndex={0}
+                style={{ outline: "none" }}
+              >
+                <span className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-700 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+                <span className="text-xs text-blue-700 mt-1 font-medium">View All</span>
+              </button>
+            </div>
+          </div>
+          <AddCertModal
+            open={openAddCert}
+            onClose={() => {
+              setOpenAddCert(false);
+              setEditingCertIdx(null);
+            }}
+            onSave={handleAddCert}
+            initial={
+              editingCertIdx !== null
+                ? certs[editingCertIdx]
+                : undefined
+            }
+            editMode={editingCertIdx !== null}
+          />
+          <ViewCertModal
+            open={openViewCert}
+            onClose={() => setOpenViewCert(false)}
+            cert={
+              selectedCert
+                ? { ...selectedCert, student_id: (session?.user as { studentId?: string })?.studentId || "student_001" }
+                : {
+                    student_id: (session?.user as { studentId?: string })?.studentId || "student_001",
+                    title: "",
+                    issuer: "",
+                    issueDate: "",
+                    description: "",
+                    attachment: null,
+                    category: ""
+                  }
+            }
+          />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
+        <div className="flex justify-between items-center p-4 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100">
+          <h2 className="text-blue-700 font-semibold text-lg flex items-center gap-2">
+            <PiFiles  className="text-blue-600" size={20} />
+            Portfolio
+          </h2>
+          <p className="text-sm text-gray-500">Showcase your portfolio projects and works.</p>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
+            {portfolio.slice(0, 4).map((item, idx) => (
+              <div key={idx} className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow min-h-[232px] flex flex-col">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
+                    <TbFileSmile  size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-lg text-gray-800">{item.title}</h3>
+                      {item.category && (
+                        <span className="ml-2 px-2 py-1 rounded bg-blue-50 text-blue-600 text-xs font-medium">{item.category}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600 mt-1">
+                      {item.link && (
+                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline truncate max-w-[120px]">{item.link}</a>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    className="ml-2 flex items-center justify-center text-blue-500 hover:text-blue-700"
+                    title="Edit Portfolio"
+                    onClick={() => {
+                      setEditingPortfolioIdx(idx);
+                      setOpenAddPortfolio(true);
+                    }}
+                  >
+                    <Pencil size={18} />
+                  </button>
+                  <button
+                    className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
+                    title="Delete Portfolio"
+                    disabled={deletingPortfolioIdx === idx}
+                    onClick={() => handleDeletePortfolio(idx)}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+                {item.description && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    {item.description}
+                  </p>
+                )}
+                <div className="mt-auto flex w-full justify-end gap-2">
+                  {item.attachmentUrl ? (
+                    <>
+                      <Button
+                        size="sm"
+                        className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
+                        variant="default"
+                        style={{ minHeight: 32 }}
+                        onClick={() => {
+                          setSelectedPortfolio(item);
+                          setOpenViewPortfolio(true);
+                        }}
+                      >
+                        View Portfolio
+                      </Button>
+                      {item.link && (
+                        <Button
+                          size="sm"
+                          className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
+                          variant="default"
+                          style={{ minHeight: 32 }}
+                          onClick={e => {
+                            e.stopPropagation();
+                            window.open(item.link, "_blank", "noopener,noreferrer");
+                          }}
+                        >
+                          Open Link
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {item.link ? (
+                        <Button
+                          size="sm"
+                          className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
+                          variant="default"
+                          style={{ minHeight: 32 }}
+                          onClick={e => {
+                            e.stopPropagation();
+                            window.open(item.link, "_blank", "noopener,noreferrer");
+                          }}
+                        >
+                          Open Link
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="w-full text-xs border-blue-300 text-blue-600 hover:bg-blue-50"
+                          variant="outline"
+                        >
+                          No File
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+                {deletingPortfolioIdx === idx && (
+                  <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                    ...
+                  </div>
+                )}
+              </div>
+            ))}
+            <div className="border-dashed border-2 border-gray-300 bg-gray-50 rounded-lg p-6 flex flex-col items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer min-h-[232px] w-full"
+              style={{ gridColumn: "span 1 / span 1" }}
+              onClick={() => setOpenAddPortfolio(true)}
+            >
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-blue-600 text-white flex items-center justify-center rounded-full">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="2"
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                </div>
+                <p className="text-sm text-blue-600 mt-2">Add Portfolio</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-center min-h-[232px] w-full"
+              style={{ gridColumn: "span 1 / span 1" }}
+            >
+              <button
+                type="button"
+                className="flex flex-col items-center focus:outline-none"
+                onClick={() => router.push("/students/profile?tab=skills-tab")}
+                tabIndex={0}
+                style={{ outline: "none" }}
+              >
+                <span className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-700 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+                <span className="text-xs text-blue-700 mt-1 font-medium">View All</span>
+              </button>
+            </div>
+          </div>
+          <AddPortfolioModal
+            open={openAddPortfolio}
+            onClose={() => {
+              setOpenAddPortfolio(false);
+              setEditingPortfolioIdx(null);
+            }}
+            onSave={handleAddPortfolio}
+            initial={
+              editingPortfolioIdx !== null
+                ? portfolio[editingPortfolioIdx]
+                : undefined
+            }
+            editMode={editingPortfolioIdx !== null}
+          />
+          <ViewPortfolioModal
+            open={openViewPortfolio}
+            onClose={() => setOpenViewPortfolio(false)}
+            portfolio={
+              selectedPortfolio
+                ? { ...selectedPortfolio, student_id: (session?.user as { studentId?: string })?.studentId || "student_001" }
+                : {
+                    student_id: (session?.user as { studentId?: string })?.studentId || "student_001",
+                    title: "",
+                    description: "",
+                    link: "",
+                    attachment: null,
+                    category: ""
+                  }
+            }
+          />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
+        <div className="flex justify-between items-center p-4 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100">
+          <div className="flex justify-between items-center">
+            <h2 className="text-blue-700 font-semibold text-lg flex items-center gap-2">
+              <MdContactMail className="text-blue-600" size={20} />
+              Contact Information
+            </h2>
+          </div>
+          <p className="text-sm text-gray-500">Keep your contact details up-to-date for candidates and networking.</p>
+        </div>
+        <div className="p-4 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="flex-1 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Email</p>
+                  <p className="text-sm text-gray-600">
+                    {contactInfo.email
+                      ? contactInfo.email
+                      : <span className="italic text-gray-400">No email provided</span>
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 text-green-600 flex items-center justify-center rounded-full">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Phone</p>
+                  <p className="text-sm text-gray-600">
+                    {contactInfo.countryCode && contactInfo.phone
+                      ? `+${contactInfo.countryCode} ${contactInfo.phone}`
+                      : <span className="italic text-gray-400">No phone number provided</span>
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 flex flex-col items-center md:items-center justify-center">
+              {contactInfo.socials.length > 0 ? (
+                <div className="w-full flex flex-col items-center">
+                  <p className="text-sm font-medium text-gray-800 mb-1 text-center">My Socials</p>
+                  <div className="flex gap-4 flex-wrap justify-center">
+                    {contactInfo.socials.map(s => {
+                      const soc = SOCIALS[s.key as keyof typeof SOCIALS];
+                      return (
+                        <a
+                          key={s.key}
+                          href={s.url || "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`flex flex-col items-center group`}
+                        >
+                          <div className={`${soc.color} ${soc.text} w-12 h-12 flex items-center justify-center rounded-full`}>
+                            {soc.icon}
+                          </div>
+                          <span className="text-xs text-gray-600 mt-1 group-hover:underline">{soc.label}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full flex flex-col items-center">
+                  <p className="text-sm font-medium text-gray-800 mb-1 text-center">My Socials</p>
+                  <span className="italic text-gray-400 text-sm">No socials added</span>
+                </div>
+              )}
+                                             </div>
+          </div>
+          <div className="flex mt-4">
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-blue-300 text-blue-600 hover:bg-blue-50"
+              onClick={() => setOpenEditContact(true)}
+            >
+              Edit Contact Info
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
         <div className="flex justify-between items-center p-4 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100">
           <h2 className="text-blue-700 font-semibold text-lg flex items-center gap-2">
@@ -1288,239 +1887,6 @@ export default function AboutPage() {
               matchScore: 0
             }}
           />
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
-        <div className="flex justify-between items-center p-4 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100">
-          <h2 className="text-blue-700 font-semibold text-lg flex items-center gap-2">
-            <LuTrophy  className="text-blue-600" size={20} />
-            Achievements
-          </h2>
-          <p className="text-sm text-gray-500">Add your achievements to showcase your accomplishments.</p>
-        </div>
-        <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-            {certs.slice(0, 4).map((cert, idx) => (
-              <div key={idx} className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow min-h-[232px] flex flex-col">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
-                    <MdStarOutline size={24} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-lg text-gray-800">{cert.title}</h3>
-                      {cert.category && (
-                        <span className="ml-2 px-2 py-1 rounded bg-blue-50 text-blue-600 text-xs font-medium">{cert.category}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600 mt-1">
-                      <span>{cert.issuer}</span>
-                      {cert.issueDate && (
-                        <>
-                          <span className="mx-2 text-gray-400">|</span>
-                          <span className="text-xs text-gray-500">{cert.issueDate}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
-                    title="Delete Certificate"
-                    disabled={deletingCertIdx === idx}
-                    onClick={() => handleDeleteCert(idx)}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-                {cert.description && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    {cert.description}
-                  </p>
-                )}
-                <div className="mt-auto flex w-full justify-end gap-2">
-                  {cert.attachmentUrl ? (
-                    <Button
-                      size="sm"
-                      className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
-                      variant="default"
-                      style={{ minHeight: 32 }}
-                      onClick={() => {
-                        setSelectedCert(cert);
-                        setOpenViewCert(true);
-                      }}
-                    >
-                      View Certificate
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="w-full text-xs border-blue-300 text-blue-600 hover:bg-blue-50"
-                      variant="outline"
-                    >
-                      No Certificate
-                    </Button>
-                  )}
-                </div>
-                {deletingCertIdx === idx && (
-                  <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
-                    </svg>
-                    Deleting...
-                  </div>
-                )}
-              </div>
-            ))}
-            <div className="border-dashed border-2 border-gray-300 bg-gray-50 rounded-lg p-6 flex flex-col items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer min-h-[232px] w-full"
-              style={{ gridColumn: "span 1 / span 1" }}
-              onClick={() => setOpenAddCert(true)}
-            >
-              <div className="flex flex-col items-center">
-                <div className="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth="2"
-                    stroke="currentColor"
-                    className="w-6 h-6"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                </div>
-                <p className="text-sm text-blue-600 mt-2">Add Achievement</p>
-              </div>
-            </div>
-            <div className="flex flex-col items-center justify-center min-h-[232px] w-full"
-              style={{ gridColumn: "span 1 / span 1" }}
-            >
-              <button
-                type="button"
-                className="flex flex-col items-center focus:outline-none"
-                onClick={() => router.push("/students/profile?tab=skills-tab")}
-                tabIndex={0}
-                style={{ outline: "none" }}
-              >
-                <span className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white hover:bg-blue-700 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </span>
-                <span className="text-xs text-blue-700 mt-1 font-medium">View All</span>
-              </button>
-            </div>
-          </div>
-          <AddCertModal
-            open={openAddCert}
-            onClose={() => setOpenAddCert(false)}
-            onSave={handleAddCert}
-          />
-          <ViewCertModal
-            open={openViewCert}
-            onClose={() => setOpenViewCert(false)}
-            cert={
-              selectedCert
-                ? { ...selectedCert, student_id: (session?.user as { studentId?: string })?.studentId || "student_001" }
-                : {
-                    student_id: (session?.user as { studentId?: string })?.studentId || "student_001",
-                    title: "",
-                    issuer: "",
-                    issueDate: "",
-                    description: "",
-                    attachment: null,
-                    category: ""
-                  }
-            }
-          />
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
-        <div className="flex justify-between items-center p-4 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100">
-          <div className="flex justify-between items-center">
-            <h2 className="text-blue-700 font-semibold text-lg flex items-center gap-2">
-              <MdContactMail className="text-blue-600" size={20} />
-              Contact Information
-            </h2>
-          </div>
-          <p className="text-sm text-gray-500">Keep your contact details up-to-date for candidates and networking.</p>
-        </div>
-        <div className="p-4 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-            <div className="flex-1 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
-                  <Mail className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-800">Email</p>
-                  <p className="text-sm text-gray-600">
-                    {contactInfo.email
-                      ? contactInfo.email
-                      : <span className="italic text-gray-400">No email provided</span>
-                    }
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 text-green-600 flex items-center justify-center rounded-full">
-                  <Phone className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-800">Phone</p>
-                  <p className="text-sm text-gray-600">
-                    {contactInfo.countryCode && contactInfo.phone
-                      ? `+${contactInfo.countryCode} ${contactInfo.phone}`
-                      : <span className="italic text-gray-400">No phone number provided</span>
-                    }
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="flex-1 flex flex-col items-center md:items-center justify-center">
-              {contactInfo.socials.length > 0 ? (
-                <div className="w-full flex flex-col items-center">
-                  <p className="text-sm font-medium text-gray-800 mb-1 text-center">My Socials</p>
-                  <div className="flex gap-4 flex-wrap justify-center">
-                    {contactInfo.socials.map(s => {
-                      const soc = SOCIALS[s.key as keyof typeof SOCIALS];
-                      return (
-                        <a
-                          key={s.key}
-                          href={s.url || "#"}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`flex flex-col items-center group`}
-                        >
-                          <div className={`${soc.color} ${soc.text} w-12 h-12 flex items-center justify-center rounded-full`}>
-                            {soc.icon}
-                          </div>
-                          <span className="text-xs text-gray-600 mt-1 group-hover:underline">{soc.label}</span>
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="w-full flex flex-col items-center">
-                  <p className="text-sm font-medium text-gray-800 mb-1 text-center">My Socials</p>
-                  <span className="italic text-gray-400 text-sm">No socials added</span>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex mt-4">
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-blue-300 text-blue-600 hover:bg-blue-50"
-              onClick={() => setOpenEditContact(true)}
-            >
-              Edit Contact Info
-            </Button>
-          </div>
         </div>
       </div>
       <UploadFileModal

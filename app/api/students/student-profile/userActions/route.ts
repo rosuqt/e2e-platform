@@ -10,10 +10,21 @@ type Cert = {
   category?: string;
 };
 
+type Education = {
+  acronym: string;
+  school: string;
+  degree: string;
+  years: string;
+  color: string;
+  textColor: string;
+  level?: string;
+  iconColor?: string;
+};
+
 export async function DELETE(req: NextRequest) {
   try {
     const body = await req.json();
-    const { title, issuer, issueDate, expertiseSkill, expertiseMastery } = body;
+    const { title, issuer, issueDate, expertiseSkill, expertiseMastery, educationIdx } = body;
 
     let student_id = body.student_id;
     if (!student_id) {
@@ -26,6 +37,31 @@ export async function DELETE(req: NextRequest) {
     }
     if (!student_id) {
       return NextResponse.json({ error: "Missing student_id" }, { status: 400 });
+    }
+
+    if (body.type === "education_delete" && typeof educationIdx === "number") {
+      const { data: profile, error: fetchError } = await supabase
+        .from("student_profile")
+        .select("educations")
+        .eq("student_id", student_id)
+        .single();
+
+      if (fetchError || !profile) {
+        return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      }
+
+      const educationsArr: Education[] = profile.educations || [];
+      const newEducations = educationsArr.filter((_, i) => i !== educationIdx);
+
+      const { error: updateError } = await supabase
+        .from("student_profile")
+        .update({ educations: newEducations, updated_at: new Date().toISOString() })
+        .eq("student_id", student_id);
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+      return NextResponse.json({ success: true });
     }
 
     if (expertiseSkill !== undefined && expertiseMastery !== undefined) {
@@ -148,9 +184,59 @@ export async function DELETE(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error deleting certificate:", error);
-    console.error("Error deleting certificate:", error);
+  } catch {
     return NextResponse.json({ error: "Failed to delete certificate" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { educationIdx, educationData, student_id: bodyStudentId } = body;
+
+    let student_id = bodyStudentId;
+    if (!student_id) {
+      try {
+        const { getServerSession } = await import("next-auth");
+        const { authOptions } = await import("../../../../../lib/authOptions");
+        const session = await getServerSession(authOptions);
+        student_id = (session?.user as { studentId?: string })?.studentId;
+      } catch {}
+    }
+    if (!student_id) {
+      return NextResponse.json({ error: "Missing student_id" }, { status: 400 });
+    }
+
+    if (typeof educationIdx === "number" && educationData) {
+      const { data: profile, error: fetchError } = await supabase
+        .from("student_profile")
+        .select("educations")
+        .eq("student_id", student_id)
+        .single();
+
+      if (fetchError || !profile) {
+        return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      }
+
+      const educationsArr: Education[] = profile.educations || [];
+      if (educationIdx < 0 || educationIdx >= educationsArr.length) {
+        return NextResponse.json({ error: "Invalid education index" }, { status: 400 });
+      }
+      educationsArr[educationIdx] = educationData;
+
+      const { error: updateError } = await supabase
+        .from("student_profile")
+        .update({ educations: educationsArr, updated_at: new Date().toISOString() })
+        .eq("student_id", student_id);
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  } catch {
+    return NextResponse.json({ error: "Failed to update education" }, { status: 500 });
   }
 }

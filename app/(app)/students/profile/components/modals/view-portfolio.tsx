@@ -9,10 +9,8 @@ import {
   Typography
 } from "@mui/material";
 import type { SlideProps } from "@mui/material";
-import dynamic from "next/dynamic";
+// import dynamic from "next/dynamic";
 import Image from "next/image";
-
-const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 const SlideUp = forwardRef(function Transition(
   props: SlideProps,
@@ -21,22 +19,21 @@ const SlideUp = forwardRef(function Transition(
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
-type CertType = {
+type PortfolioType = {
   student_id: string;
   title: string;
-  issuer: string;
-  issueDate: string;
   description?: string;
+  link?: string;
   attachment?: File | null;
   attachmentUrl?: string | null;
   category?: string;
   signedUrl?: string | null;
 };
 
-type ViewCertModalProps = {
+type ViewPortfolioModalProps = {
   open: boolean;
   onClose?: () => void;
-  cert: CertType;
+  portfolio: PortfolioType;
 };
 
 async function getSignedUrlIfNeeded(
@@ -60,11 +57,11 @@ function getProxyUrl(fileUrl: string | null) {
   return `/api/proxy-image?path=${encodeURIComponent(fileUrl)}`;
 }
 
-export default function ViewCertModal({
+export default function ViewPortfolioModal({
   open,
   onClose,
-  cert
-}: ViewCertModalProps) {
+  portfolio
+}: ViewPortfolioModalProps) {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -74,24 +71,24 @@ export default function ViewCertModal({
     (async () => {
       setLoadingPreview(true);
       setImgError(false);
-      if (cert.attachment && cert.attachment instanceof File) {
-        setFileUrl(URL.createObjectURL(cert.attachment));
+      if (portfolio.attachment && portfolio.attachment instanceof File) {
+        setFileUrl(URL.createObjectURL(portfolio.attachment));
         setLoadingPreview(false);
         return;
       }
-      const url = await getSignedUrlIfNeeded(cert.attachmentUrl || cert.signedUrl || null);
+      const url = await getSignedUrlIfNeeded(portfolio.attachmentUrl || portfolio.signedUrl || null);
       if (!ignore) setFileUrl(url);
       setLoadingPreview(false);
     })();
     return () => { ignore = true; };
-  }, [cert.attachment, cert.attachmentUrl, cert.signedUrl]);
+  }, [portfolio.attachment, portfolio.attachmentUrl, portfolio.signedUrl]);
 
   let fileType: string | null = null;
   let fileName: string | null = null;
 
-  if (cert.attachment && cert.attachment instanceof File) {
-    fileType = cert.attachment.type;
-    fileName = cert.attachment.name;
+  if (portfolio.attachment && portfolio.attachment instanceof File) {
+    fileType = portfolio.attachment.type;
+    fileName = portfolio.attachment.name;
   } else if (fileUrl) {
     fileName = fileUrl;
   }
@@ -112,12 +109,6 @@ export default function ViewCertModal({
     else fileType = "";
   }
 
-  useEffect(() => {
-    if (fileUrl) {
-      console.log("fileUrl:", fileUrl, "fileType:", fileType);
-    }
-  }, [fileUrl, fileType]);
-
   const isImage =
     (fileType === "image" || (fileType && fileType.startsWith("image/"))) ||
     (fileUrl && /\.(png|jpe?g|gif|bmp|webp)$/i.test(fileUrl.split('?')[0]));
@@ -127,14 +118,6 @@ export default function ViewCertModal({
 
   const isDocx =
     fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
-  const [medalAnimation, setMedalAnimation] = useState<object | null>(null);
-
-  useEffect(() => {
-    import("../../../../../../public/animations/medal.json").then((mod) => {
-      setMedalAnimation(mod.default as object);
-    });
-  }, []);
 
   return (
     <Dialog
@@ -184,33 +167,30 @@ export default function ViewCertModal({
           </Button>
           <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", pt: 4, pb: 2 }}>
             <Box sx={{ width: 110, height: 110, mb: 1 }}>
-              {medalAnimation && (
-                <Lottie
-                  animationData={medalAnimation}
-                  loop={false}
-                  autoplay
-                  style={{ width: "100%", height: "100%" }}
-                  initialSegment={[0, 75]}
-                />
-              )}
+              <svg width={110} height={110} viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="#2563eb" strokeWidth="4" fill="#dbeafe" />
+                <path d="M8 12l2 2 4-4" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </Box>
             <Typography sx={{ fontWeight: 600, fontSize: 22, color: "#fff", mb: 0.5 }}>
-              {cert.title}
+              {portfolio.title}
             </Typography>
-            <Typography sx={{ color: "#dbeafe", fontSize: 15 }}>
-              {cert.issuer} {cert.issueDate && <>| {cert.issueDate}</>}
-            </Typography>
-            {cert.category && (
+            {portfolio.link && (
+              <Typography sx={{ color: "#dbeafe", fontSize: 15 }}>
+                <a href={portfolio.link} target="_blank" rel="noopener noreferrer" className="underline text-blue-100">{portfolio.link}</a>
+              </Typography>
+            )}
+            {portfolio.category && (
               <Typography sx={{ color: "#facc15", fontSize: 13, mt: 0.5 }}>
-                {cert.category}
+                {portfolio.category}
               </Typography>
             )}
           </Box>
         </Box>
         <Box sx={{ p: 4, pt: 3 }}>
-          {cert.description && (
+          {portfolio.description && (
             <Typography sx={{ mb: 2, color: "#334155", fontSize: 15 }}>
-              {cert.description}
+              {portfolio.description}
             </Typography>
           )}
           {loadingPreview ? (
@@ -219,7 +199,7 @@ export default function ViewCertModal({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
               </svg>
-              <Typography sx={{ color: "#2563eb", fontSize: 16 }}>Loading certificate preview...</Typography>
+              <Typography sx={{ color: "#2563eb", fontSize: 16 }}>Loading portfolio preview...</Typography>
             </Box>
           ) : fileUrl ? (
             <Box
@@ -237,7 +217,7 @@ export default function ViewCertModal({
               {isImage && fileUrl && !imgError && (
                 <Image
                   src={getProxyUrl(fileUrl) || ""}
-                  alt={cert.attachment?.name || cert.title}
+                  alt={portfolio.attachment?.name || portfolio.title}
                   width={320}
                   height={320}
                   style={{
@@ -268,7 +248,7 @@ export default function ViewCertModal({
                 <Box sx={{ width: "100%", mb: 2 }}>
                   <iframe
                     src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
-                    title="Certificate PDF"
+                    title="Portfolio PDF"
                     style={{
                       width: "100%",
                       minHeight: 320,
@@ -287,7 +267,7 @@ export default function ViewCertModal({
                 <Box sx={{ width: "100%", mb: 2 }}>
                   <iframe
                     src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
-                    title="Certificate DOCX"
+                    title="Portfolio DOCX"
                     style={{
                       width: "100%",
                       minHeight: 320,
@@ -313,7 +293,7 @@ export default function ViewCertModal({
                 variant="contained"
                 color="primary"
                 href={fileUrl || "#"}
-                download={cert.attachment?.name || cert.title}
+                download={portfolio.attachment?.name || portfolio.title}
                 sx={{
                   mt: 1,
                   background: "#2563eb",
@@ -324,12 +304,12 @@ export default function ViewCertModal({
                   "&:hover": { background: "#1e40af" }
                 }}
               >
-                Download Certificate
+                Download Portfolio File
               </Button>
             </Box>
           ) : (
             <Typography sx={{ color: "#64748b", fontSize: 15, textAlign: "center", mb: 2 }}>
-              No certificate file uploaded.
+              No portfolio file uploaded.
             </Typography>
           )}
         </Box>

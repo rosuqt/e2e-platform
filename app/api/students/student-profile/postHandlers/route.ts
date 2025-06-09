@@ -117,6 +117,12 @@ export async function POST(req: NextRequest) {
         .update({ cover_image: storagePath, updated_at: new Date().toISOString() })
         .eq("student_id", student_id);
       return NextResponse.json({ publicUrl: storagePath });
+    } else if (fileType === "portfolio") {
+      // Portfolio file upload
+      if (!customPath) {
+        return NextResponse.json({ error: "Missing customPath for portfolio" }, { status: 400 });
+      }
+      storagePath = customPath;
     } else {
       const { data: studentData, error: studentError } = await supabase
         .from("registered_students")
@@ -170,7 +176,6 @@ export async function POST(req: NextRequest) {
       .upload(storagePath, file, { upsert: true, contentType: file.type });
 
     if (uploadError) {
-      // console.error("Upload error:", uploadError, "storagePath:", storagePath, "fileType:", fileType, "fileName:", file?.name);
       return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 
@@ -205,6 +210,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (fileType === "cert") {
+      return NextResponse.json({ data: { path: storagePath } });
+    }
+
+    if (fileType === "portfolio") {
       return NextResponse.json({ data: { path: storagePath } });
     }
   }
@@ -354,7 +363,23 @@ export async function POST(req: NextRequest) {
 
   if (type === "education") {
     const { school, acronym, degree, years, level, iconColor } = data;
-    const educations = effectiveProfile?.educations || [];
+    const educations: {
+      school?: string;
+      acronym?: string;
+      degree?: string;
+      years?: string;
+      level?: string;
+      iconColor?: string;
+    }[] = effectiveProfile?.educations || [];
+    const duplicate = educations.some(
+      (e) =>
+        (e.school?.trim().toLowerCase() ?? "") === String(school).trim().toLowerCase() &&
+        (e.degree?.trim().toLowerCase() ?? "") === String(degree).trim().toLowerCase() &&
+        (e.level?.trim().toLowerCase() ?? "") === String(level).trim().toLowerCase()
+    );
+    if (duplicate) {
+      return NextResponse.json({ error: "DUPLICATE_EDUCATION" }, { status: 409 });
+    }
     educations.push({ school, acronym, degree, years, level, iconColor });
 
     const { error: updateError } = await supabase
@@ -420,6 +445,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
+  if (type === "cert_update") {
+    const { old, data } = body;
+    type Cert = {
+      title: string;
+      issuer: string;
+      issueDate: string;
+      description?: string;
+      attachmentUrl?: string;
+      category?: string;
+    };
+    let certs: Cert[] = effectiveProfile?.certs || [];
+    certs = certs.map((c: Cert) =>
+      c.title === old.title && c.issuer === old.issuer && c.issueDate === old.issueDate
+        ? { ...c, ...data }
+        : c
+    );
+    const { error: updateError } = await supabase
+      .from("student_profile")
+      .update({ certs, updated_at: new Date().toISOString() })
+      .eq("student_id", student_id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  }
+
   if (type === "contact") {
     const { email, countryCode, phone, socials } = data;
     const contact_info = { email, countryCode, phone, socials };
@@ -427,6 +479,35 @@ export async function POST(req: NextRequest) {
     const { error: updateError } = await supabase
       .from("student_profile")
       .update({ contact_info, updated_at: new Date().toISOString() })
+      .eq("student_id", student_id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  }
+
+  if (type === "portfolio") {
+    const { title, description, link, attachmentUrl, category } = data;
+    const portfolio = effectiveProfile?.portfolio || [];
+    portfolio.push({ title, description, link, attachmentUrl, category });
+
+    const { error: updateError } = await supabase
+      .from("student_profile")
+      .update({ portfolio, updated_at: new Date().toISOString() })
+      .eq("student_id", student_id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  }
+
+  if (type === "portfolio_update") {
+    const portfolio = Array.isArray(data) ? data : [];
+    const { error: updateError } = await supabase
+      .from("student_profile")
+      .update({ portfolio, updated_at: new Date().toISOString() })
       .eq("student_id", student_id);
 
     if (updateError) {

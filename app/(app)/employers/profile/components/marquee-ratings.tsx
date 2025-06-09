@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { Marquee } from "@/components/magicui/marquee";
 import Image from "next/image";
 
 const reviews = [
@@ -117,8 +116,9 @@ const reviews = [
 	},
 ];
 
-const firstRow = reviews.slice(0, reviews.length / 2);
-const secondRow = reviews.slice(reviews.length / 2);
+// Only show 2 rows of 4 cards each
+const firstRow = reviews.slice(0, 4);
+const secondRow = reviews.slice(4, 8);
 
 const ReviewCard = ({
 	img,
@@ -170,21 +170,20 @@ const ReviewCard = ({
 	);
 };
 
-export function MarqueeDemo() {
+// Static cards, no marquee
+export function RatingsCards() {
 	return (
-		<div className="relative flex w-full flex-col items-center justify-center overflow-hidden">
-			<Marquee pauseOnHover className="[--duration:40s]">
+		<div className="space-y-4 w-full">
+			<div className="flex flex-row flex-nowrap gap-4 justify-center overflow-x-auto">
 				{firstRow.map((review) => (
 					<ReviewCard key={review.username} {...review} />
 				))}
-			</Marquee>
-			<Marquee reverse pauseOnHover className="[--duration:40s]">
+			</div>
+			<div className="flex flex-row flex-nowrap gap-4 justify-center overflow-x-auto">
 				{secondRow.map((review) => (
 					<ReviewCard key={review.username} {...review} />
 				))}
-			</Marquee>
-			<div className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-background"></div>
-			<div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-background"></div>
+			</div>
 		</div>
 	);
 }

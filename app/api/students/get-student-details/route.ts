@@ -63,7 +63,6 @@ async function getStudentDetails(student_id: string) {
       }
     }
 
-    // Parse contact_info JSONB if present
     type ContactInfo = {
       email?: string | string[];
       phone?: string | string[];
@@ -114,7 +113,6 @@ async function getStudentDetails(student_id: string) {
       }
     }
 
-    // Add uploaded_resume_url and uploaded_cover_letter_url to the returned object
     return {
       ...student,
       profile_img: signedProfileImgUrl,
