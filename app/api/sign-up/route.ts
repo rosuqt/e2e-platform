@@ -10,6 +10,7 @@ export async function POST(request: Request) {
     }
 
     let companyId = formData.companyAssociation.companyId;
+    let companyJustCreated = false;
     if (companyId && !isValidUUID(companyId)) {
       const { data: pendingCompany, error: pendingCompanyError } = await supabase
         .from("pending_companies")
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
 
       if (pendingCompany) {
         companyId = pendingCompany.id;
+        companyJustCreated = true;
 
         const { error: registerCompanyError } = await supabase
           .from("registered_companies")
@@ -131,6 +133,7 @@ export async function POST(request: Request) {
         }
 
         if (pendingCompany) {
+          companyJustCreated = true;
           const { error: registerCompanyError } = await supabase
             .from("registered_companies")
             .insert(pendingCompany);
@@ -238,14 +241,30 @@ export async function POST(request: Request) {
         job_title: formData.companyAssociation.jobTitle,
         company_email: formData.companyAssociation.companyEmail,
         terms_accepted: formData.verificationDetails.termsAccepted,
-      });
-
+        company_admin: companyJustCreated ? true : false,
+      })
+      .select()
+    
     if (employerError) {
       console.error("Error inserting data into registered_employers:", employerError);
       return NextResponse.json(
         { message: "Failed to save employer data", error: employerError },
         { status: 500 }
       );
+    }
+
+    const employerId = employerData?.[0]?.id
+    if (employerId) {
+      const { error: profileError } = await supabase
+        .from("employer_profile")
+        .insert({
+          employer_id: employerId,
+        })
+      if (profileError) {
+        console.error("Error inserting employer_profile:", profileError)
+      }
+    } else {
+      console.error("No employerId found after insert into registered_employers")
     }
 
     console.log("New employer registered:", employerData);

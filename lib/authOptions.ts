@@ -153,6 +153,15 @@ export const authOptions: NextAuthOptions = {
         if (employerUser.verifyStatus) {
           token.verifyStatus = employerUser.verifyStatus;
         }
+        // fetch company_admin from db and add to token
+        const { data: employerData } = await supabase
+          .from("registered_employers")
+          .select("company_admin")
+          .eq("id", employerUser.id)
+          .single()
+        if (employerData?.company_admin !== undefined) {
+          token.company_admin = employerData.company_admin
+        }
       } else if (token.role === "employer" && token.employerId) {
 
       }
@@ -176,6 +185,7 @@ export const authOptions: NextAuthOptions = {
         if (token.verifyStatus) {
           (session.user as { verifyStatus?: string }).verifyStatus = token.verifyStatus as string
         }
+        (session.user as { company_admin?: boolean }).company_admin = !!token.company_admin
       }
       if (token.role === "student" && token.studentId) {
         (session.user as { studentId?: string }).studentId = token.studentId as string
@@ -201,7 +211,7 @@ export const authOptions: NextAuthOptions = {
       if (token.role === "student" && "newStudent" in token) {
         (session.user as { newStudent?: boolean }).newStudent = token.newStudent as boolean
       }
-//console.log("Session callback: session after:", session)
+ //console.log("Session callback: session after:", session)
       return session
     },
   },

@@ -303,20 +303,6 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
 
           <Separator />
 
-          <div className="flex items-center gap-3">
-            <span className="font-semibold text-blue-700 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-600" />
-              Availability
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-blue-300 text-blue-600 hover:bg-blue-50"
-              onClick={() => setAvailabilityModalOpen(true)}
-            >
-              Edit
-            </Button>
-          </div>
         </CardContent>
       </Card>
 

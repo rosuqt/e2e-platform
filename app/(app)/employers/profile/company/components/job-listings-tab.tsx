@@ -1,14 +1,47 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Search, Briefcase, Clock, MapPin, Calendar, Filter, EyeIcon, Plus } from "lucide-react"
+import { Search, Briefcase, Clock, MapPin, Calendar, Filter, EyeIcon,  } from "lucide-react"
 import JobDetails from "../../../../students/jobs/job-listings/components/job-details"
+
+type JobListing = {
+  id: string
+  job_title: string
+  work_type: string | null
+  location: string | null
+  pay_type: string | null
+  pay_amount: string | null
+  application_deadline: string | null
+  created_at: string | null
+  employer_name?: string | null
+}
 
 export default function JobListingsTab() {
   const [showJobDetails, setShowJobDetails] = useState(false)
+  const [jobListings, setJobListings] = useState<JobListing[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState("")
+  const [page, setPage] = useState(1)
+  const pageSize = 6
+
+  useEffect(() => {
+    setLoading(true)
+    fetch("/api/employers/company-profile/job-listings")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to fetch job listings")
+        return res.json()
+      })
+      .then((data) => {
+        setJobListings(data)
+        setError(null)
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [])
 
   const handleViewDetails = () => {
     setShowJobDetails(true)
@@ -18,87 +51,35 @@ export default function JobListingsTab() {
     setShowJobDetails(false)
   }
 
-  const jobListings = [
-    {
-      id: 1,
-      title: "UI/UX Designer",
-      type: "Full-time",
-      location: "San Francisco, CA",
-      salary: "$90,000 - $120,000",
-      deadline: "July 30, 2023",
-      postedDate: "May 15, 2023",
-      applicants: 45,
-      status: "active",
-    },
-    {
-      id: 2,
-      title: "Frontend Developer",
-      type: "Full-time",
-      location: "Remote",
-      salary: "$80,000 - $110,000",
-      deadline: "June 28, 2023",
-      postedDate: "May 10, 2023",
-      applicants: 32,
-      status: "active",
-    },
-    {
-      id: 3,
-      title: "Product Manager",
-      type: "Full-time",
-      location: "New York, NY",
-      salary: "$100,000 - $130,000",
-      deadline: "July 15, 2023",
-      postedDate: "May 5, 2023",
-      applicants: 28,
-      status: "active",
-    },
-    {
-      id: 4,
-      title: "Backend Developer",
-      type: "Contract",
-      location: "Remote",
-      salary: "$70 - $90 per hour",
-      deadline: "June 20, 2023",
-      postedDate: "May 1, 2023",
-      applicants: 19,
-      status: "active",
-    },
-    {
-      id: 5,
-      title: "DevOps Engineer",
-      type: "Full-time",
-      location: "San Francisco, CA",
-      salary: "$110,000 - $140,000",
-      deadline: "July 25, 2023",
-      postedDate: "May 8, 2023",
-      applicants: 15,
-      status: "active",
-    },
-    {
-      id: 6,
-      title: "QA Specialist",
-      type: "Full-time",
-      location: "Chicago, IL",
-      salary: "$75,000 - $95,000",
-      deadline: "June 30, 2023",
-      postedDate: "May 3, 2023",
-      applicants: 22,
-      status: "active",
-    },
-  ]
+  function formatDate(dateStr: string | null) {
+    if (!dateStr) return "-"
+    const date = new Date(dateStr)
+    return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+  }
+
+  function formatAddress(location: string | null) {
+    if (!location) return "N/A"
+    const parts = location.split(",").map((s) => s.trim())
+    if (parts.length >= 2) {
+      return `${parts[0]}, ${parts[1]}`
+    }
+    return location
+  }
+
+  const filteredListings = search
+    ? jobListings.filter((job) =>
+        job.job_title.toLowerCase().includes(search.toLowerCase())
+      )
+    : jobListings
+
+  const totalPages = Math.ceil(filteredListings.length / pageSize)
+  const paginatedListings = filteredListings.slice((page - 1) * pageSize, page * pageSize)
 
   return (
     <div className="space-y-6">
       {!showJobDetails ? (
         <>
           <div className="bg-white rounded-xl shadow-md p-6 border border-blue-200">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Recent Job Postings</h2>
-              <Button className="gap-2 rounded-full">
-                <Plus className="w-4 h-4" />
-                View All Jobs
-              </Button>
-            </div>
 
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="relative flex-1">
@@ -106,6 +87,8 @@ export default function JobListingsTab() {
                 <Input
                   placeholder="Search job postings..."
                   className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
                 />
               </div>
               <Button variant="outline" className="gap-2">
@@ -114,43 +97,128 @@ export default function JobListingsTab() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {jobListings.map((job) => (
-                <div
-                  key={job.id}
-                  className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <Briefcase className="h-6 w-6 text-blue-600" />
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="border border-gray-200 rounded-lg overflow-hidden animate-pulse bg-white">
+                    <div className="p-6">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="h-12 w-12 bg-gray-200 rounded-full" />
+                        <div className="h-6 w-20 bg-gray-100 rounded" />
                       </div>
-                      <Badge className="bg-green-100 text-green-800">{job.type}</Badge>
+                      <div className="h-5 w-32 bg-gray-200 rounded mb-2" />
+                      <div className="h-4 w-24 bg-gray-100 rounded mb-1" />
+                      <div className="h-4 w-20 bg-gray-100 rounded mb-4" />
+                      <div className="space-y-2 mb-4">
+                        <div className="h-4 w-28 bg-gray-100 rounded" />
+                        <div className="h-4 w-32 bg-gray-100 rounded" />
+                        <div className="h-4 w-24 bg-gray-100 rounded" />
+                      </div>
+                      <div className="h-10 w-full bg-gray-200 rounded" />
                     </div>
-                    <h3 className="font-semibold text-lg mb-1">{job.title}</h3>
-                    <div className="text-sm text-gray-500 mb-4">{job.salary}</div>
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        {job.location}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Clock className="h-4 w-4 mr-2" />
-                        Deadline: {job.deadline}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        Posted: {job.postedDate}
-                      </div>
-                    </div>
-                    <Button className="w-full gap-2" onClick={handleViewDetails}>
-                      <EyeIcon className="h-4 w-4" />
-                      View Details
-                    </Button>
                   </div>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-500">{error}</div>
+            ) : filteredListings.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">No job postings found.</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {paginatedListings.map((job) => (
+                    <div
+                      key={job.id}
+                      className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                    >
+                      <div className="p-6">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Briefcase className="h-6 w-6 text-blue-600" />
+                          </div>
+                          <Badge className="bg-green-100 text-green-800">
+                            {job.work_type || "N/A"}
+                          </Badge>
+                        </div>
+                        <h3 className="font-semibold text-lg mb-1">{job.job_title}</h3>
+                        <div className="text-sm text-gray-500 mb-1">
+                          {job.employer_name ? (
+                            <>Posted by <span className="font-medium text-blue-700">{job.employer_name}</span></>
+                          ) : (
+                            <>Posted by <span className="text-gray-400">Unknown</span></>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-500 mb-4">
+                          {job.pay_amount ? `${job.pay_amount}${job.pay_type ? ` (${job.pay_type})` : ""}` : "-"}
+                        </div>
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <MapPin className="h-4 w-4 mr-2" />
+                            {formatAddress(job.location)}
+                          </div>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Clock className="h-4 w-4 mr-2" />
+                            Deadline: {formatDate(job.application_deadline)}
+                          </div>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <Calendar className="h-4 w-4 mr-2" />
+                            Posted: {formatDate(job.created_at)}
+                          </div>
+                        </div>
+                        <Button className="w-full gap-2" onClick={handleViewDetails}>
+                          <EyeIcon className="h-4 w-4" />
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-8 gap-2">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className={`transition-all px-4 py-2 rounded-full font-semibold shadow-sm ${
+                        page === 1
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                      }`}
+                      style={{ minWidth: 80 }}
+                    >
+                      Prev
+                    </button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }).map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setPage(idx + 1)}
+                          className={`w-9 h-9 rounded-full flex items-center justify-center font-bold transition-all ${
+                            page === idx + 1
+                              ? "bg-blue-100 text-blue-700 scale-110 shadow-lg"
+                              : "bg-white text-blue-700 hover:bg-blue-50"
+                          }`}
+                          style={{ fontSize: 16 }}
+                        >
+                          {idx + 1}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className={`transition-all px-4 py-2 rounded-full font-semibold shadow-sm ${
+                        page === totalPages
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                      }`}
+                      style={{ minWidth: 80 }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </>
       ) : (
