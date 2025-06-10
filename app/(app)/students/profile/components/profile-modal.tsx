@@ -60,15 +60,34 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
       try {
         detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" })
         if (detailsRes.ok) {
-          const { first_name, last_name, email } = await detailsRes.json()
+          const { first_name, last_name, email, profile_img } = await detailsRes.json()
           setDbName(
             first_name && last_name
               ? `${first_name} ${last_name}`
               : first_name || last_name || ""
           )
           setDbEmail(email || "")
-          setDbAvatar(undefined)
           setUserType("employer")
+          if (profile_img) {
+            try {
+              const signedRes = await fetch("/api/employers/get-signed-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bucket: "user.avatars", path: profile_img }),
+                credentials: "include",
+              })
+              if (signedRes.ok) {
+                const { signedUrl } = await signedRes.json()
+                setDbAvatar(signedUrl)
+              } else {
+                setDbAvatar(undefined)
+              }
+            } catch {
+              setDbAvatar(undefined)
+            }
+          } else {
+            setDbAvatar(undefined)
+          }
           setLoading(false)
           return
         }
@@ -199,6 +218,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                     key={item.id}
                     className="w-full flex items-center justify-between p-3 text-left hover:bg-blue-50 transition-colors"
                     onClick={item.onClick}
+                    disabled={loading}
+                    style={loading ? { opacity: 0.5, pointerEvents: "none" } : undefined}
                   >
                     <div className="flex items-center">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500">

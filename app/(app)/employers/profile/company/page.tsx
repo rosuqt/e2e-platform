@@ -457,7 +457,11 @@ export default function CompanyProfilePage() {
                       ? company.company_industry.charAt(0).toUpperCase() + company.company_industry.slice(1)
                       : ""}
                     {company?.company_industry && branchCount !== null ? " | " : ""}
-                    {branchCount !== null ? `${branchCount} Branches` : ""}
+                    {branchCount !== null
+                      ? branchCount === 1
+                        ? "Headquarters"
+                        : `${branchCount} Branches`
+                      : ""}
                   </p>
                   <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
                     <MapPin className="w-4 h-4" />

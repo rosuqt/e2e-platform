@@ -23,7 +23,12 @@ async function getEmployerDetails(employer_id: string) {
   if (error || !employer) {
     return null;
   }
-  return employer;
+  const { data: profile } = await supabase
+    .from("employer_profile")
+    .select("profile_img")
+    .eq("employer_id", employer_id)
+    .single();
+  return { ...employer, profile_img: profile?.profile_img || null };
 }
 
 export async function GET(req: NextRequest) {
