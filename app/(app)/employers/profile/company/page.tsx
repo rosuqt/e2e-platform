@@ -104,9 +104,14 @@ export default function CompanyProfilePage() {
       .then(res => res.json())
       .then(data => {
         if (data?.company_admin) setIsCompanyAdmin(true)
-
         if (typeof data?.edit_company_profile === "boolean") setCanEdit(data.edit_company_profile)
         if (typeof data?.can_view === "boolean") setCanView(data.can_view)
+        else setCanView(false)
+      })
+      .catch(() => {
+        setIsCompanyAdmin(false)
+        setCanEdit(false)
+        setCanView(false)
       })
 
     const handler = (e: Event) => {
