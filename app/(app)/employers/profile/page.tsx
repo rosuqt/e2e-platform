@@ -168,7 +168,7 @@ export default function EmployerProfilePage() {
     }
   }
 
-  const loading = !employer || savingBio
+  const loading = !employer 
 
   return (
     <div className="container mx-auto p-4 max-w-6xl">

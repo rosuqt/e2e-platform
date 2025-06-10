@@ -10,6 +10,8 @@ import AddAchievementModal from "./modals/add-achievement"
 import AddEditContactModal from "./modals/add-edit-contact"
 import AvailabilityModal from "./modals/availability-modal"
 import { useState, useEffect, useRef } from "react"
+import { useSession } from "next-auth/react"
+import { LuMailPlus } from "react-icons/lu"
 
 type CoreValue = {
   value: string
@@ -78,6 +80,26 @@ export default function AboutTab() {
   const founderFileInputRefs = useRef<(HTMLInputElement | null)[]>([])
   const iconMap = { Heart, Award, Users, ShieldCheck, CheckCircle, Star, Trophy, Medal, ThumbsUp, Rocket }
   const [canEdit, setCanEdit] = useState(false)
+  const { data: session } = useSession()
+  const employerId =
+    (session?.user && "employerId" in session.user
+      ? (session.user as { employerId?: string }).employerId
+      : undefined)
+  const [companyName, setCompanyName] = useState<string | null>(null)
+  const [members, setMembers] = useState<
+    {
+      id: string
+      first_name?: string | null
+      last_name?: string | null
+      email?: string | null
+      job_title?: string | null
+      company_role?: string | null
+      company_admin?: boolean | null
+      profile_img: string
+    }[]
+  >([])
+  const [membersLoading, setMembersLoading] = useState(true)
+  const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
   useEffect(() => {
     fetch("/api/employers/me")
@@ -165,6 +187,74 @@ export default function AboutTab() {
         if (data?.business_hours) setBusinessHours(data.business_hours as BusinessHours)
       })
   }, [])
+
+  useEffect(() => {
+    if (!employerId) return
+    fetch(`/api/employers/get-company-id?employer_id=${encodeURIComponent(employerId)}`)
+      .then(res => res.json())
+      .then(res => {
+        if (res.company_id) {
+          fetch(`/api/employers/get-company-name?company_id=${encodeURIComponent(res.company_id)}`)
+            .then(r => r.json())
+            .then(r => {
+              if (r.company_name) setCompanyName(r.company_name)
+            })
+        }
+      })
+  }, [employerId])
+
+  useEffect(() => {
+    if (!companyName) return
+    setMembersLoading(true)
+    fetch(`/api/employers/colleagues/fetchUsers?company_name=${encodeURIComponent(companyName)}`)
+      .then(res => res.json())
+      .then(async res => {
+        if (Array.isArray(res.data)) {
+          const getSignedUrlIfNeeded = async (img: string | null | undefined, bucket: string) => {
+            if (!img) return null
+            if (/^https?:\/\//.test(img)) return img
+            const r = await fetch("/api/employers/get-signed-url", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ bucket, path: img }),
+            })
+            if (!r.ok) return null
+            const { signedUrl } = await r.json()
+            return signedUrl || null
+          }
+          const updated = await Promise.all(
+            (res.data as {
+              id: string
+              first_name?: string | null
+              last_name?: string | null
+              email?: string | null
+              job_title?: string | null
+              company_role?: string | null
+              company_admin?: boolean | null
+              profile_img?: string | null
+            }[]).slice(0, 4).map(async (emp) => {
+              const profileImgUrl = await getSignedUrlIfNeeded(emp.profile_img, "user.avatars")
+              return {
+                id: emp.id,
+                first_name: emp.first_name,
+                last_name: emp.last_name,
+                email: emp.email,
+                job_title: emp.job_title,
+                company_role: emp.company_role,
+                company_admin: emp.company_admin,
+                profile_img: profileImgUrl || "https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images//default-pfp.jpg",
+              }
+            })
+          )
+          setMembers(updated)
+        } else {
+          setMembers([])
+        }
+        setMembersLoading(false)
+      })
+  }, [companyName])
+
+
 
   async function saveMissionVision() {
     if (!companyId) return
@@ -1108,47 +1198,116 @@ export default function AboutTab() {
             <Users className="text-blue-600" size={20} />
             Company Members
           </h2>
-          <Button variant="link" className="text-blue-600">
+          <Button
+            variant="link"
+            className="text-blue-600"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                const event = new CustomEvent("company-profile-set-tab", { detail: { tab: 2 } })
+                window.dispatchEvent(event)
+              }
+            }}
+          >
             View All
           </Button>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="overflow-hidden border border-gray-200 hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 mb-3">
-                      <Image
-                        src="/placeholder.svg?height=64&width=64"
-                        alt="Team member"
-                        width={64}
-                        height={64}
-                        className="object-cover"
-                      />
+            {membersLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="overflow-hidden border border-gray-200 animate-pulse bg-white rounded-xl">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col items-center">
+                      <div className="w-16 h-16 rounded-full bg-gray-200 mb-3" />
+                      <div className="h-4 w-24 bg-gray-100 rounded mb-2" />
+                      <div className="h-3 w-16 bg-gray-100 rounded" />
                     </div>
-                    <div className="text-center">
-                      <div className="font-medium text-sm">
-                        {i === 1 ? "Alex Morgan" : i === 2 ? "Jessica Lee" : i === 3 ? "David Kim" : "Rachel Chen"}
+                  </CardContent>
+                </Card>
+              ))
+            ): members.length > 0 ? (
+              members.map((member, i) => (
+                <Card key={member.id || i} className="overflow-hidden border border-gray-200 hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col items-center">
+                      <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 mb-3">
+                        <Image
+                          src={member.profile_img}
+                          alt={member.first_name || member.email || "Team member"}
+                          width={64}
+                          height={64}
+                          className="object-cover w-full h-full rounded-full"
+                        />
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {i === 1
-                          ? "Head of Design"
-                          : i === 2
-                            ? "Senior Developer"
-                            : i === 3
-                              ? "Product Manager"
-                              : "Marketing Lead"}
+                      <div className="text-center">
+                        <div className="font-medium text-sm flex items-center justify-center gap-1">
+                          {member.first_name} {member.last_name}
+                        
+                          {member.id === employerId && (
+                            <span className="ml-1 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">You</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">{member.job_title || member.company_role}</div>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full flex flex-col items-center justify-center py-10 h-full min-h-[200px]">
+                <div className="mb-4 text-gray-500">No team members yet.</div>
+                <div className="flex flex-1 items-center justify-center h-full">
+                  <button
+                    type="button"
+                    onClick={() => setInviteModalOpen(true)}
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-full w-40 h-40 bg-blue-50 transition-colors hover:bg-blue-100 focus:outline-none"
+                    style={{ minHeight: 120, minWidth: 120 }}
+                  >
+                    <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mb-2">
+                      <LuMailPlus className="w-6 h-6" />
+                    </div>
+                    <span className="font-medium text-blue-700 text-xs">Invite colleagues</span>
+                  </button>
+                </div>
+              </div>
+            )}
+            {members.length < 4 && !membersLoading && members.length > 0 && (
+              <div className="flex flex-1 flex-col items-center justify-center h-full">
+                <button
+                  type="button"
+                  onClick={() => setInviteModalOpen(true)}
+                  className="flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-full w-40 h-40 bg-blue-50 transition-colors hover:bg-blue-100 focus:outline-none"
+                  style={{ minHeight: 160, minWidth: 160 }}
+                >
+                  <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mb-2">
+                    <LuMailPlus className="w-6 h-6" />
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  <span className="font-medium text-blue-700 text-xs">Invite colleagues</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
+      {inviteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-sm w-full">
+            <h3 className="text-lg font-semibold mb-4">Invite Colleagues</h3>
+            <h2 className="text-lg font-semibold mb-4">PAKIFILE NA D PA TO NAGANA IN CASE I FORGET</h2>
+            <p className="mb-4 text-gray-600">Share an invite link or enter your colleagues&apos; emails to invite them to join your company.</p>
+            <input
+              className="w-full border border-blue-200 rounded-lg p-2 mb-4"
+              placeholder="Enter email addresses..."
+              disabled
+            />
+            <div className="flex gap-2">
+              <Button disabled>Send Invites</Button>
+              <Button variant="outline" onClick={() => setInviteModalOpen(false)}>Cancel</Button>
+            </div>
+            <div className="text-xs text-gray-400 mt-3">Invite functionality coming soon.</div>
+          </div>
+        </div>
+      )}
       {/* Contact Information */}
       <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
         <div className="flex justify-between items-center p-4 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100">

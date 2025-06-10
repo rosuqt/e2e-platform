@@ -108,6 +108,23 @@ export default function CompanyProfilePage() {
         if (typeof data?.edit_company_profile === "boolean") setCanEdit(data.edit_company_profile)
         if (typeof data?.can_view === "boolean") setCanView(data.can_view)
       })
+
+    const handler = (e: Event) => {
+      if ((e as CustomEvent).detail?.tab === "team") setActiveTab(2)
+    }
+    window.addEventListener("company-profile-switch-tab", handler)
+    return () => window.removeEventListener("company-profile-switch-tab", handler)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent
+      if (custom.detail?.tab !== undefined) setActiveTab(custom.detail.tab)
+    }
+    window.addEventListener("company-profile-set-tab", handler)
+    if (window.location.hash === "#team") setActiveTab(2)
+    return () => window.removeEventListener("company-profile-set-tab", handler)
   }, [])
 
   const handleLogoUpload = async (file: File) => {

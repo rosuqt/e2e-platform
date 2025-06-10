@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import supabase from "@/lib/supabase";
+import supabase, { getAdminSupabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
   const formData = await request.json();
+
+  const adminSupabase = getAdminSupabase();
 
   try {
     function isValidUUID(str: string) {
@@ -200,7 +202,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+
+    const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
       email: formData.personalDetails.email,
       password: formData.personalDetails.password,
       user_metadata: { role: "employer" },
