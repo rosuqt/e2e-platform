@@ -63,9 +63,9 @@ type Portfolio = {
 };
 type Expertise = { skill: string; mastery: number };
 type ContactInfo = {
-  email?: string;
+  email?: string | string[];
   countryCode?: string;
-  phone?: string;
+  phone?: string | string[];
   socials?: Social[];
 };
 type PublicProfile = {
@@ -487,7 +487,9 @@ export default function PublicProfilePage() {
                   <p className="text-sm font-medium text-gray-800">Email</p>
                   <p className="text-sm text-gray-600">
                     {profile.contact_info?.email
-                      ? profile.contact_info.email
+                      ? Array.isArray(profile.contact_info.email)
+                        ? profile.contact_info.email.join(", ")
+                        : profile.contact_info.email
                       : <span className="italic text-gray-400">No email provided</span>
                     }
                   </p>
@@ -500,8 +502,22 @@ export default function PublicProfilePage() {
                 <div>
                   <p className="text-sm font-medium text-gray-800">Phone</p>
                   <p className="text-sm text-gray-600">
-                    {profile.contact_info?.countryCode && profile.contact_info?.phone
-                      ? `+${profile.contact_info.countryCode} ${profile.contact_info.phone}`
+                    {profile.contact_info?.phone
+                      ? (() => {
+                          const phone = profile.contact_info.phone;
+                          if (Array.isArray(phone)) {
+                            if (phone.length === 2 && phone[0] && phone[1]) {
+                              return `+${phone[0]} ${phone[1]}`;
+                            }
+    
+                            return phone.filter(Boolean).join(", ");
+                          } else if (phone) {
+                            return profile.contact_info?.countryCode
+                              ? `+${profile.contact_info.countryCode} ${phone}`
+                              : phone;
+                          }
+                          return <span className="italic text-gray-400">No phone number provided</span>;
+                        })()
                       : <span className="italic text-gray-400">No phone number provided</span>
                     }
                   </p>

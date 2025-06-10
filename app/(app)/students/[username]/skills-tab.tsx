@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import PublicViewCertModal from "./view-cert";
 import PublicViewPortfolioModal from "./view-portfolio";
@@ -34,10 +35,13 @@ export default function PublicSkillsTab() {
   const [openViewPortfolio, setOpenViewPortfolio] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
 
+  const params = useParams();
+  const username = typeof params?.username === "string" ? params.username : Array.isArray(params?.username) ? params.username[0] : "";
+
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
-      const res = await fetch("/api/students/student-profile/getHandlers");
+      const res = await fetch(`/api/students/public-profile?username=${encodeURIComponent(username)}`);
       if (!res.ok) {
         setLoading(false);
         return;
@@ -51,8 +55,10 @@ export default function PublicSkillsTab() {
         setPortfolio(data.portfolio);
       setLoading(false);
     };
-    fetchProfile();
-  }, []);
+    if (username) {
+      fetchProfile();
+    }
+  }, [username]);
 
   return (
     <Card className="border-none shadow-none">

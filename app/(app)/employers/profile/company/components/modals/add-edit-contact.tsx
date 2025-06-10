@@ -1,28 +1,16 @@
 "use client";
-import { useState, forwardRef, useEffect } from "react";
-import { RiContactsBook3Fill } from "react-icons/ri";
-
-import {
-  Dialog,
-  DialogContent,
-  Button,
-  Box,
-  Slide,
-  TextField,
-  Typography,
-  ToggleButton,
-  ToggleButtonGroup
-} from "@mui/material";
+import { useState, useEffect, forwardRef } from "react";
+import { Dialog, DialogContent, Button, Box, Slide, TextField, Typography, } from "@mui/material";
 import type { SlideProps } from "@mui/material";
 import Autocomplete from "@mui/material/Autocomplete";
 import Popper from "@mui/material/Popper";
 import Image from "next/image";
-import { countries } from "../../../../(landing)/sign-up/data/countries";
-import { FaLinkedin, FaFacebook, FaTwitter, FaInstagram, FaGithub, FaYoutube, FaGlobe } from "react-icons/fa6";
+import { countries } from "../../../../../../(landing)/sign-up/data/countries";
+import { FaLinkedin, FaFacebook, FaTwitter, FaInstagram, FaGithub, FaYoutube, FaGlobe,  } from "react-icons/fa6";
 import { X } from "lucide-react";
 import { SiIndeed } from "react-icons/si";
-import { useSession } from "next-auth/react";
 import Tooltip from "@mui/material/Tooltip";
+import { RiContactsBook3Fill } from "react-icons/ri";
 
 const SlideUp = forwardRef(function Transition(
   props: SlideProps,
@@ -39,7 +27,7 @@ const SOCIALS = [
   { key: "instagram", label: "Instagram", icon: <FaInstagram size={28} />, color: "bg-pink-400", text: "text-white" },
   { key: "github", label: "GitHub", icon: <FaGithub size={28} />, color: "bg-gray-800", text: "text-white" },
   { key: "youtube", label: "YouTube", icon: <FaYoutube size={28} />, color: "bg-red-500", text: "text-white" },
-  { key: "website", label: "Website", icon: <FaGlobe size={28} />, color: "bg-green-200", text: "text-green-700" }
+{ key: "website", label: "Website", icon: <FaGlobe size={28} />, color: "bg-green-200", text: "text-green-700" }
 ];
 
 type SocialLink = { key: string; url: string };
@@ -51,17 +39,17 @@ type AddEditContactModalProps = {
     email: string;
     countryCode: string;
     phone: string;
-    socials: SocialLink[];
     website: string;
+    address: string;
+    socials: Record<string, string>;
   }) => void;
   initial?: {
     email?: string;
-    personal_email?: string; 
     countryCode?: string;
     phone?: string;
-    socials?: SocialLink[];
     website?: string;
-    company_email?: string;
+    address?: string;
+    socials?: Record<string, string>;
   };
 };
 
@@ -75,37 +63,36 @@ export default function AddEditContactModal({
   const [countryCode, setCountryCode] = useState("");
   const [phone, setPhone] = useState("");
   const [website, setWebsite] = useState("");
+  const [address, setAddress] = useState("");
   const [socials, setSocials] = useState<SocialLink[]>([]);
-  const [errors, setErrors] = useState<{ email?: string; phone?: string; countryCode?: string; socials?: string; website?: string }>({})
+  const [errors, setErrors] = useState<{ email?: string; phone?: string; countryCode?: string; website?: string; address?: string; socials?: string }>({});
   const [saving, setSaving] = useState(false);
-  const [useCompanyEmail, setUseCompanyEmail] = useState(false);
-  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (open) {
+      setEmail(initial?.email || "");
+      setCountryCode(initial?.countryCode || "");
+      setPhone(initial?.phone || "");
+      setWebsite(initial?.website || "");
+      setAddress(initial?.address || "");
+      setSocials(
+        initial?.socials
+          ? Object.entries(initial.socials).map(([key, url]) => ({ key, url: url || "" }))
+          : []
+      );
+      setErrors({});
+      setSaving(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial]);
 
   const availableSocials = SOCIALS.filter(s => !socials.some(link => link.key === s.key));
   const mySocials = SOCIALS.filter(s => socials.some(link => link.key === s.key));
 
-  const personalEmail = initial?.personal_email || initial?.email || "";
-  const companyEmail = initial?.company_email || "";
-  const hasCompanyEmail = !!companyEmail;
-
-  useEffect(() => {
-    if (useCompanyEmail && hasCompanyEmail) {
-      setEmail(companyEmail);
-    } else {
-      setEmail(personalEmail);
-    }
-  }, [useCompanyEmail, companyEmail, personalEmail]);
-
   const handleClose = () => {
     onClose?.();
-    setEmail(personalEmail);
-    setCountryCode(initial?.countryCode || "");
-    setPhone(initial?.phone || "");
-    setWebsite(initial?.website || "");
-    setSocials(initial?.socials || []);
-    setErrors({})
+    setErrors({});
     setSaving(false);
-    setUseCompanyEmail(false);
   };
 
   const validate = () => {
@@ -114,21 +101,14 @@ export default function AddEditContactModal({
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = "Invalid email format";
     if (!countryCode) errs.countryCode = "Country code required";
     if (!phone) errs.phone = "Phone number required";
-    else if (
-      (countryCode === "63" || countryCode === "+63") &&
-      (!/^9\d{9}$/.test(phone))
-    ) {
-      errs.phone = "PH mobile must start with 9 and be 10 digits (e.g. 9123456789)";
-    } else if (!/^\d{7,15}$/.test(phone)) {
-      errs.phone = "Invalid phone number";
-    }
-
+    else if (!/^\d{7,15}$/.test(phone)) errs.phone = "Invalid phone number";
     if (
       website &&
       !/^((https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})(\/.*)?(\?.*)?$/.test(website.trim())
     ) {
       errs.website = "Enter a valid website (e.g. company.com or https://company.com/path)";
     }
+    if (!address) errs.address = "Address required";
     if (socials.some(s => !s.url || !s.url.trim())) {
       errs.socials = "All selected socials must have a URL";
     } else if (
@@ -142,7 +122,7 @@ export default function AddEditContactModal({
       const urls = socials.map(s => s.url.trim().toLowerCase()).filter(Boolean);
       const hasDuplicate = urls.length !== new Set(urls).size;
       if (hasDuplicate) {
-        errs.socials = "Oops, it looks like you used duplicate URLs for your socials.";
+        errs.socials = "Duplicate URLs for socials.";
       }
     }
     setErrors(errs);
@@ -152,29 +132,16 @@ export default function AddEditContactModal({
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    const employerId = (session?.user as { employerId?: string })?.employerId;
-    if (employerId) {
-      await fetch("/api/employers/employer-profile/postHandlers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employerID: employerId,
-          contact_info: {
-            email,
-            countryCode,
-            phone,
-            socials: socials.map(s => ({ key: s.key, url: s.url })),
-            website
-          }
-        })
-      });
-    }
     onSave?.({
       email,
       countryCode,
       phone,
-      socials: socials.map(s => ({ key: s.key, url: s.url })),
-      website
+      website,
+      address,
+      socials: socials.reduce((acc, s) => {
+        acc[s.key] = s.url;
+        return acc;
+      }, {} as Record<string, string>)
     });
     handleClose();
   };
@@ -190,18 +157,6 @@ export default function AddEditContactModal({
   const handleSocialUrlChange = (key: string, url: string) => {
     setSocials(socials.map(s => s.key === key ? { ...s, url } : s));
   };
-
-  useEffect(() => {
-    if (open) {
-      setUseCompanyEmail(false);
-      setEmail(personalEmail);
-      setCountryCode(initial?.countryCode ?? "");
-      setPhone(initial?.phone ?? "");
-      setWebsite(initial?.website ?? "");
-      setSocials(initial?.socials ?? []);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, personalEmail, initial]);
 
   return (
     <Dialog
@@ -259,14 +214,14 @@ export default function AddEditContactModal({
                 alignItems: "center"
               }}
             >
-              <RiContactsBook3Fill size={28} color="#fff" />
+              <RiContactsBook3Fill className="w-6 h-6" />
             </Box>
             <Box>
               <Typography sx={{ fontWeight: 600, fontSize: 22, color: "#fff" }}>
-                Edit Contact Information
+                Edit Company Contact Information
               </Typography>
               <Typography sx={{ color: "#dbeafe", fontSize: 15 }}>
-                Update your email, phone, and social profiles
+                Update your company contact details and social profiles
               </Typography>
             </Box>
           </Box>
@@ -276,43 +231,11 @@ export default function AddEditContactModal({
             <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
               Email <span style={{ color: "#ef4444" }}>*</span>
             </Typography>
-            {/* Toggle button for company email */}
-            {hasCompanyEmail && (
-              <Box sx={{ mb: 1 }}>
-                <ToggleButtonGroup
-                  value={useCompanyEmail ? "company" : "personal"}
-                  exclusive
-                  onChange={(_, val) => {
-                    if (val === "company") setUseCompanyEmail(true);
-                    else setUseCompanyEmail(false);
-                  }}
-                  size="small"
-                  sx={{ mb: 1 }}
-                >
-                  <ToggleButton value="personal" sx={{ fontSize: 13, px: 2 }}>
-                    Use Personal Email
-                  </ToggleButton>
-                  <ToggleButton value="company" sx={{ fontSize: 13, px: 2 }}>
-                    Switch to Company Email
-                  </ToggleButton>
-                </ToggleButtonGroup>
-                {useCompanyEmail && (
-                  <Typography sx={{ fontSize: 12, color: "#64748b", ml: 1 }}>
-                    Using company email: <b>{companyEmail}</b>
-                  </Typography>
-                )}
-                {!useCompanyEmail && (
-                  <Typography sx={{ fontSize: 12, color: "#64748b", ml: 1 }}>
-                    Using personal email: <b>{personalEmail}</b>
-                  </Typography>
-                )}
-              </Box>
-            )}
             <Tooltip
               title="You can't edit your email here. Please update your email in Settings if needed."
               placement="top"
               arrow
-              enterDelay={1000} 
+              enterDelay={1000}
             >
               <span>
                 <TextField
@@ -320,7 +243,7 @@ export default function AddEditContactModal({
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   variant="outlined"
-                  placeholder="e.g. johndoe@email.com"
+                  placeholder="e.g. company@email.com"
                   sx={{
                     background: "#fff",
                     borderRadius: 2,
@@ -331,7 +254,6 @@ export default function AddEditContactModal({
                   error={!!errors.email}
                   helperText={errors.email}
                   inputProps={{ maxLength: 254, minLength: 6 }}
-                  disabled={true}
                 />
               </span>
             </Tooltip>
@@ -408,14 +330,14 @@ export default function AddEditContactModal({
           </Box>
           <Box sx={{ mb: 2 }}>
             <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
-              Company Website
+              Headquarters Address <span style={{ color: "#ef4444" }}>*</span>
             </Typography>
             <TextField
               fullWidth
-              value={website}
-              onChange={e => setWebsite(e.target.value)}
+              value={address}
+              onChange={e => setAddress(e.target.value)}
               variant="outlined"
-              placeholder="e.g. company.com"
+              placeholder="e.g. 123 Main St, City, Country"
               sx={{
                 background: "#fff",
                 borderRadius: 2,
@@ -423,9 +345,9 @@ export default function AddEditContactModal({
                 fontSize: 15,
                 "& .MuiOutlinedInput-root": { fontSize: 15 }
               }}
-              error={!!errors.website}
-              helperText={errors.website}
-              inputProps={{ maxLength: 100 }}
+              error={!!errors.address}
+              helperText={errors.address}
+              inputProps={{ maxLength: 120 }}
             />
           </Box>
           <hr style={{ border: 0, borderTop: "1px solid #e5e7eb", margin: "24px 0" }} />
@@ -516,7 +438,6 @@ export default function AddEditContactModal({
               ))}
             </Box>
           </Box>
-          <hr style={{ border: 0, borderTop: "1px solid #e5e7eb", margin: "24px 0" }} />
           <Box sx={{ display: "flex", gap: 2, pt: 2 }}>
             <Button
               variant="outlined"
