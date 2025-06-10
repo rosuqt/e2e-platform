@@ -51,6 +51,12 @@ export async function POST(request: Request) {
             { message: "Failed to move company to registered_companies", error: registerCompanyError },
             { status: 500 }
           );
+        } else {
+          await supabase
+            .from("company_profile")
+            .insert({
+              company_id: companyId
+            });
         }
 
         const { error: deletePendingCompanyError } = await supabase
@@ -146,6 +152,12 @@ export async function POST(request: Request) {
               { message: "Failed to move company to registered_companies", error: registerCompanyError },
               { status: 500 }
             );
+          } else {
+            await supabase
+              .from("company_profile")
+              .insert({
+                company_id: companyId
+              });
           }
 
           const { error: deletePendingCompanyError } = await supabase
