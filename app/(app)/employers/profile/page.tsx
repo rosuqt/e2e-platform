@@ -143,8 +143,6 @@ export default function EmployerProfilePage() {
     setActiveTab(newValue)
   }
 
-  const goToRatingsTab = () => setActiveTab(2)
-
   const handleBioChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setBio(e.target.value)
   }
@@ -496,13 +494,12 @@ export default function EmployerProfilePage() {
           </div>
         ) : (
           <>
-            {activeTab === 0 && <AboutTab goToRatingsTab={goToRatingsTab} />}
+            {activeTab === 0 && <AboutTab />}
             {activeTab === 1 && <JobListingsTab />}
             {activeTab === 2 && <RatingsTab />}
           </>
         )}
       </div>
-
     </div>
   )
 }

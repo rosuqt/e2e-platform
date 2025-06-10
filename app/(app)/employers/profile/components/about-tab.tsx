@@ -27,6 +27,10 @@ import { useSession } from "next-auth/react"
 import AddEditContactModal from "./add-edit-contact"
 import AvailabilityModal from "./availability-modal"
 import { SiIndeed } from "react-icons/si"
+import { motion } from "framer-motion"
+import Tooltip from "@mui/material/Tooltip"
+import { MdAdminPanelSettings } from "react-icons/md"
+import { useRouter } from "next/navigation"
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false })
 
@@ -57,9 +61,10 @@ type RegisteredCompany = {
   company_website?: string
 }
 
-export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => void }) {
+export default function AboutTab() {
   const { data: session } = useSession()
   const employerID = (session?.user as SessionUser)?.employerId
+  const router = useRouter()
 
   const [about, setAbout] = useState("")
   const [hiringPhilosophy, setHiringPhilosophy] = useState("")
@@ -75,6 +80,22 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
     end?: string;
     timezone?: string;
   } | null>(null)
+  const [companyProfile, setCompanyProfile] = useState<Record<string, unknown> | null>(null)
+  const [companyLoading, setCompanyLoading] = useState(true)
+  const [companyError, setCompanyError] = useState<string | null>(null)
+  const [teamMembers, setTeamMembers] = useState<Array<{
+    id: string
+    first_name?: string
+    last_name?: string
+    email?: string
+    job_title?: string
+    company_role?: string
+    company_admin?: boolean
+    profile_img?: string
+  }>>([])
+  const [teamLoading, setTeamLoading] = useState(true)
+  const [teamError, setTeamError] = useState<string | null>(null)
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (!employerID) return
@@ -97,6 +118,99 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
         setAvailability(data.availability || null)
       })
   }, [employerID, refreshKey])
+
+  useEffect(() => {
+    if (!employerID) return
+    setCompanyLoading(true)
+    setCompanyError(null)
+    fetch("/api/employers/company-profile/getHandlers")
+      .then(res => res.json())
+      .then(async data => {
+        if (data.error) {
+          setCompanyError(data.error)
+          setCompanyProfile(null)
+        } else {
+          setCompanyProfile(data)
+          if (data?.company_logo_image_path) {
+            if (typeof data.company_logo_image_path === "string" && data.company_logo_image_path.startsWith("http")) {
+              setCompanyLogoUrl(data.company_logo_image_path)
+            } else {
+              const res = await fetch("/api/employers/get-signed-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bucket: "company.logo", path: data.company_logo_image_path }),
+              })
+              if (res.ok) {
+                const { signedUrl } = await res.json()
+                setCompanyLogoUrl(signedUrl || null)
+              } else {
+                setCompanyLogoUrl(null)
+              }
+            }
+          } else {
+            setCompanyLogoUrl(null)
+          }
+        }
+        setCompanyLoading(false)
+      })
+      .catch(() => {
+        setCompanyError("Failed to load company info.")
+        setCompanyLoading(false)
+        setCompanyLogoUrl(null)
+      })
+  }, [employerID])
+
+  useEffect(() => {
+    if (!companyProfile || typeof companyProfile.company_name !== "string") return
+    setTeamLoading(true)
+    setTeamError(null)
+    fetch(`/api/employers/colleagues/fetchUsers?company_name=${encodeURIComponent(companyProfile.company_name)}`)
+      .then(res => res.json())
+      .then(async res => {
+        if (res.error) {
+          setTeamError(res.error)
+          setTeamMembers([])
+          setTeamLoading(false)
+          return
+        }
+        const employees: {
+          id: string
+          first_name?: string
+          last_name?: string
+          email?: string
+          job_title?: string
+          company_role?: string
+          company_admin?: boolean
+          profile_img?: string
+        }[] = Array.isArray(res.data) ? res.data : []
+        const updated = await Promise.all(
+          employees.map(async (emp) => {
+            let profileImgUrl = emp.profile_img
+            if (profileImgUrl && typeof profileImgUrl === "string" && !/^https?:\/\//.test(profileImgUrl)) {
+              const r = await fetch("/api/employers/get-signed-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bucket: "user.avatars", path: profileImgUrl }),
+              })
+              if (r.ok) {
+                const { signedUrl } = await r.json()
+                profileImgUrl = signedUrl || profileImgUrl
+              }
+            }
+            return {
+              ...emp,
+              profile_img: profileImgUrl || "https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images//default-pfp.jpg",
+            }
+          })
+        )
+        setTeamMembers(updated)
+        setTeamLoading(false)
+      })
+      .catch(() => {
+        setTeamError("Failed to load team members.")
+        setTeamLoading(false)
+      })
+  }, [companyProfile?.company_name])
 
   async function saveProfileField(field: "about" | "hiring_philosophy", value: string) {
     if (!employerID) return
@@ -137,48 +251,7 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
     }
   }
 
-  const company = {
-    logo: "/placeholder.svg?height=64&width=64",
-    name: "TechCorp Inc.",
-    location: "San Francisco, CA",
-    industry: "Technology",
-    founded: "2015",
-    size: "500-1000 employees",
-    about:
-      "TechCorp is a leading innovator in the tech industry, specializing in cloud solutions, AI, and enterprise software. Our mission is to empower businesses through cutting-edge technology and a commitment to excellence in service and product delivery.",
-  }
-
-  const team = [
-    {
-      id: "1",
-      name: "Valentina Johnson",
-      job_title: "Frontend Developer",
-      avatar: "/images/random-profiles/1.png",
-      company: "TechCorp Inc.",
-    },
-    {
-      id: "2",
-      name: "Kemelrina Smith",
-      job_title: "UX Designer",
-      avatar: "/images/random-profiles/3.png",
-      company: "TechCorp Inc.",
-    },
-    {
-      id: "3",
-      name: "Parker Lee",
-      job_title: "Project Manager",
-      avatar: "/images/random-profiles/2.png",
-      company: "TechCorp Inc.",
-    },
-    {
-      id: "4",
-      name: "Zeyn Ali",
-      job_title: "Backend Developer",
-      avatar: "/images/random-profiles/4.png",
-      company: "TechCorp Inc.",
-    },
-  ]
-
+  
   const hiringMetrics = [
     { label: "Response Rate", value: 0, color: "#3b82f6" },
     { label: "Interview Rate", value: 0, color: "#10b981" },
@@ -315,7 +388,7 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
           </div>
           <button
             type="button"
-            onClick={goToRatingsTab}
+            onClick={() => router.push("/employers/profile/company#ratings")}
             className="text-blue-600 hover:text-blue-800 font-medium text-sm px-4 py-2 border border-blue-200 rounded-md transition-colors"
           >
             View All Ratings
@@ -406,54 +479,134 @@ export default function AboutTab({ goToRatingsTab }: { goToRatingsTab?: () => vo
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Company Info */}
-            <div className="lg:col-span-2">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="w-60 h-60 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-gray-200">
-                  <Image src={"/images/logo-test2.png"} alt={company.name} width={150} height={150  } />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-xl text-gray-900 mb-2">{company.name}</h3>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {company.location}
-                    </Badge>
-                    <Badge variant="outline">{company.industry}</Badge>
-                    <Badge variant="outline">Founded {company.founded}</Badge>
-                    <Badge variant="outline">{company.size}</Badge>
+          {companyLoading ? (
+            <div className="text-center text-gray-500">Loading company info...</div>
+          ) : companyError ? (
+            <div className="text-center text-red-500">{companyError}</div>
+          ) : companyProfile ? (
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="w-60 h-60 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-gray-200 relative">
+                    <Image
+                      src={companyLogoUrl || "/placeholder.svg"}
+                      alt={typeof companyProfile?.company_name === "string" ? companyProfile.company_name as string : ""}
+                      fill
+                      sizes="240px"
+                      style={{ objectFit: "contain" }}
+                      unoptimized
+                      onError={e => {
+                        const target = e.target as HTMLImageElement
+                        if (target.src && !target.src.endsWith("/placeholder.svg")) {
+                          target.src = "/placeholder.svg"
+                        }
+                      }}
+                    />
                   </div>
-                  <p className="text-sm text-gray-600 leading-relaxed mb-4">{company.about}</p>
-                  <Button variant="outline" size="sm" className="border-blue-300 text-blue-600 hover:bg-blue-50">
-                    View Company Profile
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Team Members */}
-            <div>
-              <h4 className="font-semibold mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-600" />
-                Team Members
-              </h4>
-              <div className="grid grid-cols-2 gap-3">
-                {team.slice(0, 4).map((member) => (
-                  <div key={member.id} className="bg-blue-50 rounded-lg p-3 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden mb-2 mx-auto">
-                      <Image src={member.avatar || "/placeholder.svg"} alt={member.name} width={48} height={48} />
+                  <div className="flex-1">
+                    <h3 className="font-bold text-xl text-gray-900 mb-2">
+                      {typeof companyProfile.company_name === "string" ? companyProfile.company_name : ""}
+                    </h3>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {(() => {
+                          let city = ""
+                          if (typeof companyProfile.address === "string" && companyProfile.address) {
+                            const parts = companyProfile.address.split(",").map((s: string) => s.trim())
+                            city = parts[0] || ""
+                          } else if (typeof companyProfile.exact_address === "string" && companyProfile.exact_address) {
+                            const parts = companyProfile.exact_address.split(",").map((s: string) => s.trim())
+                            city = parts[0] || ""
+                          }
+                          return city ? `${city}, Metro Manila` : "City, Metro Manila"
+                        })()}
+                      </Badge>
+                      <Badge variant="outline">
+                        {typeof companyProfile.company_industry === "string" && companyProfile.company_industry
+                          ? companyProfile.company_industry.charAt(0).toUpperCase() + companyProfile.company_industry.slice(1)
+                          : "Industry"}
+                      </Badge>
+                      <Badge variant="outline">
+                        {typeof companyProfile.company_size === "string" && companyProfile.company_size
+                          ? companyProfile.company_size
+                          : "—"}
+                      </Badge>
                     </div>
-                    <div className="text-sm font-medium text-gray-800 truncate">{member.name}</div>
-                    <div className="text-xs text-gray-500 truncate">{member.job_title}</div>
+                    <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                      {typeof companyProfile.about === "string" && companyProfile.about
+                        ? companyProfile.about
+                        : typeof companyProfile.mission === "string" && companyProfile.mission
+                        ? companyProfile.mission
+                        : "No company description."}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                      onClick={() => router.push("/employers/profile/company")}
+                    >
+                      View Company Profile
+                    </Button>
                   </div>
-                ))}
+                </div>
               </div>
-              <Button variant="link" size="sm" className="text-blue-600 hover:text-blue-800 mt-3 w-full">
-                View All Team Members
-              </Button>
+              <div>
+                <h4 className="font-semibold mb-4 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-blue-600" />
+                  Team Members
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {teamLoading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="bg-blue-50 rounded-lg p-3 text-center animate-pulse">
+                        <div className="w-12 h-12 rounded-full bg-gray-200 mb-2 mx-auto" />
+                        <div className="h-4 w-20 bg-gray-200 rounded mx-auto mb-1" />
+                        <div className="h-3 w-16 bg-gray-100 rounded mx-auto" />
+                      </div>
+                    ))
+                  ) : teamError ? (
+                    <div className="col-span-full text-center text-red-500">{teamError}</div>
+                  ) : teamMembers.length === 0 ? (
+                    <div className="col-span-full text-center text-gray-500">No team members found.</div>
+                  ) : (
+                    teamMembers.slice(0, 4).map((member) => (
+                      <div key={member.id} className="bg-blue-50 rounded-lg p-3 text-center">
+                        <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden mb-2 mx-auto">
+                          <Image
+                            src={member.profile_img || "https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images//default-pfp.jpg"}
+                            alt={member.first_name || member.email || "Profile"}
+                            width={48}
+                            height={48}
+                            className="object-cover w-full h-full"
+                          />
+                        </div>
+                        <div className="text-sm font-medium text-gray-800 truncate">
+                          {(member.first_name || "") + " " + (member.last_name || "")}
+                          {member.company_admin && (
+                            <Tooltip title="This employer is a company admin" placement="top" arrow>
+                              <motion.span
+                                whileHover={{ scale: 1.2 }}
+                                className="inline-flex items-center ml-1 cursor-pointer"
+                              >
+                                <MdAdminPanelSettings className="text-blue-600" title="Admin" size={16} />
+                              </motion.span>
+                            </Tooltip>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">{member.job_title || member.company_role}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <Button variant="link" size="sm" className="text-blue-600 hover:text-blue-800 mt-3 w-full"
+                  onClick={() => router.push("/employers/profile/company#team")}
+                >
+                  View All Team Members
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : null}
         </CardContent>
       </Card>
 

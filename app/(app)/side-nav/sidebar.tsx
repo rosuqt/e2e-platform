@@ -50,7 +50,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
         detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" });
         if (detailsRes.ok) {
           setRole("employer");
-          const { first_name, last_name, email, job_title } = await detailsRes.json();
+          const { first_name, last_name, email, job_title, profile_img } = await detailsRes.json();
           setStudentName(
             first_name && last_name
               ? `${first_name} ${last_name}`
@@ -58,8 +58,29 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
           );
           setEmail(email || null);
           setJobTitle(job_title || null);
-          setProfileImg(null);
           setCourse(null);
+
+          if (profile_img) {
+            try {
+              const signedRes = await fetch("/api/employers/get-signed-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bucket: "user.avatars", path: profile_img }),
+                credentials: "include",
+              });
+              if (signedRes.ok) {
+                const { signedUrl } = await signedRes.json();
+                setProfileImg(signedUrl);
+              } else {
+                setProfileImg(null);
+              }
+            } catch {
+              setProfileImg(null);
+            }
+          } else {
+            setProfileImg(null);
+          }
+
           setLoading(false);
           return;
         }
