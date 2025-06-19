@@ -19,33 +19,79 @@ export async function POST(req: NextRequest) {
     application_questions,
     application_answers,
     project_description,
+    achievements,
   } = body
 
-  if (!student_id || !job_id) {
-    return NextResponse.json({ error: "Missing student_id or job_id" }, { status: 400 })
+  const safePortfolio =
+    Array.isArray(portfolio) ? portfolio.join(", ") :
+    typeof portfolio === "string" ? portfolio :
+    null;
+
+  const safeApplicationAnswers =
+    application_answers && typeof application_answers === "object"
+      ? application_answers
+      : {};
+
+  const safeAchievements =
+    Array.isArray(achievements) ? achievements.join(", ") :
+    typeof achievements === "string" ? achievements :
+    null;
+
+  const requiredFields = [
+    "student_id",
+    "job_id",
+    "experience_years",
+    "resume",
+    "terms_accepted",
+    "first_name",
+    "last_name",
+    "email",
+    "phone",
+    "address",
+    "application_answers"
+  ];
+
+  const missingFields = requiredFields.filter((field) => {
+    if (field === "terms_accepted") return typeof body[field] !== "boolean";
+    if (field === "application_answers") return typeof body[field] !== "object" || body[field] === null;
+    return !body[field] || typeof body[field] !== "string";
+  });
+
+  if (missingFields.length > 0) {
+    console.error("Missing or invalid required fields:", missingFields, "Body:", body)
+    return NextResponse.json(
+      { error: `Missing or invalid required fields: ${missingFields.join(", ")}` },
+      { status: 400 }
+    );
   }
 
-  const { error } = await supabase.from("applications").insert([{
-    student_id,
-    job_id,
-    experience_years,
-    portfolio,
-    resume,
-    cover_letter,
-    terms_accepted,
-    first_name,
-    last_name,
-    email,
-    phone,
-    address,
-    application_questions,
-    application_answers,
-    describe_proj: project_description,
-  }])
+  try {
+    const { error } = await supabase.from("applications").insert([{
+      student_id, 
+      job_id,
+      experience_years,
+      portfolio: safePortfolio,
+      achievements: safeAchievements,
+      resume,
+      cover_letter,
+      terms_accepted,
+      first_name,
+      last_name,
+      email,
+      phone,
+      address,
+      application_questions,
+      application_answers: safeApplicationAnswers,
+      describe_proj: project_description,
+    }])
 
-  if (error) {
-    console.error("Supabase insert error:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      console.error("Supabase insert error:", error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    return NextResponse.json({ success: true })
+  } catch {
+
+    return NextResponse.json({ error: "Unexpected server error" }, { status: 500 })
   }
-  return NextResponse.json({ success: true })
 }

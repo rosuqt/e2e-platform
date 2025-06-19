@@ -29,6 +29,7 @@ interface FormData {
     applicationQuestions: ApplicationQuestion[];
     perksAndBenefits: string[];
     responsibilities: string[];
+    skills?: string[];
 }
 
 function isFormDataEmpty(formData: FormData): boolean {
@@ -60,12 +61,16 @@ export async function POST(request: Request) {
 
     try {
         let employerId: string | undefined;
+        let companyId: string | undefined;
 
         if (session?.user && typeof session.user === "object") {
             if ("employerId" in session.user && typeof (session.user as Record<string, unknown>).employerId === "string") {
                 employerId = (session.user as Record<string, unknown>).employerId as string;
             } else if ("id" in session.user && typeof (session.user as Record<string, unknown>).id === "string") {
                 employerId = (session.user as Record<string, unknown>).id as string;
+            }
+            if ("company_id" in session.user && typeof (session.user as Record<string, unknown>).company_id === "string") {
+                companyId = (session.user as Record<string, unknown>).company_id as string;
             }
         }
 
@@ -133,10 +138,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ message: "Draft saved successfully", data });
         } else if (action === "publishJob") {
             console.log("Publishing job...");
-            const { data, error } = await supabase
+            console.log("formData:", formData);
+
+            const jobInsertResult = await supabase
                 .from("job_postings")
                 .insert({
                     employer_id: employerId,
+                    company_id: companyId,
                     job_title: formData.jobTitle,
                     location: formData.location,
                     remote_options: formData.remoteOptions,
@@ -159,6 +167,27 @@ export async function POST(request: Request) {
                 .select()
                 .single();
 
+            let { data } = jobInsertResult;
+            const { error } = jobInsertResult;
+            console.log("Inserted job_postings data:", data, "error:", error);
+
+            if (!error && (!data || !data.id)) {
+                console.log("Inserted job_postings did not return id, fetching manually...");
+                const { data: fetchedJob, error: fetchError } = await supabase
+                    .from("job_postings")
+                    .select("id")
+                    .eq("employer_id", employerId)
+                    .eq("job_title", formData.jobTitle)
+                    .order("created_at", { ascending: false })
+                    .limit(1)
+                    .single();
+                if (fetchError) {
+                    console.error("Failed to fetch job_posting after insert:", fetchError);
+                    return NextResponse.json({ error: "Failed to fetch job after insert" }, { status: 500 });
+                }
+                data = { ...data, ...fetchedJob };
+            }
+
             if (error) {
                 console.error("Database error while publishing job:", error.message);
                 return NextResponse.json({ error: "Database error", details: error.message }, { status: 500 });
@@ -166,8 +195,19 @@ export async function POST(request: Request) {
 
             if (formData.applicationQuestions && formData.applicationQuestions.length > 0 && data?.id) {
                 for (const q of formData.applicationQuestions) {
-                    const dbType = q.type === "yesno" ? "single" : q.type;
-                    const { data: questionRow, error: questionError } = await supabase
+                    let dbType = q.type;
+                    if (dbType === "yesno") dbType = "single";
+
+                    let optionsArr = null;
+                    if (Array.isArray(q.options) && q.options.length > 0) {
+                        optionsArr = q.options.map((opt, idx) => ({
+                            id: `opt${idx + 1}`,
+                            question_id: undefined,
+                            option_value: opt
+                        }));
+                    }
+
+                    const { data: insertedQ, error: questionError } = await supabase
                         .from("application_questions")
                         .insert({
                             job_id: data.id,
@@ -180,8 +220,9 @@ export async function POST(request: Request) {
                                         ? (q.correctAnswer.length > 0 ? JSON.stringify(q.correctAnswer) : null)
                                         : (q.correctAnswer ? q.correctAnswer : null)
                                     : null,
+                            options: optionsArr ? JSON.stringify(optionsArr) : null
                         })
-                        .select("id")
+                        .select()
                         .single();
 
                     if (questionError) {
@@ -189,25 +230,41 @@ export async function POST(request: Request) {
                         return NextResponse.json({ error: "Database error", details: questionError.message }, { status: 500 });
                     }
 
-                    if (q.options && q.options.length > 0 && questionRow?.id) {
-                        const optionsToInsert = q.options.map((opt) => ({
-                            question_id: questionRow.id,
-                            option_value: opt,
-                            is_correct: q.autoReject
-                                ? (Array.isArray(q.correctAnswer)
-                                    ? (q.correctAnswer as string[]).includes(opt)
-                                    : q.correctAnswer === opt)
-                                : false,
+                    if (optionsArr && insertedQ?.id) {
+                        const optionsWithQid = optionsArr.map(opt => ({
+                            ...opt,
+                            question_id: insertedQ.id
                         }));
-                        const { error: optionsError } = await supabase
-                            .from("question_options")
-                            .insert(optionsToInsert);
-
-                        if (optionsError) {
-                            console.error("Error inserting question_options:", optionsError);
-                            return NextResponse.json({ error: "Database error", details: optionsError.message }, { status: 500 });
-                        }
+                        await supabase
+                            .from("application_questions")
+                            .update({ options: JSON.stringify(optionsWithQid) })
+                            .eq("id", insertedQ.id);
                     }
+                }
+            }
+
+            if (formData.skills && Array.isArray(formData.skills) && formData.skills.length > 0 && data?.id) {
+                const filteredSkills = formData.skills.filter(s => typeof s === "string" && s.trim() !== "");
+                if (filteredSkills.length > 0) {
+                    console.log("Inserting skills array as jsonb:", filteredSkills, "for job_posting_id:", data.id);
+                    const { error: skillsError } = await supabase.from("job_skills").insert([
+                        {
+                            job_posting_id: data.id,
+                            skills: filteredSkills,
+                        }
+                    ]);
+                    if (skillsError) {
+                        console.error("Error inserting job_skills:", skillsError);
+                        return NextResponse.json({ error: "Failed to insert skills" }, { status: 500 });
+                    }
+                } else {
+                    console.log("No valid skills to insert.");
+                }
+            } else {
+                if (!data?.id) {
+                    console.log("No job_posting_id found after insert, cannot insert skills.");
+                } else {
+                    console.log("No skills to insert.");
                 }
             }
 

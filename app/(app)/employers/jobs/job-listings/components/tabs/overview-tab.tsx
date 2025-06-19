@@ -1,11 +1,9 @@
 "use client"
 
-import Image from "next/image"
 import {
   Users,
   Clock,
   Calendar,
-  DollarSign,
   MapPin,
   Briefcase,
   Eye,
@@ -17,6 +15,10 @@ import {
   MessageSquare,
   UserCheck,
   FileText,
+  BookOpen,
+  Award,
+  Bus,
+  Clock as ClockIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,77 +28,107 @@ import Chip from "@mui/material/Chip"
 import ApplicantsTab from "./applicants-tab"
 import JobAnalytics from "./analytics-tab"
 import JobSettings from "./settings-tab"
+import { PiMoneyLight } from "react-icons/pi";
+import { FaUser } from "react-icons/fa";
+import React from "react"
+import QuickEditModal from "../quick-edit-modal"
+
+type JobData = {
+  jobTitle: string
+  location: string
+  remoteOptions?: string
+  workType: string
+  payType?: string
+  payAmount: string
+  recommendedCourse?: string
+  verificationTier?: string
+  jobDescription: string
+  responsibilities: string[]
+  mustHaveQualifications: string[]
+  niceToHaveQualifications: string[]
+  jobSummary?: string
+  applicationDeadline?: { date: string; time: string }
+  maxApplicants?: string
+  applicationQuestions?: string[]
+  perksAndBenefits: string[]
+  views?: number
+  total_applicants?: number
+  qualified_applicants?: number
+  interviews?: number
+  posted?: string
+  closing?: string
+  hired?: number
+  status?: string
+  paused?: boolean
+  paused_status?: "paused" | "active" | "paused_orange"
+  companyName?: string 
+  postingDate?: string
+  tags?: { name: string; color: string }[]
+}
+
+type ApplicationQuestion = {
+  id: string
+  question: string
+  type: string
+  auto_reject: boolean
+  correct_answer?: string | null
+}
+
+const PERKS_MAP = [
+  { id: "training", label: "Free Training & Workshops - Skill development", icon: <BookOpen className="h-5 w-5 text-green-500" /> },
+  { id: "certification", label: "Certification Upon Completion - Proof of experience", icon: <Award className="h-5 w-5 text-blue-500" /> },
+  { id: "potential", label: "Potential Job Offer - Possible full-time employment", icon: <Briefcase className="h-5 w-5 text-yellow-500" /> },
+  { id: "transportation", label: "Transportation Allowance - Support for expenses", icon: <Bus className="h-5 w-5 text-purple-500" /> },
+  { id: "mentorship", label: "Mentorship & Guidance - Hands-on learning", icon: <UserCheck className="h-5 w-5 text-orange-500" /> },
+  { id: "flexible", label: "Flexible Hours - Adjusted schedules for students", icon: <ClockIcon className="h-5 w-5 text-pink-500" /> },
+]
 
 export default function EmployerJobOverview({ selectedJob, onClose }: { selectedJob: number | null; onClose: () => void }) {
-  const jobData = {
-    id: selectedJob,
-    title: "UI/UX Designer",
-    company: "Fb Mark-it Place",
-    logo: "M",
-    logoColor: "bg-red-500",
-    location: "San Jose Del Monte, Pampanga",
-    salary: "₱800 / day",
-    type: "OJT",
-    posted: "3 days ago",
-    closing: "2 days left",
-    status: "Active",
-    statusColor: "bg-green-100 text-green-600",
-    description:
-      "Seeking a creative UI/UX Designer to craft intuitive and visually engaging user experiences. You will design user-friendly interfaces that enhance functionality and aesthetics.",
-    requirements: [
-      "1+ year of experience with UI/UX design",
-      "Proficiency in Figma, Adobe XD",
-      "Strong portfolio showcasing UI/UX projects",
-      "Knowledge of user research and testing",
-    ],
-    responsibilities: [
-      "Design user-friendly interfaces that enhance functionality and aesthetics.",
-      "Collaborate with cross-functional teams to define, design, and ship new features.",
-      "Conduct user research and usability testing to improve user experience.",
-      "Create wireframes, prototypes, and high-fidelity designs.",
-    ],
-    mustHave: [
-      "1+ year of experience with UI/UX design.",
-      "Proficiency in Figma, Adobe XD.",
-      "Strong portfolio showcasing UI/UX projects.",
-      "Knowledge of user research and testing.",
-    ],
-    niceToHave: [
-      "Experience with motion design and animations.",
-      "Familiarity with front-end development (HTML, CSS, JavaScript).",
-      "Knowledge of accessibility standards and best practices.",
-    ],
-    applicationQuestions: [
-      "How many years of experience do you have in UI/UX design?",
-      "Can you provide a link to your portfolio?",
-      "Do you have experience with Figma or Adobe XD?",
-    ],
-    perksAndBenefits: [
-      "Remote work flexibility.",
-      "Competitive salary and bonuses.",
-      "Access to learning and development resources.",
-      "Health and wellness benefits.",
-    ],
-    stats: {
-      views: 423,
-      applicants: 23,
-      qualified: 15,
-      interviews: 7,
-      hired: 0,
-      rejected: 5,
-      pending: 11,
-    },
-    matchRate: {
-      excellent: 5,
-      good: 8,
-      fair: 7,
-      poor: 3,
-    },
+  const [jobData, setJobData] = React.useState<JobData | null>(null)
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+  const [questions, setQuestions] = React.useState<ApplicationQuestion[]>([])
+  const [quickEditOpen, setQuickEditOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (selectedJob == null) return
+    setLoading(true)
+    setError(null)
+    Promise.all([
+      fetch(`/api/job-listings/job-cards/${selectedJob}`).then(r => r.json()),
+      fetch(`/api/job-listings/job-cards/${selectedJob}/questions`).then(r => r.json())
+    ])
+      .then(([job, questions]) => {
+        setJobData(job)
+        setQuestions(Array.isArray(questions) ? questions : [])
+        setLoading(false)
+      })
+      .catch(() => {
+        setError("Failed to load job details")
+        setLoading(false)
+      })
+  }, [selectedJob])
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[300px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-red-500">{error}</div>
+    )
+  }
+
+  if (!jobData) {
+    return null
   }
 
   return (
     <div className="p-6 max-h-screen overflow-y-auto overflow-y-auto relative ">
-      {/* Close button at the top-right */}
       <button
         className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
         onClick={onClose}
@@ -106,27 +138,62 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
       </button>
 
       <div className="container mx-auto py-6 max-w-7xl">
-        {/* Header with actions */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{jobData.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{jobData.jobTitle}</h1>
+            {/* Show company name if available */}
+            {jobData.companyName && (
+              <div className="text-sm text-gray-600 font-semibold mb-1">
+                {jobData.companyName}
+              </div>
+            )}
             <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <span>{jobData.company}</span>
-              <span>•</span>
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" />
                 {jobData.location}
               </span>
               <span>•</span>
-              <Chip
-                label={jobData.status}
-                className={`${jobData.statusColor}`}
-                variant="outlined"
-              />
+              {jobData.closing === "Closed" ? (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-600">
+                  Closed
+                </span>
+              ) : (
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  jobData.paused
+                    ? jobData.paused_status === "paused_orange"
+                      ? "bg-orange-400 text-white"
+                      : "bg-orange-100 text-orange-600"
+                    : "bg-green-100 text-green-600"
+                }`}>
+                  {jobData.paused
+                    ? jobData.paused_status === "paused_orange"
+                      ? "Paused (Orange)"
+                      : "Paused"
+                    : jobData.status ?? "Active"}
+                </span>
+              )}
+              {jobData.closing && jobData.closing !== "Closed" && (
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  (() => {
+                    const match = jobData.closing?.match(/\d+/);
+                    const daysLeft = match ? parseInt(match[0]) : 0;
+                    if (daysLeft <= 9) return "bg-red-100 text-red-600";
+                    if (daysLeft <= 15) return "bg-orange-50 text-orange-500";
+                    return "bg-blue-50 text-blue-500";
+                  })()
+                }`}>
+                  {jobData.closing}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" className="gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => setQuickEditOpen(true)}
+            >
               <Edit className="h-4 w-4" />
               Edit
             </Button>
@@ -145,133 +212,139 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           </div>
         </div>
 
-        {/* Job overview tabs */}
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid grid-cols-4 md:w-[600px]">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="applicants">Applicants</TabsTrigger>
             <TabsTrigger value="analytics" disabled={selectedJob === null}>Analytics</TabsTrigger>
-            <TabsTrigger value="settings" disabled={selectedJob === null}>Settings</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Left column - Job details */}
               <div className="md:col-span-2 space-y-6">
-                {/* Stats cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Card>
                     <CardContent className="p-4 flex flex-col items-center justify-center">
                       <Eye className="h-5 w-5 text-blue-500 mb-1" />
-                      <div className="text-2xl font-bold">{jobData.stats.views}</div>
+                      <div className="text-2xl font-bold">{jobData.views ?? 0}</div>
                       <div className="text-xs text-gray-500">Views</div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 flex flex-col items-center justify-center">
                       <Users className="h-5 w-5 text-indigo-500 mb-1" />
-                      <div className="text-2xl font-bold">{jobData.stats.applicants}</div>
+                      <div className="text-2xl font-bold">{jobData.total_applicants ?? 0}</div>
                       <div className="text-xs text-gray-500">Applicants</div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 flex flex-col items-center justify-center">
                       <UserCheck className="h-5 w-5 text-green-500 mb-1" />
-                      <div className="text-2xl font-bold">{jobData.stats.qualified}</div>
+                      <div className="text-2xl font-bold">{jobData.qualified_applicants ?? 0}</div>
                       <div className="text-xs text-gray-500">Qualified</div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 flex flex-col items-center justify-center">
                       <MessageSquare className="h-5 w-5 text-purple-500 mb-1" />
-                      <div className="text-2xl font-bold">{jobData.stats.interviews}</div>
+                      <div className="text-2xl font-bold">{jobData.interviews ?? 0}</div>
                       <div className="text-xs text-gray-500">Interviews</div>
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* Job details */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Job Details</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <div className="flex items-center gap-2">
                         <Briefcase className="h-4 w-4 text-gray-400" />
                         <div>
                           <div className="text-sm font-medium">Job Type</div>
-                          <div className="text-sm text-gray-500">{jobData.type}</div>
+                          <div className="text-sm text-gray-500">{jobData.workType}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-gray-400" />
+                        <PiMoneyLight className="h-4 w-4 text-gray-400" />
                         <div>
                           <div className="text-sm font-medium">Salary</div>
-                          <div className="text-sm text-gray-500">{jobData.salary}</div>
+                          <div className="text-sm text-gray-500">PHP {jobData.payAmount}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
                         <div>
                           <div className="text-sm font-medium">Posted</div>
-                          <div className="text-sm text-gray-500">{jobData.posted}</div>
+                          <div className="text-sm text-gray-500">
+                            {jobData.postingDate
+                              ? new Date(jobData.postingDate).toLocaleDateString(undefined, {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })
+                              : ""}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-gray-400" />
                         <div>
                           <div className="text-sm font-medium">Closing</div>
-                          <div className="text-sm text-gray-500">{jobData.closing}</div>
+                          <div className="text-sm text-gray-500">
+                            {jobData.applicationDeadline && jobData.applicationDeadline.date
+                              ? new Date(
+                                  jobData.applicationDeadline.time
+                                    ? `${jobData.applicationDeadline.date}T${jobData.applicationDeadline.time}`
+                                    : jobData.applicationDeadline.date
+                                ).toLocaleDateString(undefined, {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })
+                              : "No application deadline"}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-400" />
+                        <div>
+                          <div className="text-sm font-medium">Remote Options</div>
+                          <div className="text-sm text-gray-500">{jobData.remoteOptions || "None"}</div>
+                        </div>
+                      </div>
+          
                     </div>
 
                     <div>
                       <h3 className="text-sm font-medium mb-2">Description</h3>
-                      <p className="text-sm text-gray-500">{jobData.description}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Requirements</h3>
-                      <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
-                        {jobData.requirements.map((req, index) => (
-                          <li key={index}>{req}</li>
-                        ))}
-                      </ul>
+                      <p className="text-sm text-gray-500">{jobData.jobDescription}</p>
                     </div>
 
                     <div>
                       <h3 className="text-sm font-medium mb-2">Responsibilities</h3>
                       <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
-                        {jobData.responsibilities.map((item, index) => (
+                        {(Array.isArray(jobData.responsibilities) ? jobData.responsibilities : [jobData.responsibilities]).map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-medium mb-2">Must-Have</h3>
+                      <h3 className="text-sm font-medium mb-2">Must-Have Qualifications</h3>
                       <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
-                        {jobData.mustHave.map((item, index) => (
+                        {(Array.isArray(jobData.mustHaveQualifications) ? jobData.mustHaveQualifications : [jobData.mustHaveQualifications]).map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
                     </div>
 
                     <div>
-                      <h3 className="text-sm font-medium mb-2">Nice-to-Haves</h3>
+                      <h3 className="text-sm font-medium mb-2">Nice-to-Have Qualifications</h3>
                       <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
-                        {jobData.niceToHave.map((item, index) => (
-                          <li key={index}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Application Questions</h3>
-                      <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
-                        {jobData.applicationQuestions.map((item, index) => (
+                        {(Array.isArray(jobData.niceToHaveQualifications) ? jobData.niceToHaveQualifications : [jobData.niceToHaveQualifications]).map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -279,16 +352,52 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
 
                     <div>
                       <h3 className="text-sm font-medium mb-2">Perks and Benefits</h3>
-                      <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
-                        {jobData.perksAndBenefits.map((item, index) => (
-                          <li key={index}>{item}</li>
-                        ))}
+                      <ul className="text-sm text-gray-500 list-none pl-0 space-y-2">
+                        {Array.isArray(jobData.perksAndBenefits) && jobData.perksAndBenefits.length > 0 ? (
+                          jobData.perksAndBenefits.map((perkId: string) => {
+                            const perk = PERKS_MAP.find(p => p.id === perkId)
+                            return perk ? (
+                              <li key={perk.id} className="flex items-center gap-2">
+                                {perk.icon}
+                                <span>{perk.label}</span>
+                              </li>
+                            ) : (
+                              <li key={perkId}>{perkId}</li>
+                            )
+                          })
+                        ) : (
+                          <li>No perks and benefits.</li>
+                        )}
                       </ul>
                     </div>
+                    {/* Application Questions Section */}
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">Application Questions</h3>
+                      <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
+                        {questions.length === 0 ? (
+                          <li>No application questions.</li>
+                        ) : (
+                          questions.map((q, idx) => (
+                            <li key={q.id || idx}>{q.question}</li>
+                          ))
+                        )}
+                      </ul>
+                    </div>
+                    {jobData.recommendedCourse && (
+                      <div>
+                        <h3 className="text-sm font-medium mb-2">Recommended Course</h3>
+                        <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
+                          {jobData.recommendedCourse
+                            .split(",")
+                            .map((course, idx) => (
+                              <li key={idx}>{course.trim()}</li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
-                {/* Recent applicants */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg">Recent Applicants</CardTitle>
@@ -301,17 +410,11 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                       {[1, 2, 3].map((applicant) => (
                         <div key={applicant} className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                              <Image
-                                src={`/placeholder.svg?height=40&width=40&text=A${applicant}`}
-                                alt="Applicant"
-                                width={40}
-                                height={40}
-                                className="rounded-full"
-                              />
+                            <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
+                              <FaUser className="text-white w-4 h-4" />
                             </div>
                             <div>
-                              <div className="text-sm font-medium">Applicant {applicant}</div>
+                              <div className="text-sm font-medium">{`Applicant ${applicant}`}</div>
                               <div className="text-xs text-gray-500">Applied 2 days ago</div>
                             </div>
                           </div>
@@ -328,9 +431,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                 </Card>
               </div>
 
-              {/* Right column - Sidebar */}
               <div className="space-y-6">
-                {/* Applicant funnel */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Applicant Funnel</CardTitle>
@@ -339,47 +440,58 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Applied</span>
-                        <span className="font-medium">{jobData.stats.applicants}</span>
+                        <span className="font-medium">{jobData.total_applicants ?? 0}</span>
                       </div>
-                      <LinearProgress variant="determinate" value={100} className="h-2" />
+                      <LinearProgress variant="determinate" value={0} className="h-2" />
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Qualified</span>
-                        <span className="font-medium">{jobData.stats.qualified}</span>
+                        <span className="font-medium">{jobData.qualified_applicants ?? 0}</span>
                       </div>
                       <LinearProgress
                         variant="determinate"
-                        value={(jobData.stats.qualified / jobData.stats.applicants) * 100}
+                        value={
+                          jobData.total_applicants && jobData.qualified_applicants
+                            ? (jobData.qualified_applicants / jobData.total_applicants) * 100
+                            : 0
+                        }
                         className="h-2"
                       />
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Interviewed</span>
-                        <span className="font-medium">{jobData.stats.interviews}</span>
+                        <span className="font-medium">{jobData.interviews ?? 0}</span>
                       </div>
                       <LinearProgress
                         variant="determinate"
-                        value={(jobData.stats.interviews / jobData.stats.applicants) * 100}
+                        value={
+                          jobData.total_applicants && jobData.interviews
+                            ? (jobData.interviews / jobData.total_applicants) * 100
+                            : 0
+                        }
                         className="h-2"
                       />
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Hired</span>
-                        <span className="font-medium">{jobData.stats.hired}</span>
+                        <span className="font-medium">{jobData.hired ?? 0}</span>
                       </div>
                       <LinearProgress
                         variant="determinate"
-                        value={(jobData.stats.hired / jobData.stats.applicants) * 100}
+                        value={
+                          jobData.total_applicants && jobData.hired
+                            ? (jobData.hired / jobData.total_applicants) * 100
+                            : 0
+                        }
                         className="h-2"
                       />
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Match quality */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Match Quality</CardTitle>
@@ -391,13 +503,9 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                           <span className="w-2 h-2 rounded-full bg-green-500"></span>
                           Excellent (90%+)
                         </span>
-                        <span className="font-medium">{jobData.matchRate.excellent}</span>
+                        <span className="font-medium">-</span>
                       </div>
-                      <LinearProgress
-                        variant="determinate"
-                        value={(jobData.matchRate.excellent / jobData.stats.applicants) * 100}
-                        className="h-2"
-                      />
+                      <LinearProgress variant="determinate" value={0} className="h-2" />
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
@@ -405,13 +513,9 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                           <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                           Good (70-89%)
                         </span>
-                        <span className="font-medium">{jobData.matchRate.good}</span>
+                        <span className="font-medium">-</span>
                       </div>
-                      <LinearProgress
-                        variant="determinate"
-                        value={(jobData.matchRate.good / jobData.stats.applicants) * 100}
-                        className="h-2"
-                      />
+                      <LinearProgress variant="determinate" value={0} className="h-2" />
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
@@ -419,13 +523,9 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                           <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
                           Fair (50-69%)
                         </span>
-                        <span className="font-medium">{jobData.matchRate.fair}</span>
+                        <span className="font-medium">-</span>
                       </div>
-                      <LinearProgress
-                        variant="determinate"
-                        value={(jobData.matchRate.fair / jobData.stats.applicants) * 100}
-                        className="h-2"
-                      />
+                      <LinearProgress variant="determinate" value={0} className="h-2" />
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
@@ -433,18 +533,13 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                           <span className="w-2 h-2 rounded-full bg-red-500"></span>
                           Poor (Below 50%)
                         </span>
-                        <span className="font-medium">{jobData.matchRate.poor}</span>
+                        <span className="font-medium">-</span>
                       </div>
-                      <LinearProgress
-                        variant="determinate"
-                        value={(jobData.matchRate.poor / jobData.stats.applicants) * 100}
-                        className="h-2"
-                      />
+                      <LinearProgress variant="determinate" value={0} className="h-2" />
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Quick actions */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Quick Actions</CardTitle>
@@ -464,6 +559,32 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                     </Button>
                   </CardContent>
                 </Card>
+
+                {Array.isArray(jobData.tags) && jobData.tags.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Tags</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-wrap gap-2">
+                      {jobData.tags.map((tag, idx) => (
+                        <span
+                          key={tag.name + idx}
+                          style={{
+                            backgroundColor: tag.color,
+                            color: "#fff",
+                            borderRadius: "9999px",
+                            padding: "0.25rem 0.75rem",
+                            fontSize: "0.875rem",
+                            fontWeight: 500,
+                            display: "inline-block",
+                          }}
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           </TabsContent>
@@ -477,14 +598,43 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
-            {typeof jobData.id === "number" ? (
-              <JobSettings jobId={jobData.id} />
-            ) : (
-              <div>No settings available for this job.</div>
-            )}
+            <JobSettings jobId={selectedJob ? String(selectedJob) : ""} companyName={jobData.companyName} />
           </TabsContent>
         </Tabs>
       </div>
+      <QuickEditModal
+        open={quickEditOpen}
+        job={{
+          id: selectedJob ?? undefined,
+          jobTitle: jobData.jobTitle,
+          location: jobData.location,
+          remoteOptions: jobData.remoteOptions ?? "",
+          workType: jobData.workType,
+          payType: jobData.payType ?? "",
+          payAmount: jobData.payAmount,
+          recommendedCourse: jobData.recommendedCourse ?? "",
+          verificationTier: jobData.verificationTier ?? "",
+          jobDescription: jobData.jobDescription,
+          responsibilities: jobData.responsibilities,
+          mustHaveQualifications: jobData.mustHaveQualifications,
+          niceToHaveQualifications: jobData.niceToHaveQualifications,
+          jobSummary: jobData.jobSummary ?? "",
+          applicationDeadline: jobData.applicationDeadline ?? { date: "", time: "" },
+          maxApplicants: jobData.maxApplicants ?? "",
+          applicationQuestions: questions.map(q => ({
+            question: q.question,
+            type: q.type,
+            autoReject: q.auto_reject,
+            correctAnswer: q.correct_answer ?? undefined,
+          })),
+          perksAndBenefits: jobData.perksAndBenefits,
+        }}
+        onClose={() => setQuickEditOpen(false)}
+        onSave={() => {
+          setQuickEditOpen(false);
+
+        }}
+      />
     </div>
   )
 }

@@ -21,8 +21,16 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
   useEffect(() => {
     const user = session?.user as { verifyStatus?: string } | undefined
     const verifyStatus = user?.verifyStatus
-    if (verifyStatus && !formData.verificationTier) {
-      updateFormData({ verificationTier: verifyStatus })
+    let tier: string | undefined
+    if (verifyStatus === "full") {
+      tier = "full"
+    } else if (verifyStatus === "partially_verified" || verifyStatus === "standard") {
+      tier = "standard"
+    } else if (verifyStatus === "basic" || verifyStatus === "unverified") {
+      tier = "basic"
+    }
+    if (tier && formData.verificationTier !== tier) {
+      updateFormData({ verificationTier: tier })
     }
   }, [session, formData.verificationTier, updateFormData])
 
@@ -139,7 +147,7 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
                         <span className="loader mr-2"></span>Loading...
                       </span>
                     ) : (
-                      "View Verification Details"
+                      "View Details"
                     )}
                   </Button>
                 ) : (
@@ -260,7 +268,7 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
                         <span className="loader mr-2"></span>Loading...
                       </span>
                     ) : (
-                      "View Verification Details"
+                      "View Details"
                     )}
                   </Button>
                 ) : (
@@ -380,7 +388,7 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
                       <span className="loader mr-2"></span>Loading...
                     </span>
                   ) : (
-                    "View Verification Details"
+                    "View Details"
                   )}
                 </Button>
               ) : (

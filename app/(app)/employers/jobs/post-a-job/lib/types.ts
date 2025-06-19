@@ -21,7 +21,9 @@ export interface JobPostingData {
       type: string
       options?: string[]
       autoReject: boolean
+      correctAnswer?: string | string[]
     }>
     perksAndBenefits: string[]
     responsibilities: string[]
+    skills?: string[]
   }

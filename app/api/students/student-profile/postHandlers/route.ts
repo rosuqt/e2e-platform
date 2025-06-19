@@ -9,17 +9,31 @@ export async function GET(req: NextRequest) {
   }
   const { data: profile, error } = await supabase
     .from("student_profile")
-    .select("uploaded_resume_url, uploaded_cover_letter_url, updated_at, certs") 
+    .select("student_id, uploaded_resume_url, uploaded_cover_letter_url, updated_at, certs")
     .eq("student_id", student_id)
     .single();
 
   if (error && error.code === "PGRST116") {
-    return NextResponse.json({});
+    return NextResponse.json({ student_id });
   }
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(profile || {});
+
+  let uploaded_resume_url: string[] = [];
+  if (profile) {
+    if (Array.isArray(profile.uploaded_resume_url)) {
+      uploaded_resume_url = profile.uploaded_resume_url;
+    } else if (typeof profile.uploaded_resume_url === "string" && profile.uploaded_resume_url) {
+      uploaded_resume_url = [profile.uploaded_resume_url];
+    }
+  }
+
+  return NextResponse.json({
+    ...(profile || {}),
+    student_id,
+    uploaded_resume_url,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -118,7 +132,6 @@ export async function POST(req: NextRequest) {
         .eq("student_id", student_id);
       return NextResponse.json({ publicUrl: storagePath });
     } else if (fileType === "portfolio") {
-      // Portfolio file upload
       if (!customPath) {
         return NextResponse.json({ error: "Missing customPath for portfolio" }, { status: 400 });
       }

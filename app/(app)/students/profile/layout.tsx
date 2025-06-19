@@ -53,6 +53,7 @@ export default function ProfileLayout() {
   const bioRef = useRef<HTMLTextAreaElement>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const profileCompletionRef = useRef<() => void>(null)
 
   const menuItems = useMemo(
     () => [
@@ -173,11 +174,12 @@ export default function ProfileLayout() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId, profile_img: publicUrl }),
       });
-      const res = await fetch("/api/students/get-student-details");
-      if (res.ok) {
-        const details = await res.json();
-        setProfileImage(details.profile_img || null);
-      }
+            const signedUrl = await getSignedUrlIfNeeded(publicUrl, "user.avatars");
+      setProfileImage(publicUrl);
+      setProfileImageUrl(signedUrl);
+      if (profileCompletionRef.current) profileCompletionRef.current()
+      sessionStorage.removeItem("sidebarUserData");
+      window.dispatchEvent(new Event("profilePictureUpdated"));
     }
     setUploadingProfile(false);
   };
@@ -192,6 +194,7 @@ export default function ProfileLayout() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId, cover_image: url }),
       });
+      if (profileCompletionRef.current) profileCompletionRef.current()
     }
     setCoverDialogOpen(false);
   };
@@ -214,6 +217,7 @@ export default function ProfileLayout() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId, cover_image: publicUrl }),
       });
+      if (profileCompletionRef.current) profileCompletionRef.current()
     }
     setUploadingCover(false);
     setCoverDialogOpen(false);
@@ -274,6 +278,7 @@ export default function ProfileLayout() {
         body: JSON.stringify({ student_id: studentId, short_bio: bio }),
       });
       if (bioRef.current) bioRef.current.blur();
+      if (profileCompletionRef.current) profileCompletionRef.current()
     }
   };
 
@@ -483,8 +488,10 @@ export default function ProfileLayout() {
                       </div>
                     </div>
                   </div>
-                  <div className="w-full md:w-72 lg:w-80 shrink-0 mt-6 md:mt-0">
-                    <ProfileCompletion />
+                  <div className="w-full md:w-72 lg:w-80 shrink-0 mt-6 md:mt-0 flex flex-col">
+                    <div className="flex-1 flex flex-col justify-start">
+                      <ProfileCompletion onRefetch={fn => (profileCompletionRef.current = fn)} />
+                    </div>
                   </div>
                 </div>
               </div>

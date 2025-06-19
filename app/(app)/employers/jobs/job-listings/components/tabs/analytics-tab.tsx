@@ -23,6 +23,7 @@ import { Calendar, Clock, Users, Eye, MousePointerClick, FileText } from "lucide
 import Chip from "@mui/material/Chip"
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar"
 import "react-circular-progressbar/dist/styles.css"
+import { IconCloudDemo } from "@/components/magicui/skill-cloud"
 
 const matchPercentageData = [
   { range: "90-100%", count: 5, color: "#4f46e5" }, 
@@ -311,14 +312,14 @@ export default function JobAnalytics() {
           </CardContent>
         </Card>
         
-        {/* Upcoming Interviews Calendar */}
-        <Card className="col-span-1">
+        {/* Upcoming Interviews */}
+        <Card className="col-span-1 h-[460px] flex flex-col w-full">
           <CardHeader>
             <CardTitle>Upcoming Interviews</CardTitle>
             <CardDescription>Next 7 days</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+          <CardContent className="flex-1 flex flex-col justify-between">
+            <div className="space-y-4 overflow-y-auto">
               {upcomingInterviews.map((interview, index) => (
                 <div key={index} className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="bg-blue-100 text-blue-700 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
@@ -350,7 +351,21 @@ export default function JobAnalytics() {
                   </div>
                 </div>
               ))}
-              <Button variant="outline" className="w-full mt-2">View All Interviews</Button>
+            </div>
+            <Button variant="outline" className="w-full mt-2">View All Interviews</Button>
+          </CardContent>
+        </Card>
+        {/* Top Skills Cloud as a separate section */}
+        <Card className="col-span-1 h-[460px] flex flex-col w-full">
+          <CardHeader>
+            <CardTitle>Top Skills</CardTitle>
+            <CardDescription>Most relevant skills for this job</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 flex items-center justify-center">
+            <div className="w-full flex items-center justify-center">
+              <div className="w-[320px] h-[320px] md:w-[360px] md:h-[360px]">
+                <IconCloudDemo />
+              </div>
             </div>
           </CardContent>
         </Card>

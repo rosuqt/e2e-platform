@@ -5,6 +5,8 @@ export async function POST(req: NextRequest) {
   try {
     const { bucket, path } = await req.json();
     if (!bucket || !path) {
+      console.error("Missing bucket or path", { bucket, path });
+      console.log("RETURN: 400 Missing bucket or path");
       return NextResponse.json({ error: "Missing bucket or path" }, { status: 400 });
     }
 
@@ -17,12 +19,25 @@ export async function POST(req: NextRequest) {
           filePath = filePath.slice(bucket.length + 1);
         }
       } else {
+        console.error("Invalid file path", { filePath });
+        console.log("RETURN: 400 Invalid file path");
         return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
       }
     }
 
     if (filePath === "default.png" || filePath === "/default.png") {
       filePath = "default.png";
+      const adminSupabase = getAdminSupabase();
+      const { data, error } = await adminSupabase.storage
+        .from(bucket)
+        .createSignedUrl(filePath, 60 * 60);
+      if (error || !data?.signedUrl) {
+        console.error("Could not generate signed URL for default.png", { error });
+        console.log("RETURN: 500 Could not generate signed URL for default.png");
+        return NextResponse.json({ error: "Could not generate signed URL" }, { status: 500 });
+      }
+      console.log("RETURN: 200 Signed URL for default.png", data.signedUrl);
+      return NextResponse.json({ signedUrl: data.signedUrl });
     }
 
     const lastSlash = filePath.lastIndexOf("/");
@@ -34,15 +49,14 @@ export async function POST(req: NextRequest) {
       .from(bucket)
       .list(directory, { limit: 100 });
 
-    if (listData) {
-      //console.log(`Files in bucket "${bucket}" directory "${directory}":`, listData.map(f => f.name));
-    }
+    console.log("Requested filePath:", filePath, "bucket:", bucket, "directory:", directory, "listData:", listData);
 
     const fileName = lastSlash !== -1 ? filePath.slice(lastSlash + 1) : filePath;
     const fileExists = listData?.some(f => f.name === fileName);
 
     if (listError || !fileExists) {
-      //console.error("get-signed-url file not found:", filePath, "in bucket:", bucket, "directory:", directory);
+      console.error("File not found or list error", { filePath, bucket, directory, listError, listData });
+      console.log("RETURN: 404 File not found or list error");
       return NextResponse.json({
         error: `File not found: ${filePath}. Files in bucket directory "${directory}": ${listData?.map(f => f.name).join(", ")}`,
         debug: { filePath, bucket, directory }
@@ -54,13 +68,16 @@ export async function POST(req: NextRequest) {
       .createSignedUrl(filePath, 60 * 60);
 
     if (error || !data?.signedUrl) {
-     // console.error("get-signed-url error:", error, "bucket:", bucket, "filePath:", filePath);
+      console.error("Could not generate signed URL", { error, filePath, bucket });
+      console.log("RETURN: 500 Could not generate signed URL");
       return NextResponse.json({ error: "Could not generate signed URL" }, { status: 500 });
     }
 
+    console.log("RETURN: 200 Signed URL", data.signedUrl);
     return NextResponse.json({ signedUrl: data.signedUrl });
   } catch (err) {
     console.error("get-signed-url unexpected error:", err);
+    console.log("RETURN: 500 Internal server error");
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

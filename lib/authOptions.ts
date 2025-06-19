@@ -153,14 +153,16 @@ export const authOptions: NextAuthOptions = {
         if (employerUser.verifyStatus) {
           token.verifyStatus = employerUser.verifyStatus;
         }
-        // fetch company_admin from db and add to token
         const { data: employerData } = await supabase
           .from("registered_employers")
-          .select("company_admin")
+          .select("company_admin, company_id")
           .eq("id", employerUser.id)
           .single()
         if (employerData?.company_admin !== undefined) {
           token.company_admin = employerData.company_admin
+        }
+        if (employerData?.company_id !== undefined) {
+          token.company_id = employerData.company_id
         }
       } else if (token.role === "employer" && token.employerId) {
 
@@ -186,6 +188,9 @@ export const authOptions: NextAuthOptions = {
           (session.user as { verifyStatus?: string }).verifyStatus = token.verifyStatus as string
         }
         (session.user as { company_admin?: boolean }).company_admin = !!token.company_admin
+        if (token.company_id) {
+          (session.user as { company_id?: string }).company_id = token.company_id as string
+        }
       }
       if (token.role === "student" && token.studentId) {
         (session.user as { studentId?: string }).studentId = token.studentId as string

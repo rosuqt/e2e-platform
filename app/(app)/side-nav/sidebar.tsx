@@ -27,6 +27,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
   const [email, setEmail] = useState<string | null>(null);
   const [role, setRole] = useState<"student" | "employer" | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (onToggle) {
@@ -43,6 +44,34 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
   };
 
   useEffect(() => {
+    const handleProfilePicUpdate = () => {
+      sessionStorage.removeItem("sidebarUserData");
+      setLoading(true);
+      setRole(null);
+      setStudentName(null);
+      setEmail(null);
+      setJobTitle(null);
+      setProfileImg(null);
+      setCourse(null);
+      setRefreshKey((k) => k + 1);
+    };
+    window.addEventListener("profilePictureUpdated", handleProfilePicUpdate);
+    return () => window.removeEventListener("profilePictureUpdated", handleProfilePicUpdate);
+  }, []);
+
+  useEffect(() => {
+    const cached = sessionStorage.getItem("sidebarUserData");
+    if (cached) {
+      const data = JSON.parse(cached);
+      setRole(data.role);
+      setStudentName(data.studentName);
+      setEmail(data.email);
+      setJobTitle(data.jobTitle);
+      setProfileImg(data.profileImg);
+      setCourse(data.course);
+      setLoading(false);
+      return;
+    }
     (async () => {
       setLoading(true);
       let detailsRes: Response | null = null;
@@ -51,15 +80,16 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
         if (detailsRes.ok) {
           setRole("employer");
           const { first_name, last_name, email, job_title, profile_img } = await detailsRes.json();
-          setStudentName(
+          const studentName =
             first_name && last_name
               ? `${first_name} ${last_name}`
-              : first_name || last_name || null
-          );
+              : first_name || last_name || null;
+          setStudentName(studentName);
           setEmail(email || null);
           setJobTitle(job_title || null);
           setCourse(null);
 
+          let imgUrl = null;
           if (profile_img) {
             try {
               const signedRes = await fetch("/api/employers/get-signed-url", {
@@ -70,6 +100,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
               });
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json();
+                imgUrl = signedUrl;
                 setProfileImg(signedUrl);
               } else {
                 setProfileImg(null);
@@ -81,6 +112,17 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
             setProfileImg(null);
           }
 
+          sessionStorage.setItem(
+            "sidebarUserData",
+            JSON.stringify({
+              role: "employer",
+              studentName,
+              email: email || null,
+              jobTitle: job_title || null,
+              profileImg: imgUrl,
+              course: null,
+            })
+          );
           setLoading(false);
           return;
         }
@@ -90,15 +132,16 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
         if (detailsRes.ok) {
           setRole("student");
           const { first_name, last_name, course, profile_img } = await detailsRes.json();
-          setStudentName(
+          const studentName =
             first_name && last_name
               ? `${first_name} ${last_name}`
-              : null
-          );
+              : null;
+          setStudentName(studentName);
           setCourse(course || null);
           setJobTitle(null);
           setEmail(null);
 
+          let imgUrl = null;
           if (profile_img) {
             try {
               const signedRes = await fetch("/api/students/get-signed-url", {
@@ -109,6 +152,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
               });
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json();
+                imgUrl = signedUrl;
                 setProfileImg(signedUrl);
               } else {
                 setProfileImg(null);
@@ -119,6 +163,17 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
           } else {
             setProfileImg(null);
           }
+          sessionStorage.setItem(
+            "sidebarUserData",
+            JSON.stringify({
+              role: "student",
+              studentName,
+              email: null,
+              jobTitle: null,
+              profileImg: imgUrl,
+              course: course || null,
+            })
+          );
           setLoading(false);
           return;
         }
@@ -130,8 +185,9 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
       setProfileImg(null);
       setCourse(null);
       setLoading(false);
+      sessionStorage.removeItem("sidebarUserData");
     })();
-  }, []);
+  }, [refreshKey]);
 
   return (
     <div className="flex">
@@ -209,62 +265,70 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
             "px-6 justify-center"
           )}
         >
-          <motion.div className="relative" whileHover={{ scale: 1.05 }} layout>
-            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl font-bold shadow-lg overflow-hidden">
-              {loading ? (
-                <Skeleton variant="circular" width={48} height={48} />
-              ) : profileImg ? (
-                <Image
-                  src={profileImg}
-                  alt="Profile"
-                  width={48}
-                  height={48}
-                  className="w-12 h-12 object-cover rounded-full"
-                  onError={() => {}}
-                  style={{ objectFit: "cover" }}
-                  priority
-                />
-              ) : (
-                (studentName
-                  ? studentName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                  : "?")
-              )}
-            </div>
-            <motion.div className="absolute -top-1 -right-1" layout>
-              <StatusIcon status={status} size="sm" />
-            </motion.div>
-          </motion.div>
-
-          <AnimatePresence>
-            {expanded && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                className="ml-3 overflow-hidden"
-              >
+          <Link
+            href={role === "employer" ? "/employers/profile" : role === "student" ? "/students/profile" : "#"}
+            className="flex items-center"
+            tabIndex={loading ? -1 : 0}
+            aria-disabled={loading}
+            style={{ pointerEvents: loading ? "none" : "auto" }}
+          >
+            <motion.div className="relative" whileHover={{ scale: 1.05 }} layout>
+              <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl font-bold shadow-lg overflow-hidden">
                 {loading ? (
-                  <Skeleton variant="text" width={120} height={24} />
+                  <Skeleton variant="circular" width={48} height={48} />
+                ) : profileImg ? (
+                  <Image
+                    src={profileImg}
+                    alt="Profile"
+                    width={48}
+                    height={48}
+                    className="w-12 h-12 object-cover rounded-full"
+                    onError={() => {}}
+                    style={{ objectFit: "cover" }}
+                    priority
+                  />
                 ) : (
-                  <div className="font-medium">
-                    {studentName || "Full Name"}
-                  </div>
+                  (studentName
+                    ? studentName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                    : "?")
                 )}
-                <div className="text-xs text-white/70">
-                  {loading
-                    ? <Skeleton variant="text" width={140} height={18} />
-                    : role === "employer"
-                      ? (jobTitle || email || "Job Title")
-                      : (course || "Course")}
-                </div>
+              </div>
+              <motion.div className="absolute -top-1 -right-1" layout>
+                <StatusIcon status={status} size="sm" />
               </motion.div>
-            )}
-          </AnimatePresence>
+            </motion.div>
+
+            <AnimatePresence>
+              {expanded && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="ml-3 overflow-hidden"
+                >
+                  {loading ? (
+                    <Skeleton variant="text" width={120} height={24} />
+                  ) : (
+                    <div className="font-medium">
+                      {studentName || "Full Name"}
+                    </div>
+                  )}
+                  <div className="text-xs text-white/70">
+                    {loading
+                      ? <Skeleton variant="text" width={140} height={18} />
+                      : role === "employer"
+                        ? (jobTitle || email || "Job Title")
+                        : (course || "Course")}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Link>
         </div>
 
         <div className={cn("h-[42px] flex items-center relative z-30", expanded ? "px-4" : "px-0 justify-center")}>

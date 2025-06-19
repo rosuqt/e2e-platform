@@ -8,27 +8,27 @@ import type { Job } from "./job-details";
 
 type FilterModalProps = {
   onClose: () => void;
-  onApply: (newFilters: Partial<Pick<Job, "type" | "location">> & { salary?: string }) => void;
-  currentFilters: Partial<Pick<Job, "type" | "location">> & { salary?: string };
+  onApply: (newFilters: Partial<Pick<Job, "work_type" | "location">> & { salary?: string }) => void;
+  currentFilters: Partial<Pick<Job, "work_type" | "location">> & { salary?: string };
 };
 
 const JOB_TYPE_OPTIONS = [
-  { id: "Fulltime", label: "Full-time" },
+  { id: "OJT/Internship", label: "OJT/Internship" },
   { id: "Part-time", label: "Part-time" },
-  { id: "OJT", label: "OJT" },
-  { id: "Internship", label: "Internship" },
+  { id: "Full-time", label: "Full-time" },
+  { id: "Contract", label: "Contract" },
 ];
 
 const LOCATION_OPTIONS = [
-  { id: "Remote", label: "Remote" },
-  { id: "Onsite", label: "Onsite" },
+  { id: "On-site", label: "On-site" },
   { id: "Hybrid", label: "Hybrid" },
+  { id: "Work from home", label: "Work from home" },
 ];
 
 export default function FilterModal({ onClose, onApply, currentFilters }: FilterModalProps) {
   const [jobType, setJobType] = useState<string[]>(
-    typeof currentFilters.type === "string" && currentFilters.type
-      ? currentFilters.type.split(",")
+    typeof currentFilters.work_type === "string" && currentFilters.work_type
+      ? currentFilters.work_type.split(",")
       : []
   );
   const [location, setLocation] = useState<string[]>(
@@ -42,8 +42,8 @@ export default function FilterModal({ onClose, onApply, currentFilters }: Filter
       : 50
   );
 
-  function handleCheckboxChange(type: "type" | "location", value: string, checked: boolean) {
-    if (type === "type") {
+  function handleCheckboxChange(type: "work_type" | "location", value: string, checked: boolean) {
+    if (type === "work_type") {
       setJobType(prev =>
         checked ? [...prev, value] : prev.filter(v => v !== value)
       );
@@ -59,8 +59,8 @@ export default function FilterModal({ onClose, onApply, currentFilters }: Filter
   }
 
   function handleApplyFilters() {
-    const filters: Partial<Pick<Job, "type" | "location">> & { salary?: string } = {
-      type: jobType.join(","),
+    const filters: Partial<Pick<Job, "work_type" | "location">> & { salary?: string } = {
+      work_type: jobType.join(","),
       location: location.join(","),
       salary: String(salary),
     };
@@ -118,7 +118,7 @@ export default function FilterModal({ onClose, onApply, currentFilters }: Filter
                     id={item.id}
                     checked={jobType.includes(item.id)}
                     onCheckedChange={checked =>
-                      handleCheckboxChange("type", item.id, !!checked)
+                      handleCheckboxChange("work_type", item.id, !!checked)
                     }
                   />
                   <label htmlFor={item.id} className="text-sm text-blue-600 cursor-pointer">
@@ -167,7 +167,7 @@ export default function FilterModal({ onClose, onApply, currentFilters }: Filter
             </div>
           </div>
           <motion.button
-            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+            className="w-full py-2  bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
             whileHover={{ scale: 1.03, boxShadow: "0 10px 15px -3px rgba(59, 130, 246, 0.3)" }}
             whileTap={{ scale: 0.97 }}
             onClick={handleApplyFilters}

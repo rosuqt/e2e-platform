@@ -84,15 +84,34 @@ export default function EmployerProfilePage() {
         }
       })
 
+    // Fetch employer profile image from employer_profile table
     fetch("/api/employers/employer-profile/getHandlers")
       .then(res => res.json())
       .then(async data => {
         if (data && typeof data.short_bio === "string" && data.short_bio.length > 0) {
           setBio(data.short_bio)
         }
-        const avatar = await getSignedUrlIfNeeded(data?.profile_img, "user.avatars")
+        // Fetch signed URL for employer profile image if present
+        if (typeof data?.profile_img === "string" && data.profile_img.trim() !== "") {
+          const res = await fetch("/api/employers/get-signed-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bucket: "employer.profile",
+              path: data.profile_img,
+            }),
+          });
+          if (res.ok) {
+            const { signedUrl } = await res.json();
+            setAvatarUrl(signedUrl || null);
+          } else {
+            setAvatarUrl(null);
+          }
+        } else {
+          setAvatarUrl(null);
+        }
+        // Cover image logic unchanged
         const cover = await getSignedUrlIfNeeded(data?.cover_image, "user.covers")
-        setAvatarUrl(avatar)
         setCoverUrl(cover)
       })
   }, [employer?.id])

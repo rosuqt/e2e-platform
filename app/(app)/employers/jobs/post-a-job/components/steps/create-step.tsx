@@ -1,19 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "../ui/card"
 import { Briefcase, MapPin, Globe, Clock, DollarSign, GraduationCap, Lightbulb } from "lucide-react"
 import type { JobPostingData } from "../../lib/types"
 import MUIDropdown from "../../../../../components/MUIDropdown"
-import { FreeSolo } from "../../../../../components/customSection"
-import { jobTitleSections } from "../../lib/jobTitles"
+import Autocomplete from "@mui/material/Autocomplete";
+import Stack from "@mui/material/Stack";
 import { TextField } from "@mui/material"
 import Checkbox from "@mui/material/Checkbox"
-import Autocomplete from "@mui/material/Autocomplete"
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank"
 import CheckBoxIcon from "@mui/icons-material/CheckBox"
-import AddressAutocomplete from "@/components/AddressAutocomplete"
+import { useSession } from "next-auth/react"
+import Tooltip from "@mui/material/Tooltip"
+import { jobTitleSections } from "../../lib/jobTitles"
+import { courseExpertise, getRandomSkillsForCourse } from "../../lib/skills"
 
 interface CreateStepProps {
   formData: JobPostingData
@@ -24,16 +26,60 @@ interface CreateStepProps {
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />
 const checkedIcon = <CheckBoxIcon fontSize="small" />
 
+const jobTitleOptions = Object.entries(jobTitleSections).flatMap(([category, titles]) =>
+  titles.map(title => ({ title, category }))
+);
+
 export function CreateStep({ formData, handleFieldChange, errors }: CreateStepProps) {
   const [showPayAmount, setShowPayAmount] = useState<boolean>(
     formData.payType !== "" && formData.payType !== "No Pay"
   )
 
+  const { data: session } = useSession()
+
+  useEffect(() => {
+    const employerId = (session?.user as { employerId?: string })?.employerId
+    if (!formData.location && employerId) {
+      fetch("/api/employers/post-a-job/fetchAddress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employer_id: employerId }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.address) {
+            handleFieldChange("location", data.address)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [formData.location, session?.user, handleFieldChange])
+
+  useEffect(() => {
+    if (!Array.isArray(formData.skills)) {
+      handleFieldChange("skills", []);
+    }
+  }, [formData.skills, handleFieldChange]);
+
+  useEffect(() => {
+    if (
+      formData.recommendedCourse &&
+      courseExpertise[formData.recommendedCourse] &&
+      (!Array.isArray(formData.skills) || formData.skills.length === 0)
+    ) {
+      const newSkills = getRandomSkillsForCourse(formData.recommendedCourse, 5);
+      handleFieldChange("skills", newSkills);
+    }
+    else if (!formData.recommendedCourse && Array.isArray(formData.skills) && formData.skills.length > 0) {
+      handleFieldChange("skills", []);
+    }
+  }, [formData.recommendedCourse, formData.skills, handleFieldChange]);
+
   const courses = [
-    { title: "BSIT - Bachelor of Science in Information Technology", value: "BSIT" },
-    { title: "BSBA - Bachelor of Science in Business Administration", value: "BSBA" },
-    { title: "BSHM - Bachelor of Science in Hospitality Management", value: "BSHM" },
-    { title: "BSTM - Bachelor of Science in Tourism Management", value: "BSTM" },
+    { title: "BSIT - Bachelor of Science in Information Technology", value: "BS-Information Technology" },
+    { title: "BSBA - Bachelor of Science in Business Administration", value: "BS-Business Administration" },
+    { title: "BSHM - Bachelor of Science in Hospitality Management", value: "BS-Hospitality Management" },
+    { title: "BSTM - Bachelor of Science in Tourism Management", value: "BS-Tourism Management" },
   ]
 
   const recommendedCourses = Array.isArray(formData.recommendedCourse)
@@ -67,12 +113,11 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
 
   const payAmountError = validatePayAmount()
 
-
-
   const workTypes = [
     { value: "OJT/Internship", label: "OJT/Internship" },
     { value: "Part-time", label: "Part-time" },
     { value: "Full-time", label: "Full-time" },
+    { value: "Contract", label: "Contract" },
   ]
 
   const payTypes = [
@@ -87,9 +132,9 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
   function getPayPerHour(payType: string, payAmount: string) {
     const amount = Number(payAmount);
     if (!payAmount || isNaN(amount)) return "";
-    if (payType === "Weekly") return `Pay per hour: $${(amount / 40).toFixed(2)} / hr (est.)`;
-    if (payType === "Monthly") return `Pay per hour: $${(amount / 160).toFixed(2)} / hr (est.)`;
-    if (payType === "Yearly") return `Pay per hour: $${(amount / 2080).toFixed(2)} / hr (est.)`;
+    if (payType === "Weekly") return `Pay per hour: ₱${(amount / 40).toFixed(2)} / hr (est.)`;
+    if (payType === "Monthly") return `Pay per hour: ₱${(amount / 160).toFixed(2)} / hr (est.)`;
+    if (payType === "Yearly") return `Pay per hour: ₱${(amount / 2080).toFixed(2)} / hr (est.)`;
     return "";
   }
 
@@ -111,7 +156,6 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Job Title */}
         <Card className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-0">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
@@ -121,14 +165,69 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               </Label>
             </div>
             <div className="p-4">
-              <FreeSolo
-                options={Object.values(jobTitleSections).flat()}
-                label="Select or type a job title"
-                onSelectionChange={(key) => handleFieldChange("jobTitle", key)}
-                error={errors.jobTitle}
-                errorMessage="Job title is required"
-              />
-      
+              <Stack spacing={2} sx={{ width: "100%" }}>
+                <Autocomplete
+                  freeSolo
+                  options={jobTitleOptions}
+                  groupBy={option =>
+                    typeof option === "object" && "category" in option ? option.category : ""
+                  }
+                  getOptionLabel={option =>
+                    typeof option === "string" ? option : option.title
+                  }
+                  isOptionEqualToValue={(option, value) => {
+                    if (typeof option === "string" && typeof value === "string") return option === value;
+                    if (typeof option === "object" && typeof value === "object") return option.title === value.title;
+                    if (typeof option === "object" && typeof value === "string") return option.title === value;
+                    if (typeof option === "string" && typeof value === "object") return option === value.title;
+                    return false;
+                  }}
+                  value={
+
+                    jobTitleOptions.find(opt => opt.title === formData.jobTitle) || null
+                  }
+                  inputValue={formData.jobTitle}
+                  onInputChange={(_, value) => {
+ 
+                    handleFieldChange("jobTitle", value || "");
+                  }}
+                  onChange={(_, value) => {
+                    if (typeof value === "string") {
+                      handleFieldChange("jobTitle", value);
+                    } else if (value && typeof value === "object" && "title" in value) {
+                      handleFieldChange("jobTitle", value.title);
+                    } else if (value === null) {
+                      handleFieldChange("jobTitle", "");
+                    }
+                  }}
+                  renderGroup={(params) => (
+                    <li key={params.key}>
+                      <div
+                        style={{
+                          background: "#e0e7ff", 
+                          color: "#2563eb",     
+                          fontWeight: 600,
+                          padding: "4px 12px",
+                          fontSize: "0.95em",
+                          borderRadius: "4px",
+                          margin: "4px 8px 2px 8px"
+                        }}
+                      >
+                        {params.group}
+                      </div>
+                      <ul style={{ padding: 0, margin: 0 }}>{params.children}</ul>
+                    </li>
+                  )}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select or type a job title"
+                      error={errors.jobTitle}
+                      helperText={errors.jobTitle ? "Job title is required" : ""}
+                    />
+                  )}
+                />
+              </Stack>
               <p className="text-xs text-gray-500 mt-2">
                 Be specific with your job title to attract the right candidates
               </p>
@@ -136,7 +235,6 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
           </CardContent>
         </Card>
 
-        {/* Location */}
         <Card className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-0">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
@@ -147,19 +245,25 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
             </div>
             <div className="p-4" style={{ position: "relative" }}>
               <div style={{ position: "relative" }}>
-                <AddressAutocomplete
-                  value={formData.location}
-                  onChange={(val: string) => handleFieldChange("location", val)}
-                  error={errors.location}
-                  helperText={errors.location ? "Location is required" : ""}
-                  label="Location"
-                />
+                <Tooltip title="This is your company address. To edit, go to Settings.">
+                  <span>
+                    <TextField
+                      value={formData.location}
+                      label="Location"
+                      fullWidth
+                      InputProps={{
+                        readOnly: true,
+                      }}
+                      error={errors.location}
+                      helperText={errors.location ? "Location is required" : ""}
+                    />
+                  </span>
+                </Tooltip>
               </div>
-              <p className="text-xs text-gray-500 mt-2">Enter the primary location where the job will be performed</p>
+              <p className="text-xs text-gray-500 mt-2">This location is preset based on your company profile.</p>
             </div>
           </CardContent>
         </Card>
-        {/* Remote Options */}
         <Card className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-0">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
@@ -186,7 +290,6 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
           </CardContent>
         </Card>
 
-        {/* Work Type */}
         <Card className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-0">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
@@ -209,7 +312,6 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
           </CardContent>
         </Card>
 
-        {/* Compensation */}
         <Card className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
           <CardContent className="p-0">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
@@ -255,7 +357,6 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
           </CardContent>
         </Card>
 
-        {/* Recommended Course */}
         <Card className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
           <CardContent className="p-0">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">

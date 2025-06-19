@@ -37,8 +37,6 @@ const TopNav: React.FC<TopNavProps> = ({
   const messagesRef = useRef<HTMLAnchorElement | null>(null); 
 
   const { data: session } = useSession();
-  console.log("TopNav session:", session); 
-
   useEffect(() => {
     const fetchSetting = async () => {
       const { data } = await supabase

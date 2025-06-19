@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "../ui/card";
-import { Briefcase, MapPin, Calendar, Users, Award, Eye, CheckCircle } from "lucide-react";
+import { Briefcase, MapPin, Calendar, Users, Award, Eye, CheckCircle, MessageSquare } from "lucide-react";
 import { PiNotepadBold } from "react-icons/pi";
 import type { JobPostingData } from "../../lib/types";
 import { useRouter } from "next/navigation";
@@ -16,8 +15,12 @@ interface PreviewStepProps {
   onPreview: () => void;
 }
 
+function capitalizeWords(str: string) {
+  if (!str) return str;
+  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+}
+
 export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
-  const [previewData, setPreviewData] = useState<JobPostingData>(formData);
   const router = useRouter();
 
   const handlePreview = async () => {
@@ -46,13 +49,6 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
       }
     }
   };
-
-  useEffect(() => {
-    const storedData = sessionStorage.getItem("jobFormData");
-    if (storedData) {
-      setPreviewData(JSON.parse(storedData));
-    }
-  }, []);
 
   return (
     <div className="space-y-8">
@@ -85,7 +81,7 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Job Title</p>
-                  <p className="text-gray-800">{previewData.jobTitle || "[Position Name]"}</p>
+                  <p className="text-gray-800">{capitalizeWords(formData.jobTitle) || "[Position Name]"}</p>
                 </div>
               </div>
 
@@ -95,7 +91,7 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Location</p>
-                  <p className="text-gray-800">{previewData.location || "[Location]"}</p>
+                  <p className="text-gray-800">{capitalizeWords(formData.location) || "[Location]"}</p>
                 </div>
               </div>
 
@@ -105,7 +101,7 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Remote Options</p>
-                  <p className="text-gray-800">{previewData.remoteOptions || "[Remote Options]"}</p>
+                  <p className="text-gray-800">{capitalizeWords(formData.remoteOptions) || "[Remote Options]"}</p>
                 </div>
               </div>
 
@@ -115,7 +111,7 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Work Type</p>
-                  <p className="text-gray-800">{previewData.workType || "[Work Type]"}</p>
+                  <p className="text-gray-800">{capitalizeWords(formData.workType) || "[Work Type]"}</p>
                 </div>
               </div>
 
@@ -125,7 +121,7 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Recommended Course</p>
-                  <p className="text-gray-800">{previewData.recommendedCourse || "[Course]"}</p>
+                  <p className="text-gray-800">{capitalizeWords(formData.recommendedCourse) || "[Course]"}</p>
                 </div>
               </div>
             </div>
@@ -142,19 +138,19 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
             <div className="space-y-4">
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-1">Description</p>
-                <p className="text-gray-800 text-sm">{previewData.jobDescription || "[Job Description]"}</p>
+                <p className="text-gray-800 text-sm">{capitalizeWords(formData.jobDescription) || "[Job Description]"}</p>
               </div>
 
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-1">Summary</p>
-                <p className="text-gray-800 text-sm">{previewData.jobSummary || "[Job Summary]"}</p>
+                <p className="text-gray-800 text-sm">{capitalizeWords(formData.jobSummary) || "[Job Summary]"}</p>
               </div>
 
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-1">Must-Have Qualifications</p>
                 <ul className="list-disc pl-5 text-sm text-gray-800 space-y-1">
-                  {previewData.mustHaveQualifications.map((qual, index) => (
-                    <li key={index}>{qual || "[Qualification]"}</li>
+                  {formData.mustHaveQualifications.map((qual, index) => (
+                    <li key={index}>{capitalizeWords(qual) || "[Qualification]"}</li>
                   ))}
                 </ul>
               </div>
@@ -162,8 +158,8 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
               <div>
                 <p className="text-sm font-medium text-gray-500 mb-1">Nice-to-Have Qualifications</p>
                 <ul className="list-disc pl-5 text-sm text-gray-800 space-y-1">
-                  {previewData.niceToHaveQualifications.map((qual, index) => (
-                    <li key={index}>{qual || "[Qualification]"}</li>
+                  {formData.niceToHaveQualifications.map((qual, index) => (
+                    <li key={index}>{capitalizeWords(qual) || "[Qualification]"}</li>
                   ))}
                 </ul>
               </div>
@@ -186,8 +182,8 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Application Deadline</p>
                   <p className="text-gray-800">
-                    {previewData.applicationDeadline?.date
-                      ? `${previewData.applicationDeadline.date} ${previewData.applicationDeadline.time || ""}`
+                    {formData.applicationDeadline?.date
+                      ? `${capitalizeWords(formData.applicationDeadline.date)} ${formData.applicationDeadline.time ? capitalizeWords(formData.applicationDeadline.time) : ""}`
                       : "[No deadline set]"}
                   </p>
                 </div>
@@ -199,10 +195,62 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Max Applicants</p>
-                  <p className="text-gray-800">{previewData.maxApplicants || "[No limit set]"}</p>
+                  <p className="text-gray-800">{formData.maxApplicants ? capitalizeWords(formData.maxApplicants.toString()) : "[No limit set]"}</p>
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-gray-200 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+              <MessageSquare className="h-5 w-5 text-blue-500" />
+              <h3 className="font-medium text-gray-800">Application Questions</h3>
+            </div>
+            {formData.applicationQuestions && formData.applicationQuestions.length > 0 ? (
+              <div className="space-y-3">
+                {formData.applicationQuestions.map((q, idx) => (
+                  <div key={idx} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="font-medium text-gray-800">{q.question}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                        {q.type === "text"
+                          ? "Text"
+                          : q.type === "single"
+                          ? "Single select"
+                          : q.type === "multi"
+                          ? "Multi select"
+                          : "Yes/No"}
+                      </span>
+                      {q.autoReject && (
+                        <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                          Auto-reject
+                        </span>
+                      )}
+                    </div>
+                    {q.options && (
+                      <div className="mt-2">
+                        <span className="text-xs text-gray-500">Options: </span>
+                        <span className="text-xs text-gray-700">
+                          {q.options.join(", ")}
+                        </span>
+                      </div>
+                    )}
+                    {q.autoReject && q.correctAnswer && (
+                      <div className="mt-1 text-xs text-red-700">
+                        Auto-reject criteria:{" "}
+                        {Array.isArray(q.correctAnswer)
+                          ? q.correctAnswer.join(", ")
+                          : q.correctAnswer}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">[No questions added]</p>
+            )}
           </CardContent>
         </Card>
 
@@ -213,11 +261,11 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
               <h3 className="font-medium text-gray-800">Perks & Benefits</h3>
             </div>
 
-            {previewData.perksAndBenefits?.length ? (
+            {formData.perksAndBenefits?.length ? (
               <div className="flex flex-wrap gap-2">
-                {previewData.perksAndBenefits.map((perk) => (
+                {formData.perksAndBenefits.map((perk) => (
                   <span key={perk} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
-                    {perk}
+                    {capitalizeWords(perk)}
                   </span>
                 ))}
               </div>

@@ -24,10 +24,14 @@ export async function GET(req: NextRequest) {
   async function getSignedUrl(path: string | null | undefined) {
     if (!path) return null;
     const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+    console.log("Trying to sign:", "student.documents", cleanPath);
     const { data, error } = await supabase.storage
       .from("student.documents")
       .createSignedUrl(cleanPath, 60 * 60);
-    if (error) return null;
+    if (error) {
+      console.error("Supabase signed URL error:", error, "for path:", cleanPath);
+      return null;
+    }
     return data.signedUrl;
   }
 
@@ -68,6 +72,13 @@ export async function GET(req: NextRequest) {
       })
     );
   }
+
+  console.log({
+    resumeUrls,
+    coverLetterUrls,
+    uploaded_resume_url: profile?.uploaded_resume_url,
+    uploaded_cover_letter_url: profile?.uploaded_cover_letter_url,
+  });
 
   return NextResponse.json({
     resumeUrls,

@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server'
 import supabase from "@/lib/supabase"
 
-export async function GET() {
-  const { data, error } = await supabase
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const limit = parseInt(searchParams.get("limit") || "10", 10);
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  // --- Add filter extraction ---
+  const typeParam = searchParams.get("work_type");
+  const locationParam = searchParams.get("location");
+
+  let query = supabase
     .from('job_postings')
     .select(`
       *,
@@ -13,10 +23,35 @@ export async function GET() {
       ),
       registered_employers:employer_id (
         company_name
+      ),
+      registered_companies:company_id (
+        company_logo_image_path
       )
-    `)
-    .eq('paused', false)
-    .order('created_at', { ascending: false })
+    `, { count: "exact" })
+    .eq('paused', false);
+
+  // --- Add filtering logic ---
+  if (typeParam) {
+    // Support multiple types (comma-separated)
+    const types = typeParam.split(",").map(t => t.trim()).filter(Boolean);
+    if (types.length === 1) {
+      query = query.eq("work_type", types[0]);
+    } else if (types.length > 1) {
+      query = query.in("work_type", types);
+    }
+  }
+  if (locationParam) {
+    const locations = locationParam.split(",").map(l => l.trim()).filter(Boolean);
+    if (locations.length === 1) {
+      query = query.eq("remote_options", locations[0]);
+    } else if (locations.length > 1) {
+      query = query.in("remote_options", locations);
+    }
+  }
+
+  query = query.order('created_at', { ascending: false }).range(from, to);
+
+  const { data, count, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -66,7 +101,12 @@ export async function GET() {
       })
     : []
 
-  // console.log("API result:", JSON.stringify(result, null, 2));
-
-  return NextResponse.json(result)
+  return NextResponse.json({
+    jobs: result,
+    total: count ?? 0,
+    totalPages: count ? Math.ceil(count / limit) : 1,
+    page,
+    limit
+  })
 }
+

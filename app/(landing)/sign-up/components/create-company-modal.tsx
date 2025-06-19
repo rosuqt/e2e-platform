@@ -40,11 +40,12 @@ type AddressErrors = {
   address: string; 
 };
 
-export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?: { companyName: string; companyBranch: string }) => void }) {
+export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?: { companyName: string; companyBranch: string; companyEmailDomain?: string }) => void }) {
   const [activeTab, setActiveTab] = useState(0)
   const [isNextDisabled, setIsNextDisabled] = useState(false)
   const [noBranches] = useState(false)
   const [companyNameError, setCompanyNameError] = useState("");
+  const [branchNameError, setBranchNameError] = useState("");
   const [addressErrors, setAddressErrors] = useState<AddressErrors>({
     contactEmail: "",
     contactNumber: "",
@@ -90,8 +91,12 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
 
     if (id === "companyName") {
       truncatedValue = value.slice(0, 40);
+      setCompanyNameError("");
+      setIsNextDisabled(false);
     } else if (id === "companyBranch") {
       truncatedValue = value.slice(0, 40);
+      setBranchNameError("");
+      setIsNextDisabled(false);
     } else if (id === "companyEmailDomain") {
       truncatedValue = value.startsWith("@") ? value.slice(1, 40) : value.slice(0, 40);
     } else if (id === "companyWebsite") {
@@ -129,21 +134,22 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
             : "")
         : "";
 
+      setCompanyNameError(companyNameError);
+      setBranchNameError(branchNameError);
+
       if (companyNameError || branchNameError || emailDomainError || websiteError) {
-        setCompanyNameError(companyNameError);
         setIsNextDisabled(true);
         setIsLoading(false);
         return;
       }
 
-      setCompanyNameError("");
       setIsNextDisabled(false);
 
       const isInvalid =
         !formData.companyName || !formData.companyBranch || !formData.companyIndustry;
 
-      setIsNextDisabled(isInvalid); 
       if (isInvalid) {
+        setIsNextDisabled(true);
         setIsLoading(false);
         return;
       }
@@ -158,19 +164,18 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
           setIsLoading(false);
           return;
         } else if (!response.ok) {
-          console.error("Error checking company name:", result.message);
           toast.error("An error occurred while validating the company name. Please try again.");
           setIsLoading(false);
           return;
         }
-      } catch (error) {
-        console.error("Error checking company name:", error);
+      } catch {
         toast.error("An error occurred while validating the company name. Please try again.");
         setIsLoading(false);
         return; 
       }
 
       setCompanyNameError("");
+      setBranchNameError("");
     }
 
     if (activeTab === 1) {
@@ -277,7 +282,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
           toast.success(`Company "${result.data.company_name}" created successfully!`, { toastId: "companyCreated" });
         }
 
-        onClose({ companyName: result.data.company_name, companyBranch: result.data.company_branch });
+        onClose({ companyName: result.data.company_name, companyBranch: result.data.company_branch, companyEmailDomain: result.data.email_domain });
       } else {
         console.error("Failed to submit company data");
         toast.error("Failed to create company. Please try again.");
@@ -369,22 +374,22 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                   fullWidth
                   value={formData.companyName}
                   onChange={handleChange}
-                  error={!!companyNameError || (isNextDisabled && !formData.companyName)}
+                  error={!!companyNameError}
                   helperText={
-                    companyNameError || 
+                    companyNameError ||
                     (isNextDisabled && !formData.companyName ? "Company Name is required" : "Enter the full name of the company")
                   } 
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       "& fieldset": {
-                        borderColor: companyNameError || (isNextDisabled && !formData.companyName) ? "red" : "darkgray", 
+                        borderColor: companyNameError ? "red" : "darkgray", 
                       },
                       "&:hover fieldset": {
                         borderColor: "#2563eb",
                       },
                     },
                     "& .MuiInputLabel-root": {
-                      color: companyNameError || (isNextDisabled && !formData.companyName) ? "red" : "gray",
+                      color: companyNameError ? "red" : "gray",
                       "&:hover": {
                         color: "#2563eb",
                       },
@@ -393,7 +398,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 />
               </motion.div>
               <motion.div
-                {...(isNextDisabled && !formData.companyBranch ? shakeAnimation : {})}
+                {...(branchNameError ? shakeAnimation : {})}
                 className="relative"
               >
                 <TextField
@@ -405,9 +410,9 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                   value={noBranches ? "Headquarters" : formData.companyBranch}
                   onChange={handleChange}
                   disabled={noBranches}
-                  error={!!companyNameError || (isNextDisabled && !formData.companyBranch)}
+                  error={!!branchNameError}
                   helperText={
-                    companyNameError || 
+                    branchNameError ||
                     (isNextDisabled && !formData.companyBranch ? "Company Branch Name is required" : "")
                   }
                   sx={{
@@ -439,6 +444,8 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                       setFormData({ ...formData, multipleBranch: !e.target.checked });
                       if (e.target.checked) {
                         setFormData({ ...formData, companyBranch: "Headquarters", multipleBranch: false });
+                        setBranchNameError("");
+                        setIsNextDisabled(false);
                       } else {
                         setFormData({ ...formData, companyBranch: "", multipleBranch: true });
                       }

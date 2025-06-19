@@ -9,6 +9,11 @@ import { Checkbox, FormControlLabel } from "@mui/material"
 import { Button } from "@/components/ui/button"
 import type { VerificationDetails } from "../types"
 
+function capitalizeWords(str?: string) {
+  if (!str) return str;
+  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+}
+
 export default function VerificationForm({
   data,
   onChange,
@@ -166,7 +171,7 @@ You acknowledge that any violation of the platform’s policies may result in ac
                     <div className="grid sm:grid-cols-2 gap-4 p-4">
                       <div>
                         <p className="text-xs font-medium text-gray-500 mb-1">Full Name</p>
-                        <p className="text-sm text-gray-800">{`${data?.personalDetails?.firstName || "First name not provided"} ${data?.personalDetails?.lastName || "Last name not provided"}`}</p>
+                        <p className="text-sm text-gray-800">{`${capitalizeWords(data?.personalDetails?.firstName) || "First name not provided"} ${capitalizeWords(data?.personalDetails?.lastName) || "Last name not provided"}`}</p>
                       </div>
                       <div>
                         <p className="text-xs font-medium text-gray-500 mb-1">Phone Number</p>
@@ -196,25 +201,25 @@ You acknowledge that any violation of the platform’s policies may result in ac
                       <div>
                         <p className="text-xs font-medium text-gray-500 mb-1">Company</p>
                         <p className="text-sm text-gray-800">
-                          {data?.companyAssociation?.companyName || "Company name not provided"}
+                          {capitalizeWords(data?.companyAssociation?.companyName) || "Company name not provided"}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-medium text-gray-500 mb-1">Branch</p>
                         <p className="text-sm text-gray-800">
-                          {data?.companyAssociation?.companyBranch || "Branch not provided"}
+                          {capitalizeWords(data?.companyAssociation?.companyBranch) || "Branch not provided"}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-medium text-gray-500 mb-1">Role</p>
                         <p className="text-sm text-gray-800">
-                          {data?.companyAssociation?.companyRole || "Role not provided"}
+                          {capitalizeWords(data?.companyAssociation?.companyRole) || "Role not provided"}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-medium text-gray-500 mb-1">Job Title</p>
                         <p className="text-sm text-gray-800">
-                          {data?.companyAssociation?.jobTitle || "Job title not provided"}
+                          {capitalizeWords(data?.companyAssociation?.jobTitle) || "Job title not provided"}
                         </p>
                       </div>
                       <div className="sm:col-span-2">

@@ -1,12 +1,12 @@
 "use client"
 import { useEffect, useState, useRef, useLayoutEffect, useCallback } from "react"
-import { Search, MapPin, ChevronDown, Briefcase, ArrowLeft, ArrowRight } from "lucide-react"
+import { Search, MapPin, ChevronDown, Briefcase, ArrowLeft, ArrowRight, Award, BookOpen, Bus, CheckCircle, Clock, UserCheck } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import JobCards from "./components/JobCards"
 import Lottie from "lottie-react";
-import jobSearchAnimation from "../../../../public/animations/job-search.json";
+import dashboardSearchAnimation from "../../../../public/animations/dashboard-search.json";
 import { createPortal } from "react-dom"
-import QuickApplyModal from "../jobs/job-matches/components/quick-apply-modal"
+import { ApplicationModal } from "../jobs/job-listings/components/application-modal"
 
 type JobDetails = {
   id: string
@@ -114,7 +114,8 @@ function FilterDropdown({
     return () => document.removeEventListener("mousedown", handle);
   }, [open, anchorRef, onClose]);
 
-  if (!open) return null;
+  if (!open || !anchorRef.current) return null;
+
   return createPortal(
     <motion.div
       initial={{ opacity: 0, y: -10, scale: 0.98 }}
@@ -152,6 +153,17 @@ function FilterDropdown({
   );
 }
 
+function ApplicationModalWrapper({ jobId, onClose }: { jobId: number, onClose: () => void }) {
+  useEffect(() => {
+    const original = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = original
+    }
+  }, [])
+  return <ApplicationModal jobId={jobId} onClose={onClose} />
+}
+
 export default function Home() {
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [jobDetails, setJobDetails] = useState<JobDetails | null>(null)
@@ -164,7 +176,6 @@ export default function Home() {
     program: "",
     listedAnytime: "",
   })
-  const [jobCardsKey, setJobCardsKey] = useState(0)
   const [dropdownOpen, setDropdownOpen] = useState<null | string>(null);
   const [showQuickApply, setShowQuickApply] = useState(false)
 
@@ -215,21 +226,21 @@ export default function Home() {
     leftSectionRef.current.style.width = `${leftSectionWidth}px`;
     rightSectionRef.current.style.width = `${rightSectionWidth}px`;
 
+    const minimizedMargin = "5px";
+
     if (window.scrollY === 0) {
-      rightSectionRef.current.style.marginRight = isSidebarMinimized ? "15px" : "20px"; 
-      rightSectionRef.current.style.width = isSidebarMinimized
-        ? `calc(${rightSectionWidth}px - 15px)`
-        : `${rightSectionWidth}px`;
-      searchRef.current.style.marginRight = isSidebarMinimized ? "55px" : "50px";
+      rightSectionRef.current.style.marginRight = isSidebarMinimized ? minimizedMargin : "20px";
+      rightSectionRef.current.style.width = `${rightSectionWidth}px`;
+      searchRef.current.style.marginRight = isSidebarMinimized ? "60px" : "50px";
     } else if (searchRect.bottom <= 0) {
       rightSectionRef.current.style.transition = "none";
       rightSectionRef.current.style.position = "fixed";
       rightSectionRef.current.style.top = "5rem";
-      rightSectionRef.current.style.right = isSidebarMinimized ? "15px" : "10px";
+      rightSectionRef.current.style.right = isSidebarMinimized ? minimizedMargin : "10px";
       rightSectionRef.current.style.width = isSidebarMinimized
-        ? `calc(${rightSectionWidth}px - 15px)`
+        ? `calc(${rightSectionWidth}px - ${minimizedMargin})`
         : `${rightSectionWidth}px`;
-      rightSectionRef.current.style.marginRight = "0";
+      rightSectionRef.current.style.marginRight = isSidebarMinimized ? minimizedMargin : "0";
       rightSectionRef.current.style.height = "calc(100vh - 1rem)";
       rightSectionRef.current.style.overflowY = "auto";
       rightSectionRef.current.style.zIndex = "10";
@@ -245,9 +256,9 @@ export default function Home() {
       rightSectionRef.current.style.transition = "none";
       rightSectionRef.current.style.position = "relative";
       rightSectionRef.current.style.top = "unset";
-      rightSectionRef.current.style.right = isSidebarMinimized ? "5px" : "18px";
+      rightSectionRef.current.style.right = isSidebarMinimized ? minimizedMargin : "18px";
       rightSectionRef.current.style.width = `${rightSectionWidth}px`;
-      rightSectionRef.current.style.marginRight = isSidebarMinimized ? "5px" : "20px";
+      rightSectionRef.current.style.marginRight = isSidebarMinimized ? minimizedMargin : "20px";
       rightSectionRef.current.style.height = "calc(100vh - 2rem)";
       rightSectionRef.current.style.overflowY = "hidden";
       rightSectionRef.current.style.zIndex = "unset";
@@ -363,11 +374,18 @@ export default function Home() {
 
   const handleFilter = (type: string, value: string) => {
     setFilters(prev => ({ ...prev, [type]: value }))
-    setJobCardsKey(k => k + 1)
   }
 
+  const handleClearFilters = () => {
+    setFilters({
+      workType: "",
+      remoteOption: "",
+      program: "",
+      listedAnytime: "",
+    });
+  };
+
   const handleSearch = useCallback(() => {
-    setJobCardsKey(k => k + 1)
   }, [])
 
   useEffect(() => {
@@ -488,6 +506,7 @@ export default function Home() {
                     </motion.button>
                   </motion.div>
 
+
                   <motion.div
                     className="flex flex-wrap gap-4 justify-center w-full"
                     initial={{ opacity: 0, y: 10 }}
@@ -524,6 +543,16 @@ export default function Home() {
                         </motion.div>
                       );
                     })}
+                    {(filters.workType || filters.remoteOption || filters.program || filters.listedAnytime) && (
+                      <motion.button
+                        className="flex items-center gap-2 px-6 py-3 rounded-full border-2 border-blue-200 bg-blue-100 text-blue-700 font-semibold hover:bg-blue-200 transition-all duration-200 shadow-md"
+                        whileHover={{ scale: 1.05, y: -5 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleClearFilters}
+                      >
+                        Clear Filters
+                      </motion.button>
+                    )}
                   </motion.div>
                 </motion.div>
 
@@ -531,7 +560,7 @@ export default function Home() {
                   {/* Left Content */}
                   <motion.div
                     ref={leftSectionRef}
-                    className="left-section space-y-4 pb-64"
+                    className="left-section space-y-4 pb-20"
                     style={{
                       width: "40%",
                     }}
@@ -540,7 +569,6 @@ export default function Home() {
                     transition={{ duration: 0.3 }}
                   >
                     <JobCards
-                      key={jobCardsKey}
                       onSelectJob={handleJobSelect}
                       selectedJob={selectedJob}
                       searchTitle={searchTitle}
@@ -558,7 +586,7 @@ export default function Home() {
                       maxWidth: "calc(100% - 40px)",
                     }}
                   >
-                    <div className="h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl">
+                    <div className="h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl pb-11">
                       <div className="bg-gradient-to-br from-blue-500 to-sky-600 p-6 h-full rounded-3xl shadow-2xl relative overflow-hidden">
                         <div className="mb-6 mt-3 relative z-10">
                           <div className="flex items-center">
@@ -631,7 +659,7 @@ export default function Home() {
                               >
                                 <div className="absolute inset-0 bg-blue-300 rounded-full opacity-30 animate-pulse"></div>
                                 <Lottie
-                                  animationData={jobSearchAnimation}
+                                  animationData={dashboardSearchAnimation}
                                   loop
                                   className="w-full h-full relative z-10"
                                 />
@@ -796,16 +824,41 @@ export default function Home() {
                                   <h3 className="text-white font-bold mb-2 text-lg">Perks & Benefits</h3>
                                   <ul className="text-blue-100 text-sm space-y-3">
                                     {Array.isArray(jobDetails.perks_and_benefits) && jobDetails.perks_and_benefits.length > 0 ? (
-                                      jobDetails.perks_and_benefits.map((b: string, idx: number) => (
-                                        <li className="flex items-start" key={idx}>
-                                          <motion.span
-                                            className="inline-block w-3 h-3 rounded-full bg-blue-300 mt-1.5 mr-2"
-                                            animate={{ scale: [1, 1.2, 1] }}
-                                            transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, delay: idx * 0.5 }}
-                                          ></motion.span>
-                                          {b}
-                                        </li>
-                                      ))
+                                      jobDetails.perks_and_benefits.map((perk: string, idx: number) => {
+                                        const PERK_ICONS: Record<string, { icon: React.ReactNode; label: string }> = {
+                                          training: {
+                                            icon: <BookOpen className="h-5 w-5 text-white" />,
+                                            label: "Free Training & Workshops - Skill development",
+                                          },
+                                          certification: {
+                                            icon: <Award className="h-5 w-5 text-white" />,
+                                            label: "Certification Upon Completion - Proof of experience",
+                                          },
+                                          potential: {
+                                            icon: <Briefcase className="h-5 w-5 text-white" />,
+                                            label: "Potential Job Offer - Possible full-time employment",
+                                          },
+                                          transportation: {
+                                            icon: <Bus className="h-5 w-5 text-white" />,
+                                            label: "Transportation Allowance - Support for expenses",
+                                          },
+                                          mentorship: {
+                                            icon: <UserCheck className="h-5 w-5 text-white" />,
+                                            label: "Mentorship & Guidance - Hands-on learning",
+                                          },
+                                          flexible: {
+                                            icon: <Clock className="h-5 w-5 text-white" />,
+                                            label: "Flexible Hours - Adjusted schedules for students",
+                                          },
+                                        };
+                                        const perkObj = PERK_ICONS[perk];
+                                        return (
+                                          <li className="flex items-center gap-2" key={idx}>
+                                            {perkObj ? perkObj.icon : <CheckCircle className="h-5 w-5 text-white" />}
+                                            <span>{perkObj ? perkObj.label : perk}</span>
+                                          </li>
+                                        );
+                                      })
                                     ) : (
                                       <li className="flex items-start">
                                         <motion.span
@@ -838,18 +891,21 @@ export default function Home() {
                                     }}
                                     whileTap={{ scale: 0.97 }}
                                     onClick={() => {
-                                      window.location.href = `/students/jobs/job_listings/${jobDetails.id}`;
+                                      window.location.href = `/students/jobs/job-listings?jobId=${jobDetails.id}`;
                                     }}
                                   >
                                     View Job Listing
                                   </motion.button>
                                 </div>
-                                {showQuickApply && (
-                                <QuickApplyModal
-                                  jobId={Number(jobDetails.id)}
-                                  onClose={() => setShowQuickApply(false)}
-                                />
-                              )}
+                                {showQuickApply &&
+                                  createPortal(
+                                    <ApplicationModalWrapper
+                                      jobId={Number(jobDetails.id)}
+                                      onClose={() => setShowQuickApply(false)}
+                                    />,
+                                    document.body
+                                  )
+                                }
                               </div>
                             </motion.div>
                           ) : (
@@ -877,3 +933,4 @@ export default function Home() {
     </div>
   )
 }
+   

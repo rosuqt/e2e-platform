@@ -1,3 +1,4 @@
+//Tempo Smart Writer
 "use client"
 
 import { useState } from "react"
@@ -8,6 +9,7 @@ import { motion } from "framer-motion"
 import { Card, CardContent } from "../ui/card"
 import type { JobPostingData } from "../../lib/types"
 import { TextField } from "@mui/material"
+import { getRandomJobDetails } from "../../lib/randomDetails"
 
 interface WriteStepProps {
   formData: JobPostingData
@@ -28,6 +30,8 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
   const [responsibilities, setResponsibilities] = useState<string[]>(
     formData.responsibilities?.length ? formData.responsibilities : [""],
   )
+
+  const [loading, setLoading] = useState(false)
 
   const handleMustHaveChange = (index: number, value: string) => {
     const newMustHaves = [...mustHaves]
@@ -90,6 +94,24 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
     }
   }
 
+  const handleSmartWriter = () => {
+    setLoading(true)
+    setTimeout(() => {
+      const random = getRandomJobDetails()
+      setMustHaves(random.mustHaveQualifications)
+      setNiceToHaves(random.niceToHaveQualifications)
+      setResponsibilities(random.responsibilities)
+      updateFormData({
+        jobDescription: random.jobDescription,
+        jobSummary: random.jobSummary,
+        mustHaveQualifications: random.mustHaveQualifications,
+        niceToHaveQualifications: random.niceToHaveQualifications,
+        responsibilities: random.responsibilities,
+      })
+      setLoading(false)
+    }, 1200)
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3 pb-2 border-b border-blue-100">
@@ -113,10 +135,12 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
             <FileText className="h-5 w-5 text-white" />
           </div>
 
-          
           <p className="text-sm">Write clear, detailed job descriptions with AI based on your job title.</p>
         </div>
-        <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full border-none shadow-lg">
+        <Button
+          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full border-none shadow-lg"
+          onClick={handleSmartWriter}
+        >
           Smart Writer
         </Button>
       </div>
@@ -131,25 +155,29 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
               </Label>
             </div>
             <div className="border-b border-gray-200">
-              <TextField
-                id="jobDescription"
-                value={formData.jobDescription}
-                onChange={(e) => updateFormData({ jobDescription: e.target.value })}
-                multiline
-                rows={6}
-                variant="outlined"
-                fullWidth
-                placeholder="Describe the responsibilities, requirements, and benefits of the job..."
-                InputProps={{
-                  style: {
-                    fontFamily: "Roboto, Arial, sans-serif",
-                    fontSize: "14px",
-                    color: "#333",
-                  },
-                }}
-                error={errors.jobDescription}
-                helperText={errors.jobDescription ? "Job description is required." : ""}
-              />
+              {loading ? (
+                <div className="h-[120px] w-full rounded bg-gradient-to-r from-purple-400 via-blue-400 to-purple-300 animate-pulse" />
+              ) : (
+                <TextField
+                  id="jobDescription"
+                  value={formData.jobDescription}
+                  onChange={(e) => updateFormData({ jobDescription: e.target.value })}
+                  multiline
+                  rows={6}
+                  variant="outlined"
+                  fullWidth
+                  placeholder="Describe the responsibilities, requirements, and benefits of the job..."
+                  InputProps={{
+                    style: {
+                      fontFamily: "Roboto, Arial, sans-serif",
+                      fontSize: "14px",
+                      color: "#333",
+                    },
+                  }}
+                  error={errors.jobDescription}
+                  helperText={errors.jobDescription ? "Job description is required." : ""}
+                />
+              )}
             </div>
           </CardContent>
         </Card>
@@ -161,40 +189,47 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
               <h3 className="font-medium text-gray-800">Responsibilities</h3>
             </div>
             <motion.div className="space-y-2" layout>
-              {responsibilities.map((item, index) => (
-                <motion.div
-                  key={`responsibility-${index}`}
-                  className="flex gap-2 items-center"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <TextField
-                    value={item}
-                    onChange={(e) => handleResponsibilityChange(index, e.target.value)}
-                    placeholder="e.g. Lead a team of developers"
-                    variant="outlined"
-                    fullWidth
-                    size="small"
-                    error={errors.responsibilities && !item.trim()}
-                    helperText={
-                      errors.responsibilities && !item.trim()
-                        ? "At least one responsibility is required."
-                        : ""
-                    }
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeResponsibility(index)}
-                    disabled={responsibilities.length === 1}
-                    className="text-gray-400 hover:text-red-500 hover:bg-red-50"
-                  >
-                    <Trash2 size={18} />
-                  </Button>
-                </motion.div>
-              ))}
+              {loading
+                ? Array.from({ length: 3 }).map((_, idx) => (
+                    <div
+                      key={idx}
+                      className="h-10 w-full rounded bg-gradient-to-r from-purple-400 via-blue-400 to-purple-300 animate-pulse"
+                    />
+                  ))
+                : responsibilities.map((item, index) => (
+                    <motion.div
+                      key={`responsibility-${index}`}
+                      className="flex gap-2 items-center"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <TextField
+                        value={item}
+                        onChange={(e) => handleResponsibilityChange(index, e.target.value)}
+                        placeholder="e.g. Lead a team of developers"
+                        variant="outlined"
+                        fullWidth
+                        size="small"
+                        error={errors.responsibilities && !item.trim()}
+                        helperText={
+                          errors.responsibilities && !item.trim()
+                            ? "At least one responsibility is required."
+                            : ""
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeResponsibility(index)}
+                        disabled={responsibilities.length === 1}
+                        className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                      >
+                        <Trash2 size={18} />
+                      </Button>
+                    </motion.div>
+                  ))}
             </motion.div>
             <Button
               type="button"
@@ -202,6 +237,7 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
               size="sm"
               onClick={addResponsibility}
               className="mt-3 border-blue-200 text-blue-600 hover:bg-blue-50"
+              disabled={loading}
             >
               <Plus size={16} className="mr-1" /> Add responsibility
             </Button>
@@ -222,40 +258,47 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
                   <div className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">Required</div>
                 </div>
                 <motion.div className="space-y-2" layout>
-                  {mustHaves.map((item, index) => (
-                    <motion.div
-                      key={`must-${index}`}
-                      className="flex gap-2 items-center"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <TextField
-                        value={item}
-                        onChange={(e) => handleMustHaveChange(index, e.target.value)}
-                        placeholder="e.g. 2+ years of experience with React"
-                        variant="outlined"
-                        fullWidth
-                        size="small"
-                        error={errors.mustHaveQualifications && !item.trim()}
-                        helperText={
-                          errors.mustHaveQualifications && !item.trim()
-                            ? "At least one must-have qualification is required."
-                            : ""
-                        }
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeMustHave(index)}
-                        disabled={mustHaves.length === 1}
-                        className="text-gray-400 hover:text-red-500 hover:bg-red-50"
-                      >
-                        <Trash2 size={18} />
-                      </Button>
-                    </motion.div>
-                  ))}
+                  {loading
+                    ? Array.from({ length: 3 }).map((_, idx) => (
+                        <div
+                          key={idx}
+                          className="h-10 w-full rounded bg-gradient-to-r from-purple-400 via-blue-400 to-purple-300 animate-pulse"
+                        />
+                      ))
+                    : mustHaves.map((item, index) => (
+                        <motion.div
+                          key={`must-${index}`}
+                          className="flex gap-2 items-center"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <TextField
+                            value={item}
+                            onChange={(e) => handleMustHaveChange(index, e.target.value)}
+                            placeholder="e.g. 2+ years of experience with React"
+                            variant="outlined"
+                            fullWidth
+                            size="small"
+                            error={errors.mustHaveQualifications && !item.trim()}
+                            helperText={
+                              errors.mustHaveQualifications && !item.trim()
+                                ? "At least one must-have qualification is required."
+                                : ""
+                            }
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeMustHave(index)}
+                            disabled={mustHaves.length === 1}
+                            className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                          >
+                            <Trash2 size={18} />
+                          </Button>
+                        </motion.div>
+                      ))}
                 </motion.div>
                 <Button
                   type="button"
@@ -263,6 +306,7 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
                   size="sm"
                   onClick={addMustHave}
                   className="mt-3 border-blue-200 text-blue-600 hover:bg-blue-50"
+                  disabled={loading}
                 >
                   <Plus size={16} className="mr-1" /> Add must-have
                 </Button>
@@ -274,34 +318,41 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
                   <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Optional</div>
                 </div>
                 <motion.div className="space-y-2" layout>
-                  {niceToHaves.map((item, index) => (
-                    <motion.div
-                      key={`nice-${index}`}
-                      className="flex gap-2 items-center"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <TextField
-                        value={item}
-                        onChange={(e) => handleNiceToHaveChange(index, e.target.value)}
-                        placeholder="e.g. Experience with TypeScript"
-                        variant="outlined"
-                        fullWidth
-                        size="small"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeNiceToHave(index)}
-                        disabled={niceToHaves.length === 1}
-                        className="text-gray-400 hover:text-red-500 hover:bg-red-50"
-                      >
-                        <Trash2 size={18} />
-                      </Button>
-                    </motion.div>
-                  ))}
+                  {loading
+                    ? Array.from({ length: 2 }).map((_, idx) => (
+                        <div
+                          key={idx}
+                          className="h-10 w-full rounded bg-gradient-to-r from-purple-400 via-blue-400 to-purple-300 animate-pulse"
+                        />
+                      ))
+                    : niceToHaves.map((item, index) => (
+                        <motion.div
+                          key={`nice-${index}`}
+                          className="flex gap-2 items-center"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <TextField
+                            value={item}
+                            onChange={(e) => handleNiceToHaveChange(index, e.target.value)}
+                            placeholder="e.g. Experience with TypeScript"
+                            variant="outlined"
+                            fullWidth
+                            size="small"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeNiceToHave(index)}
+                            disabled={niceToHaves.length === 1}
+                            className="text-gray-400 hover:text-red-500 hover:bg-red-50"
+                          >
+                            <Trash2 size={18} />
+                          </Button>
+                        </motion.div>
+                      ))}
                 </motion.div>
                 <Button
                   type="button"
@@ -309,6 +360,7 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
                   size="sm"
                   onClick={addNiceToHave}
                   className="mt-3 border-green-200 text-green-600 hover:bg-green-50"
+                  disabled={loading}
                 >
                   <Plus size={16} className="mr-1" /> Add nice-to-have
                 </Button>
@@ -325,25 +377,29 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
                 Job Summary
               </Label>
             </div>
-            <TextField
-              id="jobSummary"
-              value={formData.jobSummary}
-              onChange={(e) => updateFormData({ jobSummary: e.target.value })}
-              multiline
-              rows={4}
-              variant="outlined"
-              fullWidth
-              placeholder="Provide a brief summary of the job..."
-              InputProps={{
-                style: {
-                  fontFamily: "Roboto, Arial, sans-serif",
-                  fontSize: "14px",
-                  color: "#333",
-                },
-              }}
-              error={errors.jobSummary}
-              helperText={errors.jobSummary ? "Job summary is required." : ""}
-            />
+            {loading ? (
+              <div className="h-16 w-full rounded bg-gradient-to-r from-purple-400 via-blue-400 to-purple-300 animate-pulse" />
+            ) : (
+              <TextField
+                id="jobSummary"
+                value={formData.jobSummary}
+                onChange={(e) => updateFormData({ jobSummary: e.target.value })}
+                multiline
+                rows={4}
+                variant="outlined"
+                fullWidth
+                placeholder="Provide a brief summary of the job..."
+                InputProps={{
+                  style: {
+                    fontFamily: "Roboto, Arial, sans-serif",
+                    fontSize: "14px",
+                    color: "#333",
+                  },
+                }}
+                error={errors.jobSummary}
+                helperText={errors.jobSummary ? "Job summary is required." : ""}
+              />
+            )}
             <p className="text-xs text-gray-500 mt-2">
               A concise summary helps candidates quickly understand the role and increases application rates.
             </p>

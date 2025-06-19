@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react"
 import {
   Search,
-  Clock,
   MapPin,
 } from "lucide-react"
 import { motion } from "framer-motion"
@@ -223,6 +222,8 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
   const [activeTab, setActiveTab] = useState("all")
   const [showQuickApply, setShowQuickApply] = useState(false)
   const [currentJobId, setCurrentJobId] = useState<number | null>(null)
+  const [sortOption, setSortOption] = useState("Newest first")
+  const [locationFilter, setLocationFilter] = useState("Remote options")
   const debounceRef = useRef<number | null>(null)
   const collapsedRef = useRef(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -302,8 +303,60 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
 
   const filteredJobs = jobs.filter((job) => {
     const status = getJobStatus(job)
-    if (activeTab === "all") return true
-    return status === activeTab
+    const matchesTab = activeTab === "all" || status === activeTab
+    let matchesLocation = true
+    if (locationFilter === "Work from Home") {
+      matchesLocation = job.type?.toLowerCase().includes("remote") || job.type?.toLowerCase().includes("home")
+    } else if (locationFilter === "On-site") {
+      matchesLocation = job.type?.toLowerCase().includes("on-site") || job.type?.toLowerCase().includes("onsite")
+    } else if (locationFilter === "Hybrid") {
+      matchesLocation = job.type?.toLowerCase().includes("hybrid")
+    }
+    return matchesTab && matchesLocation
+  })
+
+  function parsePostedToDate(posted: string): Date {
+    if (!posted) return new Date(0)
+    // Example: "2 days ago", "3 hours ago", "just now"
+    if (posted.includes("just now")) return new Date()
+    const match = posted.match(/(\d+)\s+(minute|hour|day|week|month|year)s?\s+ago/)
+    if (!match) return new Date(0)
+    const value = parseInt(match[1])
+    const unit = match[2]
+    const now = new Date()
+    switch (unit) {
+      case "minute": now.setMinutes(now.getMinutes() - value); break
+      case "hour": now.setHours(now.getHours() - value); break
+      case "day": now.setDate(now.getDate() - value); break
+      case "week": now.setDate(now.getDate() - value * 7); break
+      case "month": now.setMonth(now.getMonth() - value); break
+      case "year": now.setFullYear(now.getFullYear() - value); break
+    }
+    return now
+  }
+
+  function parseClosingToDays(closing: string): number {
+    if (!closing) return Number.MAX_SAFE_INTEGER
+    if (closing === "Closed") return Number.MAX_SAFE_INTEGER
+    const match = closing.match(/(\d+)/)
+    if (!match) return Number.MAX_SAFE_INTEGER
+    return parseInt(match[1])
+  }
+
+  const sortedJobs = [...filteredJobs].sort((a, b) => {
+    if (sortOption === "Newest first") {
+      return parsePostedToDate(b.posted).getTime() - parsePostedToDate(a.posted).getTime()
+    }
+    if (sortOption === "Oldest first") {
+      return parsePostedToDate(a.posted).getTime() - parsePostedToDate(b.posted).getTime()
+    }
+    if (sortOption === "Most applications") {
+      return (b.total_applicants ?? 0) - (a.total_applicants ?? 0)
+    }
+    if (sortOption === "Closing soon") {
+      return parseClosingToDays(a.closing) - parseClosingToDays(b.closing)
+    }
+    return 0
   })
 
   const tabs = [
@@ -385,23 +438,18 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
               </div>
               <div className="flex gap-2">
                 <div className="relative">
-                  <select className="h-10 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none pr-8 text-black">
-                    <option>All Locations</option>
-                    <option>Remote</option>
-                    <option>Onsite</option>
-                    <option>Hybrid</option>
+                  <select
+                    className="h-10 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none pr-8 text-black"
+                    value={locationFilter}
+                    onChange={e => setLocationFilter(e.target.value)}
+                  >
+                    <option>All job types</option>
+                    <option>Full-time</option>
+                    <option>Part-time</option>
+                    <option>Contract</option>
+                    <option>Internship</option>
                   </select>
                   <MapPin className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
-                </div>
-                <div className="relative">
-                  <select className="h-10 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none pr-8 text-black">
-                    <option>All Statuses</option>
-                    <option>Active</option>
-                    <option>Paused</option>
-                    <option>Closed</option>
-                    <option>Draft</option>
-                  </select>
-                  <Clock className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
                 </div>
                 <Button className="bg-blue-600 hover:bg-blue-700">
                   <Search className="mr-2 h-4 w-4" />
@@ -444,7 +492,11 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">Sort by:</span>
-            <select className="mr-3 text-sm border-none bg-transparent focus:ring-0 text-blue-600 font-medium cursor-pointer">
+            <select
+              className="mr-3 text-sm border-none bg-transparent focus:ring-0 text-blue-600 font-medium cursor-pointer"
+              value={sortOption}
+              onChange={e => setSortOption(e.target.value)}
+            >
               <option>Newest first</option>
               <option>Oldest first</option>
               <option>Most applications</option>
@@ -471,7 +523,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
               <div className="text-gray-500 text-center">Nothing to see here.</div>
             </div>
           ) : (
-            !loading && sortJobsActiveFirst(filteredJobs).map((job) => (
+            !loading && sortJobsActiveFirst(sortedJobs).map((job) => (
               <EmployerJobCard
                 key={job.id}
                 job={job}

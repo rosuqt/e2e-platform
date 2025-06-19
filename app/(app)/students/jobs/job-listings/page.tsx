@@ -3,10 +3,9 @@
 import { useState, useRef, useEffect } from "react"
 import {
   Search,
-  ChevronDown,
-  CheckCircle,
-  Clock,
-  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -19,6 +18,12 @@ import JobCard from "./components/job-cards"
 import JobMatches from "./components/job-matches"
 import ProfileCompletion from "./components/profile-completion"
 import JobDetails from "./components/job-details"
+import SavedJobs from "./components/saved-jobs"
+import listLoadAnimation from "../../../../../public/animations/list-load.json";
+import notFoundAnimation from "../../../../../public/animations/not-found.json";
+import Lottie from "lottie-react";
+import type { Job } from "./components/job-details";
+
 
 export default function JobListingPage() {
   useEffect(() => {
@@ -29,12 +34,24 @@ export default function JobListingPage() {
     };
   }, []);
 
-  const [selectedJob, setSelectedJob] = useState<string | null>(null);
+  const searchParams = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search)
+    : null;
+  const initialJobId = searchParams?.get("jobId") ?? null;
+  const [selectedJob, setSelectedJob] = useState<string | null>(initialJobId);
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
   const [showProfileColumn, setShowProfileColumn] = useState(true)
 
   const rightSectionRef = useRef<HTMLDivElement | null>(null)
   const leftSectionRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const jobId = params.get("jobId");
+      if (jobId) setSelectedJob(jobId);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
@@ -164,50 +181,158 @@ function MobileUserProfile() {
 function UserProfile() {
   return (
     <div className="p-4 mt-1">
-      {/* Profile Completion */}
       <ProfileCompletion />
-
-      {/* Job Matches */}
       <JobMatches />
+      <SavedJobs />
+    </div>
+  )
+}
+
+// Pagination Component
+function Pagination({
+  totalPages = 1,
+  currentPage = 1,
+  onPageChange,
+}: {
+  totalPages?: number
+  currentPage?: number
+  onPageChange?: (page: number) => void
+}) {
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      onPageChange?.(page)
+    }
+  }
+
+  const getVisiblePages = () => {
+    const delta = 2
+    const range = []
+    const rangeWithDots = []
+
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i)
+    }
+
+    if (currentPage - delta > 2) {
+      rangeWithDots.push(1, "…")
+    } else {
+      rangeWithDots.push(1)
+    }
+
+    rangeWithDots.push(...range)
+
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push("…", totalPages)
+    } else if (totalPages > 1) {
+      rangeWithDots.push(totalPages)
+    }
+
+    return rangeWithDots
+  }
+
+  const visiblePages = getVisiblePages()
+
+  return (
+    <div className="flex flex-col items-center gap-2  min-h-[130px]">
+      <div className="flex items-center gap-1 relative">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="flex items-center gap-1 px-3   text-gray-600 hover:text-blue-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span className="text-sm font-medium">Previous</span>
+        </button>
+        <div className="flex items-center relative mx-4">
+          {visiblePages.map((page, index) => (
+            <div key={`${page}-${index}`} className="relative">
+              {page === "…" ? (
+                <span className="px-3 py-2 text-gray-400 text-sm">…</span>
+              ) : (
+                <button
+                  onClick={() => handlePageChange(page as number)}
+                  className={`relative px-3 py-2 text-sm font-medium transition-colors ${
+                    currentPage === page ? "text-blue-600" : "text-gray-600 hover:text-blue-500"
+                  }`}
+                >
+                  {page}
+                  {currentPage === page && (
+                    <motion.div
+                      layoutId="pagination-indicator"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full"
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 30,
+                      }}
+                    />
+                  )}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="flex items-center gap-1 px-3 py-2 text-gray-600 hover:text-blue-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+        >
+          <span className="text-sm font-medium">Next</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="text-sm text-gray-500" style={{ minHeight: 20 }}>
+        Page {currentPage} of {totalPages}
+      </div>
     </div>
   )
 }
 
 // Job Listings Component
 function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | null) => void; selectedJob: string | null }) {
-  type Job = {
-    id: string | number;
-    title?: string;
-    location?: string;
-    type?: string;
-    isSaved?: boolean;
-    isApplied?: boolean;
-    isRemote?: boolean;
-    [key: string]: string | number | boolean | undefined;
-  }
   const [showQuickApply, setShowQuickApply] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("recommended");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
   const [search, setSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState(""); 
   const [filters, setFilters] = useState<Record<string, string | boolean>>({});
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
+  const [totalJobs, setTotalJobs] = useState<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+ 
+  const [sortBy, setSortBy] = useState("recent");
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/students/job-listings")
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", String(limit));
+    if (searchQuery) params.set("search", searchQuery);
+    if (filters.work_type && typeof filters.work_type === "string" && filters.work_type.length > 0) params.set("type", filters.type as string);
+    if (filters.location && typeof filters.location === "string" && filters.location.length > 0) params.set("location", filters.location as string);
+    if (filters.salary && typeof filters.salary === "string" && filters.salary.length > 0) params.set("salary", filters.salary as string);
+    if (sortBy) params.set("sortBy", sortBy);
+
+    fetch(`/api/students/job-listings?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setJobs(Array.isArray(data) ? data : []);
+        setJobs(Array.isArray(data.jobs) ? data.jobs : []);
+        setTotalJobs(typeof data.total === "number" ? data.total : (Array.isArray(data.jobs) ? data.jobs.length : 0));
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, []);
+      .catch(() => {
+        setLoading(false);
+      });
+  }, [page, limit, searchQuery, filters, sortBy]);
+
+  useEffect(() => {
+    onSelectJob(null);
+  }, [jobs]);
 
   useEffect(() => {
     fetch("/api/students/job-listings/saved-jobs")
@@ -223,14 +348,6 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
       }))
     );
   }, [savedJobIds]);
-
-  const handleTabFilter = (tabId: string) => {
-    setActiveTab(tabId);
-    setFilters((prev) => {
-      if (tabId === "saved") return { ...prev, isSaved: true };
-      return {};
-    });
-  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -277,42 +394,31 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
     }
   };
 
-  const filteredJobs = jobs.filter((job) => {
-    if (activeTab === "saved" && !job.isSaved) return false;
-    if (searchQuery.trim() !== "") {
-      const title = typeof job.title === "string" ? job.title : "";
-      const jobTitle =
-        typeof job["job_title"] === "string" ? job["job_title"] as string : "";
-      if (
-        !title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !jobTitle.toLowerCase().includes(searchQuery.toLowerCase())
-      ) return false;
-    }
-    if (filters.type) {
-      const filterTypes = String(filters.type).split(",");
-      if (!filterTypes.includes(String(job.type))) return false;
-    }
-    if (filters.location) {
-      const filterLocations = String(filters.location).split(",");
-      if (!filterLocations.includes(String(job.location))) return false;
-    }
-    if (filters.salary) {
-      const salaryValue = Number(filters.salary);
-      if (typeof job.salary === "number" && job.salary < salaryValue) return false;
-    }
-    return true;
-  });
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filters, sortBy]);
 
-  const tabCounts = {
-    recommended: jobs.length,
-    recent: jobs.length,
-    saved: jobs.filter(j => j.isSaved).length,
-  };
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      params.set("page", String(page));
+      window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
+    }
+  }, [page]);
 
-  // Add this handler with the correct type
   function handleFilterModalApply(newFilters: Record<string, string | boolean>) {
     setFilters(newFilters);
   }
+
+  function handleJobSaveToggle(jobId: string | number, isSaved: boolean) {
+    setSavedJobIds(prev =>
+      isSaved
+        ? [...prev, String(jobId)]
+        : prev.filter(id => id !== String(jobId))
+    );
+  }
+
+  const totalPages = Math.max(1, Math.ceil(totalJobs / limit));
 
   return (
     <div className="flex flex-col h-full">
@@ -379,77 +485,79 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
             </motion.form>
           </motion.div>
 
-          <div className="flex items-center justify-between pb-2 mb-2 scrollbar-hide">
-            <div className="flex overflow-x-auto space-x-2">
-              {[{ id: "recommended", label: "Recommended", icon: <CheckCircle className="w-3 h-3" /> },
-                { id: "recent", label: "Recent", icon: <Clock className="w-3 h-3" /> },
-                { id: "saved", label: "Saved", icon: <Bookmark className="w-3 h-3" /> },
-              ].map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  className={`${
-                    selectedJob !== null
-                      ? "w-10 h-10 rounded-full flex items-center justify-center bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"
-                      : `px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap flex items-center gap-1 ${
-                          activeTab === tab.id
-                            ? "bg-blue-600 text-white shadow-md"
-                            : "bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"
-                        }`
-                  }`}
-                  onClick={() => handleTabFilter(tab.id)}
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {tab.icon}
-                  {selectedJob === null && <span>{tab.label}</span>}
-                  {selectedJob === null && (
-                    <span className="ml-1 bg-white text-blue-600 text-xs rounded-full px-1.5">
-                      {tabCounts[tab.id as keyof typeof tabCounts]}
-                    </span>
-                  )}
-                </motion.button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 ">
-              <div className="relative flex items-center gap-1">
+          {/* Controls */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-blue-600">{totalJobs} job listings</span>
+              <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-blue-600">Sort by</span>
-                <motion.button
-                  className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 flex items-center gap-1"
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.95 }}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50"
                 >
-                  Relevance
-                  <ChevronDown className="h-3 w-3" />
-                </motion.button>
+                  <option value="relevant">Relevance</option>
+                  <option value="reco">Recommended</option>
+                  <option value="newest">Newest First</option>
+                </select>
               </div>
-              <Button
-                className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50"
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-              >
-                {isFilterOpen ? "Close Filters" : "Filters"}
-              </Button>
             </div>
+            <Button
+              variant="outline"
+              className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+            >
+              <Filter className="w-4 h-4 mr-1" />
+              Filters
+            </Button>
           </div>
         </div>
 
-        <div className="space-y-4 p-4 mb-20 ">
+        <div className="flex-1 flex flex-col space-y-4 p-4 pb-4">
           {loading ? (
-            <div>Loading...</div>
-          ) : filteredJobs.length === 0 ? (
-            <div>No jobs found.</div>
+            <div className="flex flex-col items-center justify-center min-h-[300px]">
+              <div className="w-150 h-150 mx-auto">
+                <Lottie animationData={listLoadAnimation} loop={true} />
+              </div>
+              <span className="mt-4 text-blue-700 font-semibold text-base animate-pulse">
+                Fetching job listings, please wait...
+              </span>
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[300px]">
+              <div className="bg-white rounded-full shadow-lg flex items-center justify-center mt-10 w-64 h-64">
+                <Lottie animationData={notFoundAnimation} loop={true} />
+              </div>
+              <span className="mt-4 text-gray-500 font-medium text-base text-center">
+                Hmm... where’d they go?<br />No jobs right now — try refreshing or check back later! 
+              </span>
+            </div>
           ) : (
-            filteredJobs.map((job) => (
-              <JobCard
-                key={job.id}
-                id={job.id}
-                isSelected={selectedJob === String(job.id)}
-                onSelect={() => onSelectJob(selectedJob === String(job.id) ? null : String(job.id))}
-                onQuickApply={() => {
-                  setShowQuickApply(true);
-                }}
-                job={job}
-              />
-            ))
+            <>
+              {jobs
+                .map((job) => (
+                  <JobCard
+                    key={job.id}
+                    id={job.id}
+                    isSelected={selectedJob === String(job.id)}
+                    onSelect={() => onSelectJob(selectedJob === String(job.id) ? null : String(job.id))}
+                    onQuickApply={() => {
+                      setShowQuickApply(true);
+                    }}
+                    job={job}
+                    onSaveToggle={handleJobSaveToggle}
+                  />
+                ))}
+              <div style={{ minHeight: 20 }} />
+            </>
+          )}
+
+          {!loading && jobs.length > 0 && totalPages > 1 && (
+            <Pagination
+              totalPages={totalPages}
+              currentPage={page}
+              onPageChange={setPage}
+            />
           )}
         </div>
       </div>

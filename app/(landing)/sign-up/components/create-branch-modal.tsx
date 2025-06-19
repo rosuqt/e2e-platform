@@ -22,7 +22,7 @@ export default function CreateBranchModal({
   onClose,
   companyId,
 }: {
-  onClose: (branchDetails?: { branchName: string }) => void;
+  onClose: (branchDetails?: { branchName: string; branchEmailDomain?: string }) => void;
   companyId: string;
 }) {
   const branchNameRef = useRef<HTMLDivElement>(null);
@@ -155,13 +155,14 @@ export default function CreateBranchModal({
       if (response.ok) {
         const result = await response.json();
         const branchName = result.data?.branch_name || result.branch?.branch_name || "unknown";
+        const branchEmailDomain = result.data?.email_domain || result.branch?.email_domain || "";
 
         if (!toast.isActive("branchCreated")) {
           toast.success(`Branch "${branchName}" created successfully!`, { toastId: "branchCreated" });
         }
 
         if (branchName !== "unknown") {
-          onClose({ branchName });
+          onClose({ branchName, branchEmailDomain });
         } else {
           onClose();
         }

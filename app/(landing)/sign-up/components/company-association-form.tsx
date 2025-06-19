@@ -123,7 +123,7 @@ export default function CompanyAssociationForm({
     }
   }, []);
 
-  const handleCompanyModalClose = useCallback(async (newCompany?: { companyName: string; companyBranch: string }) => {
+  const handleCompanyModalClose = useCallback(async (newCompany?: { companyName: string; companyBranch: string; companyEmailDomain?: string }) => {
     setCompanyModalOpen(false);
 
     if (newCompany) {
@@ -132,7 +132,7 @@ export default function CompanyAssociationForm({
         name: newCompany.companyName,
         status: "pending",
         logo: null,
-        emailDomain: null,
+        emailDomain: newCompany.companyEmailDomain || null,
       };
 
       setFetchedCompanies((prevCompanies) => [newCompanyData, ...prevCompanies]);
@@ -152,13 +152,13 @@ export default function CompanyAssociationForm({
     }
   }, [data, fetchBranches, onChange, saveCompanyAssociation]);
 
-  const handleBranchModalClose = useCallback((newBranch?: { branchName: string }) => {
+  const handleBranchModalClose = useCallback((newBranch?: { branchName: string; branchEmailDomain?: string }) => {
     setBranchModalOpen(false);
 
     if (newBranch && newBranch.branchName) {
       setFetchedBranches((prevBranches) => [
         ...prevBranches,
-        { branch_name: newBranch.branchName, status: "pending" },
+        { branch_name: newBranch.branchName, status: "pending", email_domain: newBranch.branchEmailDomain || null },
       ]);
 
       const updatedData = { ...data, companyBranch: newBranch.branchName };

@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
   const supabase = getAdminSupabase();
   const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 10);
   if (error || !data?.signedUrl) {
+    console.error("Employer signed URL error:", error, "for bucket:", bucket, "path:", path);
     return NextResponse.json({ error: "Could not generate signed URL" }, { status: 404 });
   }
   return NextResponse.json({ signedUrl: data.signedUrl });
