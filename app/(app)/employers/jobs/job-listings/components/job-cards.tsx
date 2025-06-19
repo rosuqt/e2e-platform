@@ -1,12 +1,12 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { DollarSign, Clock, Briefcase } from "lucide-react";
+import {  Clock, Briefcase } from "lucide-react";
 import { RiListView } from "react-icons/ri";
 import { FaComputer, FaHotel } from "react-icons/fa6";
 import { MdBusinessCenter, MdOutlinePlayCircle } from "react-icons/md";
 import { BiSolidPlaneAlt } from "react-icons/bi";
 import { IoMdPlanet } from "react-icons/io";
-import { FaRegCirclePause } from "react-icons/fa6";
+import { FaRegCirclePause , FaMoneyBill } from "react-icons/fa6";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -35,6 +35,7 @@ export type EmployerJobCardJob = {
   total_applicants?: number;
   qualified_applicants?: number;
   interviews?: number;
+  companyName?: string; // <-- Add this line
 };
 
 export default function EmployerJobCard({
@@ -159,13 +160,19 @@ export default function EmployerJobCard({
                 </span>
               )}
             </div>
+            {/* Show company name if available */}
+            {job.companyName && (
+              <div className="text-sm text-gray-600 font-semibold mb-2">
+                {job.companyName}
+              </div>
+            )}
             <div className="flex items-center gap-4 mt-1">
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <Briefcase className="h-3 w-3" />
                 <span>{job.type}</span>
               </div>
               <div className="flex items-center gap-1 text-xs text-gray-500">
-                <DollarSign className="h-3 w-3" />
+                <FaMoneyBill className="h-3 w-3" />
                 <span>{job.salary ? job.salary : "No pay"}</span>
               </div>
               <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -437,15 +444,9 @@ export default function EmployerJobCard({
   );
 }
 
-/**
- * Utility to sort jobs: active first, then paused, then closed.
- */
 export function sortJobsActiveFirst(jobs: EmployerJobCardJob[]) {
   return [...jobs].sort((a, b) => {
-    // Closed last
     if (a.closing === "Closed" && b.closing !== "Closed") return 1;
-    if (b.closing === "Closed" && a.closing !== "Closed") return -1;
-    // Paused after active
     if ((a.paused ?? false) && !(b.paused ?? false)) return 1;
     if ((b.paused ?? false) && !(a.paused ?? false)) return -1;
     return 0;

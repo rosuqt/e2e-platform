@@ -2,10 +2,10 @@
 
 import confetti from "canvas-confetti";
 
-import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
 
 export function ConfettiStars() {
-  const handleClick = () => {
+  useEffect(() => {
     const defaults = {
       spread: 360,
       ticks: 50,
@@ -31,14 +31,10 @@ export function ConfettiStars() {
       });
     };
 
-    setTimeout(shoot, 0);
+    shoot();
     setTimeout(shoot, 100);
     setTimeout(shoot, 200);
-  };
+  }, []);
 
-  return (
-    <div className="relative">
-      <Button onClick={handleClick}>Trigger Stars</Button>
-    </div>
-  );
+  return <></>;
 }

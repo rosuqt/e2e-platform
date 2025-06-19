@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Chip from "@mui/material/Chip"
@@ -12,6 +11,7 @@ import Modal from "@mui/material/Modal"
 import Box from "@mui/material/Box"
 import TextField from "@mui/material/TextField"
 import { TiDelete } from "react-icons/ti"
+import { FaUser } from "react-icons/fa"
 
 export default function ApplicantsTab() {
   const [applicants] = useState([
@@ -227,14 +227,8 @@ export default function ApplicantsTab() {
                     className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                        <Image
-                          src={`/placeholder.svg?height=40&width=40&text=${applicant.name.charAt(0)}`}
-                          alt={applicant.name}
-                          width={40}
-                          height={40}
-                          className="rounded-full"
-                        />
+                      <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
+                        <FaUser className="text-white w-5 h-5" />
                       </div>
                       <div>
                         <div className="text-sm font-medium">{applicant.name}</div>

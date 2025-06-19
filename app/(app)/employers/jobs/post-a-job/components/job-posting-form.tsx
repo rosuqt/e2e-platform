@@ -22,6 +22,7 @@ import { jwtDecode } from "jwt-decode"
 import { getSession } from "next-auth/react"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction } from "@/components/ui/alert-dialog"
 
+
 const MySwal = withReactContent(Swal)
 
 export default function JobPostingForm() {
@@ -45,6 +46,7 @@ export default function JobPostingForm() {
     maxApplicants: "",
     applicationQuestions: [],
     perksAndBenefits: [],
+    skills: [],
   })
   const [employerId, setEmployerId] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, boolean>>({})
@@ -113,7 +115,11 @@ export default function JobPostingForm() {
   }
 
   const handleFieldChange = <T extends keyof JobPostingData>(field: T, value: JobPostingData[T]) => {
-    updateFormData({ [field]: value })
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value }
+      console.log("formData after change:", updated)
+      return updated
+    })
     setErrors((prevErrors) => ({ ...prevErrors, [field]: false }))
   }
 
@@ -338,6 +344,7 @@ export default function JobPostingForm() {
                   maxApplicants: "",
                   applicationQuestions: [],
                   perksAndBenefits: [],
+                  skills: [],
                 });
                 setErrors({});
               }}

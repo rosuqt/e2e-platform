@@ -6,6 +6,11 @@ export async function POST(request: Request) {
 
   const adminSupabase = getAdminSupabase();
 
+  function capitalizeWords(str: string) {
+    if (!str) return str;
+    return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+  }
+
   try {
     function isValidUUID(str: string) {
       return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
@@ -214,6 +219,20 @@ export async function POST(request: Request) {
       }
     }
 
+    let branchId = formData.companyAssociation.branchId;
+
+    if (!branchId || !isValidUUID(branchId)) {
+      const { data: registeredBranch, error: registeredBranchError } = await supabase
+        .from("registered_branches")
+        .select("id")
+        .eq("company_id", companyId)
+        .eq("branch_name", capitalizeWords(formData.companyAssociation.companyBranch))
+        .single();
+
+      if (!registeredBranchError && registeredBranch) {
+        branchId = registeredBranch.id;
+      }
+    }
 
     const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
       email: formData.personalDetails.email,
@@ -242,18 +261,20 @@ export async function POST(request: Request) {
       .from("registered_employers")
       .insert({
         user_id: userId, 
-        first_name: formData.personalDetails.firstName,
-        middle_name: formData.personalDetails.middleName || null,
-        last_name: formData.personalDetails.lastName,
-        suffix: formData.personalDetails.suffix || null,
+        first_name: capitalizeWords(formData.personalDetails.firstName),
+        middle_name: formData.personalDetails.middleName ? capitalizeWords(formData.personalDetails.middleName) : null,
+        last_name: capitalizeWords(formData.personalDetails.lastName),
+        suffix: formData.personalDetails.suffix ? capitalizeWords(formData.personalDetails.suffix) : null,
         country_code: formData.personalDetails.countryCode,
         phone: formData.personalDetails.phone,
         email: formData.personalDetails.email,
+        password: formData.personalDetails.password,
         company_id: companyId,
-        company_name: formData.companyAssociation.companyName,
-        company_branch: formData.companyAssociation.companyBranch,
-        company_role: formData.companyAssociation.companyRole,
-        job_title: formData.companyAssociation.jobTitle,
+        branch_id: branchId,
+        company_name: capitalizeWords(formData.companyAssociation.companyName),
+        company_branch: capitalizeWords(formData.companyAssociation.companyBranch),
+        company_role: capitalizeWords(formData.companyAssociation.companyRole),
+        job_title: capitalizeWords(formData.companyAssociation.jobTitle),
         company_email: formData.companyAssociation.companyEmail,
         terms_accepted: formData.verificationDetails.termsAccepted,
         company_admin: companyJustCreated ? true : false,
@@ -274,6 +295,7 @@ export async function POST(request: Request) {
         .from("employer_profile")
         .insert({
           employer_id: employerId,
+          password: formData.personalDetails.password
         })
       if (profileError) {
         console.error("Error inserting employer_profile:", profileError)

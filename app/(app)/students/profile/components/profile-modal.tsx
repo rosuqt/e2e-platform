@@ -54,6 +54,24 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   }, [handleClose])
 
   useEffect(() => {
+    const sessionKey = "profileModalUserDetails"
+    const sessionRoleKey = "profileModalUserRole"
+    const sessionAvatarKey = "profileModalUserAvatar"
+
+    const cachedDetails = sessionStorage.getItem(sessionKey)
+    const cachedRole = sessionStorage.getItem(sessionRoleKey)
+    const cachedAvatar = sessionStorage.getItem(sessionAvatarKey)
+
+    if (cachedDetails && cachedRole) {
+      const { name, email } = JSON.parse(cachedDetails)
+      setDbName(name)
+      setDbEmail(email)
+      setUserType(cachedRole as "student" | "employer")
+      setDbAvatar(cachedAvatar || undefined)
+      setLoading(false)
+      return
+    }
+
     (async () => {
       setLoading(true)
       let detailsRes: Response | null = null
@@ -61,13 +79,15 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
         detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" })
         if (detailsRes.ok) {
           const { first_name, last_name, email, profile_img } = await detailsRes.json()
-          setDbName(
+          const name =
             first_name && last_name
               ? `${first_name} ${last_name}`
               : first_name || last_name || ""
-          )
+          setDbName(name)
           setDbEmail(email || "")
           setUserType("employer")
+          sessionStorage.setItem(sessionKey, JSON.stringify({ name, email }))
+          sessionStorage.setItem(sessionRoleKey, "employer")
           if (profile_img) {
             try {
               const signedRes = await fetch("/api/employers/get-signed-url", {
@@ -79,14 +99,18 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json()
                 setDbAvatar(signedUrl)
+                sessionStorage.setItem(sessionAvatarKey, signedUrl)
               } else {
                 setDbAvatar(undefined)
+                sessionStorage.removeItem(sessionAvatarKey)
               }
             } catch {
               setDbAvatar(undefined)
+              sessionStorage.removeItem(sessionAvatarKey)
             }
           } else {
             setDbAvatar(undefined)
+            sessionStorage.removeItem(sessionAvatarKey)
           }
           setLoading(false)
           return
@@ -96,13 +120,15 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
         detailsRes = await fetch("/api/students/get-student-details", { credentials: "include" })
         if (detailsRes.ok) {
           const { first_name, last_name, email, profile_img } = await detailsRes.json()
-          setDbName(
+          const name =
             first_name && last_name
               ? `${first_name} ${last_name}`
               : ""
-          )
+          setDbName(name)
           setDbEmail(email || "")
           setUserType("student")
+          sessionStorage.setItem(sessionKey, JSON.stringify({ name, email }))
+          sessionStorage.setItem(sessionRoleKey, "student")
           if (profile_img) {
             try {
               const signedRes = await fetch("/api/students/get-signed-url", {
@@ -114,14 +140,18 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json()
                 setDbAvatar(signedUrl)
+                sessionStorage.setItem(sessionAvatarKey, signedUrl)
               } else {
                 setDbAvatar(undefined)
+                sessionStorage.removeItem(sessionAvatarKey)
               }
             } catch {
               setDbAvatar(undefined)
+              sessionStorage.removeItem(sessionAvatarKey)
             }
           } else {
             setDbAvatar(undefined)
+            sessionStorage.removeItem(sessionAvatarKey)
           }
           setLoading(false)
           return
@@ -130,6 +160,101 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
       setLoading(false)
     })()
   }, [user.name, user.email, user.avatarUrl])
+
+  useEffect(() => {
+    const handleProfilePicUpdate = async () => {
+      setLoading(true)
+      sessionStorage.removeItem("profileModalUserDetails")
+      sessionStorage.removeItem("profileModalUserRole")
+      sessionStorage.removeItem("profileModalUserAvatar")
+      let detailsRes: Response | null = null
+      try {
+        detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" })
+        if (detailsRes.ok) {
+          const { first_name, last_name, email, profile_img } = await detailsRes.json()
+          const name =
+            first_name && last_name
+              ? `${first_name} ${last_name}`
+              : first_name || last_name || ""
+          setDbName(name)
+          setDbEmail(email || "")
+          setUserType("employer")
+          sessionStorage.setItem("profileModalUserDetails", JSON.stringify({ name, email }))
+          sessionStorage.setItem("profileModalUserRole", "employer")
+          if (profile_img) {
+            try {
+              const signedRes = await fetch("/api/employers/get-signed-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bucket: "user.avatars", path: profile_img }),
+                credentials: "include",
+              })
+              if (signedRes.ok) {
+                const { signedUrl } = await signedRes.json()
+                setDbAvatar(signedUrl)
+                sessionStorage.setItem("profileModalUserAvatar", signedUrl)
+              } else {
+                setDbAvatar(undefined)
+                sessionStorage.removeItem("profileModalUserAvatar")
+              }
+            } catch {
+              setDbAvatar(undefined)
+              sessionStorage.removeItem("profileModalUserAvatar")
+            }
+          } else {
+            setDbAvatar(undefined)
+            sessionStorage.removeItem("profileModalUserAvatar")
+          }
+          setLoading(false)
+          return
+        }
+      } catch {}
+      try {
+        detailsRes = await fetch("/api/students/get-student-details", { credentials: "include" })
+        if (detailsRes.ok) {
+          const { first_name, last_name, email, profile_img } = await detailsRes.json()
+          const name =
+            first_name && last_name
+              ? `${first_name} ${last_name}`
+              : ""
+          setDbName(name)
+          setDbEmail(email || "")
+          setUserType("student")
+          sessionStorage.setItem("profileModalUserDetails", JSON.stringify({ name, email }))
+          sessionStorage.setItem("profileModalUserRole", "student")
+          if (profile_img) {
+            try {
+              const signedRes = await fetch("/api/students/get-signed-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bucket: "user.avatars", path: profile_img }),
+                credentials: "include",
+              })
+              if (signedRes.ok) {
+                const { signedUrl } = await signedRes.json()
+                setDbAvatar(signedUrl)
+                sessionStorage.setItem("profileModalUserAvatar", signedUrl)
+              } else {
+                setDbAvatar(undefined)
+                sessionStorage.removeItem("profileModalUserAvatar")
+              }
+            } catch {
+              setDbAvatar(undefined)
+              sessionStorage.removeItem("profileModalUserAvatar")
+            }
+          } else {
+            setDbAvatar(undefined)
+            sessionStorage.removeItem("profileModalUserAvatar")
+          }
+          setLoading(false)
+          return
+        }
+      } catch {}
+      setLoading(false)
+    }
+    window.addEventListener("profilePictureUpdated", handleProfilePicUpdate)
+    return () => window.removeEventListener("profilePictureUpdated", handleProfilePicUpdate)
+  }, [])
 
   const handleProfileClick = async () => {
     const profilePath =
@@ -147,6 +272,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   }
 
   const handleLogoutClick = async () => {
+    sessionStorage.clear()
     await signOut({ callbackUrl: "/landing" });
     onClose();
   }
@@ -162,7 +288,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-start justify-end p-4"
+          className="fixed inset-0 z-50 flex items-start justify-end p-4 mt-12"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

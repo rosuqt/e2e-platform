@@ -326,7 +326,7 @@ export default function CompanyProfilePage() {
               {coverUrl && (
                 <img
                   src={coverUrl}
-                  alt="Company Cover"
+
                   className="absolute inset-0 w-full h-full object-cover"
                   width={1200}
                   height={192}

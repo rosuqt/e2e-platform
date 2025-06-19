@@ -42,7 +42,7 @@ export async function GET(req: Request) {
 
   const { data: profile, error } = await supabase
     .from("student_profile")
-    .select("skills, expertise, educations, certs, portfolio, introduction, career_goals, contact_info, short_bio")
+    .select("student_id, skills, expertise, educations, certs, portfolio, introduction, career_goals, contact_info, short_bio, uploaded_resume_url")
     .eq("student_id", studentId)
     .single();
 
@@ -50,5 +50,21 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
 
-  return NextResponse.json(profile);
+  let uploaded_resume_url: string[] = [];
+  if (profile.uploaded_resume_url) {
+    if (Array.isArray(profile.uploaded_resume_url)) {
+      uploaded_resume_url = profile.uploaded_resume_url;
+    } else if (typeof profile.uploaded_resume_url === "string") {
+      uploaded_resume_url = [profile.uploaded_resume_url];
+    }
+  }
+
+  const profileWithAchievements = {
+    ...profile,
+    achievements: profile.certs,
+    uploaded_resume_url,
+    student_id: profile.student_id,
+  };
+
+  return NextResponse.json(profileWithAchievements);
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Archive, Users, Tag, Bell, Info, X, AlertTriangle, Copy } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,29 +11,55 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Chip } from "@mui/material"
 import { Divider } from "@mui/material"
 import { Tooltip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material"
+import { useSession } from "next-auth/react"
+import { PiCrownSimpleFill } from "react-icons/pi"
+import { FaUser } from "react-icons/fa"
 
-const teamMembers = [
-  { id: 1, name: "John Smith", email: "john@example.com", role: "Admin", avatar: "JS" },
-  { id: 2, name: "Emily Johnson", email: "emily@example.com", role: "Editor", avatar: "EJ" },
-  { id: 3, name: "Michael Brown", email: "michael@example.com", role: "Viewer", avatar: "MB" },
-]
 
-const initialTags = [
-  { id: 1, name: "Urgent", color: "red" },
-  { id: 2, name: "Remote", color: "blue" },
-  { id: 3, name: "Part-time", color: "green" },
-]
+type TagType = {
+  id: number;
+  name: string;
+  color: string;
+}
 
-export default function JobSettings({ jobId }: { jobId: number }) {
+type Colleague = {
+  id: string
+  name: string
+  email: string
+  role: string
+  avatar: string
+  isAdmin: boolean
+  avatarUrl?: string
+}
+
+type ApiColleague = {
+  id?: string
+  first_name: string
+  last_name: string
+  email?: string
+  company_admin?: boolean
+  profile_img?: string
+  avatarUrl?: string
+}
+
+type JobTeamAccess = {
+  employer_id: string;
+  job_id: string;
+  role: string;
+  can_edit?: boolean;
+  can_view?: boolean;
+}
+
+export default function JobSettings({ jobId, companyName }: { jobId: string, companyName?: string }) {
+
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false)
-  const [members, setMembers] = useState(teamMembers)
-  const [newMemberEmail, setNewMemberEmail] = useState("")
-  const [newMemberRole, setNewMemberRole] = useState("Viewer")
-  const [tags, setTags] = useState(initialTags)
+  const [members, setMembers] = useState<Colleague[]>([])
+  const [tags, setTags] = useState<TagType[]>([])
   const [newTagName, setNewTagName] = useState("")
   const [newTagColor, setNewTagColor] = useState("blue")
+  const [tagError, setTagError] = useState<string | null>(null)
   const [notifications, setNotifications] = useState({
     newApplications: true,
     statusChanges: true,
@@ -41,45 +67,285 @@ export default function JobSettings({ jobId }: { jobId: number }) {
     interviews: true,
     dailyDigest: false,
   })
+  const [allColleagues, setAllColleagues] = useState<ApiColleague[]>([])
+  const [selectedColleagueId, setSelectedColleagueId] = useState<string | null>(null)
+  const [loadingColleagues, setLoadingColleagues] = useState(false)
 
-  const handleAddMember = () => {
-    if (newMemberEmail.trim() === "") return
-
-    const newMember = {
-      id: members.length + 1,
-      name: newMemberEmail.split("@")[0],
-      email: newMemberEmail,
-      role: newMemberRole,
-      avatar: newMemberEmail.substring(0, 2).toUpperCase(),
+  useEffect(() => {
+    async function fetchTags() {
+      if (!jobId) return
+      const res = await fetch(`/api/jobs/update-tags?job_id=${jobId}`)
+      const json = await res.json()
+      if (Array.isArray(json.tags)) {
+        setTags(
+          json.tags.map((tag: { id?: number; name: string; color: string }, idx: number) => ({
+            id: tag.id ?? idx + 1,
+            name: tag.name,
+            color: tag.color,
+          }))
+        )
+      }
     }
+    fetchTags()
+  }, [jobId])
 
-    setMembers([...members, newMember])
-    setNewMemberEmail("")
+  async function fetchProfileImg(employerId?: string | null) {
+    if (!employerId) return null
+    const res = await fetch(`/api/employers/colleagues/fetchByCompany?employer_id=${employerId}`)
+    const json = await res.json()
+    if (!json.profile_img) return null
+    const imgPath = json.profile_img
+    const urlRes = await fetch(`/api/employers/get-signed-url?bucket=user.avatars&path=${encodeURIComponent(imgPath)}`)
+    const urlJson = await urlRes.json()
+    return urlJson.signedUrl || null
   }
 
-  const handleRemoveMember = (id: number) => {
-    setMembers(members.filter((member) => member.id !== id))
+  useEffect(() => {
+    async function fetchAdmins() {
+      setLoadingColleagues(true)
+      const company = companyName || localStorage.getItem("company_name")
+      if (!company) {
+        setLoadingColleagues(false)
+        return
+      }
+      const res = await fetch(`/api/employers/colleagues/fetchByCompany?company_name=${encodeURIComponent(company)}`)
+      const json = await res.json()
+      if (json.data) {
+        const colleagues: ApiColleague[] = json.data
+        const withAvatars = await Promise.all(
+          colleagues.map(async (u, idx) => {
+            const avatarUrl = await fetchProfileImg(u.id)
+            return { ...u, avatarUrl, idx }
+          })
+        )
+        setAllColleagues(withAvatars)
+      }
+      setLoadingColleagues(false)
+    }
+    fetchAdmins()
+  }, [companyName])
+
+  useEffect(() => {
+    async function fetchJobTeamAccess() {
+      if (!jobId || allColleagues.length === 0) return
+      const res = await fetch(`/api/jobs/team-access?job_id=${jobId}`)
+      const json: { data?: JobTeamAccess[] } = await res.json()
+      const accessList = json.data ?? []
+
+      const adminMembers: Colleague[] = allColleagues
+        .filter(c => c.company_admin)
+        .map((c) => ({
+          id: String(c.id),
+          name: `${c.first_name} ${c.last_name}`,
+          email: c.email ?? "",
+          role: "Admin",
+          avatar: (c.first_name?.[0] || "") + (c.last_name?.[0] || ""),
+          isAdmin: true,
+          avatarUrl: c.avatarUrl,
+        }))
+
+      const nonAdminMembers: Colleague[] = accessList
+        .filter(access => {
+          const c = allColleagues.find(col => String(col.id) === String(access.employer_id))
+          return !c?.company_admin
+        })
+        .map((access) => {
+          const c = allColleagues.find(col => String(col.id) === String(access.employer_id))
+          return {
+            id: String(access.employer_id),
+            name: c ? `${c.first_name} ${c.last_name}` : "Unknown",
+            email: c?.email ?? "",
+            role: access.role,
+            avatar: c ? (c.first_name?.[0] || "") + (c.last_name?.[0] || "") : "",
+            isAdmin: false,
+            avatarUrl: c?.avatarUrl,
+          }
+        })
+
+      let owner: Colleague | undefined
+      if (currentEmployerId) {
+        const ownerColleague = allColleagues.find(c => String(c.id) === String(currentEmployerId))
+        if (ownerColleague) {
+          owner = {
+            id: String(ownerColleague.id),
+            name: `${ownerColleague.first_name} ${ownerColleague.last_name}`,
+            email: ownerColleague.email ?? "",
+            role: "Owner",
+            avatar: (ownerColleague.first_name?.[0] || "") + (ownerColleague.last_name?.[0] || ""),
+            isAdmin: !!ownerColleague.company_admin,
+            avatarUrl: ownerColleague.avatarUrl,
+          }
+        }
+      }
+      const allMembers = [...adminMembers, ...nonAdminMembers]
+      const filteredMembers = allMembers.filter(m => !owner || m.id !== owner.id)
+      setMembers(owner ? [owner, ...filteredMembers] : allMembers)
+    }
+    fetchJobTeamAccess()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId, allColleagues])
+
+  const handleAddMember = async () => {
+    if (!selectedColleagueId) return
+    const selected = allColleagues.find(c => c.id === selectedColleagueId)
+    if (!selected) return
+    if (members.some(m => m.email === selected.email)) return
+    await fetch("/api/jobs/team-access", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_id: jobId,
+        employer_id: selected.id,
+        role: "Viewer",
+        can_edit: false,
+        can_view: true,
+      }),
+    })
+
+    setSelectedColleagueId(null)
+    const res = await fetch(`/api/jobs/team-access?job_id=${jobId}`)
+    const json: { data?: JobTeamAccess[] } = await res.json()
+    if (json.data) {
+      const accessList = json.data
+      const membersList: Colleague[] = accessList.map((access) => {
+        const c = allColleagues.find(col => String(col.id) === String(access.employer_id))
+        return {
+          id: String(access.employer_id),
+          name: c ? `${c.first_name} ${c.last_name}` : "Unknown",
+          email: c?.email ?? "",
+          role: access.role,
+          avatar: c ? (c.first_name?.[0] || "") + (c.last_name?.[0] || "") : "",
+          isAdmin: !!c?.company_admin || access.role === "Admin",
+          avatarUrl: c?.avatarUrl,
+        }
+      })
+
+      let owner: Colleague | undefined
+      if (currentEmployerId) {
+        const ownerColleague = allColleagues.find(c => String(c.id) === String(currentEmployerId))
+        if (ownerColleague) {
+          owner = {
+            id: String(ownerColleague.id),
+            name: `${ownerColleague.first_name} ${ownerColleague.last_name}`,
+            email: ownerColleague.email ?? "",
+            role: "Owner",
+            avatar: (ownerColleague.first_name?.[0] || "") + (ownerColleague.last_name?.[0] || ""),
+            isAdmin: !!ownerColleague.company_admin,
+            avatarUrl: ownerColleague.avatarUrl,
+          }
+        }
+      }
+      const filteredMembers = membersList.filter(m => !owner || m.id !== owner.id)
+      setMembers(owner ? [owner, ...filteredMembers] : membersList)
+    }
   }
 
-  const handleChangeRole = (id: number, newRole: string) => {
-    setMembers(members.map((member) => (member.id === id ? { ...member, role: newRole } : member)))
+  const handleRemoveMember = async (id: string) => {
+    const member = members.find(m => m.id === id)
+    if (!member || member.isAdmin) return
+    await fetch("/api/jobs/team-access", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_id: jobId,
+        employer_id: id,
+      }),
+    })
+    const res = await fetch(`/api/jobs/team-access?job_id=${jobId}`)
+    const json: { data?: JobTeamAccess[] } = await res.json()
+    if (json.data) {
+      const accessList = json.data
+      const membersList: Colleague[] = accessList.map((access) => {
+        const c = allColleagues.find(col => String(col.id) === String(access.employer_id))
+        return {
+          id: String(access.employer_id),
+          name: c ? `${c.first_name} ${c.last_name}` : "Unknown",
+          email: c?.email ?? "",
+          role: access.role,
+          avatar: c ? (c.first_name?.[0] || "") + (c.last_name?.[0] || "") : "",
+          isAdmin: !!c?.company_admin || access.role === "Admin",
+          avatarUrl: c?.avatarUrl,
+        }
+      })
+      setMembers(membersList)
+    }
   }
 
-  const handleAddTag = () => {
-    if (newTagName.trim() === "") return
+  const handleChangeRole = async (id: string, newRole: string) => {
+    const member = members.find(m => m.id === id)
+    if (!member || member.isAdmin) return
+    await fetch("/api/jobs/team-access", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_id: jobId,
+        employer_id: id,
+        role: newRole,
+        can_edit: newRole !== "Viewer",
+        can_view: true,
+      }),
+    })
+    const res = await fetch(`/api/jobs/team-access?job_id=${jobId}`)
+    const json: { data?: JobTeamAccess[] } = await res.json()
+    if (json.data) {
+      const accessList = json.data
+      const membersList: Colleague[] = accessList.map((access) => {
+        const c = allColleagues.find(col => String(col.id) === String(access.employer_id))
+        return {
+          id: String(access.employer_id),
+          name: c ? `${c.first_name} ${c.last_name}` : "Unknown",
+          email: c?.email ?? "",
+          role: access.role,
+          avatar: c ? (c.first_name?.[0] || "") + (c.last_name?.[0] || "") : "",
+          isAdmin: !!c?.company_admin || access.role === "Admin",
+          avatarUrl: c?.avatarUrl,
+        }
+      })
+      setMembers(membersList)
+    }
+  }
 
+  const handleAddTag = async () => {
+    const trimmedName = newTagName.trim()
+    if (trimmedName.length < 2) {
+      setTagError("Tag name must be at least 2 characters.")
+      return
+    }
+    if (trimmedName.length > 20) {
+      setTagError("Tag name must be at most 20 characters.")
+      return
+    }
+    if (tags.some(tag => tag.name.toLowerCase() === trimmedName.toLowerCase())) {
+      setTagError("Tag already exists.")
+      return
+    }
+    setTagError(null)
     const newTag = {
       id: tags.length + 1,
-      name: newTagName,
+      name: trimmedName,
       color: newTagColor,
     }
-
-    setTags([...tags, newTag])
+    const updatedTags = [...tags, newTag]
+    setTags(updatedTags)
     setNewTagName("")
+    await updateJobTags(updatedTags)
   }
 
-  const handleRemoveTag = (id: number) => {
-    setTags(tags.filter((tag) => tag.id !== id))
+  async function updateJobTags(updatedTags: { id: number; name: string; color: string }[]) {
+    await fetch("/api/jobs/update-tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_id: jobId,
+        tags: Array.isArray(updatedTags) ? updatedTags.map(({ name, color }) => ({ name, color })) : [],
+      }),
+    })
+  }
+
+  const handleRemoveTag = async (id: number) => {
+    const updatedTags = tags.filter((tag) => tag.id !== id)
+    setTags(updatedTags)
+    await updateJobTags(updatedTags)
   }
 
   const handleNotificationToggle = (key: string) => {
@@ -89,12 +355,26 @@ export default function JobSettings({ jobId }: { jobId: number }) {
     })
   }
 
+  const { data: session } = useSession()
+  const currentEmployerId = (session?.user as SessionUser | undefined)?.employerId
+
+  const sortedMembers = [...members].sort((a, b) => {
+    if (currentEmployerId) {
+      if (a.id === currentEmployerId) return -1
+      if (b.id === currentEmployerId) return 1
+    }
+    return 0
+  }).map(m =>
+    currentEmployerId && m.id === currentEmployerId
+      ? { ...m, role: "Owner" }
+      : m
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">Job Settings</h2>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Job ID: {jobId}</span>
         </div>
       </div>
 
@@ -109,44 +389,82 @@ export default function JobSettings({ jobId }: { jobId: number }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-4">
-            {members.map((member) => (
+            {sortedMembers.map((member) => (
               <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-medium">
-                    {member.avatar}
-                  </div>
+                  {member.avatarUrl ? (
+                    <img
+                      src={member.avatarUrl}
+                      alt={member.name}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
+                      <FaUser className="text-white w-4 h-4" />
+                    </div>
+                  )}
                   <div>
-                    <div className="font-medium">{member.name}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {member.name}
+                      {currentEmployerId && member.id === currentEmployerId && (
+                        <span className="ml-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200">
+                          You
+                        </span>
+                      )}
+                    </div>
                     <div className="text-sm text-muted-foreground">{member.email}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Select defaultValue={member.role} onValueChange={(value) => handleChangeRole(member.id, value)}>
-                    <SelectTrigger className="w-[110px]">
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Editor">Editor</SelectItem>
-                      <SelectItem value="Viewer">Viewer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Tooltip
-                    title={
-                      member.role === "Admin" && members.filter((m) => m.role === "Admin").length === 1
-                        ? "Cannot remove the only admin"
-                        : "Remove member"
-                    }
-                  >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveMember(member.id)}
-                      disabled={member.role === "Admin" && members.filter((m) => m.role === "Admin").length === 1}
-                    >
-                      <X className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </Tooltip>
+                  {member.role === "Owner" ? (
+                    <div className="flex items-center gap-2 mr-14">
+                      <span className=" text-gray-500 text-sm ">Owner</span>
+                      <PiCrownSimpleFill className="h-5 w-5 text-yellow-500" />
+                    </div>
+                  ) : (
+                    <>
+                      <Tooltip
+                        title={
+                          member.isAdmin
+                            ? "This role cannot be changed"
+                            : ""
+                        }
+                      >
+                        <div>
+                          <Select
+                            defaultValue={member.role}
+                            onValueChange={(value) => handleChangeRole(member.id, value)}
+                            disabled={member.isAdmin}
+                          >
+                            <SelectTrigger className="w-[110px]">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Admin">Admin</SelectItem>
+                              <SelectItem value="Editor">Editor</SelectItem>
+                              <SelectItem value="Viewer">Viewer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </Tooltip>
+                      <Tooltip
+                        title={
+                          member.isAdmin
+                            ? "This member cannot be removed"
+                            : "Remove member"
+                        }
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveMember(member.id)}
+                          disabled={member.isAdmin}
+                        >
+                          <X className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
@@ -156,29 +474,49 @@ export default function JobSettings({ jobId }: { jobId: number }) {
 
           <div className="flex flex-col gap-4">
             <h3 className="text-sm font-medium">Add Team Member</h3>
-            <div className="flex gap-3">
-              <Input
-                placeholder="Email address"
-                value={newMemberEmail}
-                onChange={(e) => setNewMemberEmail(e.target.value)}
-                className="flex-1"
-              />
-              <Select defaultValue={newMemberRole} onValueChange={setNewMemberRole}>
-                <SelectTrigger className="w-[110px]">
-                  <SelectValue placeholder="Role" />
+            <div className="flex gap-3 items-center">
+              <Select
+                value={selectedColleagueId ?? ""}
+                onValueChange={v => setSelectedColleagueId(v)}
+                disabled={loadingColleagues}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder={loadingColleagues ? "Loading..." : "Select employer"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Editor">Editor</SelectItem>
-                  <SelectItem value="Viewer">Viewer</SelectItem>
+                  {loadingColleagues ? (
+                    <div className="p-4 text-center text-muted-foreground">Loading...</div>
+                  ) : (
+                    allColleagues
+                      .filter(c => !members.some(m => m.email === c.email))
+                      .map((c) => (
+                        <SelectItem key={c.id} value={c.id ?? ""}>
+                          <div className="flex items-center gap-2">
+                            {c.avatarUrl ? (
+                              <img
+                                src={c.avatarUrl}
+                                alt={`${c.first_name} ${c.last_name}`}
+                                className="w-7 h-7 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-7 h-7 rounded-full bg-blue-400 flex items-center justify-center">
+                                <FaUser className="text-white w-4 h-4" />
+                              </div>
+                            )}
+                            <span>{c.first_name} {c.last_name}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                  )}
                 </SelectContent>
               </Select>
-              <Button onClick={handleAddMember}>Add</Button>
+              <Button onClick={handleAddMember} disabled={!selectedColleagueId || loadingColleagues}>Add</Button>
             </div>
-
+            {/* Removed General Access Option */}
             <div className="text-sm text-muted-foreground mt-2">
               <h4 className="font-medium text-foreground">Role Permissions:</h4>
               <ul className="list-disc pl-5 mt-1 space-y-1">
+ 
                 <li>
                   <span className="font-medium">Admin:</span> Full access to edit, delete, and manage permissions
                 </li>
@@ -248,7 +586,10 @@ export default function JobSettings({ jobId }: { jobId: number }) {
               <Input
                 placeholder="Tag name"
                 value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
+                onChange={(e) => {
+                  setNewTagName(e.target.value)
+                  setTagError(null)
+                }}
                 className="flex-1"
               />
               <Select defaultValue={newTagColor} onValueChange={setNewTagColor}>
@@ -266,6 +607,9 @@ export default function JobSettings({ jobId }: { jobId: number }) {
               </Select>
               <Button onClick={handleAddTag}>Add Tag</Button>
             </div>
+            {tagError && (
+              <div className="text-sm text-red-600">{tagError}</div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -345,9 +689,9 @@ export default function JobSettings({ jobId }: { jobId: number }) {
           <div className="pt-4">
             <h3 className="text-sm font-medium mb-2">Notification Recipients</h3>
             <div className="space-y-2">
-              {members.map((member) => (
+              {sortedMembers.map((member) => (
                 <div key={member.id} className="flex items-center gap-2">
-                  <Checkbox id={`notify-${member.id}`} defaultChecked={member.role === "Admin"} />
+                  <Checkbox id={`notify-${member.id}`} defaultChecked={member.role === "Admin" || member.role === "Owner"} />
                   <Label htmlFor={`notify-${member.id}`} className="text-sm">
                     {member.name} ({member.email})
                   </Label>
@@ -546,4 +890,12 @@ function Checkbox({ id, defaultChecked }: { id: string; defaultChecked?: boolean
       />
     </div>
   )
+}
+
+type SessionUser = {
+  name?: string | null
+  email?: string | null
+  image?: string | null
+  role?: string | null
+  employerId?: string
 }

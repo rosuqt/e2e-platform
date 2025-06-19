@@ -140,50 +140,40 @@ export default function AboutPage() {
   const MAX_COVERS = 3;
 
   const handleDownload = async (type: "resume" | "cover", idx: number) => {
-    const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
+    let filePath = "";
     if (type === "resume" && uploadedResume.length > idx) {
+      filePath = uploadedResume[idx].url.replace(/^\/storage\//, "");
       setDownloadingResumeIdx(idx);
       try {
-        const res = await fetch(`/api/students/student-profile/getDocuments?student_id=${student_id}`);
+        const res = await fetch("/api/students/get-signed-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bucket: "student.documents", path: filePath }),
+        });
         const data = await res.json();
-        const urls: string[] = data.resumeUrls || [];
-        const url = urls[idx];
-        if (url) {
-          const fileRes = await fetch(url);
-          if (!fileRes.ok) throw new Error("File not found");
-          const blob = await fileRes.blob();
-          const blobUrl = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = blobUrl;
-          a.download = uploadedResume[idx].name;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(blobUrl);
+        if (res.ok && data.signedUrl) {
+          window.open(data.signedUrl, "_blank");
+        } else {
+          alert(data.error || "Resume file not found or not accessible.");
         }
       } finally {
         setDownloadingResumeIdx(null);
       }
     }
     if (type === "cover" && uploadedCover.length > idx) {
+      filePath = uploadedCover[idx].url.replace(/^\/storage\//, "");
       setDownloadingCoverIdx(idx);
       try {
-        const res = await fetch(`/api/students/student-profile/getDocuments?student_id=${student_id}`);
+        const res = await fetch("/api/students/get-signed-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bucket: "student.documents", path: filePath }),
+        });
         const data = await res.json();
-        const urls: string[] = data.coverLetterUrls || [];
-        const url = urls[idx];
-        if (url) {
-          const fileRes = await fetch(url);
-          if (!fileRes.ok) throw new Error("File not found");
-          const blob = await fileRes.blob();
-          const blobUrl = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = blobUrl;
-          a.download = uploadedCover[idx].name;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(blobUrl);
+        if (res.ok && data.signedUrl) {
+          window.open(data.signedUrl, "_blank");
+        } else {
+          alert(data.error || "Cover letter file not found or not accessible.");
         }
       } finally {
         setDownloadingCoverIdx(null);
@@ -1780,7 +1770,7 @@ export default function AboutPage() {
               className="border-blue-300 text-blue-600 hover:bg-blue-50"
               onClick={() => setOpenEditContact(true)}
             >
-              Edit Contact Info
+                           Edit Contact Info
             </Button>
           </div>
         </div>

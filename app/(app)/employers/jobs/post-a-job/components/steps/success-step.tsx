@@ -3,9 +3,14 @@ import { CheckCircle, ExternalLink, Share2, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ConfettiCustomShapes } from "@/components/magicui/shapes";
+import { useEffect } from "react";
 
 export default function JobPostingLive({ onPostAnotherJob }: { onPostAnotherJob?: () => void }) {
   const router = useRouter();
+
+  useEffect(() => {
+    window.scrollTo(0, 320); 
+  }, []);
 
   const handleViewJobPost = () => {
     router.push("/employers/jobs/job-listings");

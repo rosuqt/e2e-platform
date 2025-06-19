@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,12 @@ import { Checkbox } from "../ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "../ui/card";
-import { Calendar, Clock, Users, MessageSquare, Award, ChevronDown, ChevronUp, Plus, Trash2, BookOpen, Briefcase, Bus, UserCheck, Clock as ClockIcon, Lightbulb } from "lucide-react";
+import { Calendar,  Users, MessageSquare, Award, ChevronDown, ChevronUp, Plus, Trash2, BookOpen, Briefcase, Bus, UserCheck, Clock as ClockIcon, Lightbulb } from "lucide-react";
 import type { JobPostingData } from "../../lib/types";
 import React from "react";
+import { DatePicker, TimePicker } from "@mui/x-date-pickers";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 
 interface ManageStepProps {
   formData: JobPostingData;
@@ -46,6 +49,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
       type: string;
       options?: string[];
       autoReject: boolean;
+      correctAnswer?: string | string[];
     }>
   >([]);
 
@@ -54,45 +58,79 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
   const [newQuestionOptions, setNewQuestionOptions] = useState("");
   const [newQuestionAutoReject, setNewQuestionAutoReject] = useState(false);
   const [newQuestionCorrectAnswer, setNewQuestionCorrectAnswer] = useState<string | string[]>("");
+  const [textAutoRejectKeywords, setTextAutoRejectKeywords] = useState("");
   const [deadlineError, setDeadlineError] = useState<string | null>(null);
   const [newQuestionOptionsError, setNewQuestionOptionsError] = useState<string | null>(null);
   const [maxApplicantsError, setMaxApplicantsError] = useState<string | null>(null);
 
+  const syncingPerks = useRef(false);
+  const syncingQuestions = useRef(false);
+
   useEffect(() => {
     if (!arraysEqual(selectedPerks, formData.perksAndBenefits || [])) {
+      syncingPerks.current = true;
       setSelectedPerks(formData.perksAndBenefits || []);
     }
-  }, [formData.perksAndBenefits, selectedPerks]);
+  }, [formData.perksAndBenefits]);
 
   useEffect(() => {
     if (!arraysEqual(questions, formData.applicationQuestions || [])) {
+      syncingQuestions.current = true;
       setQuestions(formData.applicationQuestions || []);
     }
-  }, [formData.applicationQuestions, questions]);
+  }, [formData.applicationQuestions]);
 
   useEffect(() => {
-    if (!arraysEqual(selectedPerks, formData.perksAndBenefits || [])) {
+    if (syncingPerks.current) {
+      syncingPerks.current = false;
+      return;
+    }
+    if (
+      !arraysEqual(formData.perksAndBenefits || [], selectedPerks)
+      && !arraysEqual(selectedPerks, [])
+    ) {
       const updatedData = { ...formData, perksAndBenefits: selectedPerks };
       updateFormData(updatedData);
       sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPerks]);
 
   useEffect(() => {
-    if (!arraysEqual(questions, formData.applicationQuestions || [])) {
+    if (syncingQuestions.current) {
+      syncingQuestions.current = false;
+      return;
+    }
+    if (
+      !arraysEqual(formData.applicationQuestions || [], questions)
+      && !arraysEqual(questions, [])
+    ) {
       const updatedData = { ...formData, applicationQuestions: questions };
       updateFormData(updatedData);
       sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions]);
 
   const toggleSection = (section: keyof typeof sections) => {
-    setSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
+    setSections((prev) => {
+      const next = { ...prev, [section]: !prev[section] }
+      setTimeout(() => {
+        if (!next[section]) {
+          if (section === "deadline") {
+            updateFormData({ applicationDeadline: { date: "", time: "" } })
+          }
+          if (section === "maxApplicants") {
+            updateFormData({ maxApplicants: "" })
+          }
+          if (section === "questions") {
+            setQuestions([])
+          }
+          if (section === "perks") {
+            setSelectedPerks([])
+          }
+        }
+      }, 0)
+      return next
+    })
   };
 
   const perks = [
@@ -112,6 +150,13 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
 
   const addQuestion = () => {
     if (newQuestion.trim()) {
+      if (newQuestionType === "text" && newQuestionAutoReject) {
+        if (!textAutoRejectKeywords.trim()) {
+          setNewQuestionOptionsError("Enter at least one keyword for auto-reject.");
+          return;
+        }
+        setNewQuestionOptionsError(null);
+      }
       if (newQuestionType !== "text") {
         if (newQuestionType === "yesno") {
           setNewQuestionOptionsError(null);
@@ -159,7 +204,9 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
         newQuestionAutoReject
           ? newQuestionType === "multi"
             ? newQuestionCorrectAnswer
-            : newQuestionCorrectAnswer
+            : newQuestionType === "text"
+              ? textAutoRejectKeywords.split(",").map((k) => k.trim()).filter(Boolean)
+              : newQuestionCorrectAnswer
           : undefined;
 
       const updatedQuestions = [
@@ -167,7 +214,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
         {
           question: newQuestion,
           type: newQuestionType,
-          options,
+          options: options && Array.isArray(options) ? options : undefined,
           autoReject: newQuestionAutoReject,
           correctAnswer,
         },
@@ -179,6 +226,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
       setNewQuestionAutoReject(false);
       setNewQuestionType("text");
       setNewQuestionCorrectAnswer("");
+      setTextAutoRejectKeywords("");
       setNewQuestionOptionsError(null);
     }
   };
@@ -208,9 +256,9 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
       <div className="bg-blue-50 rounded-lg p-5 border border-blue-100">
         <p className="text-sm text-blue-700 flex items-center">
           <Lightbulb className="h-4 w-4 text-blue-500" />
-          <span className="font-medium ">Pro tip:</span>{" "}
+          <span className="font-medium ">Pro tip: </span>{" "}
           <span>
-            Adding screening questions helps you filter candidates more efficiently and reduces time spent on unsuitable applicants.{" "}
+           Helps you filter candidates more efficiently and reduces time spent on unsuitable applicants.{" "}
             <span className="font-bold">You can skip it if you prefer.</span>
           </span>
         </p>
@@ -252,57 +300,80 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                 transition={{ duration: 0.2 }}
               >
                 <div className="p-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="deadline-date" className="text-sm text-gray-600 mb-1.5 block">
-                        Date
-                      </Label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="deadline-date"
-                          type="date"
-                          value={formData.applicationDeadline?.date || ""}
-                          onChange={(e) => {
-                            const err = validateDeadline(e.target.value);
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="deadline-date" className="text-sm text-gray-600 mb-1.5 block">
+                          Date
+                        </Label>
+                        <DatePicker
+                          value={formData.applicationDeadline?.date ? new Date(formData.applicationDeadline.date) : null}
+                          onChange={(date) => {
+                            const value = date instanceof Date && !isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : "";
+                            const err = validateDeadline(value);
                             setDeadlineError(err);
                             updateFormData({
                               applicationDeadline: {
                                 ...formData.applicationDeadline,
-                                date: e.target.value,
+                                date: value,
                               },
                             });
                           }}
-                          className={`pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${deadlineError ? "border-red-500" : ""}`}
+                          slotProps={{
+                            textField: {
+                              id: "deadline-date",
+                              size: "small",
+                              error: !!deadlineError,
+                              helperText: deadlineError || "",
+                              fullWidth: true,
+                            }
+                          }}
                         />
-                        {deadlineError && (
-                          <div className="text-xs text-red-500 mt-1">{deadlineError}</div>
-                        )}
                       </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="deadline-time" className="text-sm text-gray-600 mb-1.5 block">
-                        Time
-                      </Label>
-                      <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="deadline-time"
-                          type="time"
-                          value={formData.applicationDeadline?.time || ""}
-                          onChange={(e) =>
+                      <div>
+                        <Label htmlFor="deadline-time" className="text-sm text-gray-600 mb-1.5 block">
+                          Time
+                        </Label>
+                        <TimePicker
+                          value={
+                            formData.applicationDeadline?.time
+                              ? (() => {
+                                  const [h, m] = formData.applicationDeadline.time.split(":");
+                                  const d = new Date();
+                                  d.setHours(Number(h) || 0, Number(m) || 0, 0, 0);
+                                  return d;
+                                })()
+                              : null
+                          }
+                          onChange={(date) => {
+                            const value =
+                              date instanceof Date && !isNaN(date.getTime())
+                                ? date.toTimeString().slice(0, 5)
+                                : "";
+                            let deadlineDate = formData.applicationDeadline?.date;
+                            if (!deadlineDate && value) {
+                              const today = new Date();
+                              deadlineDate = today.toISOString().slice(0, 10);
+                            }
                             updateFormData({
                               applicationDeadline: {
                                 ...formData.applicationDeadline,
-                                time: e.target.value,
+                                date: deadlineDate,
+                                time: value,
                               },
-                            })
-                          }
-                          className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                            });
+                          }}
+                          slotProps={{
+                            textField: {
+                              id: "deadline-time",
+                              size: "small",
+                              fullWidth: true,
+                            }
+                          }}
                         />
                       </div>
                     </div>
-                  </div>
+                  </LocalizationProvider>
                   <p className="text-xs text-gray-500 mt-3">
                     Your job posting will automatically close at this date and time.
                   </p>
@@ -347,34 +418,36 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                 transition={{ duration: 0.2 }}
               >
                 <div className="p-5">
-                  <div className="relative">
-                    <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      type="number"
-                      min="1"
-                      value={formData.maxApplicants}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === "") {
-                          setMaxApplicantsError(null);
-                          updateFormData({ maxApplicants: "" });
-                          return;
-                        }
-                        const num = Number.parseInt(value);
-                        if (isNaN(num) || num < 1) {
-                          setMaxApplicantsError("Enter a valid number greater than 0.");
-                          updateFormData({ maxApplicants: "" });
-                        } else if (num > 10000) {
-                          setMaxApplicantsError("Number of applicants is too high.");
-                          updateFormData({ maxApplicants: value });
-                        } else {
-                          setMaxApplicantsError(null);
-                          updateFormData({ maxApplicants: value });
-                        }
-                      }}
-                      placeholder="Number of applicants"
-                      className={`pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${maxApplicantsError ? "border-red-500" : ""}`}
-                    />
+                  <div className="relative flex flex-col">
+                    <div className="relative">
+                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                      <Input
+                        type="number"
+                        min="1"
+                        value={formData.maxApplicants}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === "") {
+                            setMaxApplicantsError(null);
+                            updateFormData({ maxApplicants: "" });
+                            return;
+                          }
+                          const num = Number.parseInt(value);
+                          if (isNaN(num) || num < 1) {
+                            setMaxApplicantsError("Enter a valid number greater than 0.");
+                            updateFormData({ maxApplicants: "" });
+                          } else if (num > 10000) {
+                            setMaxApplicantsError("Number of applicants is too high.");
+                            updateFormData({ maxApplicants: value });
+                          } else {
+                            setMaxApplicantsError(null);
+                            updateFormData({ maxApplicants: value });
+                          }
+                        }}
+                        placeholder="Number of applicants"
+                        className={`pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 h-10 ${maxApplicantsError ? "border-red-500" : ""}`}
+                      />
+                    </div>
                     {maxApplicantsError && (
                       <div className="text-xs text-red-500 mt-1">{maxApplicantsError}</div>
                     )}
@@ -576,8 +649,37 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                           </div>
                         </motion.div>
                       )}
+                      {newQuestionType === "text" && newQuestionAutoReject && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div>
+                            <Label htmlFor="text-keywords" className="text-sm text-gray-700 mb-1.5 block">
+                              Auto-reject keywords (comma separated)
+                            </Label>
+                            <Input
+                              id="text-keywords"
+                              value={textAutoRejectKeywords}
+                              onChange={e => {
+                                setTextAutoRejectKeywords(e.target.value);
+                                setNewQuestionOptionsError(null);
+                              }}
+                              placeholder="e.g. React, Node.js, Internship"
+                              className={`border-gray-200 focus:border-blue-500 focus:ring-blue-500 ${newQuestionOptionsError ? "border-red-500" : ""}`}
+                            />
+                            {newQuestionOptionsError && (
+                              <div className="text-xs text-red-500 mt-1">{newQuestionOptionsError}</div>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">
+                              Enter keywords that must be present in the answer. Separate with commas.
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
                     </AnimatePresence>
-
                     {newQuestionType !== "text" && (
                       <div className="flex items-center space-x-2">
                         <Checkbox
@@ -588,6 +690,19 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                         />
                         <Label htmlFor="autoReject" className="text-sm text-gray-700">
                           Auto-reject if answer doesn&apos;t match criteria
+                        </Label>
+                      </div>
+                    )}
+                    {newQuestionType === "text" && (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="autoRejectText"
+                          checked={newQuestionAutoReject}
+                          onCheckedChange={(checked) => setNewQuestionAutoReject(checked === true)}
+                          className="data-[state=checked]:bg-red-500 border-red-200"
+                        />
+                        <Label htmlFor="autoRejectText" className="text-sm text-gray-700">
+                          Auto-reject if answer does not contain required keywords
                         </Label>
                       </div>
                     )}
