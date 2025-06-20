@@ -1099,7 +1099,7 @@ function ApplicantCard({
           capitalize(applicant.status) === "New"
             ? "border-l-amber-500"
             : capitalize(applicant.status) === "Shortlisted"
-            ? "border-l-blue-500"
+            ? "border-l-cyan-500"
             : capitalize(applicant.status) === "Rejected"
             ? "border-l-red-500"
             : (capitalize(applicant.status) === "Interview" || capitalize(applicant.status) === "Interview scheduled")
@@ -1107,7 +1107,7 @@ function ApplicantCard({
             : capitalize(applicant.status) === "Invited"
             ? "border-l-yellow-500"
             : capitalize(applicant.status) === "Waitlisted"
-            ? "border-l-yellow-700"
+            ? "border-l-blue-500"
             : "border-l-gray-200"
         }
       `}
@@ -1132,13 +1132,13 @@ function ApplicantCard({
                   capitalize(applicant.status) === "New"
                     ? "bg-amber-100 text-amber-700 hover:bg-amber-300 hover:text-amber-800 pointer-events-none"
                     : capitalize(applicant.status) === "Shortlisted"
-                    ? "bg-blue-100 text-blue-700 hover:bg-blue-300 hover:text-blue-800 pointer-events-none"
+                    ? "bg-cyan-100 text-cyan-700 hover:bg-cyan-300 hover:text-cyan-800 pointer-events-none"
                     : capitalize(applicant.status) === "Rejected"
                     ? "bg-red-100 text-red-700 hover:bg-red-300 hover:text-red-800 pointer-events-none"
                     : (capitalize(applicant.status) === "Interview" || capitalize(applicant.status) === "Interview scheduled")
                     ? "bg-purple-100 text-purple-700 hover:bg-purple-300 hover:text-purple-800 pointer-events-none"
                     : capitalize(applicant.status) === "Waitlisted"
-                    ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-300 hover:text-yellow-800 pointer-events-none"
+                    ? "bg-blue-100 text-blue-700 hover:bg-blue-300 hover:text-blue-800 pointer-events-none"
                     : "bg-yellow-100 text-yellow-700 hover:bg-yellow-300 hover:text-yellow-800 pointer-events-none"
                 }>
                   {capitalize(applicant.status) === "Interview scheduled" ? "Interview Scheduled" : (capitalize(applicant.status) || "New")}
