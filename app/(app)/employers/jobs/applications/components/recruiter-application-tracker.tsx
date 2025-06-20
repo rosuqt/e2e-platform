@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RecruiterApplicationDetailsModal } from "./recruiter-application-details"
 import InterviewScheduleModal from "./modals/interview-schedule"
+import SendOfferModal from "./modals/send-offer"
 import { toast } from "react-toastify"
 import Avatar from "@mui/material/Avatar"
 import { motion } from "framer-motion"
@@ -185,6 +186,8 @@ export default function RecruiterApplicationTracker() {
     [key: string]: unknown
   }
   const [editInterviewData, setEditInterviewData] = useState<InterviewData | null>(null)
+  const [sendOfferModalOpen, setSendOfferModalOpen] = useState(false)
+  const [offerApplicant, setOfferApplicant] = useState<Applicant | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -525,6 +528,8 @@ export default function RecruiterApplicationTracker() {
                                   handleReschedInterview={handleReschedInterview}
                                   onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                                  setOfferApplicant={setOfferApplicant}
+                                  setSendOfferModalOpen={setSendOfferModalOpen}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -567,6 +572,8 @@ export default function RecruiterApplicationTracker() {
                                   handleReschedInterview={handleReschedInterview}
                                   onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                                  setOfferApplicant={setOfferApplicant}
+                                  setSendOfferModalOpen={setSendOfferModalOpen}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -609,6 +616,8 @@ export default function RecruiterApplicationTracker() {
                                   handleReschedInterview={handleReschedInterview}
                                   onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                                  setOfferApplicant={setOfferApplicant}
+                                  setSendOfferModalOpen={setSendOfferModalOpen}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -651,6 +660,8 @@ export default function RecruiterApplicationTracker() {
                                   handleReschedInterview={handleReschedInterview}
                                   onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                                  setOfferApplicant={setOfferApplicant}
+                                  setSendOfferModalOpen={setSendOfferModalOpen}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -693,6 +704,8 @@ export default function RecruiterApplicationTracker() {
                                   handleReschedInterview={handleReschedInterview}
                                   onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                                  setOfferApplicant={setOfferApplicant}
+                                  setSendOfferModalOpen={setSendOfferModalOpen}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -735,6 +748,8 @@ export default function RecruiterApplicationTracker() {
                                   handleReschedInterview={handleReschedInterview}
                                   onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                                  setOfferApplicant={setOfferApplicant}
+                                  setSendOfferModalOpen={setSendOfferModalOpen}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -777,6 +792,8 @@ export default function RecruiterApplicationTracker() {
                                   handleReschedInterview={handleReschedInterview}
                                   onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                                  setOfferApplicant={setOfferApplicant}
+                                  setSendOfferModalOpen={setSendOfferModalOpen}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -961,6 +978,19 @@ export default function RecruiterApplicationTracker() {
             setApplicants(prev => prev.map(app => app.application_id === application_id ? { ...app, status: "Interview scheduled" } : app))
           }}
         />
+        <SendOfferModal
+          open={sendOfferModalOpen}
+          onClose={() => { setSendOfferModalOpen(false); setOfferApplicant(null); }}
+          initial={offerApplicant ? {
+            application_id: offerApplicant.application_id,
+            student_id: offerApplicant.student_id,
+            employer_id: employerId,
+            company_name: companyName
+          } : undefined}
+          onOfferSent={(application_id) => {
+            setApplicants(prev => prev.map(app => app.application_id === application_id ? { ...app, status: "Offer sent" } : app))
+          }}
+        />
       </div>
     </>
   )
@@ -974,6 +1004,8 @@ function ApplicantCard({
   handleReschedInterview,
   onShortlist,
   onReject,
+  setOfferApplicant,
+  setSendOfferModalOpen
 }: {
   applicant: Applicant
   selected: boolean 
@@ -983,6 +1015,8 @@ function ApplicantCard({
   handleReschedInterview: (applicant: Applicant, e: React.MouseEvent) => void
   onShortlist: () => Promise<void>
   onReject: () => Promise<void>
+  setOfferApplicant: (a: Applicant) => void
+  setSendOfferModalOpen: (open: boolean) => void
 }) {
 
   const formattedLocation = applicant.address
@@ -1213,7 +1247,7 @@ function ApplicantCard({
                       <CalendarIcon className="w-4 h-4 mr-2 text-green-500" />
                       Set Interview
                     </MenuItem>,
-                    <MenuItem key="send-offer" onClick={() => setAnchorEl(null)}>
+                    <MenuItem key="send-offer" onClick={() => { setAnchorEl(null); setOfferApplicant(applicant); setSendOfferModalOpen(true); }}>
                       <ArrowUpRight className="w-4 h-4 mr-2 text-yellow-500" />
                       Send Offer
                     </MenuItem>
@@ -1221,7 +1255,7 @@ function ApplicantCard({
                 }
                 if (status === "Interview" || status === "Interview scheduled") {
                   return [
-                    <MenuItem key="send-offer" onClick={() => setAnchorEl(null)}>
+                    <MenuItem key="send-offer" onClick={() => { setAnchorEl(null); setOfferApplicant(applicant); setSendOfferModalOpen(true); }}>
                       <ArrowUpRight className="w-4 h-4 mr-2 text-yellow-500" />
                       Send Offer
                     </MenuItem>,
@@ -1347,9 +1381,9 @@ function ApplicantCard({
               {capitalize(applicant.status) === "Waitlisted" && (
                 <Button
                   size="sm"
-                  className="bg-green-600 text-white hover:bg-green-700 flex items-center gap-1 text-xs font-medium shadow-none border-0"
+                  className="bg-green-100 text-green-700 hover:bg-green-200 flex items-center gap-1 text-xs font-medium shadow-none border-0"
                   style={{ boxShadow: 'none', border: 'none' }}
-                  onClick={e => { e.stopPropagation(); /* send offe*/ }}
+                  onClick={e => { e.stopPropagation(); setOfferApplicant(applicant); setSendOfferModalOpen(true); }}
                 >
                   <FaHandHoldingDollar className="w-4 h-4 mr-1" />
                   Send offer
