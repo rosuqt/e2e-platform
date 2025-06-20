@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Could not generate signed URL" }, { status: 500 });
     }
 
+    
     console.log("RETURN: 200 Signed URL", data.signedUrl);
     return NextResponse.json({ signedUrl: data.signedUrl });
   } catch (err) {

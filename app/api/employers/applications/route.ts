@@ -26,12 +26,22 @@ export async function GET() {
 
   const { data: applicants, error: applicantsError } = await supabase
     .from("applications")
-    .select("*")
+    .select(`
+      *,
+      job_postings (
+        job_title
+      )
+    `)
     .in("job_id", jobIds)
 
   if (applicantsError) {
     return NextResponse.json({ error: "Failed to fetch applicants" }, { status: 500 })
   }
 
-  return NextResponse.json({ applicants })
+  const applicantsWithJobTitle = (applicants || []).map(app => ({
+    ...app,
+    job_title: app.job_postings?.job_title,
+  }))
+
+  return NextResponse.json({ applicants: applicantsWithJobTitle })
 }

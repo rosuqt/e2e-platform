@@ -13,7 +13,6 @@ import Checkbox from "@mui/material/Checkbox"
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank"
 import CheckBoxIcon from "@mui/icons-material/CheckBox"
 import { useSession } from "next-auth/react"
-import Tooltip from "@mui/material/Tooltip"
 import { jobTitleSections } from "../../lib/jobTitles"
 import { courseExpertise, getRandomSkillsForCourse } from "../../lib/skills"
 
@@ -34,12 +33,13 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
   const [showPayAmount, setShowPayAmount] = useState<boolean>(
     formData.payType !== "" && formData.payType !== "No Pay"
   )
+  const [locationOptions, setLocationOptions] = useState<{ address: string; label: string }[]>([])
 
   const { data: session } = useSession()
 
   useEffect(() => {
     const employerId = (session?.user as { employerId?: string })?.employerId
-    if (!formData.location && employerId) {
+    if (employerId) {
       fetch("/api/employers/post-a-job/fetchAddress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -47,13 +47,16 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
       })
         .then(res => res.json())
         .then(data => {
-          if (data.address) {
-            handleFieldChange("location", data.address)
+          if (data.addresses && Array.isArray(data.addresses)) {
+            setLocationOptions(data.addresses)
+            if (!formData.location && data.addresses.length > 0) {
+              handleFieldChange("location", data.addresses[0].address)
+            }
           }
         })
         .catch(() => {})
     }
-  }, [formData.location, session?.user, handleFieldChange])
+  }, [session?.user, handleFieldChange])
 
   useEffect(() => {
     if (!Array.isArray(formData.skills)) {
@@ -244,23 +247,18 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               </Label>
             </div>
             <div className="p-4" style={{ position: "relative" }}>
-              <div style={{ position: "relative" }}>
-                <Tooltip title="This is your company address. To edit, go to Settings.">
-                  <span>
-                    <TextField
-                      value={formData.location}
-                      label="Location"
-                      fullWidth
-                      InputProps={{
-                        readOnly: true,
-                      }}
-                      error={errors.location}
-                      helperText={errors.location ? "Location is required" : ""}
-                    />
-                  </span>
-                </Tooltip>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">This location is preset based on your company profile.</p>
+              <MUIDropdown
+                label="Select a Location"
+                options={locationOptions.map(opt => ({
+                  value: opt.address,
+                  label: opt.label ? `${opt.label} - ${opt.address}` : opt.address
+                }))}
+                value={formData.location || ""}
+                onChange={(value) => handleFieldChange("location", value)}
+                error={errors.location}
+                errorMessage="Location is required"
+              />
+              <p className="text-xs text-gray-500 mt-2">Select the company or branch address for this job posting.</p>
             </div>
           </CardContent>
         </Card>
