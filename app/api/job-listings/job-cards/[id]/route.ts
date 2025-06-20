@@ -3,7 +3,7 @@ import supabase from "@/lib/supabase"
 import { getServerSession } from "next-auth"
 import { authOptions } from "../../../../../lib/authOptions"
 
-export async function GET(req: Request, context: { params: { id: string } }) {
+export async function GET(req: Request) {
 	try {
 		const session = await getServerSession(authOptions)
 		let employerId: string | undefined
@@ -20,8 +20,8 @@ export async function GET(req: Request, context: { params: { id: string } }) {
 			return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 		}
 
-		const params = await context.params
-		const jobId = params.id
+		const url = new URL(req.url)
+		const jobId = url.pathname.split("/").filter(Boolean).pop()
 		const { data, error } = await supabase
 			.from("job_postings")
 			.select("*")
@@ -104,7 +104,7 @@ export async function GET(req: Request, context: { params: { id: string } }) {
 	}
 }
 
-export async function PUT(req: Request, context: { params: { id: string } }) {
+export async function PUT(req: Request) {
 	try {
 		const session = await getServerSession(authOptions)
 		let employerId: string | undefined
@@ -121,8 +121,8 @@ export async function PUT(req: Request, context: { params: { id: string } }) {
 			return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 		}
 
-		const params = await context.params
-		const jobId = params.id
+		const url = new URL(req.url)
+		const jobId = url.pathname.split("/").filter(Boolean).pop()
 		const body = await req.json()
 
 		const updateFields: Record<string, unknown> = {
