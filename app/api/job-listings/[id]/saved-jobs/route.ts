@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminSupabase } from "@/lib/supabase"
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const jobId = params.id
+export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const studentId = url.searchParams.get("studentId")
+
+  const pathParts = url.pathname.split("/")
+  const jobId = pathParts[pathParts.indexOf("job-listings") + 1]
 
   if (!jobId || !studentId) {
     return NextResponse.json({ error: "Missing jobId or studentId" }, { status: 400 })
