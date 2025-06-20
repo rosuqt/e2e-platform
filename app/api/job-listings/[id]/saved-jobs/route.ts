@@ -3,7 +3,8 @@ import { getAdminSupabase } from "@/lib/supabase"
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const jobId = params.id
-  const studentId = req.nextUrl.searchParams.get("studentId")
+  const url = new URL(req.url)
+  const studentId = url.searchParams.get("studentId")
 
   if (!jobId || !studentId) {
     return NextResponse.json({ error: "Missing jobId or studentId" }, { status: 400 })
