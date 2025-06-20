@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import supabase from "@/lib/supabase"
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, context: { params: { id: string } }) {
   try {
-    const { id } = params
+    const { id } = context.params
     const data = await req.json()
 
     const updateData: Record<string, string> = {}
@@ -32,9 +32,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, context: { params: { id: string } }) {
   try {
-    const { id } = params
+    const { id } = context.params
 
     const { error } = await supabase
       .from("test_cases")
@@ -49,9 +49,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, context: { params: { id: string } }) {
   try {
-    const { id } = params
+    const { id } = context.params
     const data = await req.json()
 
     const updateData: Record<string, string> = {}
