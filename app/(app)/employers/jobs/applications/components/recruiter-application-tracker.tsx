@@ -39,6 +39,7 @@ import { Dialog,  DialogContent, DialogHeader, DialogTitle, DialogDescription, D
 import { RiEmotionSadLine } from "react-icons/ri"
 import { LuCalendarCog } from "react-icons/lu"
 import { FaRegCalendarTimes } from "react-icons/fa"
+import { FaHandHoldingDollar } from "react-icons/fa6"
 
 type Applicant = {
   application_id: string
@@ -1341,6 +1342,17 @@ function ApplicantCard({
                 >
                   <LuCalendarCog className="w-4 h-4" />
                   Resched
+                </Button>
+              )}
+              {capitalize(applicant.status) === "Waitlisted" && (
+                <Button
+                  size="sm"
+                  className="bg-green-600 text-white hover:bg-green-700 flex items-center gap-1 text-xs font-medium shadow-none border-0"
+                  style={{ boxShadow: 'none', border: 'none' }}
+                  onClick={e => { e.stopPropagation(); /* send offe*/ }}
+                >
+                  <FaHandHoldingDollar className="w-4 h-4 mr-1" />
+                  Send offer
                 </Button>
               )}
               <Button
