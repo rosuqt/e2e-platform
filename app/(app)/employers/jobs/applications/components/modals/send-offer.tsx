@@ -186,7 +186,7 @@ function SendOfferModal({
             {initial?.job_title || 'Job Title'}
           </Typography>
           <Typography sx={{ fontSize: 14, color: '#4ade80', mt: 0.5 }}>
-            Offer Date: {initial?.offer_date ? initial.offer_date : '-'}
+            Offer Date: {initial?.offer_date ? initial.offer_date : new Date().toISOString().slice(0, 10)}
           </Typography>
         </Box>
         <Box sx={{ p: 4, pt: 3 }}>

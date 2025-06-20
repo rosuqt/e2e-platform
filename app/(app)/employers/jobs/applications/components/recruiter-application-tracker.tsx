@@ -985,7 +985,9 @@ export default function RecruiterApplicationTracker() {
             application_id: offerApplicant.application_id,
             student_id: offerApplicant.student_id,
             employer_id: employerId,
-            company_name: companyName
+            company_name: companyName,
+            applicant_name: `${offerApplicant.first_name || ''} ${offerApplicant.last_name || ''}`.trim(),
+            job_title: offerApplicant.job_title || ''
           } : undefined}
           onOfferSent={(application_id) => {
             setApplicants(prev => prev.map(app => app.application_id === application_id ? { ...app, status: "Offer sent" } : app))
