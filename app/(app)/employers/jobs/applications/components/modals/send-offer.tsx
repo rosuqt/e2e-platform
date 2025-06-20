@@ -31,6 +31,9 @@ type SendOfferModalProps = {
     student_id?: string
     employer_id?: string
     company_name?: string
+    applicant_name?: string
+    job_title?: string
+    offer_date?: string
   }
   editMode?: boolean
 }
@@ -173,6 +176,18 @@ function SendOfferModal({
               </Typography>
             </Box>
           </Box>
+        </Box>
+        {/* Header section for applicant name, job title, and offer date moved below the Send Offer area */}
+        <Box sx={{ px: 4, pt: 3, pb: 1, background: '#f0fdf4', borderBottom: '1px solid #dcfce7' }}>
+          <Typography sx={{ fontWeight: 700, fontSize: 20, color: '#16a34a' }}>
+            {initial?.applicant_name || initial?.company_name || 'Applicant Name'}
+          </Typography>
+          <Typography sx={{ fontWeight: 500, fontSize: 16, color: '#166534', mt: 0.5 }}>
+            {initial?.job_title || 'Job Title'}
+          </Typography>
+          <Typography sx={{ fontSize: 14, color: '#4ade80', mt: 0.5 }}>
+            Offer Date: {initial?.offer_date ? initial.offer_date : '-'}
+          </Typography>
         </Box>
         <Box sx={{ p: 4, pt: 3 }}>
           <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
