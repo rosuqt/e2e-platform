@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import supabase from '@/lib/supabase'
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  const { id } = params
   const { paused } = await request.json()
   const { data, error } = await supabase
     .from("job_postings")
