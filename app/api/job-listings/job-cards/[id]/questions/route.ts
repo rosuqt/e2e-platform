@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server"
 import supabase from "@/lib/supabase"
 
-export async function GET(
-  request: Request,
-  context: { params: { id: string } }
-) {
-  const params = await context.params
-  const jobId = params.id
+export async function GET(request: Request) {
+  const url = new URL(request.url)
+  const id = url.pathname.split("/").filter(Boolean).pop()
+  const jobId = id
   const { data, error } = await supabase
     .from("application_questions")
     .select("id, question, type, auto_reject, correct_answer")
