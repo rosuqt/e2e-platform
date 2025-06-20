@@ -25,18 +25,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Company not found" }, { status: 404 })
   }
 
-  let address = company.address
+  const addresses = [{ address: company.address, label: "Main Office" }]
 
-  if (company.multiple_branch && employer.branch_id) {
-    const { data: branch, error: branchError } = await supabase
+  if (company.multiple_branch) {
+    const { data: branches } = await supabase
       .from("registered_branches")
-      .select("address")
-      .eq("id", employer.branch_id)
-      .maybeSingle()
-    if (!branchError && branch && branch.address) {
-      address = branch.address
+      .select("address, branch_name")
+      .eq("company_id", employer.company_id)
+    if (branches && Array.isArray(branches)) {
+      branches.forEach(branch => {
+        if (branch.address) {
+          addresses.push({
+            address: branch.address,
+            label: branch.branch_name || "Branch"
+          })
+        }
+      })
     }
   }
 
-  return NextResponse.json({ address })
+  return NextResponse.json({ addresses })
 }
