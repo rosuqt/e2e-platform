@@ -748,6 +748,48 @@ export default function RecruiterApplicationTracker() {
                         })()
                       }
                     </TabsContent>
+                    <TabsContent value="waitlisted" className="mt-4 space-y-4">
+                      {
+                        (() => {
+                          const filtered = filteredApplicants.filter(a => capitalize(a.status) === "Waitlisted")
+                          const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
+                          const paginated = filtered.slice((page - 1) * limit, page * limit)
+                          if (filtered.length === 0) {
+                            return (
+                              <div className="flex flex-col items-center justify-center min-h-[220px]">
+                                <TbUserSearch size={64} className="text-gray-300 mb-2" />
+                                <div className="text-lg font-semibold text-gray-500">No waitlisted applicants</div>
+                                <div className="text-sm text-blue-500 mt-1">Waitlisted applicants will appear here</div>
+                              </div>
+                            )
+                          }
+                          return (
+                            <>
+                              {paginated.map(app =>
+                                <ApplicantCard
+                                  key={app.application_id}
+                                  applicant={app}
+                                  selected={selectedApplication === app.application_id}
+                                  setSelected={() => setSelectedApplication(app.application_id)}
+                                  handleViewDetails={handleViewDetails}
+                                  handleInviteToInterview={handleInviteToInterview}
+                                  handleReschedInterview={handleReschedInterview}
+                                  onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
+                                  onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                                />
+                              )}
+                              {totalPages > 1 && (
+                                <Pagination
+                                  totalPages={totalPages}
+                                  currentPage={page}
+                                  onPageChange={setPage}
+                                />
+                              )}
+                            </>
+                          )
+                        })()
+                      }
+                    </TabsContent>
                   </Tabs>
                   )}
                 </CardContent>
@@ -1064,6 +1106,8 @@ function ApplicantCard({
             ? "border-l-purple-500"
             : capitalize(applicant.status) === "Invited"
             ? "border-l-yellow-500"
+            : capitalize(applicant.status) === "Waitlisted"
+            ? "border-l-yellow-700"
             : "border-l-gray-200"
         }
       `}
@@ -1093,6 +1137,8 @@ function ApplicantCard({
                     ? "bg-red-100 text-red-700 hover:bg-red-300 hover:text-red-800 pointer-events-none"
                     : (capitalize(applicant.status) === "Interview" || capitalize(applicant.status) === "Interview scheduled")
                     ? "bg-purple-100 text-purple-700 hover:bg-purple-300 hover:text-purple-800 pointer-events-none"
+                    : capitalize(applicant.status) === "Waitlisted"
+                    ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-300 hover:text-yellow-800 pointer-events-none"
                     : "bg-yellow-100 text-yellow-700 hover:bg-yellow-300 hover:text-yellow-800 pointer-events-none"
                 }>
                   {capitalize(applicant.status) === "Interview scheduled" ? "Interview Scheduled" : (capitalize(applicant.status) || "New")}
@@ -1192,7 +1238,7 @@ function ApplicantCard({
       </div>
       <div className="mt-4 flex items-center justify-between">
         <div className="flex gap-2">
-          {capitalize(applicant.status) === "New" ? (
+          {capitalize(applicant.status) === "New" && (
             <>
               <Button
                 size="sm"
@@ -1240,11 +1286,12 @@ function ApplicantCard({
                 Reject
               </button>
             </>
-          ) : capitalize(applicant.status) === "Rejected" ? (
+          )}
+          {capitalize(applicant.status) === "Rejected" && (
             <>
               <Button
-                variant="outline"
                 size="sm"
+                variant="outline"
                 className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 text-xs"
                 onClick={e => {
                   e.stopPropagation()
@@ -1271,7 +1318,8 @@ function ApplicantCard({
                 </span>
               </Tooltip>
             </>
-          ) : (
+          )}
+          {(capitalize(applicant.status) === "Shortlisted" || capitalize(applicant.status) === "Interview scheduled" || capitalize(applicant.status) === "Interview" || capitalize(applicant.status) === "Invited" || capitalize(applicant.status) === "Waitlisted") && (
             <>
               {capitalize(applicant.status) === "Shortlisted" && (
                 <Button
@@ -1284,46 +1332,45 @@ function ApplicantCard({
                   Invite to Interview
                 </Button>
               )}
-              {capitalize(applicant.status) === "Interview scheduled" && (
-                <>
-                  <Button
-                    size="sm"
-                    className="bg-purple-200 text-purple-800 hover:bg-purple-300 flex items-center gap-1 text-xs font-medium shadow-none border-0"
-                    style={{ boxShadow: 'none', border: 'none' }}
-                    onClick={e => { e.stopPropagation(); handleReschedInterview(applicant, e); }}
-                  >
-                    <LuCalendarCog className="w-4 h-4" />
-                    Resched
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 text-xs ml-0"
-                    onClick={e => {
-                      e.stopPropagation()
-                      setSelected()
-                      handleViewDetails(applicant.application_id, e)
-                    }}
-                    disabled={loadingReject}
-                  >
-                    View Details
-                  </Button>
-                  <Tooltip title="This will move the applicant back to Shortlisted" arrow>
-                    <button
-                      type="button"
-                      className="flex items-center gap-1 text-red-600 text-xs font-medium px-2 py-1 rounded bg-transparent border-0 shadow-none hover:bg-red-50 hover:text-red-700 transition-colors ml-0"
-                      style={{ minWidth: 0 }}
-                      onClick={e => { e.stopPropagation(); setCancelInterviewOpen(true); }}
-                      disabled={loadingShortlist || loadingReject}
-                    >
-                      <FaRegCalendarTimes className="w-4 h-4" />
-                      Cancel Interview
-                    </button>
-                  </Tooltip>
-                </>
+              {(capitalize(applicant.status) === "Interview scheduled") && (
+                <Button
+                  size="sm"
+                  className="bg-purple-200 text-purple-800 hover:bg-purple-300 flex items-center gap-1 text-xs font-medium shadow-none border-0"
+                  style={{ boxShadow: 'none', border: 'none' }}
+                  onClick={e => { e.stopPropagation(); handleReschedInterview(applicant, e); }}
+                >
+                  <LuCalendarCog className="w-4 h-4" />
+                  Resched
+                </Button>
               )}
-             
-              {capitalize(applicant.status) !== "Interview scheduled" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 text-xs ml-0"
+                onClick={e => {
+                  e.stopPropagation()
+                  setSelected()
+                  handleViewDetails(applicant.application_id, e)
+                }}
+                disabled={loadingReject}
+              >
+                View Details
+              </Button>
+              {(capitalize(applicant.status) === "Interview scheduled") && (
+                <Tooltip title="This will move the applicant back to Shortlisted" arrow>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-red-600 text-xs font-medium px-2 py-1 rounded bg-transparent border-0 shadow-none hover:bg-red-50 hover:text-red-700 transition-colors ml-0"
+                    style={{ minWidth: 0 }}
+                    onClick={e => { e.stopPropagation(); setCancelInterviewOpen(true); }}
+                    disabled={loadingShortlist || loadingReject}
+                  >
+                    <FaRegCalendarTimes className="w-4 h-4" />
+                    Cancel Interview
+                  </button>
+                </Tooltip>
+              )}
+              {(capitalize(applicant.status) !== "Interview scheduled") && (
                 <button
                   type="button"
                   className="flex items-center gap-1 text-red-600 text-xs font-medium px-2 py-1 rounded bg-transparent border-0 shadow-none hover:bg-red-50 hover:text-red-700 transition-colors"
@@ -1353,6 +1400,8 @@ function ApplicantCard({
               ? "Invitation sent"
               : capitalize(applicant.status) === "Shortlisted"
               ? "Shortlisted"
+              : capitalize(applicant.status) === "Waitlisted"
+              ? "Waitlisted"
               : ""}
           </span>
           <ArrowUpRight className="h-3 w-3 text-gray-600" />
