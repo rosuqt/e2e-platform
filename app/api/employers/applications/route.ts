@@ -26,22 +26,38 @@ export async function GET() {
 
   const { data: applicants, error: applicantsError } = await supabase
     .from("applications")
-    .select(`
-      *,
-      job_postings (
-        job_title
-      )
-    `)
+    .select(`*, application_answers, resume, job_postings (*)`)
     .in("job_id", jobIds)
 
   if (applicantsError) {
+    console.error(applicantsError)
     return NextResponse.json({ error: "Failed to fetch applicants" }, { status: 500 })
   }
+
+  const studentIds = (applicants || []).map(app => app.student_id).filter(Boolean)
+  const { data: profiles, error: profilesError } = await supabase
+    .from("student_profile")
+    .select("student_id, skills, educations, expertise")
+    .in("student_id", studentIds)
+
+  if (profilesError) {
+    console.error(profilesError)
+    return NextResponse.json({ error: "Failed to fetch student profiles" }, { status: 500 })
+  }
+
+  const profileMap = Object.fromEntries((profiles || []).map(p => [p.student_id, p]))
 
   const applicantsWithJobTitle = (applicants || []).map(app => ({
     ...app,
     job_title: app.job_postings?.job_title,
+    skills: profileMap[app.student_id]?.skills || [],
+    education: profileMap[app.student_id]?.educations || [],
+    expertise: profileMap[app.student_id]?.expertise || [],
+    // application_answers is already included from the select above
   }))
+
+
+
 
   return NextResponse.json({ applicants: applicantsWithJobTitle })
 }

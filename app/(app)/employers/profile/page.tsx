@@ -408,7 +408,7 @@ export default function EmployerProfilePage() {
                         onClick={() => setEditingBio(true)}
                       >
                         {bio || "Add a short bio"}
-                        <Pencil className="w-4 h-4 ml-2 text-gray-400 hover:text-gray-600" />
+                        <Pencil className="w-4 h-4 ml-2 text-gray-400 hover:text-blue-600" />
                       </span>
                     )}
                   </div>

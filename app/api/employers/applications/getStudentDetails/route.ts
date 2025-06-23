@@ -6,13 +6,29 @@ export async function GET(req: NextRequest) {
   if (!student_id) return NextResponse.json({ error: "Missing student_id" }, { status: 400 })
 
   const supabase = getAdminSupabase()
-  const { data, error } = await supabase
+
+  const { data: profileData, error: profileError } = await supabase
     .from("student_profile")
     .select("profile_img")
     .eq("student_id", student_id)
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const { data: regData, error: regError } = await supabase
+    .from("registered_students")
+    .select("course, year")
+    .eq("id", student_id)
+    .maybeSingle()
 
-  return NextResponse.json({ profile_img: data?.profile_img || null })
+
+  //console.log("Supabase student_profile data:", profileData)
+  //console.log("Supabase registered_students data:", regData)
+
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 })
+  if (regError) return NextResponse.json({ error: regError.message }, { status: 500 })
+
+  return NextResponse.json({
+    profile_img: profileData?.profile_img || null,
+    course: regData?.course || null,
+    year: regData?.year || null
+  })
 }

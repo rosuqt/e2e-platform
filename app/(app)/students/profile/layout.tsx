@@ -8,8 +8,7 @@ import BaseLayout from "../../base-layout";
 import { TbSettings, TbBug } from "react-icons/tb";
 import { FiCalendar } from "react-icons/fi";
 import { FaUser } from "react-icons/fa";
-import { MdEdit } from "react-icons/md";
-import { Camera} from "lucide-react";
+import { Camera, Pencil} from "lucide-react";
 import AboutPage from "./components/profile-page";
 import SkillsPage from "./components/tabs/skills-tab";
 import RatingsPage from "./components/tabs/ratings-tab";
@@ -54,6 +53,8 @@ export default function ProfileLayout() {
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const profileCompletionRef = useRef<() => void>(null)
+  const [editingBio, setEditingBio] = useState(false);
+  const [savingBio, setSavingBio] = useState(false);
 
   const menuItems = useMemo(
     () => [
@@ -269,16 +270,32 @@ export default function ProfileLayout() {
     setCoverDialogOpen(true);
   };
 
+  const handleBioBlur = async () => {
+    if (!studentId) return;
+    setSavingBio(true);
+    await fetch("/api/students/student-profile/postHandlers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ student_id: studentId, short_bio: bio }),
+    });
+    setSavingBio(false);
+    setEditingBio(false);
+    if (profileCompletionRef.current) profileCompletionRef.current();
+  };
+
   const handleBioKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && studentId) {
       e.preventDefault();
+      setSavingBio(true);
       await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId, short_bio: bio }),
       });
+      setSavingBio(false);
+      setEditingBio(false);
       if (bioRef.current) bioRef.current.blur();
-      if (profileCompletionRef.current) profileCompletionRef.current()
+      if (profileCompletionRef.current) profileCompletionRef.current();
     }
   };
 
@@ -468,23 +485,33 @@ export default function ProfileLayout() {
                       <div className="relative w-full">
                         {loading ? (
                           <Skeleton variant="text" width={180} height={28} />
-                        ) : !bio ? (
-                          <div className="absolute left-0 top-0 flex items-center text-gray-400 pointer-events-none px-1 py-1">
-                            <span>Add a short bio</span>
-                            <MdEdit className="ml-1 h-4 w-4" />
-                          </div>
-                        ) : null}
-                        <textarea
-                          ref={bioRef}
-                          className="w-full bg-transparent focus:outline-none text-gray-600 resize-none px-1 py-1"
-                          value={bio}
-                          onChange={e => setBio(e.target.value)}
-                          onKeyDown={handleBioKeyDown}
-                          maxLength={50}
-                          rows={1}
-                          style={{ minHeight: "1.5em" }}
-                          disabled={loading}
-                        />
+                        ) : (
+                          <>
+                            {editingBio ? (
+                              <textarea
+                                ref={bioRef}
+                                className="w-full bg-transparent focus:outline-none text-gray-600 resize-none px-1 py-1"
+                                value={bio}
+                                onChange={e => setBio(e.target.value)}
+                                onBlur={handleBioBlur}
+                                onKeyDown={handleBioKeyDown}
+                                maxLength={50}
+                                rows={1}
+                                style={{ minHeight: "1.5em" }}
+                                disabled={savingBio || loading}
+                                autoFocus
+                              />
+                            ) : (
+                              <span
+                                className={`flex items-center cursor-pointer ${!bio ? "text-gray-400" : ""}`}
+                                onClick={() => setEditingBio(true)}
+                              >
+                                {bio || "Add a short bio"}
+                                <Pencil className="w-4 h-4 ml-2 text-gray-400 hover:text-blue-600" />
+                              </span>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

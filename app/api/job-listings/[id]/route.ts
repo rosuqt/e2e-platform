@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import supabase from "@/lib/supabase";
 
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const id = url.pathname.split("/").pop();
 
   const { data, error } = await supabase
     .from("job_postings")
@@ -19,3 +17,4 @@ export async function GET(
 
   return NextResponse.json(data);
 }
+

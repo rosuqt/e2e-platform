@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       .from(bucket)
       .list(directory, { limit: 100 });
 
-    console.log("Requested filePath:", filePath, "bucket:", bucket, "directory:", directory, "listData:", listData);
+    //console.log("Requested filePath:", filePath, "bucket:", bucket, "directory:", directory, "listData:", listData);
 
     const fileName = lastSlash !== -1 ? filePath.slice(lastSlash + 1) : filePath;
     const fileExists = listData?.some(f => f.name === fileName);

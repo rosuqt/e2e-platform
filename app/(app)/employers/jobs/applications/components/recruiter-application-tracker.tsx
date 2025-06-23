@@ -12,7 +12,6 @@ import {
   MoreHorizontal,
   ArrowUpRight,
   ChevronRight,
-  CheckCircle,
   ChevronLeft,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -31,29 +30,45 @@ import {
   MdOutlineEditCalendar,
   MdRestore
 } from "react-icons/md"
-import { TbUserSearch } from "react-icons/tb"
+import { TbClockQuestion, TbUserSearch } from "react-icons/tb"
 import { Menu, MenuItem } from "@mui/material"
 import { Briefcase, User, Calendar as CalendarIcon } from "lucide-react"
 import Tooltip from "@mui/material/Tooltip"
 import { IoIosCloseCircleOutline } from "react-icons/io"
 import { Dialog,  DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { RiEmotionSadLine } from "react-icons/ri"
+import { RiCalendarScheduleLine, RiEmotionSadLine } from "react-icons/ri"
 import { LuCalendarCog } from "react-icons/lu"
-import { FaRegCalendarTimes } from "react-icons/fa"
+import { FaHandHoldingUsd, FaRegCalendarTimes, FaUserCheck } from "react-icons/fa"
 import { FaHandHoldingDollar } from "react-icons/fa6"
+
+type JobPosting = {
+  job_title?: string
+  work_type?: string
+  remote_options?: string
+  pay_amount?: string
+  pay_type?: string
+  perks_and_benefits?: string[]
+  location?: string
+}
+
+type AnswersMap = Record<string, string | string[]>;
 
 type Applicant = {
   application_id: string
   job_id: string
   job_title?: string
   status?: string
-  first_name?: string
+  first_name?: string 
   last_name?: string
   address?: string
   experience_years?: string
   applied_at?: string
   student_id?: string
   profile_image_url?: string
+  job_postings?: JobPosting
+  course?: string
+  year?: string
+  application_answers?: AnswersMap
 }
 
 function Pagination({
@@ -188,6 +203,16 @@ export default function RecruiterApplicationTracker() {
   const [editInterviewData, setEditInterviewData] = useState<InterviewData | null>(null)
   const [sendOfferModalOpen, setSendOfferModalOpen] = useState(false)
   const [offerApplicant, setOfferApplicant] = useState<Applicant | null>(null)
+  type RecentActivity = {
+    name: string
+    position: string
+    update: string
+    time: string
+    icon?: string
+    iconBg?: string
+    application_id: string
+  }
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[] | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -220,9 +245,11 @@ export default function RecruiterApplicationTracker() {
                 headers: { "Content-Type": "application/json" }
               })
               const details = await res.json()
-              // Debug log
-              // console.log("student_id:", a.student_id, "profile_img:", details.profile_img)
+
+             // console.log("getStudentDetails for", a.student_id, "->", details)
               let profile_image_url = ""
+              let course = a.course
+              let year = a.year
               if (details && details.profile_img) {
                 const imgPath = details.profile_img
                 const signedUrlRes = await fetch("/api/students/get-signed-url", {
@@ -238,7 +265,9 @@ export default function RecruiterApplicationTracker() {
                   profile_image_url = signedUrlData.signedUrl
                 }
               }
-              return { ...a, profile_image_url }
+              if (details && details.course) course = details.course
+              if (details && details.year) year = details.year
+              return { ...a, profile_image_url, course, year }
             } catch {}
             return a
           })
@@ -292,7 +321,14 @@ export default function RecruiterApplicationTracker() {
   const handleViewDetails = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     const applicant = applicants.find(a => a.application_id === id)
-    setSelectedApplicant(applicant || null)
+
+    let answers: AnswersMap | undefined = undefined
+    if (applicant?.application_answers && Array.isArray(applicant.application_answers)) {
+      answers = {}
+    } else if (applicant?.application_answers && typeof applicant.application_answers === "object") {
+      answers = applicant.application_answers as AnswersMap
+    }
+    setSelectedApplicant(applicant ? { ...applicant, application_answers: answers } : null)
     setIsModalOpen(true)
   }
 
@@ -355,6 +391,32 @@ export default function RecruiterApplicationTracker() {
     } catch {
       toast.error("Failed to update status")
     }
+  }
+
+  useEffect(() => {
+    const fetchRecentActivity = () => {
+      setRecentActivity(null)
+      fetch("/api/employers/applications/activity")
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setRecentActivity(data)
+          else if (Array.isArray(data.activity)) setRecentActivity(data.activity)
+        })
+        .catch(() => setRecentActivity([]))
+    }
+    fetchRecentActivity()
+    const interval = setInterval(fetchRecentActivity, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
+    new: { icon: <FileText className="h-4 w-4 text-white" />, iconBg: "bg-green-500" },
+    shortlisted: { icon: <MdStars className="h-4 w-4 text-white" />, iconBg: "bg-cyan-500" },
+    interview: { icon: <RiCalendarScheduleLine  className="h-4 w-4 text-white" />, iconBg: "bg-purple-500" },
+    offer: { icon: <FaHandHoldingUsd  className="h-4 w-4 text-white" />, iconBg: "bg-yellow-500" },
+    waitlisted: { icon: <TbClockQuestion className="h-4 w-4 text-white" />, iconBg: "bg-blue-500" },
+    rejected: { icon: <IoIosCloseCircleOutline className="h-4 w-4 text-white" />, iconBg: "bg-red-500" },
+    hired: { icon: <FaUserCheck  className="h-4 w-4 text-white" />, iconBg: "bg-green-700" },
   }
 
   return (
@@ -457,19 +519,23 @@ export default function RecruiterApplicationTracker() {
                       <TabsTrigger value="all" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
                         All
                       </TabsTrigger>
-                      <TabsTrigger value="new" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
+                      <TabsTrigger value="new" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-yellow-600 hover:border-yellow-300 data-[state=active]:text-yellow-600 data-[state=active]:border-yellow-600">
                         New
                       </TabsTrigger>
-                      <TabsTrigger value="shortlisted" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
+                      <TabsTrigger value="shortlisted" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-cyan-600 hover:border-cyan-300 data-[state=active]:text-cyan-600 data-[state=active]:border-cyan-600">
                         Shortlisted
                       </TabsTrigger>
-                      <TabsTrigger value="interview" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
+                      <TabsTrigger value="interview" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-purple-600 hover:border-purple-300 data-[state=active]:text-purple-600 data-[state=active]:border-purple-600">
                         Interview
                       </TabsTrigger>
-                      <TabsTrigger value="waitlisted" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
+                      <TabsTrigger value="waitlisted" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-blue-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
                         Waitlisted
                       </TabsTrigger>
-                      <TabsTrigger value="rejected" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
+                    
+                      <TabsTrigger value="hired" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-green-700 hover:border-green-200 data-[state=active]:text-green-700 data-[state=active]:border-green-700">
+                        Hired
+                      </TabsTrigger>
+                        <TabsTrigger value="rejected" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-red-600 hover:border-red-300 data-[state=active]:text-red-600 data-[state=active]:border-red-600">
                         Rejected
                       </TabsTrigger>
                     </TabsList>
@@ -480,7 +546,14 @@ export default function RecruiterApplicationTracker() {
                           {
                             (() => {
                               if (tab === "all") return filteredApplicants.length
-                              return filteredApplicants.filter(a => a.status === tab).length
+                              if (tab === "new") return filteredApplicants.filter(a => capitalize(a.status) === "New").length
+                              if (tab === "shortlisted") return filteredApplicants.filter(a => capitalize(a.status) === "Shortlisted").length
+                              if (tab === "interview") return filteredApplicants.filter(a => getTabStatus(a.status) === "Interview").length
+                              if (tab === "invited") return filteredApplicants.filter(a => capitalize(a.status) === "Invited").length
+                              if (tab === "waitlisted") return filteredApplicants.filter(a => capitalize(a.status) === "Waitlisted").length
+                              if (tab === "rejected") return filteredApplicants.filter(a => capitalize(a.status) === "Rejected").length
+                              if (tab === "hired") return filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "hired").length
+                              return 0
                             })()
                           } applicants
                         </span>
@@ -808,6 +881,50 @@ export default function RecruiterApplicationTracker() {
                         })()
                       }
                     </TabsContent>
+                    <TabsContent value="hired" className="mt-4 space-y-4">
+                      {
+                        (() => {
+                          const filtered = filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "hired")
+                          const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
+                          const paginated = filtered.slice((page - 1) * limit, page * limit)
+                          if (filtered.length === 0) {
+                            return (
+                              <div className="flex flex-col items-center justify-center min-h-[220px]">
+                                <TbUserSearch size={64} className="text-gray-300 mb-2" />
+                                <div className="text-lg font-semibold text-gray-500">No hired applicants</div>
+                                <div className="text-sm text-green-500 mt-1">Hired applicants will appear here</div>
+                              </div>
+                            )
+                          }
+                          return (
+                            <>
+                              {paginated.map(app =>
+                                <ApplicantCard
+                                  key={app.application_id}
+                                  applicant={app}
+                                  selected={selectedApplication === app.application_id}
+                                  setSelected={() => setSelectedApplication(app.application_id)}
+                                  handleViewDetails={handleViewDetails}
+                                  handleInviteToInterview={handleInviteToInterview}
+                                  handleReschedInterview={handleReschedInterview}
+                                  onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
+                                  onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                                  setOfferApplicant={setOfferApplicant}
+                                  setSendOfferModalOpen={setSendOfferModalOpen}
+                                />
+                              )}
+                              {totalPages > 1 && (
+                                <Pagination
+                                  totalPages={totalPages}
+                                  currentPage={page}
+                                  onPageChange={setPage}
+                                />
+                              )}
+                            </>
+                          )
+                        })()
+                      }
+                    </TabsContent>
                   </Tabs>
                   )}
                 </CardContent>
@@ -821,52 +938,61 @@ export default function RecruiterApplicationTracker() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {[
-                      {
-                        name: "Alex Johnson",
-                        position: "Frontend Developer",
-                        update: "Submitted application",
-                        time: "2 hours ago",
-                        icon: <FileText className="h-4 w-4 text-white" />,
-                        iconBg: "bg-green-500",
-                      },
-                      {
-                        name: "Sarah Williams",
-                        position: "Frontend Developer",
-                        update: "Accepted interview invitation",
-                        time: "1 day ago",
-                        icon: <CheckCircle className="h-4 w-4 text-white" />,
-                        iconBg: "bg-blue-500",
-                      },
-                      {
-                        name: "Michael Chen",
-                        position: "Frontend Developer",
-                        update: "Completed technical assessment",
-                        time: "2 days ago",
-                        icon: <FileText className="h-4 w-4 text-white" />,
-                        iconBg: "bg-yellow-500",
-                      },
-                    ].map((update, index) => (
-                      <div key={index} className="flex gap-3">
-                        <div className="relative">
-                          <div className={`w-8 h-8 rounded-full ${update.iconBg} flex items-center justify-center`}>
-                            {update.icon}
+                    {recentActivity === null ? (
+                      <div className="space-y-3">
+                        {[1,2,3].map(i => (
+                          <div key={i} className="flex gap-3 animate-pulse">
+                            <div className="w-8 h-8 rounded-full bg-gray-200" />
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 bg-gray-200 rounded w-1/3" />
+                              <div className="h-3 bg-gray-200 rounded w-1/4" />
+                              <div className="h-3 bg-gray-100 rounded w-2/3" />
+                            </div>
                           </div>
-                          {update.time.includes("hours") && index < 1 ? (
-                            <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
-                          ) : null}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-800">{update.name}</p>
-                          <p className="text-xs text-gray-500">{update.position}</p>
-                          <p className="text-xs font-medium text-blue-600 mt-1">{update.update}</p>
-                          <p className="text-xs text-gray-400 mt-1">{update.time}</p>
-                        </div>
-                        <button className="text-gray-400 hover:text-blue-500">
-                          <ChevronRight className="h-5 w-5" />
-                        </button>
+                        ))}
                       </div>
-                    ))}
+                    ) : recentActivity.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center mb-2">
+                        <TbClockQuestion size={48} className="text-gray-300 mb-1" />
+                     
+                      <div className="text-gray-400 text-sm text-center">No recent activity</div>
+                       </div>
+                    ) : (
+                      recentActivity.slice(0, 6).map((update, index) => {
+                        const iconInfo = iconMap[update.icon || 'new'] || { icon: <FileText className="h-4 w-4 text-white" />, iconBg: 'bg-blue-200' }
+                        return (
+                          <div
+                            key={index}
+                            className="flex gap-3 cursor-pointer hover:bg-blue-50 rounded-lg transition-colors"
+                            onClick={() => {
+                              if (update.application_id) {
+                                const applicant = applicants.find(a => a.application_id === update.application_id)
+                                setSelectedApplicant(applicant || null)
+                                setIsModalOpen(true)
+                              }
+                            }}
+                          >
+                            <div className="relative">
+                              <div className={`w-8 h-8 rounded-full ${iconInfo.iconBg} flex items-center justify-center`}>
+                                {iconInfo.icon}
+                              </div>
+                              {update.time && update.time.includes("hour") && index < 1 ? (
+                                <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                              ) : null}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-800">{update.name}</p>
+                              <p className="text-xs text-gray-500">{update.position}</p>
+                              <p className="text-xs font-medium text-blue-600 mt-1">{update.update}</p>
+                              <p className="text-xs text-gray-400 mt-1">{formatActivityDate(update.time)}</p>
+                            </div>
+                            <button className="text-gray-400 hover:text-blue-500">
+                              <ChevronRight className="h-5 w-5" />
+                            </button>
+                          </div>
+                        )
+                      })
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -954,7 +1080,17 @@ export default function RecruiterApplicationTracker() {
         </div>
 
         <RecruiterApplicationDetailsModal
-          applicant={selectedApplicant}
+          applicant={
+            selectedApplicant
+              ? {
+                  ...selectedApplicant,
+                  application_answers:
+                    Array.isArray(selectedApplicant.application_answers)
+                      ? {}
+                      : selectedApplicant.application_answers || {},
+                }
+              : null
+          }
           isModalOpen={isModalOpen}
           setIsModalOpen={setIsModalOpen}
         />
@@ -987,10 +1123,11 @@ export default function RecruiterApplicationTracker() {
             employer_id: employerId,
             company_name: companyName,
             applicant_name: `${offerApplicant.first_name || ''} ${offerApplicant.last_name || ''}`.trim(),
-            job_title: offerApplicant.job_title || ''
+            job_title: offerApplicant.job_title || '',
+            job_postings: offerApplicant.job_postings
           } : undefined}
           onOfferSent={(application_id) => {
-            setApplicants(prev => prev.map(app => app.application_id === application_id ? { ...app, status: "Offer sent" } : app))
+            setApplicants(prev => prev.map(app => app.application_id === application_id ? { ...app, status: "hired" } : app))
           }}
         />
       </div>
@@ -1027,7 +1164,13 @@ function ApplicantCard({
 
   function formatAppliedAt(dateString?: string) {
     if (!dateString) return ""
-    const date = new Date(dateString)
+    let date: Date | null = null
+    if (typeof dateString === 'string' && dateString.includes('T')) {
+      date = new Date(dateString)
+    } else if (typeof dateString === 'string') {
+      date = new Date(Date.parse(dateString))
+    }
+    if (!date || isNaN(date.getTime())) return "Invalid date"
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
@@ -1036,11 +1179,16 @@ function ApplicantCard({
     const diffWeeks = Math.floor(diffDays / 7)
 
     if (diffMins < 1) return "just now"
-    if (diffMins < 60) return `${diffMins} min${diffMins === 1 ? "" : "s"} ago`
-    if (diffHours < 24) return `${diffHours} hr${diffHours === 1 ? "" : "s"} ago`
+    if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? "" : "s"} ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`
     if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`
     if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks === 1 ? "" : "s"} ago`
-    return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+    const month = (date.getMonth() + 1).toString().padStart(2, '0')
+    const day = date.getDate().toString().padStart(2, '0')
+    const year = date.getFullYear().toString().slice(-2)
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `Date ${month} ${day} ${year} ${hours}:${minutes}`
   }
 
   const formattedAppliedAt = applicant.applied_at ? formatAppliedAt(applicant.applied_at) : ""
@@ -1145,6 +1293,8 @@ function ApplicantCard({
             ? "border-l-yellow-500"
             : capitalize(applicant.status) === "Waitlisted"
             ? "border-l-blue-500"
+            : capitalize(applicant.status) === "Hired"
+            ? "border-l-green-600 bg-green-50"
             : "border-l-gray-200"
         }
       `}
@@ -1176,6 +1326,8 @@ function ApplicantCard({
                     ? "bg-purple-100 text-purple-700 hover:bg-purple-300 hover:text-purple-800 pointer-events-none"
                     : capitalize(applicant.status) === "Waitlisted"
                     ? "bg-blue-100 text-blue-700 hover:bg-blue-300 hover:text-blue-800 pointer-events-none"
+                    : capitalize(applicant.status) === "Hired"
+                    ? "bg-green-600 text-white pointer-events-none"
                     : "bg-yellow-100 text-yellow-700 hover:bg-yellow-300 hover:text-yellow-800 pointer-events-none"
                 }>
                   {capitalize(applicant.status) === "Interview scheduled" ? "Interview Scheduled" : (capitalize(applicant.status) || "New")}
@@ -1207,7 +1359,9 @@ function ApplicantCard({
           </div>
         </div>
         <div className="flex gap-1">
-          <Badge className="bg-green-100 text-green-700">Match</Badge>
+          {capitalize(applicant.status) === "Hired" && (
+            <Badge className="bg-green-100 text-green-700">Hired</Badge>
+          )}
           <button className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50" onClick={e => e.stopPropagation()}>
             <Bookmark className="h-4 w-4" />
           </button>
@@ -1249,7 +1403,7 @@ function ApplicantCard({
                       <CalendarIcon className="w-4 h-4 mr-2 text-green-500" />
                       Set Interview
                     </MenuItem>,
-                    <MenuItem key="send-offer" onClick={() => { setAnchorEl(null); setOfferApplicant(applicant); setSendOfferModalOpen(true); }}>
+                    <MenuItem key="send-offer" onClick={() => { setAnchorEl(null); setOfferApplicant({ ...applicant, job_postings: applicant.job_postings }); setSendOfferModalOpen(true); }}>
                       <ArrowUpRight className="w-4 h-4 mr-2 text-yellow-500" />
                       Send Offer
                     </MenuItem>
@@ -1257,7 +1411,7 @@ function ApplicantCard({
                 }
                 if (status === "Interview" || status === "Interview scheduled") {
                   return [
-                    <MenuItem key="send-offer" onClick={() => { setAnchorEl(null); setOfferApplicant(applicant); setSendOfferModalOpen(true); }}>
+                    <MenuItem key="send-offer" onClick={() => { setAnchorEl(null); setOfferApplicant({ ...applicant, job_postings: applicant.job_postings }); setSendOfferModalOpen(true); }}>
                       <ArrowUpRight className="w-4 h-4 mr-2 text-yellow-500" />
                       Send Offer
                     </MenuItem>,
@@ -1279,7 +1433,7 @@ function ApplicantCard({
             <>
               <Button
                 size="sm"
-                className="bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center gap-1 text-xs font-medium shadow-none border-0"
+                className="bg-cyan-100 text-cyan-700 hover:bg-cyan-200 flex items-center gap-1 text-xs font-medium shadow-none border-0"
                 style={{ boxShadow: 'none', border: 'none' }}
                 onClick={async e => {
                   e.stopPropagation()
@@ -1290,7 +1444,7 @@ function ApplicantCard({
                 disabled={loadingShortlist || loadingReject}
               >
                 {loadingShortlist ? (
-                  <span className="w-4 h-4 border-2 border-blue-700 border-t-transparent rounded-full animate-spin"></span>
+                  <span className="w-4 h-4 border-2 border-cyan-700 border-t-transparent rounded-full animate-spin"></span>
                 ) : (
                   <MdStars className="w-4 h-4" />
                 )}
@@ -1354,6 +1508,35 @@ function ApplicantCard({
                   Restore
                 </span>
               </Tooltip>
+            </>
+          )}
+          {capitalize(applicant.status) === "Hired" && (
+            <>
+              <Button
+                size="sm"
+                className="bg-yellow-100 text-yellow-600 hover:bg-yellow-200 flex items-center gap-1 text-xs font-medium shadow-none border-0"
+                style={{ boxShadow: 'none', border: 'none' }}
+                onClick={e => {
+                  e.stopPropagation()
+            
+                }}
+              >
+                <MdStars className="w-4 h-4" />
+                Rate Applicant
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 text-xs"
+                onClick={e => {
+                  e.stopPropagation()
+                  setSelected()
+                  handleViewDetails(applicant.application_id, e)
+                }}
+              >
+                View Details
+              </Button>
+            
             </>
           )}
           {(capitalize(applicant.status) === "Shortlisted" || capitalize(applicant.status) === "Interview scheduled" || capitalize(applicant.status) === "Interview" || capitalize(applicant.status) === "Invited" || capitalize(applicant.status) === "Waitlisted") && (
@@ -1450,7 +1633,9 @@ function ApplicantCard({
               ? "Shortlisted"
               : capitalize(applicant.status) === "Waitlisted"
               ? "Waitlisted"
-              : ""}
+              : capitalize(applicant.status) === "Hired"
+              ? "Hired"
+              : "Rejected"}
           </span>
           <ArrowUpRight className="h-3 w-3 text-gray-600" />
         </div>
@@ -1458,6 +1643,22 @@ function ApplicantCard({
     </motion.div>
     </>
   )
+}
+
+function formatActivityDate(dateString?: string) {
+  if (!dateString) return ""
+  let date: Date | null = null
+  if (typeof dateString === 'string' && dateString.includes('T')) {
+    date = new Date(dateString)
+  } else if (typeof dateString === 'string') {
+    date = new Date(Date.parse(dateString))
+  }
+  if (!date || isNaN(date.getTime())) return "Invalid date"
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  const month = monthNames[date.getMonth()]
+  const day = date.getDate().toString().padStart(2, '0')
+  const year = date.getFullYear().toString()
+  return `${month} ${day} ${year}`
 }
 
 

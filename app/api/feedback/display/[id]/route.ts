@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import supabase from "@/lib/supabase"
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest) {
   try {
-    const { id } = params
+    const url = new URL(req.url)
+    const id = url.pathname.split("/").pop()
     const data = await req.json()
 
     const updateData: Record<string, string> = {}
@@ -32,9 +33,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest) {
   try {
-    const { id } = params
+
+    const url = new URL(req.url)
+    const id = url.pathname.split("/").pop()
 
     const { error } = await supabase
       .from("test_cases")
@@ -49,9 +52,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest) {
   try {
-    const { id } = params
+
+    const url = new URL(req.url)
+    const id = url.pathname.split("/").pop()
     const data = await req.json()
 
     const updateData: Record<string, string> = {}
