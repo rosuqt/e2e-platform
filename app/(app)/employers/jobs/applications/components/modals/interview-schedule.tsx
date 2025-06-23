@@ -12,7 +12,8 @@ import {
   Avatar,
   Select,
   Checkbox,
-  ListItemText
+  ListItemText,
+  CircularProgress
 } from "@mui/material"
 import type { SlideProps } from "@mui/material"
 import { MapPin, Video } from "lucide-react"
@@ -618,7 +619,13 @@ function InterviewScheduleModal({
                 "&:hover": { background: "#7c3aed" }
               }}
             >
-              {editMode ? "Update" : "Schedule"}
+              {saving ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+                  <CircularProgress size={22} sx={{ color: '#fff' }} />
+                </Box>
+              ) : (
+                editMode ? "Update" : "Schedule"
+              )}
             </Button>
           </Box>
         </Box>

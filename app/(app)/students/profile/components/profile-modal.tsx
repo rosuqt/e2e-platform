@@ -273,6 +273,11 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
 
   const handleLogoutClick = async () => {
     sessionStorage.clear()
+    setDbName("")
+    setDbEmail("")
+    setDbAvatar(undefined)
+    setUserType(null)
+    setLoading(true)
     await signOut({ callbackUrl: "/landing" });
     onClose();
   }
