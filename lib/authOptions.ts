@@ -164,6 +164,26 @@ export const authOptions: NextAuthOptions = {
           token.company_id = employerData.company_id
         }
       } 
+      if (!token.role && token.email) {
+        const { data: employer } = await supabase
+          .from("registered_employers")
+          .select("id")
+          .eq("email", token.email)
+          .maybeSingle();
+        if (employer?.id) {
+          token.role = "employer";
+        } else {
+          const { data: student } = await supabase
+            .from("registered_students")
+            .select("id")
+            .eq("email", token.email)
+            .maybeSingle();
+          if (student?.id) {
+            token.role = "student";
+          }
+        }
+      }
+
       if (!token.role && typeof token === "object" && "role" in token) {
         token.role = (token as { role?: string }).role;
       }
