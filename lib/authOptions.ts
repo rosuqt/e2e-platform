@@ -77,7 +77,6 @@ export const authOptions: NextAuthOptions = {
           console.log("AzureAD signIn: original email received:", u.email);
           const normalizedEmail = u.email.trim().toLowerCase();
           console.log("AzureAD signIn: normalized email received:", normalizedEmail);
-          // Add more logging
           if (
             !normalizedEmail.endsWith("@alabang.sti.edu.ph") &&
             normalizedEmail !== "alro8612140@gmail.com"
@@ -216,4 +215,9 @@ export const authOptions: NextAuthOptions = {
   },
 
   secret: process.env.NEXTAUTH_SECRET,
+  debug: true,
+
+  session: {
+    strategy: "jwt", 
+  },
 }

@@ -10,7 +10,6 @@ import dynamic from "next/dynamic"
 import welcomeSchool from "@/../public/animations/welcome/welcome-school.json"
 import welcomeJobs from "@/../public/animations/welcome/welcome-jobs.json"
 import welcomeSuccess from "@/../public/animations/welcome/welcome-success.json"
-import { Loader2 } from "lucide-react"
 import { FaGraduationCap } from "react-icons/fa"
 import TextField from "@mui/material/TextField"
 import Autocomplete from "@mui/material/Autocomplete"
@@ -155,7 +154,7 @@ export default function WelcomeFlow() {
 
   const updateFormData = (field: keyof FormData, value: string | boolean | string[] | undefined) => {
     if (field === "section" && typeof value === "string") {
-      if (!/^\d*$/.test(value)) return
+      if (!/^\d{0,3}$/.test(value)) return
     }
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
@@ -163,7 +162,7 @@ export default function WelcomeFlow() {
   const isStep1Valid =
     !!formData.course &&
     !!formData.yearLevel &&
-    !!formData.section.trim()
+    /^\d{3}$/.test(formData.section)
 
   const seniorHighCourses = [
     "ABM",
@@ -174,6 +173,22 @@ export default function WelcomeFlow() {
   const filteredYearLevels = isSeniorHigh
     ? yearLevels.filter(y => y.category === "Senior High")
     : yearLevels.filter(y => y.category === "College")
+
+  const getCourseValue = () => {
+    return formData.course
+      ? courses.find(c => c.value === formData.course)
+      : undefined
+  }
+  const getYearLevelValue = () => {
+    return formData.yearLevel
+      ? filteredYearLevels.flatMap(g => g.options).find(l => l.value === formData.yearLevel)
+      : undefined
+  }
+  const getRemoteOptionValue = () => {
+    return formData.remoteOption.length > 0
+      ? remoteOptions.find(r => formData.remoteOption[0] === r.value)
+      : undefined
+  }
 
   return (
     <div className="min-h-screen bg-white relative overflow-hidden">
@@ -310,7 +325,7 @@ export default function WelcomeFlow() {
                       <Autocomplete
                         options={courses}
                         getOptionLabel={(option) => option.label}
-                        value={courses.find(c => c.value === formData.course) || undefined}
+                        value={getCourseValue()}
                         onChange={(_, value) => updateFormData("course", value ? value.value : undefined)}
                         freeSolo={false}
                         disableClearable={true}
@@ -335,9 +350,7 @@ export default function WelcomeFlow() {
                               const group = filteredYearLevels.find(g => g.options.some(o => o.value === option.value))
                               return group ? group.category : ""
                             }}
-                            value={
-                              filteredYearLevels.flatMap(g => g.options).find(l => l.value === formData.yearLevel) || undefined
-                            }
+                            value={getYearLevelValue()}
                             onChange={(_, value) => updateFormData("yearLevel", value ? value.value : undefined)}
                             renderInput={(params) => (
                               <TextField
@@ -361,6 +374,12 @@ export default function WelcomeFlow() {
                             InputLabelProps={{ shrink: false }}
                             fullWidth
                             type="number"
+                            inputProps={{
+                              minLength: 3,
+                              maxLength: 3,
+                              inputMode: "numeric",
+                              pattern: "[0-9]{3}",
+                            }}
                         />
                         </Box>
                   </div>
@@ -420,34 +439,18 @@ export default function WelcomeFlow() {
                     </Box>
                     <Box>
                       <Autocomplete
-                        multiple
-                        disableCloseOnSelect
                         options={remoteOptions}
                         getOptionLabel={(option) => option.label}
-                        value={remoteOptions.filter(r => formData.remoteOption.includes(r.value))}
-                        onChange={(_, values) => updateFormData("remoteOption", values.map(v => v.value))}
-                        renderOption={(props, option, { selected }) => {
+                        value={getRemoteOptionValue()}
+                        onChange={(_, value) => updateFormData("remoteOption", value ? [value.value] : [])}
+                        renderOption={(props, option) => {
                           const { key, ...rest } = props
                           return (
                             <li key={key} {...rest}>
-                              <Checkbox
-                                checked={selected}
-                                style={{ marginRight: 8 }}
-                              />
                               {option.label}
                             </li>
                           )
                         }}
-                        renderTags={(value, getTagProps) =>
-                          value.map((option, index) => (
-                            <Chip
-                              variant="outlined"
-                              label={option.label}
-                              {...getTagProps({ index })}
-                              key={option.value}
-                            />
-                          ))
-                        }
                         renderInput={(params) => (
                           <TextField
                             {...params}
@@ -498,7 +501,7 @@ export default function WelcomeFlow() {
                     disabled={isPosting}
                   >
                     {isPosting ? (
-                      <Loader2 className="animate-spin w-8 h-8" />
+                      <span className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></span>
                     ) : (
                       "Start Exploring"
                     )}
@@ -545,7 +548,7 @@ export default function WelcomeFlow() {
                         )}
                         <motion.button
                           onClick={handleNext}
-                          disabled={currentStep === 1 && !isStep1Valid}
+                          disabled={currentStep === 1 && !isStep1Valid || isPosting}
                           type="button"
                           className={`flex items-center justify-center px-6 py-2 font-semibold text-white bg-blue-500 rounded-full shadow transition-colors focus:outline-none text-base
                             ${currentStep === 1 && !isStep1Valid ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}
@@ -553,8 +556,14 @@ export default function WelcomeFlow() {
                           whileTap={{ scale: currentStep === 1 && !isStep1Valid ? 1 : 0.93 }}
                           transition={{ type: "spring", stiffness: 400, damping: 20 }}
                         >
-                          Finish
-                          <IoIosRocket  className="w-5 h-5 ml-1" />
+                          {isPosting ? (
+                            <span className="w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></span>
+                          ) : (
+                            <>
+                              Finish
+                              <IoIosRocket className="w-5 h-5 ml-1" />
+                            </>
+                          )}
                         </motion.button>
                       </div>
                     </>

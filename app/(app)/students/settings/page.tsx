@@ -8,6 +8,7 @@ import TextField from "@mui/material/TextField"
 import Autocomplete from "@mui/material/Autocomplete"
 import Checkbox from "@mui/material/Checkbox"
 import Box from "@mui/material/Box"
+import { parsePhoneNumberFromString, CountryCode } from "libphonenumber-js"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,6 +17,7 @@ import { TabList } from "./components/tab-list"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import AddressAutocomplete from "@/components/AddressAutocomplete"
+import { countries } from "../../../(landing)/sign-up/data/countries"
 
 type StudentProfile = {
   id: string
@@ -81,6 +83,7 @@ const courses = [
   { value: "BS - Information Technology", label: "BS - Information Technology" },
   { value: "BS - Business Administration", label: "BS - Business Administration" },
   { value: "BS - Hospitality Management", label: "BS - Hospitality Management" },
+  { value: "BS - Tourism Management", label: "BS - Tourism Management" },
   { value: "ABM", label: "ABM" },
   { value: "HUMSS", label: "HUMSS" },
   { value: "IT Mobile app and Web Development", label: "IT Mobile app and Web Development" },
@@ -96,13 +99,18 @@ export default function SettingsPage() {
   const [jobAlerts, setJobAlerts] = useState(true)
   const [student, setStudent] = useState<Student | null>(null)
   const [editJobType, setEditJobType] = useState<string[]>([])
-  const [editRemoteOptions, setEditRemoteOptions] = useState<string[]>([])
+  const [editRemoteOptions, setEditRemoteOptions] = useState<string | undefined>(undefined)
   const [editUnrelatedJobs, setEditUnrelatedJobs] = useState(false)
   const [editCourse, setEditCourse] = useState<string | undefined>(undefined);
   const [editYearLevel, setEditYearLevel] = useState<string | undefined>(undefined);
   const [editSection, setEditSection] = useState<string>("");
   const [editAddress, setEditAddress] = useState<string>("");
+  const [editCountryCode, setEditCountryCode] = useState<string>("")
+  const [editPhone, setEditPhone] = useState<string>("")
+  const [editUsername, setEditUsername] = useState<string>("")
+  const [editPersonalEmail, setEditPersonalEmail] = useState<string>("")
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ phone?: string; email?: string; section?: string }>({})
 
   useEffect(() => {
     fetch("/api/students/settings")
@@ -122,15 +130,24 @@ export default function SettingsPage() {
       const remoteOptionsRaw = student.s_job_pref?.[0]?.remote_options
 
       const jobTypeArr = Array.isArray(jobTypeRaw) ? jobTypeRaw.map(String) : []
-      const remoteOptionsArr = Array.isArray(remoteOptionsRaw) ? remoteOptionsRaw.map(String) : []
-
+      let remoteOptionVal: string | undefined = undefined;
+      if (Array.isArray(remoteOptionsRaw)) {
+        remoteOptionVal = remoteOptionsRaw.length > 0 ? String(remoteOptionsRaw[0]) : undefined;
+      } else if (typeof remoteOptionsRaw === "string") {
+        remoteOptionVal = remoteOptionsRaw;
+      }
       setEditJobType(jobTypeArr)
-      setEditRemoteOptions(remoteOptionsArr)
+      setEditRemoteOptions(remoteOptionVal)
       setEditUnrelatedJobs(!!student.s_job_pref?.[0]?.unrelated_jobs)
-      setEditCourse(student.course);
-      setEditYearLevel(student.year);
-      setEditSection(student.section ?? "");
-      setEditAddress(student.address ?? "");
+      setEditCourse(student.course)
+      setEditYearLevel(student.year)
+      setEditSection(student.section ?? "")
+      setEditAddress(student.address ?? "")
+      const cc = student?.student_profile?.contact_info?.countryCode
+      setEditCountryCode(cc !== undefined && cc !== null ? String(cc) : "")
+      setEditPhone(student?.student_profile?.contact_info?.phone ?? "")
+      setEditUsername(student?.student_profile?.username ?? "")
+      setEditPersonalEmail(student?.student_profile?.contact_info?.email ?? "")
     }
   }, [student])
 
@@ -141,8 +158,8 @@ export default function SettingsPage() {
   const handleJobTypeChange = (_: React.SyntheticEvent, values: { value: string; label: string }[]) => {
     setEditJobType(values.map(v => v.value))
   }
-  const handleRemoteOptionsChange = (_: React.SyntheticEvent, values: { value: string; label: string }[]) => {
-    setEditRemoteOptions(values.map(v => v.value))
+  const handleRemoteOptionsChange = (_: React.SyntheticEvent, value: { value: string; label: string } | null) => {
+    setEditRemoteOptions(value ? value.value : undefined);
   }
   const handleCourseChange = (_: React.SyntheticEvent, value: { value: string; label: string } | null) => {
     setEditCourse(value ? value.value : undefined);
@@ -151,12 +168,95 @@ export default function SettingsPage() {
     setEditYearLevel(value ? value.value : undefined);
   };
   const handleSectionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (/^\d*$/.test(e.target.value)) setEditSection(e.target.value);
+    const val = e.target.value;
+    if (/^\d{0,3}$/.test(val)) {
+      setEditSection(val);
+      if (val.length !== 3) {
+        setFieldErrors(prev => ({ ...prev, section: "Section must be exactly 3 digits." }));
+      } else {
+        setFieldErrors(prev => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { section: _removed, ...rest } = prev;
+          return rest;
+        });
+      }
+    }
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (/^\d*$/.test(e.target.value)) setEditPhone(e.target.value)
+  }
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditUsername(e.target.value)
+  }
+  const handlePersonalEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditPersonalEmail(e.target.value)
+  }
+
+  const validateFields = () => {
+    const errors: { phone?: string; email?: string; section?: string } = {}
+    const country = countries.find((c) => c.phone === editCountryCode)
+    const countryIso = country?.code as CountryCode | undefined
+    let phoneInput = editPhone.trim()
+
+    if (!editCountryCode.trim()) {
+      errors.phone = "Country Code is required."
+    }
+    if (!phoneInput) {
+      errors.phone = "Phone Number is required."
+    } else {
+      if (countryIso === "PH" && phoneInput.startsWith("0")) {
+        phoneInput = phoneInput.substring(1)
+      }
+      if (
+        (editCountryCode === "63" || editCountryCode === "+63") &&
+        (!/^9\d{9}$/.test(phoneInput))
+      ) {
+        errors.phone = "PH mobile must start with 9 and be 10 digits (e.g. 9123456789)"
+      } else if (!/^\d{7,15}$/.test(phoneInput)) {
+        errors.phone = "Invalid phone number"
+      } else {
+        const phoneNumber = countryIso
+          ? parsePhoneNumberFromString(phoneInput, countryIso)
+          : undefined
+        if (!countryIso) {
+          errors.phone = "Invalid country code."
+        } else if (!phoneNumber || !phoneNumber.isValid()) {
+          errors.phone = "Invalid phone number for selected country."
+        }
+      }
+    }
+
+    if (!editPersonalEmail.trim()) {
+      errors.email = "Email is required."
+    } else {
+      const email = editPersonalEmail
+      const emailRegex = /^[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/
+      const domainPart = email.split('@')[1]
+      if (!emailRegex.test(email)) {
+        errors.email = "Invalid email format."
+      } else if (
+        domainPart &&
+        domainPart
+          .split('.')
+          .some(
+            label =>
+              label.startsWith('-') ||
+              label.endsWith('-')
+          )
+      ) {
+        errors.email = "Invalid email format."
+      } else if (email.length < 6 || email.length > 254) {
+        errors.email = "Email must be between 6 and 254 characters."
+      }
+    }
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleSave = async () => {
     if (!student) return;
+    if (!validateFields()) return;
     setSaving(true);
     const payload = {
       address: editAddress,
@@ -165,9 +265,15 @@ export default function SettingsPage() {
       section: editSection,
       s_job_pref: {
         job_type: editJobType,
-        remote_options: editRemoteOptions,
+        remote_options: editRemoteOptions ? [editRemoteOptions] : [],
         unrelated_jobs: editUnrelatedJobs,
       },
+      contact_info: {
+        countryCode: editCountryCode,
+        phone: editPhone,
+        email: editPersonalEmail,
+      },
+      username: editUsername,
     };
     await fetch("/api/students/settings", {
       method: "PUT",
@@ -175,7 +281,6 @@ export default function SettingsPage() {
       body: JSON.stringify(payload),
     });
     setSaving(false);
-    // Optionally, refetch or show a success message
   };
 
   const tabs = [
@@ -228,9 +333,9 @@ export default function SettingsPage() {
                         <InputLabel shrink htmlFor="username" sx={{ display: "none" }}>Username</InputLabel>
                         <Input
                           id="username"
-                          value={student?.student_profile?.username ?? ""}
+                          value={editUsername}
+                          onChange={handleUsernameChange}
                           className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2"
-                          readOnly
                         />
                       </FormControl>
                       <p className="text-sm text-blue-500/70">Your unique username</p>
@@ -244,30 +349,84 @@ export default function SettingsPage() {
                           <InputLabel shrink htmlFor="personal-email" sx={{ display: "none" }}>Personal Email</InputLabel>
                           <Input
                             id="personal-email"
-                            value={student?.student_profile?.contact_info?.email ?? ""}
+                            value={editPersonalEmail}
+                            onChange={handlePersonalEmailChange}
                             className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2"
-                            readOnly
                           />
                         </FormControl>
+                        {fieldErrors.email && (
+                          <div className="text-red-500 text-xs mt-1">{fieldErrors.email}</div>
+                        )}
                         <p className="text-sm text-blue-500/70">Your personal email address</p>
                       </div>
                     </div>
+                   
                     <div className="space-y-2">
                       <Label htmlFor="phone" className="text-blue-700">
                         Phone Number
                       </Label>
                       <FormControl fullWidth>
                         <InputLabel shrink htmlFor="phone" sx={{ display: "none" }}>Phone Number</InputLabel>
-                        <Input
-                          id="phone"
-                          value={
-                            student?.student_profile?.contact_info?.phone
-                              ? `+${student?.student_profile?.contact_info?.countryCode ?? ""}${student?.student_profile?.contact_info?.phone ?? ""}`
-                              : ""
-                          }
-                          className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2"
-                          readOnly
-                        />
+                        <Box className="flex gap-2">
+                          <Autocomplete
+                            options={countries}
+                            getOptionLabel={(option: { code: string; phone: string }) => `${option.code} (+${option.phone})`}
+                            value={countries.find((c: { phone: string }) => c.phone === editCountryCode) || null}
+                            onChange={(
+                              _event: React.SyntheticEvent<Element, Event>,
+                              value: { code: string; phone: string } | null
+                            ) => setEditCountryCode(value ? value.phone : "")}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder="Country"
+                                variant="outlined"
+                                size="small"
+                                sx={{
+                                  minWidth: 180,
+                                  backgroundColor: "#eff6ff",
+                                  "& .MuiOutlinedInput-root": {
+                                    backgroundColor: "#eff6ff",
+                                    "& fieldset": {
+                                      borderColor: "#3b82f6",
+                                    },
+                                    "&:hover fieldset": {
+                                      borderColor: "#2563eb",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#2563eb",
+                                    },
+                                  },
+                                  "& .MuiInputBase-input": {
+                                    fontSize: "14px",
+                                  },
+                                }}
+                              />
+                            )}
+                            slotProps={{
+                              paper: {
+                                sx: {
+                                  fontSize: "15px"
+                                }
+                              }
+                            }}
+                            isOptionEqualToValue={(
+                              option: { phone: string },
+                              value: { phone: string }
+                            ) => option.phone === value.phone}
+                          />
+                          <Input
+                            id="phone"
+                            value={editPhone}
+                            onChange={handlePhoneChange}
+                            className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2 flex-1"
+                            placeholder="Phone number"
+                            type="tel"
+                          />
+                        </Box>
+                        {fieldErrors.phone && (
+                          <div className="text-red-500 text-xs mt-1">{fieldErrors.phone}</div>
+                        )}
                       </FormControl>
                       <p className="text-sm text-blue-500/70">Your active mobile or contact number</p>
                     </div>
@@ -308,6 +467,7 @@ export default function SettingsPage() {
                       </FormControl>
                       <p className="text-sm text-blue-500/70">Your present home address</p>
                     </div>
+                  
                   </CardContent>
                 </Card>
               </motion.div>
@@ -368,17 +528,10 @@ export default function SettingsPage() {
                                     "& fieldset": {
                                       borderColor: "#3b82f6",
                                     },
-                                    "&:hover fieldset": {
-                                      borderColor: "#2563eb",
-                                    },
-                                    "&.Mui-focused fieldset": {
-                                      borderColor: "#2563eb",
-                                    },
                                   },
                                 }}
                               />
                             )}
-                            isOptionEqualToValue={(option, value) => option.value === value.value}
                           />
                         </Box>
                         <p className="text-sm text-blue-500/70">Your current year level</p>
@@ -389,7 +542,16 @@ export default function SettingsPage() {
                         </Label>
                         <Box>
                           <Autocomplete
-                            options={courses}
+                            options={
+                              (() => {
+                                const collegeYearValues = yearLevels.find(g => g.category === "College")?.options.map(o => o.value) ?? []
+                                if (collegeYearValues.includes(editYearLevel ?? "")) {
+                                  return courses.filter(c => c.value.startsWith("BS"))
+                                } else {
+                                  return courses.filter(c => !c.value.startsWith("BS"))
+                                }
+                              })()
+                            }
                             getOptionLabel={(option) => option.label}
                             value={courses.find(c => c.value === editCourse) || null}
                             onChange={handleCourseChange}
@@ -436,6 +598,7 @@ export default function SettingsPage() {
                             InputLabelProps={{ shrink: false }}
                             fullWidth
                             type="number"
+                            inputProps={{ minLength: 3, maxLength: 3 }}
                             sx={{
                               backgroundColor: "#eff6ff",
                               "& .MuiOutlinedInput-root": {
@@ -452,6 +615,9 @@ export default function SettingsPage() {
                               },
                             }}
                           />
+                          {fieldErrors.section && (
+                            <div className="text-red-500 text-xs mt-1">{fieldErrors.section}</div>
+                          )}
                         </Box>
                         <p className="text-sm text-blue-500/70">Your current section</p>
                       </div>
@@ -663,48 +829,18 @@ export default function SettingsPage() {
                       </Box>
                       <Box className="mb-6">
                         <Autocomplete
-                          multiple
-                          disableCloseOnSelect
                           options={remoteOptions}
                           getOptionLabel={(option) => option.label}
-                          value={remoteOptions.filter(r => editRemoteOptions.includes(r.value))}
+                          value={remoteOptions.find(r => r.value === editRemoteOptions) || null}
                           onChange={handleRemoteOptionsChange}
-                          renderOption={(props, option, { selected }) => {
+                          renderOption={(props, option) => {
                             const { key, ...rest } = props
                             return (
                               <li key={key} {...rest}>
-                                <Checkbox
-                                  checked={selected}
-                                  style={{ marginRight: 8 }}
-                                />
                                 {option.label}
                               </li>
                             )
                           }}
-                          renderTags={(value, getTagProps) =>
-                            value.map((option, index) => (
-                              <Chip
-                                label={option.label}
-                                {...getTagProps({ index })}
-                                key={option.value}
-                                sx={{
-                                  backgroundColor: "#3b82f6",
-                                  color: "#fff",
-                                  fontWeight: 500,
-                                  borderRadius: "9999px",
-                                  fontSize: "0.95rem",
-                                  border: "none",
-                                  px: 2,
-                                  py: 0.5,
-                                  "& .MuiChip-deleteIcon": {
-                                    color: "#fff",
-                                    fontSize: "1rem", 
-                                    marginLeft: "2px"
-                                  }
-                                }}
-                              />
-                            ))
-                          }
                           renderInput={(params) => (
                             <TextField
                               {...params}
@@ -807,5 +943,6 @@ export default function SettingsPage() {
     </div>
   )
 }
+
 
 
