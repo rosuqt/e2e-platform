@@ -105,7 +105,7 @@ export default function SettingsPage() {
 
 
   useEffect(() => {
-    fetch("/api/students/profile")
+    fetch("/api/students/settings")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data.student_profile)) {
@@ -154,6 +154,28 @@ export default function SettingsPage() {
     if (/^\d*$/.test(e.target.value)) setEditSection(e.target.value);
   };
 
+
+  const handleSave = async () => {
+    if (!student) return;
+    const payload = {
+      address: editAddress,
+      course: editCourse,
+      year: editYearLevel,
+      section: editSection,
+      s_job_pref: {
+        job_type: editJobType,
+        remote_options: editRemoteOptions,
+        unrelated_jobs: editUnrelatedJobs,
+      },
+ 
+    };
+    await fetch("/api/students/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    // Optionally, refetch or show a success message
+  };
 
   const tabs = [
     { id: "profile", icon: User, label: "Profile", description: "Manage your personal information" },
@@ -759,6 +781,7 @@ export default function SettingsPage() {
                 whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.5)" }}
                 whileTap={{ scale: 0.95 }}
                 type="button"
+                onClick={handleSave}
               >
                 <Save className="mr-2 h-5 w-5" />
                 Save Changes
