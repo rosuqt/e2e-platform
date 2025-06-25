@@ -24,6 +24,7 @@ export default function AddressAutocomplete({
   placeholder,
   sx,
   InputLabelProps,
+  className,
 }: {
   value: string;
   onChange: (val: string) => void;
@@ -34,6 +35,7 @@ export default function AddressAutocomplete({
   placeholder?: string;
   sx?: TextFieldProps['sx'];
   InputLabelProps?: TextFieldProps['InputLabelProps'];
+  className?: string;
 }) {
   const [query, setQuery] = useState(value || '');
   const [results, setResults] = useState<Location[]>([]);
@@ -66,7 +68,7 @@ export default function AddressAutocomplete({
 
   return (
     <div
-      className="w-full relative"
+      className={`w-full relative${className ? ` ${className}` : ""}`}
       tabIndex={-1}
       onBlur={() => setTimeout(() => setFocused(false), 100)}
     >
@@ -96,7 +98,14 @@ export default function AddressAutocomplete({
           onChange(e.target.value);
         }}
         autoComplete="off"
-        sx={height ? { height, '& .MuiInputBase-root': { height }, ...sx } : sx}
+        sx={{
+          fontSize: "1rem",
+          '& .MuiInputBase-input': {
+            fontSize: "1rem",
+          },
+          ...(height ? { height, '& .MuiInputBase-root': { height } } : {}),
+          ...sx,
+        }}
         placeholder={placeholder}
         InputLabelProps={InputLabelProps}
       />

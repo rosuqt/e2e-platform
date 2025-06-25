@@ -283,7 +283,9 @@ export default function SettingsPage() {
                           label={null}
                           height={40}
                           placeholder="Enter your address"
+                          className="text-base"
                           sx={{
+                
                             backgroundColor: "#eff6ff",
                             "& .MuiOutlinedInput-root": {
                               backgroundColor: "#eff6ff",
@@ -296,6 +298,9 @@ export default function SettingsPage() {
                               "&.Mui-focused fieldset": {
                                 borderColor: "#2563eb",
                               },
+                            },
+                            "& .MuiInputBase-input": {
+                              fontSize: "15px",
                             },
                           }}
                           InputLabelProps={{ shrink: false }}
