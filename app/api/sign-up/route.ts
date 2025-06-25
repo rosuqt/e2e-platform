@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import supabase, { getAdminSupabase } from "@/lib/supabase";
+import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
   const formData = await request.json();
@@ -257,6 +258,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const hashedPassword = await bcrypt.hash(formData.personalDetails.password, 10);
+
     const { data: employerData, error: employerError } = await supabase
       .from("registered_employers")
       .insert({
@@ -268,7 +271,7 @@ export async function POST(request: Request) {
         country_code: formData.personalDetails.countryCode,
         phone: formData.personalDetails.phone,
         email: formData.personalDetails.email,
-        password: formData.personalDetails.password,
+        password: hashedPassword,
         company_id: companyId,
         branch_id: branchId,
         company_name: capitalizeWords(formData.companyAssociation.companyName),
@@ -295,7 +298,8 @@ export async function POST(request: Request) {
         .from("employer_profile")
         .insert({
           employer_id: employerId,
-          password: formData.personalDetails.password
+          // Store hashed password, not plain
+          password: hashedPassword
         })
       if (profileError) {
         console.error("Error inserting employer_profile:", profileError)

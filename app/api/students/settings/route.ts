@@ -87,7 +87,7 @@ export async function PUT(req: Request) {
   }
   const supabase = getAdminSupabase()
   const body = await req.json()
-  const { address, course, year, section, s_job_pref } = body
+  const { address, course, year, section, s_job_pref, contact_info, username } = body
 
   const { error: studentError } = await supabase
     .from("registered_students")
@@ -113,8 +113,48 @@ export async function PUT(req: Request) {
     jobPrefError = error
   }
 
-  if (studentError || jobPrefError) {
-    return NextResponse.json({ error: studentError?.message || jobPrefError?.message }, { status: 500 })
+  let profileError = null
+  if (contact_info || username !== undefined) {
+    const updateObj: Record<string, unknown> = {}
+
+    if (contact_info) {
+      const { data: profileData } = await supabase
+        .from("student_profile")
+        .select("contact_info")
+        .eq("student_id", studentId)
+        .maybeSingle()
+      let currentContactInfo: Record<string, unknown> = {}
+      if (profileData?.contact_info) {
+        try {
+          currentContactInfo = typeof profileData.contact_info === "string"
+            ? JSON.parse(profileData.contact_info)
+            : profileData.contact_info
+        } catch {
+          currentContactInfo = {}
+        }
+      }
+      const mergedContactInfo = { ...currentContactInfo }
+      if ('email' in contact_info) mergedContactInfo.email = contact_info.email
+      if ('phone' in contact_info) mergedContactInfo.phone = contact_info.phone
+      if ('countryCode' in contact_info) mergedContactInfo.countryCode = contact_info.countryCode
+
+      // Store as a Postgres JSONB object, not as a string
+      updateObj.contact_info = mergedContactInfo
+    }
+
+    if (username !== undefined) {
+      updateObj.username = username
+    }
+    const { error } = await supabase
+      .from("student_profile")
+      .update(updateObj)
+      .eq("student_id", studentId)
+    profileError = error
+  }
+
+  if (studentError || jobPrefError || profileError) {
+    return NextResponse.json({ error: studentError?.message || jobPrefError?.message || profileError?.message }, { status: 500 })
   }
   return NextResponse.json({ success: true })
 }
+
