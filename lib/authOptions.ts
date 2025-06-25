@@ -164,8 +164,15 @@ export const authOptions: NextAuthOptions = {
         if (employerData?.company_id !== undefined) {
           token.company_id = employerData.company_id
         }
-      } else if (token.role === "employer" && token.employerId) {
-
+      } 
+    
+      if (
+        !token.role &&
+        user &&
+        typeof user === "object" &&
+        "role" in user
+      ) {
+        token.role = (user as { role: string }).role;
       }
       if ((user as unknown as { studentId?: string })?.studentId) {
         token.studentId = (user as unknown as { studentId: string }).studentId

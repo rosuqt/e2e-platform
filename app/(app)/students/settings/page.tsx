@@ -163,7 +163,7 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div className="min-h-screen h-screen overflow-auto bg-gradient-to-br from-blue-50 to-sky-100 pb-10">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 pb-10">
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Sidebar */}
