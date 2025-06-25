@@ -23,9 +23,15 @@ export async function POST(req: NextRequest) {
   } = body
 
   const safePortfolio =
-    Array.isArray(portfolio) ? portfolio.join(", ") :
-    typeof portfolio === "string" ? portfolio :
-    null;
+    Array.isArray(portfolio)
+      ? portfolio
+          .map((item: string) =>
+            typeof item === "string" && /^https?:\/\//.test(item) ? item : item
+          )
+          .join(", ")
+      : typeof portfolio === "string"
+      ? portfolio
+      : null;
 
   const safeApplicationAnswers =
     application_answers && typeof application_answers === "object"
@@ -33,9 +39,15 @@ export async function POST(req: NextRequest) {
       : {};
 
   const safeAchievements =
-    Array.isArray(achievements) ? achievements.join(", ") :
-    typeof achievements === "string" ? achievements :
-    null;
+    Array.isArray(achievements)
+      ? achievements
+          .map((item: string) =>
+            typeof item === "string" && /^https?:\/\//.test(item) ? item : item
+          )
+          .join(", ")
+      : typeof achievements === "string"
+      ? achievements
+      : null;
 
   const requiredFields = [
     "student_id",
@@ -97,15 +109,9 @@ export async function POST(req: NextRequest) {
           student_id,
           job_id,
           type: 'new',
-          message: 'New application submitted',
+          message: 'New application submitted!',
         },
-        {
-          application_id,
-          student_id,
-          job_id,
-          type: 'applied-for',
-          message: "You've applied for a job!",
-        }
+      
       ])
     }
     return NextResponse.json({ success: true })

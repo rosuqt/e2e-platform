@@ -63,7 +63,6 @@ interface Applicant {
   phone?: string
   linkedin?: string
   github?: string
-  portfolio?: string
   documents?: { name: string; date: string; size: string }[]
   expertise?: { skill: string; mastery: number }[]
   profile_image_url?: string
@@ -71,7 +70,11 @@ interface Applicant {
   year?: string
   resume?: string
   application_answers?: AnswersMap
-  job_skills?: string[] // add this property to Applicant
+  job_skills?: string[]
+  achievements?: string[]
+  portfolio?: string[]
+  raw_achievements?: string | string[] | Record<string, unknown> | null | undefined
+  raw_portfolio?: string | string[] | Record<string, unknown> | null | undefined
 }
 
 interface RecruiterApplicationDetailsProps {
@@ -221,13 +224,19 @@ export function RecruiterApplicationDetailsModal({
       phone: applicant.phone || "",
       linkedin: applicant.linkedin || "",
       github: applicant.github || "",
-      portfolio: applicant.portfolio || "",
+      // Ensure portfolio is a string for the contact field
+      portfolio: Array.isArray(applicant.portfolio)
+        ? (applicant.portfolio.length > 0 ? applicant.portfolio[0] : "")
+        : (typeof applicant.portfolio === "string" ? applicant.portfolio : ""),
     },
     documents: applicant.documents || [],
     course: applicant.course,
     year: applicant.year,
     resume: applicant.resume,
     application_answers: applicant.application_answers,
+    achievements: applicant.achievements || [],
+    portfolio: applicant.portfolio || [],
+    // Optionally, you can also pass raw_achievements/raw_portfolio if needed
   }
 
   async function handleCancelInterview() {
@@ -464,6 +473,7 @@ type RecruiterNote = {
   date_added: string
   note: string
   profile_img?: string | null
+  isEmployer?: boolean
 }
 function RecruiterApplicationDetailsContent({
   application,
@@ -475,7 +485,7 @@ function RecruiterApplicationDetailsContent({
   setIsModalOpen,
   setShowSendOfferModal
 }: {
-  application: Application & { expertise?: { skill: string; mastery: number }[], resume?: string, job_id?: string, application_answers?: AnswersMap },
+  application: Application & { expertise?: { skill: string; mastery: number }[], resume?: string, job_id?: string, application_answers?: AnswersMap, achievements?: string[], portfolio?: string[] },
   resumeUrl?: string | null,
   jobSkills: string[],
   onOpenInterviewModal?: () => void,
@@ -496,6 +506,8 @@ function RecruiterApplicationDetailsContent({
   const [employerProfileImg, setEmployerProfileImg] = useState<string | null>(null)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
+  const [signedAchievements, setSignedAchievements] = useState<{ name: string; url: string }[]>([])
+  const [signedPortfolio, setSignedPortfolio] = useState<{ name: string; url: string }[]>([])
 
   useEffect(() => {
     const employerId = (session?.user as { employerId?: string })?.employerId
@@ -547,6 +559,7 @@ function RecruiterApplicationDetailsContent({
       date_added: new Date().toISOString(),
       note: newNote.trim(),
       profile_img: employerProfileImg ? employerProfileImg : null,
+      isEmployer: true
     }
     const res = await fetch("/api/employers/applications/notes", {
       method: "POST",
@@ -615,13 +628,34 @@ function RecruiterApplicationDetailsContent({
     setLoading(false)
   }
 
+  useEffect(() => {
+    async function signFiles(files: (string | { name: string; url: string })[] = []) {
+      const normalized = normalizeFiles(files)
+      const signed = await Promise.all(
+        normalized.map(async (file) => {
+          if (!file.url) return file
+          // Only sign if it's not already a full URL (http)
+          if (file.url.startsWith("http")) return file
+          try {
+            const res = await fetch("/api/students/get-signed-url", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ bucket: "student.documents", path: file.url })
+            })
+            const data = await res.json()
+            if (data.signedUrl) {
+              return { ...file, url: data.signedUrl }
+            }
+          } catch {}
+          return file
+        })
+      )
+      return signed
+    }
 
-
-  function getMatchMessage(percent: number) {
-    if (percent >= 70) return "Great fit for this job"
-    if (percent >= 40) return "Somewhat matches the requirements"
-    return "Low skill match for this job"
-  }
+    signFiles(application.achievements).then(setSignedAchievements)
+    signFiles(application.portfolio).then(setSignedPortfolio)
+  }, [application.achievements, application.portfolio])
 
   const matchedSkillsCount = jobSkills.filter(
     skill => (application.skills || []).map(s => s.trim().toLowerCase()).includes(skill.trim().toLowerCase())
@@ -633,9 +667,9 @@ function RecruiterApplicationDetailsContent({
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="resume">Resume</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="questions">Questions</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4 pt-4">
@@ -755,6 +789,7 @@ function RecruiterApplicationDetailsContent({
 
           <div className="space-y-2">
             <h3 className="text-md font-semibold text-blue-700">Skills</h3>
+            <span className="text-sm text-gray-500">Highlighted skills are your skills that matches this job </span> 
             <div className="flex flex-wrap gap-2">
               {application.skills.map((skill: string, index: number) => {
                 const isMatched = jobSkills
@@ -876,6 +911,41 @@ function RecruiterApplicationDetailsContent({
               )}
             </div>
           </div>
+
+          <Separator />
+
+          {/* Achievements Section */}
+          <div className="space-y-2">
+            <h3 className="text-md font-semibold text-blue-700">Achievements</h3>
+            {(application.achievements && application.achievements.length > 0) ? (
+              <ul className="list-disc ml-6">
+                {application.achievements.map((ach, idx) => (
+                  <li key={idx} className="text-sm">{ach}</li>
+                ))}
+              </ul>
+            ) : (
+              <span className="text-sm text-gray-500">No achievements listed.</span>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Portfolio Section */}
+          <div className="space-y-2">
+            <h3 className="text-md font-semibold text-blue-700">Portfolio</h3>
+            {(application.portfolio && application.portfolio.length > 0) ? (
+              <ul className="list-disc ml-6">
+                {application.portfolio.map((item, idx) => (
+                  <li key={idx} className="text-sm break-all">{item}</li>
+                ))}
+              </ul>
+            ) : (
+              <span className="text-sm text-gray-500">No portfolio items listed.</span>
+            )}
+          </div>
+
+          <Separator />
+
         </TabsContent>
 
         <TabsContent value="resume" className="space-y-4 pt-4">
@@ -883,6 +953,8 @@ function RecruiterApplicationDetailsContent({
             resumeUrl={resumeUrl}
             resume={application.resume}
             documents={application.documents || []}
+            achievements={signedAchievements}
+            portfolio={signedPortfolio}
           />
         </TabsContent>
 
@@ -1233,4 +1305,20 @@ function RecruiterApplicationDetailsContent({
     </div>
   )
 }
-   
+
+function getMatchMessage(percent: number) {
+  if (percent >= 70) return "Great fit for this job"
+  if (percent >= 40) return "Somewhat matches the requirements"
+  return "Low skill match for this job"
+}
+
+function normalizeFiles(arr: (string | { name: string; url: string })[] = []): { name: string; url: string }[] {
+  return arr.map(item => {
+    if (typeof item === "string") {
+      const name = item.split("/").pop() || item
+      return { name, url: item }
+    }
+    return item
+  })
+}
+

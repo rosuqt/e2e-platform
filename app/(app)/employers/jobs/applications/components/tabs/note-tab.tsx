@@ -11,6 +11,7 @@ type RecruiterNote = {
   date_added: string
   note: string
   profile_img?: string | null
+  isEmployer?: boolean
 }
 
 export default function NoteTab({
@@ -44,7 +45,7 @@ export default function NoteTab({
   handleSaveEditNote: () => void
   handleDeleteNote: (idx: number) => void
   setNewNote: (v: string) => void
-  handleAddNote: () => void
+  handleAddNote: (note?: Partial<RecruiterNote>) => void
 }) {
   function formatNoteDate(dateString?: string) {
     if (!dateString) return ""
@@ -57,13 +58,26 @@ export default function NoteTab({
     return `${month} ${day} ${year}`
   }
 
+  const employerNotes = notes.filter(n => n.isEmployer !== false)
+
+  function handleAddEmployerNote() {
+    handleAddNote({
+      note: newNote,
+      job_title: "",
+      date_added: new Date().toISOString(),
+      profile_img: undefined,
+      employer_name: employerName,
+      isEmployer: true
+    })
+  }
+
   return (
     <>
       <div className="space-y-2">
         <h3 className="text-md font-semibold text-blue-700">Recruiter Notes</h3>
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 min-h-[48px]">
-          {notes.length === 0 && <p className="text-sm text-gray-500">No notes yet.</p>}
-          {notes.map((n, idx) => {
+          {employerNotes.length === 0 && <p className="text-sm text-gray-500">No notes yet.</p>}
+          {employerNotes.map((n, idx) => {
             const isOwnNote = n.employer_name === employerName
             return (
               <div key={idx} className="mb-4">
@@ -147,7 +161,7 @@ export default function NoteTab({
           onChange={e => setNewNote(e.target.value)}
           disabled={loading}
         ></textarea>
-        <Button size="sm" className="mt-2" onClick={handleAddNote} disabled={loading || !newNote.trim()}>
+        <Button size="sm" className="mt-2" onClick={handleAddEmployerNote} disabled={loading || !newNote.trim()}>
           <LuNotebookPen className="h-4 w-4 mr-2" />
           Save Note
         </Button>
