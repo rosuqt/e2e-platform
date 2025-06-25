@@ -102,7 +102,7 @@ export default function SettingsPage() {
   const [editYearLevel, setEditYearLevel] = useState<string | undefined>(undefined);
   const [editSection, setEditSection] = useState<string>("");
   const [editAddress, setEditAddress] = useState<string>("");
-
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/students/settings")
@@ -157,6 +157,7 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     if (!student) return;
+    setSaving(true);
     const payload = {
       address: editAddress,
       course: editCourse,
@@ -167,13 +168,13 @@ export default function SettingsPage() {
         remote_options: editRemoteOptions,
         unrelated_jobs: editUnrelatedJobs,
       },
- 
     };
     await fetch("/api/students/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    setSaving(false);
     // Optionally, refetch or show a success message
   };
 
@@ -777,14 +778,22 @@ export default function SettingsPage() {
               transition={{ duration: 0.5, delay: 0.9 }}
             >
               <motion.button
-                className="bg-gradient-to-r from-blue-500 to-sky-500 text-white px-8 py-6 rounded-2xl font-medium shadow-lg hover:shadow-blue-200/50 transition-all duration-200 flex items-center justify-center"
-                whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.5)" }}
-                whileTap={{ scale: 0.95 }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-150 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                whileHover={{ scale: 1.04, boxShadow: "0 4px 16px 0 rgba(59,130,246,0.15)" }}
+                whileTap={{ scale: 0.97 }}
                 type="button"
                 onClick={handleSave}
+                disabled={saving}
               >
-                <Save className="mr-2 h-5 w-5" />
-                Save Changes
+                {saving ? (
+                  <svg className="animate-spin h-4 w-4 mr-2 text-white" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                  </svg>
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                {saving ? "Saving..." : "Save Changes"}
               </motion.button>
             </motion.div>
           </div>
