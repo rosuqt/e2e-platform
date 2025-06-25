@@ -78,3 +78,43 @@ export async function GET() {
   console.log("student_profile:", parsedData?.student_profile)
   return NextResponse.json(parsedData)
 }
+
+export async function PUT(req: Request) {
+  const session = await getServerSession(authOptions)
+  const studentId = (session?.user as { studentId?: string })?.studentId
+  if (!studentId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  const supabase = getAdminSupabase()
+  const body = await req.json()
+  const { address, course, year, section, s_job_pref } = body
+
+  const { error: studentError } = await supabase
+    .from("registered_students")
+    .update({
+      address,
+      course,
+      year,
+      section,
+    })
+    .eq("id", studentId)
+
+  let jobPrefError = null
+  if (s_job_pref) {
+    const { job_type, remote_options, unrelated_jobs } = s_job_pref
+    const { error } = await supabase
+      .from("s_job_pref")
+      .update({
+        job_type: JSON.stringify(job_type),
+        remote_options: JSON.stringify(remote_options),
+        unrelated_jobs,
+      })
+      .eq("student_id", studentId)
+    jobPrefError = error
+  }
+
+  if (studentError || jobPrefError) {
+    return NextResponse.json({ error: studentError?.message || jobPrefError?.message }, { status: 500 })
+  }
+  return NextResponse.json({ success: true })
+}

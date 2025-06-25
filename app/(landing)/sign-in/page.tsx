@@ -4,7 +4,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import {  useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { TextField, IconButton, InputAdornment, Checkbox, FormControlLabel } from "@mui/material";
 import Image from "next/image";
@@ -20,7 +20,7 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const router = useRouter();
+  // const router = useRouter();
   const searchParams = useSearchParams();
 
   const handleMicrosoftLogin = async () => {
@@ -54,24 +54,14 @@ export default function SignInPage() {
     setError("");
     setLoading(true);
 
-    const res = await signIn("credentials", {
-      redirect: false,
+    await signIn("credentials", {
       email,
       password,
+      redirect: true,
+      callbackUrl: "/employers/dashboard",
     });
 
     setLoading(false);
-
-    if (res?.error) {
-      if (res.error === "CredentialsSignin") {
-        setError("Invalid email or password");
-      } else {
-        setError(res.error);
-      }
-      return;
-    }
-
-    router.push("/employers/dashboard");
   };
 
   const handleOpenModal = () => {
