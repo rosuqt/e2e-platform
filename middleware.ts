@@ -16,10 +16,10 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   const role = token?.role
 
-  if (process.env.NODE_ENV !== "production") {
-    console.log("middleware: token:", token)
-    console.log("middleware: role:", role)
-  }
+  // Always log for debugging, even in production
+  console.log("middleware: token:", token)
+  console.log("middleware: role:", role)
+  console.log("middleware: pathname:", pathname)
 
   if (!token) {
     return NextResponse.redirect(new URL("/sign-in", request.url))
