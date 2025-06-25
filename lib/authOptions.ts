@@ -77,10 +77,12 @@ export const authOptions: NextAuthOptions = {
           console.log("AzureAD signIn: original email received:", u.email);
           const normalizedEmail = u.email.trim().toLowerCase();
           console.log("AzureAD signIn: normalized email received:", normalizedEmail);
+          // Add more logging
           if (
             !normalizedEmail.endsWith("@alabang.sti.edu.ph") &&
             normalizedEmail !== "alro8612140@gmail.com"
           ) {
+            console.log("AzureAD signIn: invalid domain, redirecting to /sign-in?error=invalid_domain");
             return "/sign-in?error=invalid_domain"
           }
           let firstName = ""
@@ -102,6 +104,7 @@ export const authOptions: NextAuthOptions = {
             .eq("email", normalizedEmail)
             .single()
           if (!existingStudent) {
+            console.log("AzureAD signIn: inserting new student:", normalizedEmail, firstName, lastName);
             await supabase
               .from("registered_students")
               .insert({ email: normalizedEmail, first_name: firstName, last_name: lastName })
@@ -110,6 +113,7 @@ export const authOptions: NextAuthOptions = {
             u.newStudent = false
           }
         }
+        console.log("AzureAD signIn: returning true for successful sign-in");
         return true
       }
       return true
