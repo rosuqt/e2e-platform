@@ -16,7 +16,6 @@ import { TabList } from "./components/tab-list"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 
-
 type StudentProfile = {
   id: string
   student_id: string
@@ -101,6 +100,7 @@ export default function SettingsPage() {
   const [editCourse, setEditCourse] = useState<string | undefined>(undefined);
   const [editYearLevel, setEditYearLevel] = useState<string | undefined>(undefined);
   const [editSection, setEditSection] = useState<string>("");
+  const [editAddress, setEditAddress] = useState<string>("");
 
 
   useEffect(() => {
@@ -129,6 +129,7 @@ export default function SettingsPage() {
       setEditCourse(student.course);
       setEditYearLevel(student.year);
       setEditSection(student.section ?? "");
+      setEditAddress(student.address ?? "");
     }
   }, [student])
 
@@ -254,9 +255,9 @@ export default function SettingsPage() {
                         <InputLabel shrink htmlFor="address" sx={{ display: "none" }}>Address</InputLabel>
                         <Input
                           id="address"
-                          value={student?.address ?? ""}
+                          value={editAddress}
                           className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2"
-                          readOnly
+                          onChange={e => setEditAddress(e.target.value)}
                         />
                       </FormControl>
                       <p className="text-sm text-blue-500/70">Your present home address</p>
@@ -751,3 +752,4 @@ export default function SettingsPage() {
     </div>
   )
 }
+
