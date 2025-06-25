@@ -116,7 +116,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, account }) {
-      // console.log("JWT callback: token before:", token, "user:", user, "account:", account)
       if (account?.provider === "azure-ad") {
         token.role = "student"
         const u = user as UserWithNewStudent;
@@ -145,7 +144,7 @@ export const authOptions: NextAuthOptions = {
           verifyStatus?: string;
         };
         const employerUser = user as EmployerUser;
-        token.role = employerUser.role;
+        token.role = "employer"
         token.employerId = employerUser.id;
         token.firstName = employerUser.firstName;
         token.lastName = employerUser.lastName;
@@ -164,51 +163,14 @@ export const authOptions: NextAuthOptions = {
           token.company_id = employerData.company_id
         }
       } 
-      if (!token.role && token.email) {
-        const { data: employer } = await supabase
-          .from("registered_employers")
-          .select("id")
-          .eq("email", token.email)
-          .maybeSingle();
-        if (employer?.id) {
-          token.role = "employer";
-        } else {
-          const { data: student } = await supabase
-            .from("registered_students")
-            .select("id")
-            .eq("email", token.email)
-            .maybeSingle();
-          if (student?.id) {
-            token.role = "student";
-          }
-        }
-      }
-
-      if (!token.role && typeof token === "object" && "role" in token) {
-        token.role = (token as { role?: string }).role;
-      }
-
-      if (
-        !token.role &&
-        user &&
-        typeof user === "object" &&
-        "role" in user
-      ) {
-        token.role = (user as { role: string }).role;
-      }
-      if ((user as unknown as { studentId?: string })?.studentId) {
-        token.studentId = (user as unknown as { studentId: string }).studentId
-      }
-      // console.log("JWT callback: token after:", token)
       return token
     },
 
     async session({ session, token }) {
-     //console.log("Session callback: session before:", session, "token:", token)
       if (!session.user) {
         session.user = {}
       }
-      (session.user as { role?: string }).role = token.role as string
+      session.user.role = token.role as string
       if (token.role === "employer" && token.employerId) {
         (session.user as { employerId?: string }).employerId = token.employerId as string
         (session.user as { firstName?: string }).firstName = token.firstName as string
@@ -245,7 +207,6 @@ export const authOptions: NextAuthOptions = {
       if (token.role === "student" && "newStudent" in token) {
         (session.user as { newStudent?: boolean }).newStudent = token.newStudent as boolean
       }
- //console.log("Session callback: session after:", session)
       return session
     },
   },
