@@ -26,7 +26,7 @@ export async function GET() {
 
   const { data: applicants, error: applicantsError } = await supabase
     .from("applications")
-    .select(`*, application_answers, resume, job_postings (*)`)
+    .select(`*, application_answers, resume, achievements, portfolio, job_postings (*, registered_employers:employer_id (company_name), remote_options)`)
     .in("job_id", jobIds)
 
   if (applicantsError) {
@@ -47,17 +47,51 @@ export async function GET() {
 
   const profileMap = Object.fromEntries((profiles || []).map(p => [p.student_id, p]))
 
-  const applicantsWithJobTitle = (applicants || []).map(app => ({
-    ...app,
-    job_title: app.job_postings?.job_title,
-    skills: profileMap[app.student_id]?.skills || [],
-    education: profileMap[app.student_id]?.educations || [],
-    expertise: profileMap[app.student_id]?.expertise || [],
-    // application_answers is already included from the select above
-  }))
+  function parseArrayField(field: unknown): string[] {
+    if (Array.isArray(field)) return field as string[]
+    if (field && typeof field === "object" && field !== null) {
+      const keys = Object.keys(field)
+      if (keys.every(k => !isNaN(Number(k)))) {
+        return keys
+          .sort((a, b) => Number(a) - Number(b))
+          .map(k => (field as Record<string, unknown>)[k] as string)
+      }
+      const values = Object.values(field as object)
+      if (values.every(v => typeof v === "string")) return values as string[]
+      return []
+    }
+    if (typeof field === "string") {
+      try {
+        const arr = JSON.parse(field)
+        if (Array.isArray(arr)) return arr as string[]
+      } catch {}
+    }
+    return []
+  }
 
-
-
+  const applicantsWithJobTitle = (applicants || []).map(app => {
+    const achievementsArr = parseArrayField(app.achievements)
+    const portfolioArr = parseArrayField(app.portfolio)
+    return {
+      ...app,
+      job_title: app.job_postings?.job_title,
+      company_name: app.job_postings?.registered_employers?.company_name,
+      company_logo_image_path: app.job_postings?.registered_employers?.company_logo_image_path,
+      remote_options: app.job_postings?.remote_options,
+      skills: profileMap[app.student_id]?.skills || [],
+      education: profileMap[app.student_id]?.educations || [],
+      expertise: profileMap[app.student_id]?.expertise || [],
+      achievements: achievementsArr.length > 0
+        ? achievementsArr
+        : parseArrayField(app.job_postings?.achievements),
+      portfolio: portfolioArr.length > 0
+        ? portfolioArr
+        : parseArrayField(app.job_postings?.portfolio),
+      // pass raw fields for frontend access
+      raw_achievements: app.achievements as string | string[] | Record<string, unknown> | null | undefined,
+      raw_portfolio: app.portfolio as string | string[] | Record<string, unknown> | null | undefined,
+    }
+  })
 
   return NextResponse.json({ applicants: applicantsWithJobTitle })
 }

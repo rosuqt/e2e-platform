@@ -1,4 +1,4 @@
-import { FileText, Download, ExternalLink, Eye } from "lucide-react"
+import { FileText, Download, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 
@@ -12,8 +12,8 @@ export default function ResumeTab({
   resumeUrl?: string | null
   resume?: string
   documents: { name: string; date: string; size: string }[]
-  achievements?: (string | { name: string; url: string })[]
-  portfolio?: (string | { name: string; url: string })[]
+  achievements?: { name: string; url: string }[]
+  portfolio?: { name: string; url: string }[]
 }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(resumeUrl && typeof resumeUrl === "string" && resumeUrl.length > 0 ? resumeUrl : null)
   const [previewLabel, setPreviewLabel] = useState<string>("Resume Preview")
@@ -22,7 +22,6 @@ export default function ResumeTab({
     setPreviewUrl(url)
     setPreviewLabel(label)
   }
-
   return (
     <div className="space-y-2">
       <h3 className="text-md font-semibold text-blue-700">Candidate Documents</h3>
@@ -50,7 +49,7 @@ export default function ResumeTab({
                 <div className="text-center text-gray-500 py-8">
                   <FileText className="h-12 w-12 mx-auto text-gray-400 mb-2" />
                   <h3 className="text-lg font-medium text-gray-700">{previewLabel}</h3>
-                  <p className="text-sm">Click on a document above to preview it her</p>
+                  <p className="text-sm">Click on a document above to preview it here</p>
                 </div>
               )
             })()}
@@ -100,7 +99,6 @@ export default function ResumeTab({
                 <span className="sr-only">Download</span>
               </Button>
             </a>
-           
           </div>
         </div>
       )}
@@ -124,10 +122,6 @@ export default function ResumeTab({
               <Download className="h-4 w-4" />
               <span className="sr-only">Download</span>
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <ExternalLink className="h-4 w-4" />
-              <span className="sr-only">Open</span>
-            </Button>
           </div>
         </div>
       ))}
@@ -136,36 +130,14 @@ export default function ResumeTab({
           <h4 className="text-sm font-semibold text-blue-700 mt-4 mb-2">Achievements</h4>
           {achievements.map((ach, idx) => {
             if (typeof ach === "string") {
-              const fileName = ach.split("/").pop() || ach
               return (
                 <div key={idx} className="flex items-center justify-between border rounded-md p-3 mb-2">
                   <div className="flex items-center gap-3">
                     <FileText className="h-5 w-5 text-green-600" />
                     <div>
-                      <div className="font-medium text-sm">{fileName}</div>
+                      <div className="font-medium text-sm">{ach}</div>
                       <div className="text-xs text-gray-500">Achievement</div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex items-center gap-1 text-blue-600 hover:bg-blue-50 hover:text-blue-700 px-3"
-                      onClick={() => handlePreview(ach, fileName)}
-                    >
-                      <Eye className="h-4 w-4 text-blue-600" />
-                      Preview
-                    </Button>
-                    <a href={ach} target="_blank" rel="noopener noreferrer" download>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                      >
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Download</span>
-                      </Button>
-                    </a>
                   </div>
                 </div>
               )
@@ -215,36 +187,14 @@ export default function ResumeTab({
           <h4 className="text-sm font-semibold text-blue-700 mt-4 mb-2">Portfolio</h4>
           {portfolio.map((item, idx) => {
             if (typeof item === "string") {
-              const fileName = item.split("/").pop() || item
               return (
                 <div key={idx} className="flex items-center justify-between border rounded-md p-3 mb-2">
                   <div className="flex items-center gap-3">
                     <FileText className="h-5 w-5 text-purple-600" />
                     <div>
-                      <div className="font-medium text-sm">{fileName}</div>
+                      <div className="font-medium text-sm">{item}</div>
                       <div className="text-xs text-gray-500">Portfolio</div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex items-center gap-1 text-blue-600 hover:bg-blue-50 hover:text-blue-700 px-3"
-                      onClick={() => handlePreview(item, fileName)}
-                    >
-                      <Eye className="h-4 w-4 text-blue-600" />
-                      Preview
-                    </Button>
-                    <a href={item} target="_blank" rel="noopener noreferrer" download>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                      >
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Download</span>
-                      </Button>
-                    </a>
                   </div>
                 </div>
               )

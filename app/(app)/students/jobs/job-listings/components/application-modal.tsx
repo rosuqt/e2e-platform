@@ -1038,9 +1038,17 @@ export function ApplicationModal({ jobId = "", onClose }: { jobId: string | numb
                         input={<OutlinedInput label="Choose achievements (optional)" sx={{ fontSize: 14 }} />}
                         renderValue={(selected) => (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                            {(selected as string[]).map((value) => (
-                              <Chip key={value} label={value} size="small" sx={{ fontSize: 13, height: 22 }} />
-                            ))}
+                            {(selected as string[]).map((value) => {
+                              const cert = certs.find(c => c.attachmentUrl === value);
+                              return (
+                                <Chip
+                                  key={value}
+                                  label={cert && typeof cert.title === "string" && cert.title.trim() !== "" ? cert.title : "Achievement"}
+                                  size="small"
+                                  sx={{ fontSize: 13, height: 22 }}
+                                />
+                              );
+                            })}
                           </div>
                         )}
                         sx={{ fontSize: 14 }}
@@ -1057,38 +1065,18 @@ export function ApplicationModal({ jobId = "", onClose }: { jobId: string | numb
                           <ListSubheader sx={{ fontSize: 13, color: "#666" }}>Achievements</ListSubheader>
                         )}
                         {certs
-                          .filter(cert =>
-                            cert.title || cert.name || cert.certificate_title || cert.issuer || cert.signedUrl
-                          )
+                          .filter(cert => cert.attachmentUrl && typeof cert.attachmentUrl === "string" && cert.attachmentUrl.trim() !== "")
                           .map((cert, idx) => {
-                            const display =
-                              cert.title ||
-                              cert.name ||
-                              cert.certificate_title ||
-                              cert.issuer ||
-                              cert.signedUrl ||
-                              `Certificate #${idx + 1}`;
+                            const display = cert.title || cert.attachmentUrl || `Certificate #${idx + 1}`;
+                            const value = cert.attachmentUrl as string;
                             return (
-                              <MenuItem key={`cert-${idx}`} value={String(display)} sx={{ fontSize: 14 }}>
+                              <MenuItem key={`cert-${idx}`} value={value} sx={{ fontSize: 14 }}>
                                 <Checkbox
-                                  checked={form.achievements.indexOf(String(display)) > -1}
+                                  checked={form.achievements.indexOf(value) > -1}
                                   color="primary"
                                   style={{ padding: 0, marginRight: 8 }}
                                 />
-                                <span style={{ fontSize: 14 }}>
-                                  {String(display)}
-                                  {cert.signedUrl && (
-                                    <a
-                                      href={cert.signedUrl as string}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{ marginLeft: 8, fontSize: 12, color: "#2563eb" }}
-                                      onClick={e => e.stopPropagation()}
-                                    >
-                                      View
-                                    </a>
-                                  )}
-                                </span>
+                                <span style={{ fontSize: 14 }}>{String(display)}</span>
                               </MenuItem>
                             );
                           })}
@@ -1112,9 +1100,23 @@ export function ApplicationModal({ jobId = "", onClose }: { jobId: string | numb
                         input={<OutlinedInput label="Choose portfolio pieces (optional)" sx={{ fontSize: 14 }} />}
                         renderValue={(selected) => (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                            {(selected as string[]).map((value) => (
-                              <Chip key={value} label={value} size="small" sx={{ fontSize: 13, height: 22 }} />
-                            ))}
+                            {(selected as string[]).map((value) => {
+                              const item = portfolioItems.find(i => i.url === value);
+                              return (
+                                <Chip
+                                  key={value}
+                                  label={
+                                    (item && typeof item.title === "string" && item.title.trim() !== "")
+                                      ? item.title
+                                      : (item && typeof item.name === "string" && item.name.trim() !== "")
+                                        ? item.name
+                                        : "Portfolio"
+                                  }
+                                  size="small"
+                                  sx={{ fontSize: 13, height: 22 }}
+                                />
+                              );
+                            })}
                           </div>
                         )}
                         sx={{ fontSize: 14 }}
@@ -1131,13 +1133,14 @@ export function ApplicationModal({ jobId = "", onClose }: { jobId: string | numb
                           <ListSubheader sx={{ fontSize: 13, color: "#666" }}>Portfolio</ListSubheader>
                         )}
                         {portfolioItems
-                          .filter(item => !!(item.title || item.name || item.url))
+                          .filter(item => !!item.url && typeof item.url === "string" && item.url.trim() !== "")
                           .map((item, idx) => {
                             const display = item.title || item.name || item.url || `Portfolio #${idx + 1}`;
+                            const value = item.url as string;
                             return (
-                              <MenuItem key={`portfolio-${idx}`} value={String(display)} sx={{ fontSize: 14 }}>
+                              <MenuItem key={`portfolio-${idx}`} value={value} sx={{ fontSize: 14 }}>
                                 <Checkbox
-                                  checked={form.portfolio.indexOf(String(display)) > -1}
+                                  checked={form.portfolio.indexOf(value) > -1}
                                   color="primary"
                                   style={{ padding: 0, marginRight: 8 }}
                                 />
@@ -1364,3 +1367,4 @@ export function ApplicationModal({ jobId = "", onClose }: { jobId: string | numb
     </motion.div>
   )
 }
+
