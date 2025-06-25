@@ -4,6 +4,16 @@ import { getToken } from "next-auth/jwt"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  if (
+    pathname.startsWith("/api/auth") ||
+    pathname === "/sign-in" ||
+    pathname === "/sign-in/" ||
+    pathname === "/forbidden"
+  ) {
+    return NextResponse.next()
+  }
+
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
   const role = token?.role
 

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import type { LucideIcon } from "lucide-react"
 import { motion } from "framer-motion"
+import { IoSettingsSharp } from "react-icons/io5"
 
 type TabItem = {
   id: string
@@ -31,7 +32,12 @@ export function TabList({ items, defaultTab, onTabChange }: TabListProps) {
   return (
     <div className="w-full max-w-xs bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="p-6 border-b border-gray-100">
-        <h2 className="text-xl font-semibold text-gray-800">Settings</h2>
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-500/50 rounded-full p-2">
+           <IoSettingsSharp className="text-blue-700" size={24} />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800">Settings</h2>
+        </div>
         <p className="text-sm text-gray-500 mt-1">
           Manage your account, preferences, and notifications all in one place.
         </p>

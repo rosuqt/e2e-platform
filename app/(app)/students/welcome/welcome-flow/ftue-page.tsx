@@ -43,7 +43,7 @@ const courses = [
 
 const jobTypes = [
   { value: "part-time", label: "Part Time" },
-  { value: "internship", label: "internship" },
+  { value: "internship", label: "Internship/OJT" },
   { value: "full-time", label: "Full Time" },
 ]
 

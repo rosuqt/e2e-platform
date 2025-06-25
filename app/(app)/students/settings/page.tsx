@@ -1,9 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { User, Book, Sun, Bell, Shield, Globe, FileText, Save, Moon } from "lucide-react"
-import { MenuItem, Select, FormControl, InputLabel } from "@mui/material"
+import { User, Book, Sun, Bell, Shield,   Save, Moon } from "lucide-react"
+import { FormControl, InputLabel, Chip } from "@mui/material"
+import TextField from "@mui/material/TextField"
+import Autocomplete from "@mui/material/Autocomplete"
+import Checkbox from "@mui/material/Checkbox"
+import Box from "@mui/material/Box"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,7 +15,78 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TabList } from "./components/tab-list"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+
+
+type StudentProfile = {
+  id: string
+  student_id: string
+  contact_info: {
+    email?: string
+    phone?: string
+    socials?: { key: string; url: string }[]
+    countryCode?: string
+  }
+  profile_img?: string
+  username?: string
+}
+
+type SJobPref = {
+  id: string
+  job_type?: string | string[]
+  remote_options?: string | string[]
+  unrelated_jobs?: boolean
+  student_id?: string
+}
+
+type Student = {
+  id: string
+  first_name?: string
+  last_name?: string
+  year?: string
+  section?: string
+  course?: string
+  address?: string
+  email?: string
+  student_profile?: StudentProfile
+  s_job_pref?: SJobPref[] 
+}
+
+const jobTypes = [
+  { value: "part-time", label: "Part Time" },
+  { value: "internship", label: "Internship/OJT" },
+  { value: "ojt", label: "OJT" },
+  { value: "full-time", label: "Full Time" },
+]
+
+const remoteOptions = [
+  { value: "hybrid", label: "Hybrid" },
+  { value: "wfh", label: "Work from Home" },
+  { value: "onsite", label: "Onsite" },
+]
+
+const yearLevels = [
+  { category: "College", options: [
+    { value: "1st-year", label: "1st Year" },
+    { value: "2nd-year", label: "2nd Year" },
+    { value: "3rd-year", label: "3rd Year" },
+    { value: "4th-year", label: "4th Year" },
+  ]},
+  { category: "Senior High", options: [
+    { value: "shs-grade-11", label: "SHS Grade 11" },
+    { value: "shs-grade-12", label: "SHS Grade 12" },
+  ]}
+];
+
+const courses = [
+  { value: "BS - Information Technology", label: "BS - Information Technology" },
+  { value: "BS - Business Administration", label: "BS - Business Administration" },
+  { value: "BS - Hospitality Management", label: "BS - Hospitality Management" },
+  { value: "ABM", label: "ABM" },
+  { value: "HUMSS", label: "HUMSS" },
+  { value: "IT Mobile app and Web Development", label: "IT Mobile app and Web Development" },
+];
+
+
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile")
@@ -19,53 +94,85 @@ export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [pushNotifications, setPushNotifications] = useState(true)
   const [jobAlerts, setJobAlerts] = useState(true)
+  const [student, setStudent] = useState<Student | null>(null)
+  const [editJobType, setEditJobType] = useState<string[]>([])
+  const [editRemoteOptions, setEditRemoteOptions] = useState<string[]>([])
+  const [editUnrelatedJobs, setEditUnrelatedJobs] = useState(false)
+  const [editCourse, setEditCourse] = useState<string | undefined>(undefined);
+  const [editYearLevel, setEditYearLevel] = useState<string | undefined>(undefined);
+  const [editSection, setEditSection] = useState<string>("");
+
+
+  useEffect(() => {
+    fetch("/api/students/profile")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data.student_profile)) {
+          data.student_profile = data.student_profile.length > 0 ? data.student_profile[0] : undefined
+        }
+        data.student_profile = data.student_profile as StudentProfile | undefined
+        setStudent(data)
+      })
+  }, [])
+
+  useEffect(() => {
+    if (student) {
+      const jobTypeRaw = student.s_job_pref?.[0]?.job_type
+      const remoteOptionsRaw = student.s_job_pref?.[0]?.remote_options
+
+      const jobTypeArr = Array.isArray(jobTypeRaw) ? jobTypeRaw.map(String) : []
+      const remoteOptionsArr = Array.isArray(remoteOptionsRaw) ? remoteOptionsRaw.map(String) : []
+
+      setEditJobType(jobTypeArr)
+      setEditRemoteOptions(remoteOptionsArr)
+      setEditUnrelatedJobs(!!student.s_job_pref?.[0]?.unrelated_jobs)
+      setEditCourse(student.course);
+      setEditYearLevel(student.year);
+      setEditSection(student.section ?? "");
+    }
+  }, [student])
+
+  const handleTabChange = (id: string) => {
+    setActiveTab(id)
+  }
+
+  const handleJobTypeChange = (_: React.SyntheticEvent, values: { value: string; label: string }[]) => {
+    setEditJobType(values.map(v => v.value))
+  }
+  const handleRemoteOptionsChange = (_: React.SyntheticEvent, values: { value: string; label: string }[]) => {
+    setEditRemoteOptions(values.map(v => v.value))
+  }
+  const handleCourseChange = (_: React.SyntheticEvent, value: { value: string; label: string } | null) => {
+    setEditCourse(value ? value.value : undefined);
+  };
+  const handleYearLevelChange = (_: React.SyntheticEvent, value: { value: string; label: string } | null) => {
+    setEditYearLevel(value ? value.value : undefined);
+  };
+  const handleSectionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (/^\d*$/.test(e.target.value)) setEditSection(e.target.value);
+  };
+
 
   const tabs = [
     { id: "profile", icon: User, label: "Profile", description: "Manage your personal information" },
     { id: "academic", icon: Book, label: "Academic", description: "View and edit academic details" },
     { id: "appearance", icon: Sun, label: "Appearance", description: "Customize the application look" },
     { id: "notifications", icon: Bell, label: "Notifications", description: "Manage notification settings" },
-    { id: "privacy", icon: Shield, label: "Privacy", description: "Control your privacy settings" },
-    { id: "preferences", icon: Globe, label: "Preferences", description: "Set your job preferences" },
-    { id: "resume", icon: FileText, label: "Resume", description: "Manage your resume and documents" },
+    { id: "account", icon: Shield, label: "Account", description: "Account preferences and password" },
   ]
 
-  const handleTabChange = (id: string) => {
-    setActiveTab(id)
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 pb-10">
+    <div className="min-h-screen h-screen overflow-auto bg-gradient-to-br from-blue-50 to-sky-100 pb-10">
       <div className="container mx-auto px-4 py-8">
-        <motion.div
-          className="mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="text-3xl font-bold text-blue-600 flex items-center">
-            <motion.div
-              className="mr-4 bg-blue-500 text-white p-3 rounded-2xl shadow-lg"
-              whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <User size={28} />
-            </motion.div>
-            <span className="bg-gradient-to-r from-blue-500 to-sky-400 text-transparent bg-clip-text">
-              Account Settings
-            </span>
-          </h1>
-          <p className="text-blue-600/70 mt-2 ml-16">Manage your profile, preferences, and account settings</p>
-        </motion.div>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 flex flex-col">
             <TabList items={tabs} defaultTab={activeTab} onTabChange={handleTabChange} />
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 flex flex-col justify-start">
+            {/* Removed header from here */}
             {activeTab === "profile" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -85,32 +192,74 @@ export default function SettingsPage() {
                       <Label htmlFor="name" className="text-blue-700">
                         Full Name
                       </Label>
-                      <Input id="name" value="John Doe" disabled className="bg-blue-50/50 border-blue-200" />
+                      <Input id="name" value={student ? `${student.first_name ?? ""} ${student.last_name ?? ""}` : ""} disabled className="bg-blue-50/50 border-blue-200" readOnly />
                       <p className="text-sm text-blue-500/70">Your legal name as registered with the institution</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email" className="text-blue-700">
-                        Email Address
+                      <Label htmlFor="username" className="text-blue-700">
+                        Username
                       </Label>
-                      <Input id="email" value="john.doe@university.edu" disabled className="bg-blue-50/50 border-blue-200" />
-                      <p className="text-sm text-blue-500/70">Your institutional email address</p>
+                      <FormControl fullWidth>
+                        <InputLabel shrink htmlFor="username" sx={{ display: "none" }}>Username</InputLabel>
+                        <Input
+                          id="username"
+                          value={student?.student_profile?.username ?? ""}
+                          className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2"
+                          readOnly
+                        />
+                      </FormControl>
+                      <p className="text-sm text-blue-500/70">Your unique username</p>
+                    </div>
+                    <div className="flex flex-col md:flex-row md:space-x-4">
+                      <div className="flex-1 space-y-2">
+                        <Label htmlFor="personal-email" className="text-blue-700">
+                          Personal Email
+                        </Label>
+                        <FormControl fullWidth>
+                          <InputLabel shrink htmlFor="personal-email" sx={{ display: "none" }}>Personal Email</InputLabel>
+                          <Input
+                            id="personal-email"
+                            value={student?.student_profile?.contact_info?.email ?? ""}
+                            className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2"
+                            readOnly
+                          />
+                        </FormControl>
+                        <p className="text-sm text-blue-500/70">Your personal email address</p>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone" className="text-blue-700">
                         Phone Number
                       </Label>
-                      <Input id="phone" placeholder="Enter your phone number" className="border-blue-200 focus:border-blue-400" />
+                      <FormControl fullWidth>
+                        <InputLabel shrink htmlFor="phone" sx={{ display: "none" }}>Phone Number</InputLabel>
+                        <Input
+                          id="phone"
+                          value={
+                            student?.student_profile?.contact_info?.phone
+                              ? `+${student?.student_profile?.contact_info?.countryCode ?? ""}${student?.student_profile?.contact_info?.phone ?? ""}`
+                              : ""
+                          }
+                          className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2"
+                          readOnly
+                        />
+                      </FormControl>
+                      <p className="text-sm text-blue-500/70">Your active mobile or contact number</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="bio" className="text-blue-700">
-                        Bio
+                      <Label htmlFor="address" className="text-blue-700">
+                        Address
                       </Label>
-                      <textarea
-                        id="bio"
-                        placeholder="Tell employers about yourself"
-                        className="w-full min-h-[100px] rounded-md border border-blue-200 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      ></textarea>
-                      <p className="text-sm text-blue-500/70">Brief description for your profile</p>
+                      <FormControl fullWidth>
+                        <InputLabel shrink htmlFor="address" sx={{ display: "none" }}>Address</InputLabel>
+                        <Input
+                          id="address"
+                          value={student?.address ?? ""}
+                          className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2"
+                          readOnly
+                        />
+                      </FormControl>
+                      <p className="text-sm text-blue-500/70">Your present home address</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -132,40 +281,134 @@ export default function SettingsPage() {
                     <CardDescription>Your course and academic details</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <FormControl fullWidth className="mb-4">
-                      <InputLabel id="course-label">Course/Program</InputLabel>
-                      <Select labelId="course-label" id="course" defaultValue="">
-                        <MenuItem value="cs">Bachelor of Science in Computer Science</MenuItem>
-                        <MenuItem value="it">Bachelor of Science in Information Technology</MenuItem>
-                        <MenuItem value="is">Bachelor of Science in Information Systems</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <FormControl fullWidth className="mb-4">
-                      <InputLabel id="year-label">Year Level</InputLabel>
-                      <Select labelId="year-label" id="year" defaultValue="">
-                        <MenuItem value="1">First Year</MenuItem>
-                        <MenuItem value="2">Second Year</MenuItem>
-                        <MenuItem value="3">Third Year</MenuItem>
-                        <MenuItem value="4">Fourth Year</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <FormControl fullWidth className="mb-4">
-                      <InputLabel id="section-label">Section</InputLabel>
-                      <Select labelId="section-label" id="section" defaultValue="">
-                        <MenuItem value="A">Section A</MenuItem>
-                        <MenuItem value="B">Section B</MenuItem>
-                        <MenuItem value="C">Section C</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <FormControl fullWidth>
-                      <InputLabel id="graduation-label">Expected Graduation Date</InputLabel>
-                      <Select labelId="graduation-label" id="graduation" defaultValue="">
-                        <MenuItem value="2023">2023</MenuItem>
-                        <MenuItem value="2024">2024</MenuItem>
-                        <MenuItem value="2025">2025</MenuItem>
-                        <MenuItem value="2026">2026</MenuItem>
-                      </Select>
-                    </FormControl>
+                    {/* School Email */}
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-blue-700">
+                        School Email
+                      </Label>
+                      <Input id="email" value={student?.email ?? ""} disabled className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2" readOnly />
+                      <p className="text-sm text-blue-500/70">Your institutional email address. This cannot be changed</p>
+                    </div>
+                    {/* Year, Course, Section fields in a grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="year" className="text-blue-700">
+                          Year
+                        </Label>
+                        <Box>
+                          <Autocomplete
+                            options={yearLevels.flatMap(group => group.options)}
+                            getOptionLabel={(option) => option.label}
+                            groupBy={(option) => {
+                              const group = yearLevels.find(g => g.options.some(o => o.value === option.value));
+                              return group ? group.category : "";
+                            }}
+                            value={
+                              yearLevels.flatMap(g => g.options).find(l => l.value === editYearLevel) || null
+                            }
+                            onChange={handleYearLevelChange}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder="Year Level"
+                                variant="outlined"
+                                size="small"
+                                InputLabelProps={{ shrink: false }}
+                                sx={{
+                                  backgroundColor: "#eff6ff",
+                                  "& .MuiOutlinedInput-root": {
+                                    backgroundColor: "#eff6ff", 
+                                    "& fieldset": {
+                                      borderColor: "#3b82f6",
+                                    },
+                                    "&:hover fieldset": {
+                                      borderColor: "#2563eb",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#2563eb",
+                                    },
+                                  },
+                                }}
+                              />
+                            )}
+                            isOptionEqualToValue={(option, value) => option.value === value.value}
+                          />
+                        </Box>
+                        <p className="text-sm text-blue-500/70">Your current year level</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="course" className="text-blue-700">
+                          Course
+                        </Label>
+                        <Box>
+                          <Autocomplete
+                            options={courses}
+                            getOptionLabel={(option) => option.label}
+                            value={courses.find(c => c.value === editCourse) || null}
+                            onChange={handleCourseChange}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder="Course"
+                                variant="outlined"
+                                size="small"
+                                InputLabelProps={{ shrink: false }}
+                                sx={{
+                                  backgroundColor: "#eff6ff",
+                                  "& .MuiOutlinedInput-root": {
+                                    backgroundColor: "#eff6ff",
+                                    "& fieldset": {
+                                      borderColor: "#3b82f6",
+                                    },
+                                    "&:hover fieldset": {
+                                      borderColor: "#2563eb",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#2563eb",
+                                    },
+                                  },
+                                }}
+                              />
+                            )}
+                            isOptionEqualToValue={(option, value) => option.value === value.value}
+                          />
+                        </Box>
+                        <p className="text-sm text-blue-500/70">Your enrolled program or course</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="section" className="text-blue-700">
+                          Section
+                        </Label>
+                        <Box>
+                          <TextField
+                            placeholder="Section (e.g., 611)"
+                            variant="outlined"
+                            size="small"
+                            value={editSection}
+                            onChange={handleSectionChange}
+                            InputLabelProps={{ shrink: false }}
+                            fullWidth
+                            type="number"
+                            sx={{
+                              backgroundColor: "#eff6ff",
+                              "& .MuiOutlinedInput-root": {
+                                backgroundColor: "#eff6ff",
+                                "& fieldset": {
+                                  borderColor: "#3b82f6",
+                                },
+                                "&:hover fieldset": {
+                                  borderColor: "#2563eb",
+                                },
+                                "&.Mui-focused fieldset": {
+                                  borderColor: "#2563eb",
+                                },
+                              },
+                            }}
+                          />
+                        </Box>
+                        <p className="text-sm text-blue-500/70">Your current section</p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -223,29 +466,6 @@ export default function SettingsPage() {
                         ))}
                       </div>
                       <p className="text-sm text-blue-500/70">Select your preferred color theme</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Font Size</Label>
-                      <RadioGroup defaultValue="medium" className="flex space-x-2">
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="small" id="small" className="text-blue-600" />
-                          <Label htmlFor="small" className="text-sm">
-                            Small
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="medium" id="medium" className="text-blue-600" />
-                          <Label htmlFor="medium" className="text-base">
-                            Medium
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="large" id="large" className="text-blue-600" />
-                          <Label htmlFor="large" className="text-lg">
-                            Large
-                          </Label>
-                        </div>
-                      </RadioGroup>
                     </div>
                   </CardContent>
                 </Card>
@@ -305,7 +525,7 @@ export default function SettingsPage() {
               </motion.div>
             )}
 
-            {activeTab === "privacy" && (
+            {activeTab === "account" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -315,103 +535,200 @@ export default function SettingsPage() {
                   <CardHeader>
                     <CardTitle className="text-blue-600 flex items-center">
                       <Shield className="h-5 w-5 mr-2" />
-                      Privacy
+                      Account
                     </CardTitle>
-                    <CardDescription>Control your privacy settings</CardDescription>
+                    <CardDescription>Manage your job preferences and change your password</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Profile Visibility</Label>
-                      <Input
-                        id="visibility"
-                        placeholder="Public/Private"
-                        className="border-blue-200 focus:border-blue-400"
-                      />
+                  <CardContent className="space-y-8">
+                    <div>
+                      <h3 className="text-lg font-semibold text-blue-700 mb-2">Job Preferences</h3>
+                      <Separator className="mb-6" />
+                      <Box className="mb-6">
+                        <Autocomplete
+                          multiple
+                          disableCloseOnSelect
+                          options={jobTypes}
+                          getOptionLabel={(option) => option.label}
+                          value={jobTypes.filter(j => editJobType.includes(j.value))}
+                          onChange={handleJobTypeChange}
+                          renderOption={(props, option, { selected }) => {
+                            const { key, ...rest } = props
+                            return (
+                              <li key={key} {...rest}>
+                                <Checkbox
+                                  checked={selected}
+                                  style={{ marginRight: 8 }}
+                                />
+                                {option.label}
+                              </li>
+                            )
+                          }}
+                          renderTags={(value, getTagProps) =>
+                            value.map((option, index) => (
+                              <Chip
+                                label={option.label}
+                                {...getTagProps({ index })}
+                                key={option.value}
+                                sx={{
+                                  backgroundColor: "#3b82f6",
+                                  color: "#fff",
+                                  fontWeight: 500,
+                                  borderRadius: "9999px",
+                                  fontSize: "0.95rem",
+                                  border: "none",
+                                  px: 2,
+                                  py: 0.5,
+                                  "& .MuiChip-deleteIcon": {
+                                    color: "#fff",
+                                    fontSize: "1rem", 
+                                    marginLeft: "2px"
+                                  }
+                                }}
+                              />
+                            ))
+                          }
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              placeholder="Preferred job type"
+                              variant="outlined"
+                              size="small"
+                              InputLabelProps={{ shrink: false }}
+                              sx={{
+                                backgroundColor: "#eff6ff",
+                                "& .MuiOutlinedInput-root": {
+                                  backgroundColor: "#eff6ff",
+                                  "& fieldset": {
+                                    borderColor: "#3b82f6",
+                                  },
+                                  "&:hover fieldset": {
+                                    borderColor: "#2563eb",
+                                  },
+                                  "&.Mui-focused fieldset": {
+                                    borderColor: "#2563eb",
+                                  },
+                                },
+                              }}
+                            />
+                          )}
+                          isOptionEqualToValue={(option, value) => option.value === value.value}
+                        />
+                      </Box>
+                      <Box className="mb-6">
+                        <Autocomplete
+                          multiple
+                          disableCloseOnSelect
+                          options={remoteOptions}
+                          getOptionLabel={(option) => option.label}
+                          value={remoteOptions.filter(r => editRemoteOptions.includes(r.value))}
+                          onChange={handleRemoteOptionsChange}
+                          renderOption={(props, option, { selected }) => {
+                            const { key, ...rest } = props
+                            return (
+                              <li key={key} {...rest}>
+                                <Checkbox
+                                  checked={selected}
+                                  style={{ marginRight: 8 }}
+                                />
+                                {option.label}
+                              </li>
+                            )
+                          }}
+                          renderTags={(value, getTagProps) =>
+                            value.map((option, index) => (
+                              <Chip
+                                label={option.label}
+                                {...getTagProps({ index })}
+                                key={option.value}
+                                sx={{
+                                  backgroundColor: "#3b82f6",
+                                  color: "#fff",
+                                  fontWeight: 500,
+                                  borderRadius: "9999px",
+                                  fontSize: "0.95rem",
+                                  border: "none",
+                                  px: 2,
+                                  py: 0.5,
+                                  "& .MuiChip-deleteIcon": {
+                                    color: "#fff",
+                                    fontSize: "1rem", 
+                                    marginLeft: "2px"
+                                  }
+                                }}
+                              />
+                            ))
+                          }
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              placeholder="Preferred remote option"
+                              variant="outlined"
+                              size="small"
+                              InputLabelProps={{ shrink: false }}
+                              sx={{
+                                backgroundColor: "#eff6ff",
+                                "& .MuiOutlinedInput-root": {
+                                  backgroundColor: "#eff6ff",
+                                  "& fieldset": {
+                                    borderColor: "#3b82f6",
+                                  },
+                                  "&:hover fieldset": {
+                                    borderColor: "#2563eb",
+                                  },
+                                  "&.Mui-focused fieldset": {
+                                    borderColor: "#2563eb",
+                                  },
+                                },
+                              }}
+                            />
+                          )}
+                          isOptionEqualToValue={(option, value) => option.value === value.value}
+                        />
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={1} className="mb-2">
+                        <Switch
+                          checked={editUnrelatedJobs}
+                          onCheckedChange={setEditUnrelatedJobs}
+                          color="primary"
+                        />
+                        <span className="text-sm text-blue-600">
+                          Would you like job recommendations unrelated to your course?
+                        </span>
+                      </Box>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Resume Privacy</Label>
-                      <Input
-                        id="resume-privacy"
-                        placeholder="Public/Private"
-                        className="border-blue-200 focus:border-blue-400"
-                      />
+                    <Separator className="my-6" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-blue-700 mb-2">Change Password</h3>
+                      <Separator className="mb-6" />
+                      <div className="space-y-4">
+                        <Input
+                          type="password"
+                          placeholder="Current Password"
+                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
+                        />
+                        <Input
+                          type="password"
+                          placeholder="New Password"
+                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
+                        />
+                        <Input
+                          type="password"
+                          placeholder="Confirm New Password"
+                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
+                        />
+                        <button
+                          type="button"
+                          className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition"
+                        >
+                          Update Password
+                        </button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </motion.div>
             )}
 
-            {activeTab === "preferences" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.6 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      <Globe className="h-5 w-5 mr-2" />
-                      Preferences
-                    </CardTitle>
-                    <CardDescription>Set your job preferences</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Job Type</Label>
-                      <Input
-                        id="job-type"
-                        placeholder="Full-time/Part-time"
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Preferred Industries</Label>
-                      <Input
-                        id="industries"
-                        placeholder="e.g., Technology, Finance"
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            {activeTab === "resume" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.7 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      <FileText className="h-5 w-5 mr-2" />
-                      Resume
-                    </CardTitle>
-                    <CardDescription>Manage your resume and documents</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="resume" className="text-blue-700">
-                        Upload Resume
-                      </Label>
-                      <Input id="resume" type="file" className="border-blue-200 focus:border-blue-400" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Default Resume</Label>
-                      <Input
-                        id="default-resume"
-                        placeholder="General Resume"
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            {/* Save Button with animation */}
             <motion.div
               className="flex justify-end mt-6"
               initial={{ opacity: 0 }}
