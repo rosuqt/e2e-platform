@@ -253,11 +253,29 @@ export default function SettingsPage() {
                       </Label>
                       <FormControl fullWidth>
                         <InputLabel shrink htmlFor="address" sx={{ display: "none" }}>Address</InputLabel>
-                        <Input
+                        <TextField
                           id="address"
                           value={editAddress}
-                          className="bg-blue-50/50 border-blue-200 rounded-md text-base px-3 py-2"
                           onChange={e => setEditAddress(e.target.value)}
+                          placeholder="Enter your address"
+                          variant="outlined"
+                          size="small"
+                          autoComplete="address-line1"
+                          sx={{
+                            backgroundColor: "#eff6ff",
+                            "& .MuiOutlinedInput-root": {
+                              backgroundColor: "#eff6ff",
+                              "& fieldset": {
+                                borderColor: "#3b82f6",
+                              },
+                              "&:hover fieldset": {
+                                borderColor: "#2563eb",
+                              },
+                              "&.Mui-focused fieldset": {
+                                borderColor: "#2563eb",
+                              },
+                            },
+                          }}
                         />
                       </FormControl>
                       <p className="text-sm text-blue-500/70">Your present home address</p>

@@ -96,7 +96,6 @@ export const authOptions: NextAuthOptions = {
               lastName = ""
             }
           }
-          // Use normalizedEmail for all DB operations
           const { data: existingStudent } = await supabase
             .from("registered_students")
             .select("id")
@@ -165,7 +164,10 @@ export const authOptions: NextAuthOptions = {
           token.company_id = employerData.company_id
         }
       } 
-    
+      if (!token.role && typeof token === "object" && "role" in token) {
+        token.role = (token as { role?: string }).role;
+      }
+
       if (
         !token.role &&
         user &&
