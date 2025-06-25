@@ -254,13 +254,28 @@ export default function SettingsPage() {
                       </Label>
                       <FormControl fullWidth>
                         <InputLabel shrink htmlFor="address" sx={{ display: "none" }}>Address</InputLabel>
-                        {/* Use AddressAutocomplete instead of TextField, but keep the same look */}
                         <AddressAutocomplete
                           value={editAddress}
                           onChange={setEditAddress}
                           label={null}
-                          // mimic the TextField style
                           height={40}
+                          placeholder="Enter your address"
+                          sx={{
+                            backgroundColor: "#eff6ff",
+                            "& .MuiOutlinedInput-root": {
+                              backgroundColor: "#eff6ff",
+                              "& fieldset": {
+                                borderColor: "#3b82f6",
+                              },
+                              "&:hover fieldset": {
+                                borderColor: "#2563eb",
+                              },
+                              "&.Mui-focused fieldset": {
+                                borderColor: "#2563eb",
+                              },
+                            },
+                          }}
+                          InputLabelProps={{ shrink: false }}
                         />
                       </FormControl>
                       <p className="text-sm text-blue-500/70">Your present home address</p>
@@ -755,5 +770,5 @@ export default function SettingsPage() {
     </div>
   )
 }
-               
+
 

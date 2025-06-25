@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import TextField from '@mui/material/TextField';
+import TextField, { TextFieldProps } from '@mui/material/TextField';
 import Popper from '@mui/material/Popper'
 
 type Location = {
@@ -21,6 +21,9 @@ export default function AddressAutocomplete({
     </span>
   ),
   height,
+  placeholder,
+  sx,
+  InputLabelProps,
 }: {
   value: string;
   onChange: (val: string) => void;
@@ -28,6 +31,9 @@ export default function AddressAutocomplete({
   helperText?: React.ReactNode;
   label?: React.ReactNode;
   height?: string | number;
+  placeholder?: string;
+  sx?: TextFieldProps['sx'];
+  InputLabelProps?: TextFieldProps['InputLabelProps'];
 }) {
   const [query, setQuery] = useState(value || '');
   const [results, setResults] = useState<Location[]>([]);
@@ -90,7 +96,9 @@ export default function AddressAutocomplete({
           onChange(e.target.value);
         }}
         autoComplete="off"
-        sx={height ? { height, '& .MuiInputBase-root': { height } } : undefined}
+        sx={height ? { height, '& .MuiInputBase-root': { height }, ...sx } : sx}
+        placeholder={placeholder}
+        InputLabelProps={InputLabelProps}
       />
       <Popper
         open={focused && results.length > 0}
