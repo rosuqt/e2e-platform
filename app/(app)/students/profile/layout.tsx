@@ -1,6 +1,5 @@
 "use client";
 import Image from "next/image";
-
 import { useState, useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "../../side-nav/sidebar";
@@ -8,7 +7,7 @@ import BaseLayout from "../../base-layout";
 import { TbSettings, TbBug } from "react-icons/tb";
 import { FiCalendar } from "react-icons/fi";
 import { FaUser } from "react-icons/fa";
-import { Camera, Pencil} from "lucide-react";
+import { Camera, Pencil } from "lucide-react";
 import AboutPage from "./components/profile-page";
 import SkillsPage from "./components/tabs/skills-tab";
 import RatingsPage from "./components/tabs/ratings-tab";
@@ -27,6 +26,10 @@ import Skeleton from "@mui/material/Skeleton";
 import { motion } from "framer-motion";
 import Tooltip from "@mui/material/Tooltip";
 import ProfileCompletion from "./components/profile-completion";
+import { HiRocketLaunch } from "react-icons/hi2";
+import { RiProgress6Fill } from "react-icons/ri";
+import { FaMagnifyingGlass } from "react-icons/fa6";
+import { IoTelescope } from "react-icons/io5";
 
 export default function ProfileLayout() {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
@@ -55,6 +58,37 @@ export default function ProfileLayout() {
   const profileCompletionRef = useRef<() => void>(null)
   const [editingBio, setEditingBio] = useState(false);
   const [savingBio, setSavingBio] = useState(false);
+  const [applicationStatus, setApplicationStatus] = useState<string>("");
+
+  function getStatusColor(status: string) {
+    switch (status) {
+      case "Exploring Opportunities":
+        return { bg: "#FFD6D6", text: "#7A2E2E" }
+      case "Actively Looking for Opportunities":
+        return { bg: "#FFF2B2", text: "#7A6A1A" }
+      case "Application in progress":
+        return { bg: "#B2E0FF", text: "#1A4B6A" }
+      case "Job landed":
+        return { bg: "#C3F7C0", text: "#217A2E" }
+      default:
+        return { bg: "#D6C6FF", text: "#5B3A7A" }
+    }
+  }
+
+  function getStatusIcon(status: string) {
+    switch (status) {
+      case "Job landed":
+        return <HiRocketLaunch className="inline-block mr-1 -mt-0.5" size={16} />
+      case "Application in progress":
+        return <RiProgress6Fill className="inline-block mr-1 -mt-0.5" size={16} />
+      case "Actively Looking for Opportunities":
+        return <FaMagnifyingGlass className="inline-block mr-1 -mt-0.5" size={15} />
+      case "Exploring Opportunities":
+        return <IoTelescope className="inline-block mr-1 -mt-0.5" size={16} />
+      default:
+        return null
+    }
+  }
 
   const menuItems = useMemo(
     () => [
@@ -156,6 +190,13 @@ export default function ProfileLayout() {
       setBio(details.short_bio || "");
       setLoading(false);
     })();
+    (async () => {
+      const res = await fetch("/api/students/applications");
+      if (res.ok) {
+        const data = await res.json();
+        setApplicationStatus(data.applicationStatus || "");
+      }
+    })();
   }, []);
 
   const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,7 +216,7 @@ export default function ProfileLayout() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId, profile_img: publicUrl }),
       });
-            const signedUrl = await getSignedUrlIfNeeded(publicUrl, "user.avatars");
+      const signedUrl = await getSignedUrlIfNeeded(publicUrl, "user.avatars");
       setProfileImage(publicUrl);
       setProfileImageUrl(signedUrl);
       if (profileCompletionRef.current) profileCompletionRef.current()
@@ -454,15 +495,22 @@ export default function ProfileLayout() {
                                 : "Full Name"}
                             </h1>
                           )}
+                           <Tooltip title="This reflects your work status and cannot be changed. It is based on your actual workflow and progress." arrow>
                           <motion.span
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.98 }}
-                            className="bg-green-500 text-white text-xs px-2 py-1 rounded-full cursor-pointer"
+                            className="text-xs px-4 py-1 mt-1 rounded-full cursor-pointer flex items-center"
+                            style={{
+                              backgroundColor: getStatusColor(applicationStatus || "Exploring Opportunities").bg,
+                              color: getStatusColor(applicationStatus || "Exploring Opportunities").text,
+                              fontWeight: 500,
+                            }}
                           >
-                            Available to work
+                            {getStatusIcon(applicationStatus || "Exploring Opportunities")}
+                            {applicationStatus || "Available to work"}
                           </motion.span>
-                          <Tooltip title="This reflects your work status and cannot be changed. It is based on your actual workflow and progress." arrow>
-                            <span className="ml-1 text-blue-500 cursor-help">🛈</span>
+                         
+                            
                           </Tooltip>
                         </div>
                         {loading ? (

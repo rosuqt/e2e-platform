@@ -79,10 +79,10 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
   }, [formData.recommendedCourse, formData.skills, handleFieldChange]);
 
   const courses = [
-    { title: "BSIT - Bachelor of Science in Information Technology", value: "BS-Information Technology" },
-    { title: "BSBA - Bachelor of Science in Business Administration", value: "BS-Business Administration" },
-    { title: "BSHM - Bachelor of Science in Hospitality Management", value: "BS-Hospitality Management" },
-    { title: "BSTM - Bachelor of Science in Tourism Management", value: "BS-Tourism Management" },
+    { title: "BS - Information Technology", value: "BS-Information Technology" },
+    { title: "BS - Business Administration", value: "BS-Business Administration" },
+    { title: "BS - Hospitality Management", value: "BS-Hospitality Management" },
+    { title: "BS - Tourism Management", value: "BS-Tourism Management" },
   ]
 
   const recommendedCourses = Array.isArray(formData.recommendedCourse)

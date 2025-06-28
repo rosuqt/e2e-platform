@@ -108,9 +108,26 @@ export async function GET() {
     }
   })
 
+  // Determine application status badge
+  let applicationStatus = "Exploring Opportunities"
+  if (applicationsWithJobTitle.length === 0) {
+    applicationStatus = "Exploring Opportunities"
+  } else {
+    const statuses = applicationsWithJobTitle.map(a => (a.status || "").toLowerCase())
+    if (statuses.every(s => s === "new")) {
+      applicationStatus = "Actively Looking for Opportunities"
+    } else if (statuses.some(s => s === "hired")) {
+      applicationStatus = "Job landed"
+    } else if (statuses.some(s => s === "interview scheduled" || s === "waitlisted")) {
+      applicationStatus = "Application in progress"
+    } else {
+      applicationStatus = "Actively Looking for Opportunities"
+    }
+  }
+
   console.log("applicationsWithJobTitle profile_img:", applicationsWithJobTitle.map(a => a.profile_img))
 
-  return NextResponse.json({ applications: applicationsWithJobTitle })
+  return NextResponse.json({ applications: applicationsWithJobTitle, applicationStatus })
 }
 
 export async function POST(req: Request) {

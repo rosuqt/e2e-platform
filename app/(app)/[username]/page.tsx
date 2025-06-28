@@ -11,7 +11,7 @@ import { PiFiles } from "react-icons/pi";
 import { Mail, Phone } from "lucide-react";
 import { SiIndeed } from "react-icons/si";
 import { FaFacebook, FaLinkedin, FaTwitter, FaGithub, FaGlobe, FaInstagram, FaYoutube } from "react-icons/fa6";
-import { ExpertiseIcon } from "../profile/components/data/expertise-icons";
+import { ExpertiseIcon } from "../students/profile/components/data/expertise-icons";
 import PublicViewCertModal from "./view-cert";
 import PublicViewPortfolioModal from "./view-portfolio";
 

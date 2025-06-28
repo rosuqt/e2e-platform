@@ -106,7 +106,7 @@ export default function PublicViewCertModal({
   const [medalAnimation, setMedalAnimation] = useState<object | null>(null);
 
   useEffect(() => {
-    import("../../../../public/animations/medal.json").then((mod) => {
+    import("../../../public/animations/medal.json").then((mod) => {
       setMedalAnimation(mod.default as object);
     });
   }, []);

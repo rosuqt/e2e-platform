@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Search,
   Download,
@@ -8,41 +8,29 @@ import {
   Eye,
   Trash,
   Edit,
-  Mail,
-  Phone,
-  Building,
-  Calendar,
   User,
-  Briefcase,
-  MapPin,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import Button from "@mui/material/Button"
-import { Input } from "@mui/material"
-import Dialog from "@mui/material/Dialog"
-import DialogActions from "@mui/material/DialogActions"
-import DialogContent from "@mui/material/DialogContent"
-import DialogContentText from "@mui/material/DialogContentText"
-import DialogTitle from "@mui/material/DialogTitle"
-import Avatar from "@mui/material/Avatar"
-import Select from "@mui/material/Select"
-import MenuItem from "@mui/material/MenuItem"
-import InputLabel from "@mui/material/InputLabel"
-import FormControl from "@mui/material/FormControl"
-import Table from "@mui/material/Table"
-import TableBody from "@mui/material/TableBody"
-import TableCell from "@mui/material/TableCell"
-import TableContainer from "@mui/material/TableContainer"
-import TableHead from "@mui/material/TableHead"
-import TableRow from "@mui/material/TableRow"
-import Paper from "@mui/material/Paper"
-import IconButton from "@mui/material/IconButton"
-import Menu from "@mui/material/Menu"
-import ListItemIcon from "@mui/material/ListItemIcon"
-import ListItemText from "@mui/material/ListItemText"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { motion } from "framer-motion"
+import { cn } from "@/lib/utils"
+import { HiBadgeCheck } from "react-icons/hi"
+import { LuBadgeCheck } from "react-icons/lu"
+import { Tooltip } from "@mui/material"
+import { EmployerDetailsModal } from "./components/employer-details"
+import { PiWarningFill } from "react-icons/pi"
 
 interface Employer {
   id: number
@@ -54,130 +42,93 @@ interface Employer {
   position: string
   status: "active" | "inactive" | "suspended" | "pending"
   registrationDate: string
-  industry: string
   location: string
-  website: string
   employeesCount: number
   description: string
+  verify_status?: string
+  job_title?: string
+  company_branch?: string
+  username?: string
+  company_website?: string
+  profile_img?: string
+}
+
+interface ApiEmployer {
+  profile_img: string
+  id: string
+  first_name?: string
+  middle_name?: string
+  last_name?: string
+  suffix?: string
+  country_code?: string
+  phone?: string
+  email?: string
+  company_email?: string
+  company_name?: string
+  company_branch?: string
+  company_role?: string
+  company_industry?: string
+  verify_status?: string
+  created_at?: string
+  job_title?: string
+  username?: string
+  company_website?: string
 }
 
 export default function EmployersManagement() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState("active")
+  const [activeTab, setActiveTab] = useState("all")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedEmployer, setSelectedEmployer] = useState<Employer | null>(null)
   const [selectedIndustry, setSelectedIndustry] = useState<string>("all")
   const [selectedLocation, setSelectedLocation] = useState<string>("all")
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
+  const [menuEmployerId, setMenuEmployerId] = useState<number | null>(null)
+  const [page, setPage] = useState(1)
+  const pageSize = 7
 
-  // Mock data
-  const employers: Employer[] = [
-    {
-      id: 1,
-      employerId: "EMP-001",
-      name: "John Smith",
-      email: "john.smith@techsolutions.com",
-      phone: "+63 912 345 6789",
-      company: "Tech Solutions Inc.",
-      position: "HR Manager",
-      status: "active",
-      registrationDate: "2022-03-15",
-      industry: "Information Technology",
-      location: "Manila",
-      website: "www.techsolutions.com",
-      employeesCount: 120,
-      description:
-        "Tech Solutions Inc. is a leading IT services company specializing in software development and cloud solutions.",
-    },
-    {
-      id: 2,
-      employerId: "EMP-002",
-      name: "Sarah Williams",
-      email: "sarah.williams@digitalinnovations.com",
-      phone: "+63 923 456 7890",
-      company: "Digital Innovations",
-      position: "Talent Acquisition Specialist",
-      status: "active",
-      registrationDate: "2022-05-20",
-      industry: "Information Technology",
-      location: "Cebu",
-      website: "www.digitalinnovations.com",
-      employeesCount: 85,
-      description:
-        "Digital Innovations is a digital transformation company helping businesses adopt modern technologies.",
-    },
-    {
-      id: 3,
-      employerId: "EMP-003",
-      name: "Michael Brown",
-      email: "michael.brown@webtech.com",
-      phone: "+63 934 567 8901",
-      company: "WebTech Solutions",
-      position: "Recruitment Manager",
-      status: "inactive",
-      registrationDate: "2022-01-10",
-      industry: "Web Development",
-      location: "Manila",
-      website: "www.webtech.com",
-      employeesCount: 45,
-      description:
-        "WebTech Solutions specializes in web development and digital marketing services for small to medium businesses.",
-    },
-    {
-      id: 4,
-      employerId: "EMP-004",
-      name: "Jennifer Lee",
-      email: "jennifer.lee@innovativesystems.com",
-      phone: "+63 945 678 9012",
-      company: "Innovative Systems",
-      position: "HR Director",
-      status: "suspended",
-      registrationDate: "2021-11-05",
-      industry: "Software Development",
-      location: "Davao",
-      website: "www.innovativesystems.com",
-      employeesCount: 60,
-      description:
-        "Innovative Systems develops custom software solutions for various industries including healthcare and finance.",
-    },
-    {
-      id: 5,
-      employerId: "EMP-005",
-      name: "David Wilson",
-      email: "david.wilson@futuretechnologies.com",
-      phone: "+63 956 789 0123",
-      company: "Future Technologies",
-      position: "Recruitment Specialist",
-      status: "pending",
-      registrationDate: "2023-01-20",
-      industry: "Artificial Intelligence",
-      location: "Makati",
-      website: "www.futuretechnologies.com",
-      employeesCount: 30,
-      description:
-        "Future Technologies is a startup focused on artificial intelligence and machine learning applications.",
-    },
-    {
-      id: 6,
-      employerId: "EMP-006",
-      name: "Maria Rodriguez",
-      email: "maria.rodriguez@globalfinance.com",
-      phone: "+63 967 890 1234",
-      company: "Global Finance Corp",
-      position: "Talent Manager",
-      status: "active",
-      registrationDate: "2022-08-15",
-      industry: "Finance",
-      location: "Makati",
-      website: "www.globalfinance.com",
-      employeesCount: 200,
-      description:
-        "Global Finance Corp provides financial services and solutions to businesses and individuals across the Philippines.",
-    },
-  ]
+  const [employers, setEmployers] = useState<Employer[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
-  const industries = Array.from(new Set(employers.map((employer) => employer.industry)))
-  const locations = Array.from(new Set(employers.map((employer) => employer.location)))
+  useEffect(() => {
+    setIsLoading(true)
+    const statuses = ["active", "inactive", "suspended"]
+    fetch("/api/superadmin/fetchUsers?employers=true")
+      .then((res) => res.json())
+      .then(async (res) => {
+        if (Array.isArray(res.employers)) {
+          setEmployers(
+            res.employers.map((e: ApiEmployer, idx: number) => ({
+              id: idx + 1,
+              employerId: e.id,
+              name: [e.first_name, e.middle_name, e.last_name, e.suffix].filter(Boolean).join(" "),
+              email: e.email || e.company_email || "",
+              phone: (e.country_code ? "+" + e.country_code + " " : "") + (e.phone || ""),
+              company: e.company_name || "",
+              position: e.company_role || "",
+              status: statuses[idx % statuses.length] as "active" | "inactive" | "suspended",
+              registrationDate: e.created_at ? new Date(e.created_at).toISOString().slice(0, 10) : "",
+              industry: e.company_industry || "",
+              location: e.company_branch || "",
+              company_website: e.company_website || "",
+              employeesCount: 0,
+              description: "",
+              verify_status: e.verify_status ?? "",
+              job_title: e.job_title || "",
+              company_branch: e.company_branch || "",
+              username: e.username || "",
+              profile_img: e.profile_img || "",
+            })),
+          )
+        }
+      })
+      .finally(() => setIsLoading(false))
+  }, [])
+
+  const locations = Array.from(
+    new Set(employers.map((employer) => employer.location).filter((v) => v && v !== ""))
+  )
 
   const filteredEmployers = employers.filter((employer) => {
     const matchesSearch =
@@ -193,14 +144,28 @@ export default function EmployersManagement() {
       (activeTab === "pending" && employer.status === "pending") ||
       activeTab === "all"
 
-    const matchesIndustry = selectedIndustry === "all" || employer.industry === selectedIndustry
     const matchesLocation = selectedLocation === "all" || employer.location === selectedLocation
 
-    return matchesSearch && matchesTab && matchesIndustry && matchesLocation
+    return matchesSearch && matchesTab && matchesLocation
   })
 
-  const handleViewEmployer = (employer: Employer) => {
-    setSelectedEmployer(employer)
+  const pageCount = Math.ceil(filteredEmployers.length / pageSize)
+  const paginatedEmployers = filteredEmployers.slice((page - 1) * pageSize, page * pageSize)
+
+  const fetchCompanyDetails = async (employerId: string) => {
+    const res = await fetch(`/api/superadmin/fetchUsers?employers=true&employerId=${employerId}`)
+    const data = await res.json()
+    return data.companies?.[0]
+  }
+
+  const handleViewEmployer = async (employer: Employer) => {
+    const company = await fetchCompanyDetails(employer.employerId)
+    setSelectedEmployer({
+      ...employer,
+      ...(company || {}),
+      company_website: company?.company_website || employer.company_website || "",
+      profile_img: employer.profile_img, 
+    })
     setIsViewDialogOpen(true)
   }
 
@@ -210,19 +175,15 @@ export default function EmployersManagement() {
   }
 
   const confirmDeleteEmployer = () => {
-    // In a real application, you would call an API to delete the employer
-    console.log(`Deleting employer with ID: ${selectedEmployer?.id}`)
     setIsDeleteDialogOpen(false)
-    // Then refresh the employer list
   }
 
   const exportEmployers = () => {
-    // In a real application, you would generate a CSV or Excel file
     const header = "Employer ID,Name,Email,Phone,Company,Position,Status,Industry,Location\n"
     const csv = filteredEmployers
       .map(
         (employer) =>
-          `${employer.employerId},${employer.name},${employer.email},${employer.phone},${employer.company},${employer.position},${employer.status},${employer.industry},${employer.location}`,
+          `${employer.employerId},${employer.name},${employer.email},${employer.phone},${employer.company},${employer.position},${employer.status},${employer.location}`,
       )
       .join("\n")
 
@@ -238,231 +199,227 @@ export default function EmployersManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6"
+      >
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Employer Management</h2>
-          <p className="text-muted-foreground">View, export, and manage employer records</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Employer Management</h1>
+          <p className="text-lg text-gray-600">View, export, and manage employer records</p>
         </div>
-        <div className="mt-4 md:mt-0">
-          <Button className="flex items-center gap-2" onClick={exportEmployers}>
-            <Download className="h-4 w-4" />
-            Export Employers
-          </Button>
-        </div>
-      </div>
+        <Button
+          className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/25 rounded-2xl px-6 py-3 font-semibold"
+          onClick={exportEmployers}
+        >
+          <Download className="h-5 w-5" />
+          <span>Export Employers</span>
+        </Button>
+      </motion.div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle>Employer Records</CardTitle>
-          <CardDescription>Comprehensive list of all employers in the system</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <Input
-                  placeholder="Search employers..."
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <Card className="border-0 shadow-xl bg-white rounded-3xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 pb-8">
+            <CardTitle className="text-2xl font-bold text-gray-900">Employer Records</CardTitle>
+            <CardDescription className="text-gray-600 text-lg">
+              Comprehensive list of all employers in the system
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-8">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-24">
+                <div className="w-12 h-12 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mb-4" />
+                <div className="text-lg font-semibold text-indigo-500 animate-pulse">Fetching users...</div>
               </div>
-              <div className="flex gap-2">
-                <FormControl className="w-[180px]">
-                  <InputLabel>Industry</InputLabel>
-                  <Select
-                    value={selectedIndustry}
-                    onChange={(e) => setSelectedIndustry(e.target.value)}
-                    label="Industry"
-                  >
-                    <MenuItem value="all">All Industries</MenuItem>
-                    {industries.map((industry) => (
-                      <MenuItem key={industry} value={industry}>
-                        {industry}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl className="w-[150px]">
-                  <InputLabel>Location</InputLabel>
-                  <Select
-                    value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
-                    label="Location"
-                  >
-                    <MenuItem value="all">All Locations</MenuItem>
-                    {locations.map((location) => (
-                      <MenuItem key={location} value={location}>
-                        {location}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </div>
-            </div>
-          </div>
-
-          <Tabs defaultValue="active" onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="inactive">Inactive</TabsTrigger>
-              <TabsTrigger value="suspended">Suspended</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" className="mt-4">
-              <EmployersTable
-                employers={filteredEmployers}
-                onViewEmployer={handleViewEmployer}
-                onDeleteEmployer={handleDeleteEmployer}
-              />
-            </TabsContent>
-            <TabsContent value="active" className="mt-4">
-              <EmployersTable
-                employers={filteredEmployers}
-                onViewEmployer={handleViewEmployer}
-                onDeleteEmployer={handleDeleteEmployer}
-              />
-            </TabsContent>
-            <TabsContent value="inactive" className="mt-4">
-              <EmployersTable
-                employers={filteredEmployers}
-                onViewEmployer={handleViewEmployer}
-                onDeleteEmployer={handleDeleteEmployer}
-              />
-            </TabsContent>
-            <TabsContent value="suspended" className="mt-4">
-              <EmployersTable
-                employers={filteredEmployers}
-                onViewEmployer={handleViewEmployer}
-                onDeleteEmployer={handleDeleteEmployer}
-              />
-            </TabsContent>
-            <TabsContent value="pending" className="mt-4">
-              <EmployersTable
-                employers={filteredEmployers}
-                onViewEmployer={handleViewEmployer}
-                onDeleteEmployer={handleDeleteEmployer}
-              />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-
-      {/* View Employer Dialog */}
-      <Dialog open={isViewDialogOpen} onClose={() => setIsViewDialogOpen(false)}>
-        <DialogTitle>Employer Details</DialogTitle>
-        <DialogContent>
-          <DialogContentText>Comprehensive information about the employer.</DialogContentText>
-          {selectedEmployer && (
-            <div className="grid gap-6 py-4">
-              <div className="flex items-start gap-4">
-                <Avatar className="h-16 w-16">
-                  <User className="h-8 w-8" />
-                </Avatar>
-                <div>
-                  <h3 className="text-xl font-bold">{selectedEmployer.name}</h3>
-                  <p className="text-muted-foreground">{selectedEmployer.employerId}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <StatusBadge status={selectedEmployer.status} />
+            ) : (
+              <>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-6">
+                  <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                    <div className="relative w-full lg:w-96">
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <Input
+                        placeholder="Search employers..."
+                        className="pl-12 rounded-2xl border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 h-12 text-base"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
+                        <SelectTrigger className="w-[180px] rounded-2xl border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 h-12">
+                          <SelectValue placeholder="Industry" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="all">All Industries</SelectItem>
+        
+                        </SelectContent>
+                      </Select>
+                      <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                        <SelectTrigger className="w-[150px] rounded-2xl border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 h-12">
+                          <SelectValue placeholder="Location" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="all">All Locations</SelectItem>
+                          {locations.map((location) => (
+                            <SelectItem key={location} value={location || "-"}
+                            >
+                              {location || "-"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Email:</strong> {selectedEmployer.email}
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+                  <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+                    <TabsTrigger
+                      value="all"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      All ({employers.length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="active"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Active ({employers.filter((e) => e.status === "active").length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="inactive"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Inactive ({employers.filter((e) => e.status === "inactive").length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="suspended"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Suspended ({employers.filter((e) => e.status === "suspended").length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="pending"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Pending ({employers.filter((e) => e.status === "pending").length})
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="all" className="mt-4">
+                    <EmployersTable
+                      employers={paginatedEmployers}
+                      onViewEmployer={handleViewEmployer}
+                      onDeleteEmployer={handleDeleteEmployer}
+                      menuAnchorEl={menuAnchorEl}
+                      setMenuAnchorEl={setMenuAnchorEl}
+                      menuEmployerId={menuEmployerId}
+                      setMenuEmployerId={setMenuEmployerId}
+                    />
+                  </TabsContent>
+                  <TabsContent value="active" className="mt-4">
+                    <EmployersTable
+                      employers={paginatedEmployers}
+                      onViewEmployer={handleViewEmployer}
+                      onDeleteEmployer={handleDeleteEmployer}
+                      menuAnchorEl={menuAnchorEl}
+                      setMenuAnchorEl={setMenuAnchorEl}
+                      menuEmployerId={menuEmployerId}
+                      setMenuEmployerId={setMenuEmployerId}
+                    />
+                  </TabsContent>
+                  <TabsContent value="inactive" className="mt-4">
+                    <EmployersTable
+                      employers={paginatedEmployers}
+                      onViewEmployer={handleViewEmployer}
+                      onDeleteEmployer={handleDeleteEmployer}
+                      menuAnchorEl={menuAnchorEl}
+                      setMenuAnchorEl={setMenuAnchorEl}
+                      menuEmployerId={menuEmployerId}
+                      setMenuEmployerId={setMenuEmployerId}
+                    />
+                  </TabsContent>
+                  <TabsContent value="suspended" className="mt-4">
+                    <EmployersTable
+                      employers={paginatedEmployers}
+                      onViewEmployer={handleViewEmployer}
+                      onDeleteEmployer={handleDeleteEmployer}
+                      menuAnchorEl={menuAnchorEl}
+                      setMenuAnchorEl={setMenuAnchorEl}
+                      menuEmployerId={menuEmployerId}
+                      setMenuEmployerId={setMenuEmployerId}
+                    />
+                  </TabsContent>
+                  <TabsContent value="pending" className="mt-4">
+                    <EmployersTable
+                      employers={paginatedEmployers}
+                      onViewEmployer={handleViewEmployer}
+                      onDeleteEmployer={handleDeleteEmployer}
+                      menuAnchorEl={menuAnchorEl}
+                      setMenuAnchorEl={setMenuAnchorEl}
+                      menuEmployerId={menuEmployerId}
+                      setMenuEmployerId={setMenuEmployerId}
+                    />
+                  </TabsContent>
+                </Tabs>
+                {pageCount > 1 && (
+                  <div className="flex justify-end items-center gap-2 px-6 py-4 bg-white border-t border-gray-100">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      disabled={page === 1}
+                      onClick={() => setPage(page - 1)}
+                    >
+                      Prev
+                    </Button>
+                    <span className="mx-2 text-gray-600 text-sm">
+                      Page {page} of {pageCount}
                     </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      disabled={page === pageCount}
+                      onClick={() => setPage(page + 1)}
+                    >
+                      Next
+                    </Button>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Phone:</strong> {selectedEmployer.phone}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Company:</strong> {selectedEmployer.company}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Position:</strong> {selectedEmployer.position}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Registration Date:</strong> {selectedEmployer.registrationDate}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Industry:</strong> {selectedEmployer.industry}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Location:</strong> {selectedEmployer.location}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Employees:</strong> {selectedEmployer.employeesCount}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
-              <div>
-                <Label className="text-sm text-muted-foreground">Website</Label>
-                <p className="font-medium">{selectedEmployer.website}</p>
-              </div>
+      <EmployerDetailsModal
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+        employer={selectedEmployer}
+        onEdit={() => {}}
+      />
 
-              <div>
-                <Label className="text-sm text-muted-foreground">Company Description</Label>
-                <p className="mt-1">{selectedEmployer.description}</p>
-              </div>
-            </div>
-          )}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px] rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Are you sure you want to delete this employer?</DialogTitle>
+            <DialogDescription className="text-gray-600 text-base">
+              This action cannot be undone. This will permanently delete the employer record and remove all associated data from the system.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="rounded-xl px-6">
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteEmployer}
+              className="rounded-xl px-6 bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsViewDialogOpen(false)} color="primary">
-            Close
-          </Button>
-          <Button>Edit Employer</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
-        <DialogTitle>Are you sure you want to delete this employer?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            This action cannot be undone. This will permanently delete the employer record and remove all associated
-            data from the system.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsDeleteDialogOpen(false)} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={confirmDeleteEmployer} color="secondary">
-            Delete
-          </Button>
-        </DialogActions>
       </Dialog>
     </div>
   )
@@ -472,138 +429,205 @@ function EmployersTable({
   employers,
   onViewEmployer,
   onDeleteEmployer,
+  menuAnchorEl,
+  setMenuAnchorEl,
+  menuEmployerId,
+  setMenuEmployerId,
 }: {
-  employers: Employer[]
-  onViewEmployer: (employer: Employer) => void
+  employers: (Employer & { verify_status?: string; profile_img?: string })[]
+  onViewEmployer: (employer: Employer & { profile_img?: string }) => void
   onDeleteEmployer: (employer: Employer) => void
+  menuAnchorEl: null | HTMLElement
+  setMenuAnchorEl: (el: null | HTMLElement) => void
+  menuEmployerId: number | null
+  setMenuEmployerId: (id: number | null) => void
 }) {
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
-  const [menuEmployerId, setMenuEmployerId] = useState<number | null>(null)
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, employerId: number) => {
-    setMenuAnchorEl(event.currentTarget)
-    setMenuEmployerId(employerId)
-  }
-
-  const handleMenuClose = () => {
-    setMenuAnchorEl(null)
-    setMenuEmployerId(null)
+  const handleFetchCompany = async (employerId: string) => {
+    const res = await fetch(`/api/superadmin/fetchUsers?employers=true&employerId=${employerId}`)
+    const data = await res.json()
+    return data.companies?.[0]
   }
 
   return (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Employer ID</TableCell>
-            <TableCell>Name</TableCell>
-            <TableCell>Email</TableCell>
-            <TableCell>Phone</TableCell>
-            <TableCell>Company</TableCell>
-            <TableCell>Position</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Location</TableCell>
-            <TableCell align="right">Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
+    <div className="rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            {/* Avatar column removed */}
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Name</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Email</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Company</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Position</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Verification</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Status</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
           {employers.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={9} align="center">
-                No employers found
-              </TableCell>
-            </TableRow>
+            <tr>
+              <td colSpan={7} className="text-center py-16">
+                <div className="flex flex-col items-center space-y-4">
+                  <User className="w-16 h-16 text-gray-300" />
+                  <p className="text-gray-500 font-semibold text-lg">No employers found</p>
+                  <p className="text-gray-400">Try adjusting your search or filter criteria</p>
+                </div>
+              </td>
+            </tr>
           ) : (
-            employers.map((employer) => (
-              <TableRow key={employer.id}>
-                <TableCell>{employer.employerId}</TableCell>
-                <TableCell>{employer.name}</TableCell>
-                <TableCell>{employer.email}</TableCell>
-                <TableCell>{employer.phone}</TableCell>
-                <TableCell>{employer.company}</TableCell>
-                <TableCell>{employer.position}</TableCell>
-                <TableCell>
+            employers.map((employer, index) => (
+              <motion.tr
+                key={employer.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+              >
+                {/* Avatar cell removed */}
+                <td className="text-gray-700 py-4 px-6">{employer.name}</td>
+                <td className="text-gray-700 py-4 px-6">{employer.email}</td>
+                <td className="text-gray-700 py-4 px-6">{employer.company.charAt(0).toUpperCase() + employer.company.slice(1)}</td>
+                <td className="text-gray-700 py-4 px-6">{employer.position.charAt(0).toUpperCase() + employer.position.slice(1)}</td>
+                <td className="py-4 px-6">
+                  <StatusBadge status={employer.verify_status || ""} />
+                </td>
+                <td className="py-4 px-6">
                   <StatusBadge status={employer.status} />
-                </TableCell>
-                <TableCell>{employer.location}</TableCell>
-                <TableCell align="right">
-                  <IconButton onClick={(e) => handleMenuOpen(e, employer.id)}>
-                    <MoreHorizontal />
-                  </IconButton>
-                  <Menu
-                    anchorEl={menuAnchorEl}
-                    open={Boolean(menuAnchorEl) && menuEmployerId === employer.id}
-                    onClose={handleMenuClose}
-                    anchorOrigin={{
-                      vertical: "top",
-                      horizontal: "right",
-                    }}
-                    transformOrigin={{
-                      vertical: "top",
-                      horizontal: "right",
+                </td>
+                <td className="text-right py-4 px-6">
+                  <button
+                    className="rounded-xl hover:bg-gray-100 p-2"
+                    onClick={async (e) => {
+                      setMenuAnchorEl(e.currentTarget)
+                      setMenuEmployerId(employer.id)
+                      await handleFetchCompany(employer.employerId)
                     }}
                   >
-                    <MenuItem
-                      onClick={() => {
-                        onViewEmployer(employer)
-                        handleMenuClose()
+                    <MoreHorizontal className="h-5 w-5" />
+                  </button>
+                  {menuEmployerId === employer.id && menuAnchorEl && (
+                    <div
+                      className="absolute z-50 mt-2 w-44 bg-white rounded-xl shadow-xl border border-gray-200"
+                      style={{
+                        left: menuAnchorEl.getBoundingClientRect().left,
+                        top: menuAnchorEl.getBoundingClientRect().bottom + window.scrollY,
+                      }}
+                      onMouseLeave={() => {
+                        setMenuAnchorEl(null)
+                        setMenuEmployerId(null)
                       }}
                     >
-                      <ListItemIcon>
-                        <Eye />
-                      </ListItemIcon>
-                      <ListItemText>View Details</ListItemText>
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() => {
-                        // Add edit logic here if needed
-                        handleMenuClose()
-                      }}
-                    >
-                      <ListItemIcon>
-                        <Edit />
-                      </ListItemIcon>
-                      <ListItemText>Edit</ListItemText>
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() => {
-                        onDeleteEmployer(employer)
-                        handleMenuClose()
-                      }}
-                    >
-                      <ListItemIcon>
-                        <Trash />
-                      </ListItemIcon>
-                      <ListItemText>Delete</ListItemText>
-                    </MenuItem>
-                  </Menu>
-                </TableCell>
-              </TableRow>
+                      <button
+                        className="flex items-center w-full px-4 py-3 hover:bg-gray-50 rounded-xl"
+                        onClick={() => {
+                          setMenuAnchorEl(null)
+                          setMenuEmployerId(null)
+                          onViewEmployer(employer)
+                        }}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Details
+                      </button>
+                      <button
+                        className="flex items-center w-full px-4 py-3 hover:bg-gray-50 rounded-xl"
+                        onClick={() => {
+                          setMenuAnchorEl(null)
+                          setMenuEmployerId(null)
+                        }}
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                      </button>
+                      <button
+                        className="flex items-center w-full px-4 py-3 hover:red-50 rounded-xl text-red-600"
+                        onClick={() => {
+                          setMenuAnchorEl(null)
+                          setMenuEmployerId(null)
+                          onDeleteEmployer(employer)
+                        }}
+                      >
+                        <Trash className="mr-2 h-4 w-4" />
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </td>
+              </motion.tr>
             ))
           )}
-        </TableBody>
-      </Table>
-    </TableContainer>
+        </tbody>
+      </table>
+    </div>
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === "active") {
-    return <Badge className="bg-green-500 hover:bg-green-600">Active</Badge>
+export function StatusBadge({ status }: { status: string }) {
+  let label = ""
+  let badgeClass = ""
+  let icon = null
+  let badgeContent = null
+
+  if (status === "full") {
+    label = "Full"
+    badgeClass =
+      "bg-blue-100 text-blue-700 border-blue-200 flex items-center gap-1"
+    icon = <HiBadgeCheck className="inline-block mr-1 h-4 w-4" />
+    badgeContent = (
+      <Tooltip title="Fully Verified" arrow>
+        <span className="flex items-center cursor-pointer">{icon}{label}</span>
+      </Tooltip>
+    )
+  } else if (status === "basic") {
+    label = "Basic"
+    badgeClass =
+      "bg-orange-100 text-orange-700 border-orange-200 flex items-center gap-1"
+    icon = <PiWarningFill className="inline-block mr-1 h-4 w-4" />
+    badgeContent = (
+      <Tooltip title="Not Verified" arrow>
+        <span className="flex items-center cursor-pointer">{icon}{label}</span>
+      </Tooltip>
+    )
+  } else if (status === "standard") {
+    label = "Standard"
+    badgeClass =
+      "bg-violet-100 text-violet-700 border-violet-200 flex items-center gap-1"
+    icon = <LuBadgeCheck className="inline-block mr-1 h-4 w-4" />
+    badgeContent = (
+      <Tooltip title="Partially Verified" arrow>
+        <span className="flex items-center cursor-pointer">{icon}{label}</span>
+      </Tooltip>
+    )
+  } else if (status === "active") {
+    label = "Active"
+    badgeClass =
+      "bg-green-100 text-green-700 border-green-200 flex items-center gap-1"
+    badgeContent = <span className="flex items-center">{label}</span>
   } else if (status === "inactive") {
-    return (
-      <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-        Inactive
-      </Badge>
-    )
+    label = "Inactive"
+    badgeClass =
+      "bg-gray-100 text-gray-700 border-gray-200 flex items-center gap-1"
+    badgeContent = <span className="flex items-center">{label}</span>
   } else if (status === "suspended") {
-    return <Badge variant="destructive">Suspended</Badge>
-  } else if (status === "pending") {
-    return (
-      <Badge variant="outline" className="text-blue-600 border-blue-600">
-        Pending
-      </Badge>
-    )
+    label = "Suspended"
+    badgeClass =
+      "bg-red-100 text-red-700 border-red-200 flex items-center gap-1"
+    badgeContent = <span className="flex items-center">{label}</span>
+  } else {
+    label = status.charAt(0).toUpperCase() + status.slice(1)
+    badgeClass =
+      "bg-gray-100 text-gray-700 border-gray-200 flex items-center gap-1"
+    badgeContent = <span className="flex items-center">{label}</span>
   }
-  return null
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "rounded-full px-3 py-1 text-sm font-semibold",
+        badgeClass
+      )}
+    >
+      {badgeContent}
+    </Badge>
+  )
 }

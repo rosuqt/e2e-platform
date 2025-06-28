@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Search,
   Download,
@@ -29,16 +29,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-// MUI imports
 import MuiAvatar from "@mui/material/Avatar"
-import MuiTable from "@mui/material/Table"
-import MuiTableBody from "@mui/material/TableBody"
-import MuiTableCell from "@mui/material/TableCell"
-import MuiTableContainer from "@mui/material/TableContainer"
-import MuiTableHead from "@mui/material/TableHead"
-import MuiTableRow from "@mui/material/TableRow"
-import MuiPaper from "@mui/material/Paper"
 import MuiDialog from "@mui/material/Dialog"
 import MuiDialogTitle from "@mui/material/DialogTitle"
 import MuiDialogContent from "@mui/material/DialogContent"
@@ -48,15 +39,18 @@ import MuiButton from "@mui/material/Button"
 import MuiMenu from "@mui/material/Menu"
 import MuiMenuItem from "@mui/material/MenuItem"
 import MuiIconButton from "@mui/material/IconButton"
+import { motion } from "framer-motion"
+import { cn } from "@/lib/utils"
 
 interface Student {
-  id: number
+  id: string 
   studentId: string
   name: string
   email: string
   phone: string
   course: string
-  year: number
+  year: string
+  section: string
   status: "active" | "inactive" | "graduated" | "on_leave"
   enrollmentDate: string
   gender: string
@@ -73,103 +67,72 @@ export default function StudentsManagement() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
   const [selectedYear, setSelectedYear] = useState<string>("all")
+  const [page, setPage] = useState(1)
+  const pageSize = 7
+  const [students, setStudents] = useState<Student[]>([])
+  const [profileImgUrl, setProfileImgUrl] = useState<string | null>(null)
+  const [avatarLoading, setAvatarLoading] = useState(false)
+  const [personalEmail, setPersonalEmail] = useState<string>("")
+  const [personalPhone, setPersonalPhone] = useState<string>("")
+  const [username, setUsername] = useState<string>("")
+  const [isLoading, setIsLoading] = useState(false)
 
-  // Mock data
-  const students: Student[] = [
-    {
-      id: 1,
-      studentId: "2023-IT-0001",
-      name: "Alex Johnson",
-      email: "alex.johnson@example.com",
-      phone: "+63 912 345 6789",
-      course: "BSIT",
-      year: 4,
-      status: "active",
-      enrollmentDate: "2020-06-15",
-      gender: "Male",
-      address: "123 Main St, Manila",
-      dateOfBirth: "2002-03-15",
-      department: "IT",
-    },
-    {
-      id: 2,
-      studentId: "2023-IT-0002",
-      name: "Maria Garcia",
-      email: "maria.garcia@example.com",
-      phone: "+63 923 456 7890",
-      course: "BSIT",
-      year: 4,
-      status: "active",
-      enrollmentDate: "2020-06-15",
-      gender: "Female",
-      address: "456 Oak Ave, Quezon City",
-      dateOfBirth: "2002-05-22",
-      department: "IT",
-    },
-    {
-      id: 3,
-      studentId: "2023-BUS-0001",
-      name: "James Wilson",
-      email: "james.wilson@example.com",
-      phone: "+63 934 567 8901",
-      course: "BSBA",
-      year: 3,
-      status: "active",
-      enrollmentDate: "2021-06-10",
-      gender: "Male",
-      address: "789 Pine St, Makati",
-      dateOfBirth: "2003-01-10",
-      department: "Business",
-    },
-    {
-      id: 4,
-      studentId: "2022-IT-0015",
-      name: "Emily Davis",
-      email: "emily.davis@example.com",
-      phone: "+63 945 678 9012",
-      course: "BSIT",
-      year: 2,
-      status: "inactive",
-      enrollmentDate: "2022-06-20",
-      gender: "Female",
-      address: "101 Cedar Rd, Pasig",
-      dateOfBirth: "2004-07-30",
-      department: "IT",
-    },
-    {
-      id: 5,
-      studentId: "2021-ENG-0022",
-      name: "Robert Martinez",
-      email: "robert.martinez@example.com",
-      phone: "+63 956 789 0123",
-      course: "BSCE",
-      year: 3,
-      status: "on_leave",
-      enrollmentDate: "2021-06-15",
-      gender: "Male",
-      address: "202 Maple Dr, Taguig",
-      dateOfBirth: "2003-11-05",
-      department: "Engineering",
-    },
-    {
-      id: 6,
-      studentId: "2020-IT-0008",
-      name: "Sophia Lee",
-      email: "sophia.lee@example.com",
-      phone: "+63 967 890 1234",
-      course: "BSIT",
-      year: 4,
-      status: "graduated",
-      enrollmentDate: "2020-06-10",
-      gender: "Female",
-      address: "303 Birch Ln, Mandaluyong",
-      dateOfBirth: "2002-09-18",
-      department: "IT",
-    },
-  ]
+  useEffect(() => {
+    async function fetchStudents() {
+      setIsLoading(true)
+      const res = await fetch("/api/superadmin/fetchUsers?students=1", { method: "GET" })
+      setIsLoading(false)
+      if (!res.ok) return
+      const { students: apiStudents } = await res.json()
+      console.log("Frontend received students:", apiStudents)
+      if (Array.isArray(apiStudents)) {
+        setStudents(
+          apiStudents.map((s: Record<string, unknown>) => {
+            let studentId = "No Student ID"
+            const email = String(s.email ?? "")
+            if (email.endsWith("@alabang.sti.edu.ph")) {
+              const match = email.match(/\.(\d+)@alabang\.sti\.edu\.ph$/)
+              if (match && match[1]) {
+                studentId = `02000-${match[1]}`
+              }
+            }
+            return {
+              id: typeof s.id === "string" ? s.id : String(s.id),
+              studentId,
+              name: `${String(s.first_name ?? "")} ${String(s.last_name ?? "")}`.trim(),
+              email,
+              phone: "",
+              course: String(s.course ?? ""),
+              year: s.year ? String(s.year) : "",
+              section: String(s.section ?? ""),
+              status: "active",
+              enrollmentDate: s.created_at ? String(s.created_at) : "",
+              gender: "",
+              address: String(s.address ?? ""),
+              dateOfBirth: "",
+              department: "",
+            }
+          }) as unknown as Student[]
+        )
+      }
+    }
+    fetchStudents()
+  }, [])
 
-  const departments = Array.from(new Set(students.map((student) => student.department)))
-  const years = Array.from(new Set(students.map((student) => student.year)))
+  const departments = Array.from(
+    new Set(
+      students
+        .map((student) => student.department)
+        .filter((dept) => dept && dept !== "") 
+    )
+  )
+  const years = Array.from(
+    new Set(
+      students
+        .map((student) => student.year)
+        .filter((year) => year && year !== "") 
+    )
+  )
 
   const filteredStudents = students.filter((student) => {
     const matchesSearch =
@@ -186,14 +149,55 @@ export default function StudentsManagement() {
       activeTab === "all"
 
     const matchesDepartment = selectedDepartment === "all" || student.department === selectedDepartment
-    const matchesYear = selectedYear === "all" || student.year.toString() === selectedYear
-
+    const matchesYear = selectedYear === "all" || student.year === selectedYear
     return matchesSearch && matchesTab && matchesDepartment && matchesYear
   })
 
-  const handleViewStudent = (student: Student) => {
+  const pageCount = Math.ceil(filteredStudents.length / pageSize)
+  const paginatedStudents = filteredStudents.slice((page - 1) * pageSize, page * pageSize)
+
+  const handleViewStudent = async (student: Student) => {
     setSelectedStudent(student)
     setIsViewDialogOpen(true)
+    setProfileImgUrl(null)
+    setAvatarLoading(false)
+    setPersonalEmail("")
+    setPersonalPhone("")
+    setUsername("")
+    if (student.id && student.id !== "") {
+      try {
+        const res = await fetch(`/api/superadmin/fetchUsers?studentId=${encodeURIComponent(student.id)}`)
+        if (res.ok) {
+          const { profile_img, contact_info, username: uname } = await res.json()
+          if (profile_img) {
+            setAvatarLoading(true)
+            const signedUrlRes = await fetch("/api/students/get-signed-url", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ bucket: "user.avatars", path: profile_img }),
+            })
+            if (signedUrlRes.ok) {
+              const { signedUrl } = await signedUrlRes.json()
+              setProfileImgUrl(signedUrl)
+            }
+            setAvatarLoading(false)
+          }
+          if (contact_info) {
+            let info = contact_info
+            if (typeof info === "string") {
+              try { info = JSON.parse(info) } catch {}
+            }
+            if (info && typeof info === "object") {
+              if (info.email) setPersonalEmail(info.email)
+              if (info.countryCode && info.phone) setPersonalPhone(`+${info.countryCode} ${info.phone}`)
+            }
+          }
+          if (uname) setUsername(uname)
+        }
+      } catch {
+        setAvatarLoading(false)
+      }
+    }
   }
 
   const handleDeleteStudent = (student: Student) => {
@@ -202,19 +206,15 @@ export default function StudentsManagement() {
   }
 
   const confirmDeleteStudent = () => {
-    // In a real application, you would call an API to delete the student
-    console.log(`Deleting student with ID: ${selectedStudent?.id}`)
     setIsDeleteDialogOpen(false)
-    // Then refresh the student list
   }
 
   const exportStudents = () => {
-    // In a real application, you would generate a CSV or Excel file
-    const header = "Student ID,Name,Email,Phone,Course,Year,Status,Department\n"
+    const header = "Student ID,Name,Email,Phone,Course,Year,Status\n"
     const csv = filteredStudents
       .map(
         (student) =>
-          `${student.studentId},${student.name},${student.email},${student.phone},${student.course},${student.year},${student.status},${student.department}`,
+          `${student.studentId},${student.name},${student.email},${student.phone},${student.course},${student.year},${student.status}`,
       )
       .join("\n")
 
@@ -229,132 +229,259 @@ export default function StudentsManagement() {
     URL.revokeObjectURL(url)
   }
 
+  function formatJoinDate(dateString: string) {
+    if (!dateString) return ""
+    const date = new Date(dateString)
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6"
+      >
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Student Management</h2>
-          <p className="text-muted-foreground">View, export, and manage student records</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Student Management</h1>
+          <p className="text-lg text-gray-600">View, export, and manage student records</p>
         </div>
-        <div className="mt-4 md:mt-0">
-          <Button className="flex items-center gap-2" onClick={exportStudents}>
-            <Download className="h-4 w-4" />
-            Export Students
-          </Button>
-        </div>
-      </div>
+        <Button
+          className="flex items-center space-x-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/25 rounded-2xl px-6 py-3 font-semibold"
+          onClick={exportStudents}
+        >
+          <Download className="h-5 w-5" />
+          <span>Export Students</span>
+        </Button>
+      </motion.div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle>Student Records</CardTitle>
-          <CardDescription>Comprehensive list of all students in the system</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <Input
-                  placeholder="Search students..."
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <Card className="border-0 shadow-xl bg-white rounded-3xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 pb-8">
+            <CardTitle className="text-2xl font-bold text-gray-900">Student Records</CardTitle>
+            <CardDescription className="text-gray-600 text-lg">
+              Comprehensive list of all students in the system
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-8">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-24">
+                <div className="w-12 h-12 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mb-4" />
+                <div className="text-lg font-semibold text-indigo-500 animate-pulse">Fetching users...</div>
               </div>
-              <div className="flex gap-2">
-                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept} value={dept}>
-                        {dept}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue placeholder="Year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Years</SelectItem>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        Year {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
+            ) : (
+              <>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-6">
+                  <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                    <div className="relative w-full lg:w-96">
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <Input
+                        placeholder="Search students..."
+                        className="pl-12 rounded-2xl border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 h-12 text-base"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                        <SelectTrigger className="w-[180px] rounded-2xl border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 h-12">
+                          <SelectValue placeholder="Department" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="all">All Departments</SelectItem>
+                          {departments.map((dept) => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={selectedYear} onValueChange={setSelectedYear}>
+                        <SelectTrigger className="w-[120px] rounded-2xl border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 h-12">
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="all">All Years</SelectItem>
+                          {years.map((year) => (
+                            <SelectItem key={year} value={year}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
 
-          <Tabs defaultValue="active" onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="inactive">Inactive</TabsTrigger>
-              <TabsTrigger value="graduated">Graduated</TabsTrigger>
-              <TabsTrigger value="on_leave">On Leave</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" className="mt-4">
-              <StudentsTable
-                students={filteredStudents}
-                onViewStudent={handleViewStudent}
-                onDeleteStudent={handleDeleteStudent}
-              />
-            </TabsContent>
-            <TabsContent value="active" className="mt-4">
-              <StudentsTable
-                students={filteredStudents}
-                onViewStudent={handleViewStudent}
-                onDeleteStudent={handleDeleteStudent}
-              />
-            </TabsContent>
-            <TabsContent value="inactive" className="mt-4">
-              <StudentsTable
-                students={filteredStudents}
-                onViewStudent={handleViewStudent}
-                onDeleteStudent={handleDeleteStudent}
-              />
-            </TabsContent>
-            <TabsContent value="graduated" className="mt-4">
-              <StudentsTable
-                students={filteredStudents}
-                onViewStudent={handleViewStudent}
-                onDeleteStudent={handleDeleteStudent}
-              />
-            </TabsContent>
-            <TabsContent value="on_leave" className="mt-4">
-              <StudentsTable
-                students={filteredStudents}
-                onViewStudent={handleViewStudent}
-                onDeleteStudent={handleDeleteStudent}
-              />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+                  <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+                    <TabsTrigger
+                      value="all"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      All ({students.length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="active"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Active ({students.filter((s) => s.status === "active").length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="inactive"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Inactive ({students.filter((s) => s.status === "inactive").length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="graduated"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Graduated ({students.filter((s) => s.status === "graduated").length})
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="on_leave"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      On Leave ({students.filter((s) => s.status === "on_leave").length})
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="all" className="mt-4">
+                    <StudentsTable
+                      students={paginatedStudents}
+                      onViewStudent={handleViewStudent}
+                      onDeleteStudent={handleDeleteStudent}
+                    />
+                  </TabsContent>
+                  <TabsContent value="active" className="mt-4">
+                    <StudentsTable
+                      students={paginatedStudents}
+                      onViewStudent={handleViewStudent}
+                      onDeleteStudent={handleDeleteStudent}
+                    />
+                  </TabsContent>
+                  <TabsContent value="inactive" className="mt-4">
+                    <StudentsTable
+                      students={paginatedStudents}
+                      onViewStudent={handleViewStudent}
+                      onDeleteStudent={handleDeleteStudent}
+                    />
+                  </TabsContent>
+                  <TabsContent value="graduated" className="mt-4">
+                    <StudentsTable
+                      students={paginatedStudents}
+                      onViewStudent={handleViewStudent}
+                      onDeleteStudent={handleDeleteStudent}
+                    />
+                  </TabsContent>
+                  <TabsContent value="on_leave" className="mt-4">
+                    <StudentsTable
+                      students={paginatedStudents}
+                      onViewStudent={handleViewStudent}
+                      onDeleteStudent={handleDeleteStudent}
+                    />
+                  </TabsContent>
+                </Tabs>
+                {pageCount > 1 && (
+                  <div className="flex justify-end items-center gap-2 px-6 py-4 bg-white border-t border-gray-100">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      disabled={page === 1}
+                      onClick={() => setPage(page - 1)}
+                    >
+                      Prev
+                    </Button>
+                    <span className="mx-2 text-gray-600 text-sm">
+                      Page {page} of {pageCount}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      disabled={page === pageCount}
+                      onClick={() => setPage(page + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* View Student Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] rounded-3xl">
           <DialogHeader>
-            <DialogTitle>Student Details</DialogTitle>
-            <DialogDescription>Comprehensive information about the student.</DialogDescription>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Student Details</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Comprehensive information about the student.
+            </DialogDescription>
           </DialogHeader>
-          {selectedStudent && (
+          {!selectedStudent ? (
+            <div className="grid gap-6 py-4">
+              <div className="flex items-start gap-4">
+                <div className="w-16 h-16 rounded-full bg-gray-200 animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-5 w-16 bg-gray-200 rounded animate-pulse" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-36 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-36 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
+                </div>
+              </div>
+              <div>
+                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-5 w-full bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          ) : (
             <div className="grid gap-6 py-4">
               <div className="flex items-start gap-4">
                 <MuiAvatar sx={{ width: 64, height: 64 }}>
-                  <User className="h-8 w-8" />
+                  {avatarLoading ? (
+                    <span className="w-8 h-8 block animate-spin border-4 border-indigo-400 border-t-transparent rounded-full mx-auto" />
+                  ) : profileImgUrl ? (
+                    <img
+                      src={profileImgUrl}
+                      alt="Avatar"
+                      style={{ width: 64, height: 64, borderRadius: "50%" }}
+                      className="rounded-full object-cover"
+                      onLoad={() => setAvatarLoading(false)}
+                    />
+                  ) : (
+                    <User className="h-8 w-8" />
+                  )}
                 </MuiAvatar>
                 <div>
                   <h3 className="text-xl font-bold">{selectedStudent.name}</h3>
                   <p className="text-muted-foreground">{selectedStudent.studentId}</p>
+                  {username && (
+                    <div className="text-gray-600 text-sm font-medium">Username: {username}</div>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     <StatusBadge status={selectedStudent.status} />
                   </div>
@@ -366,21 +493,25 @@ export default function StudentsManagement() {
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <span>
-                      <strong>Email:</strong> {selectedStudent.email}
+                      <strong>School Email:</strong> {selectedStudent.email}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Phone:</strong> {selectedStudent.phone}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Course:</strong> {selectedStudent.course}
-                    </span>
-                  </div>
+                  {personalEmail && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        <strong>Personal Email:</strong> {personalEmail}
+                      </span>
+                    </div>
+                  )}
+                  {personalPhone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        <strong>Phone:</strong> {personalPhone}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span>
@@ -390,27 +521,21 @@ export default function StudentsManagement() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Enrollment Date:</strong> {selectedStudent.enrollmentDate}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Gender:</strong> {selectedStudent.gender}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      <strong>Date of Birth:</strong> {selectedStudent.dateOfBirth}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
                     <GraduationCap className="h-4 w-4 text-muted-foreground" />
                     <span>
-                      <strong>Department:</strong> {selectedStudent.department}
+                      <strong>Course:</strong> {selectedStudent.course}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      <strong>Section:</strong> {selectedStudent.section}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      <strong>Join Date:</strong> {formatJoinDate(selectedStudent.enrollmentDate)}
                     </span>
                   </div>
                 </div>
@@ -423,10 +548,12 @@ export default function StudentsManagement() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)} className="rounded-xl px-6">
               Close
             </Button>
-            <Button>Edit Student</Button>
+            <Button className="rounded-xl px-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+              Edit Student
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -464,11 +591,10 @@ function StudentsTable({
   onViewStudent: (student: Student) => void
   onDeleteStudent: (student: Student) => void
 }) {
-  // State for menu anchor and selected student for menu
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
-  const [menuStudentId, setMenuStudentId] = useState<number | null>(null)
+  const [menuStudentId, setMenuStudentId] = useState<string | null>(null)
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, studentId: number) => {
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, studentId: string) => {
     setMenuAnchorEl(event.currentTarget)
     setMenuStudentId(studentId)
   }
@@ -479,49 +605,53 @@ function StudentsTable({
   }
 
   return (
-    <MuiTableContainer component={MuiPaper}>
-      <MuiTable>
-        <MuiTableHead>
-          <MuiTableRow>
-            <MuiTableCell>Student ID</MuiTableCell>
-            <MuiTableCell>Name</MuiTableCell>
-            <MuiTableCell>Email</MuiTableCell>
-            <MuiTableCell>Phone</MuiTableCell>
-            <MuiTableCell>Course</MuiTableCell>
-            <MuiTableCell>Year</MuiTableCell>
-            <MuiTableCell>Status</MuiTableCell>
-            <MuiTableCell>Department</MuiTableCell>
-            <MuiTableCell align="right">Actions</MuiTableCell>
-          </MuiTableRow>
-        </MuiTableHead>
-        <MuiTableBody>
+    <div className="rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Student ID</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Name</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">School Email</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Course</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Year</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-left">Section</th>
+            <th className="font-bold text-gray-700 py-4 px-6 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
           {students.length === 0 ? (
-            <MuiTableRow>
-              <MuiTableCell colSpan={9} align="center" style={{ padding: "32px 0", color: "#888" }}>
-                No students found
-              </MuiTableCell>
-            </MuiTableRow>
+            <tr>
+              <td colSpan={7} className="text-center py-16">
+                <div className="flex flex-col items-center space-y-4">
+                  <User className="w-16 h-16 text-gray-300" />
+                  <p className="text-gray-500 font-semibold text-lg">No students found</p>
+                  <p className="text-gray-400">Try adjusting your search or filter criteria</p>
+                </div>
+              </td>
+            </tr>
           ) : (
-            students.map((student) => (
-              <MuiTableRow key={student.id}>
-                <MuiTableCell className="font-medium">{student.studentId}</MuiTableCell>
-                <MuiTableCell>{student.name}</MuiTableCell>
-                <MuiTableCell>{student.email}</MuiTableCell>
-                <MuiTableCell>{student.phone}</MuiTableCell>
-                <MuiTableCell>{student.course}</MuiTableCell>
-                <MuiTableCell>{student.year}</MuiTableCell>
-                <MuiTableCell>
-                  <StatusBadge status={student.status} />
-                </MuiTableCell>
-                <MuiTableCell>{student.department}</MuiTableCell>
-                <MuiTableCell align="right">
+            students.map((student, index) => (
+              <motion.tr
+                key={student.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+              >
+                <td className="font-semibold text-gray-900 py-4 px-6">{student.studentId}</td>
+                <td className="text-gray-700 py-4 px-6">{student.name}</td>
+                <td className="text-gray-700 py-4 px-6">{student.email}</td>
+                <td className="text-gray-700 py-4 px-6">{student.course}</td>
+                <td className="text-gray-700 py-4 px-6">{student.year}</td>
+                <td className="text-gray-700 py-4 px-6">{student.section}</td>
+                <td className="text-right py-4 px-6">
                   <MuiIconButton
                     aria-label="more"
                     aria-controls={menuStudentId === student.id ? "student-actions-menu" : undefined}
                     aria-haspopup="true"
                     onClick={(e) => handleMenuOpen(e, student.id)}
                   >
-                    <MoreHorizontal className="h-4 w-4" />
+                    <MoreHorizontal className="h-5 w-5" />
                   </MuiIconButton>
                   <MuiMenu
                     id="student-actions-menu"
@@ -549,7 +679,6 @@ function StudentsTable({
                     <MuiMenuItem
                       onClick={() => {
                         handleMenuClose()
-                        // Add edit logic here if needed
                       }}
                     >
                       <Edit className="mr-2 h-4 w-4" />
@@ -566,37 +695,36 @@ function StudentsTable({
                       Delete
                     </MuiMenuItem>
                   </MuiMenu>
-                </MuiTableCell>
-              </MuiTableRow>
+                </td>
+              </motion.tr>
             ))
           )}
-        </MuiTableBody>
-      </MuiTable>
-    </MuiTableContainer>
+        </tbody>
+      </table>
+    </div>
   )
 }
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === "active") {
-    return <Badge className="bg-green-500 hover:bg-green-600">Active</Badge>
-  } else if (status === "inactive") {
-    return (
-      <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-        Inactive
-      </Badge>
-    )
-  } else if (status === "graduated") {
-    return (
-      <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
-        Graduated
-      </Badge>
-    )
-  } else if (status === "on_leave") {
-    return (
-      <Badge variant="outline" className="text-orange-600 border-orange-600">
-        On Leave
-      </Badge>
-    )
+  const variants = {
+    active: "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
+    inactive: "bg-red-100 text-red-700 border-red-200 hover:bg-red-100",
+    graduated: "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100",
+    on_leave: "bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100",
   }
-  return null
+
+  let label = status.charAt(0).toUpperCase() + status.slice(1)
+  if (status === "on_leave") label = "On Leave"
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "rounded-full px-3 py-1 text-sm font-semibold",
+        variants[status as keyof typeof variants] || variants.active,
+      )}
+    >
+      {label}
+    </Badge>
+  )
 }
+

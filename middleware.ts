@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
   email?: string
   sub?: string
   role?: string
-  [key: string]: unknown // optional: allow other fields without type errors
+  [key: string]: unknown
 }
 
 

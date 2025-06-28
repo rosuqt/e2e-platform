@@ -14,9 +14,7 @@ import {
   CheckCircle,
   XCircle,
   Calendar,
-  Linkedin,
-  Github,
-  Globe,
+
   User
 } from "lucide-react"
 import Avatar from "@mui/material/Avatar"
@@ -44,6 +42,12 @@ import { calculateSkillsMatch } from "../../../../../../lib/match-utils"
 type AnswersMap = Record<string, string | string[]>;
 
 interface Applicant {
+  contactInfo: {
+    email?: string
+    phone?: string
+    socials?: { key: string; url: string }[]
+    countryCode?: string
+  }
   application_id: string
   job_id: string
   job_title?: string
@@ -197,6 +201,15 @@ export function RecruiterApplicationDetailsModal({
     jobSkills
   )
 
+  const contactInfo = applicant && typeof applicant.contactInfo === "object" && applicant.contactInfo !== null
+    ? (applicant.contactInfo as {
+        email?: string
+        phone?: string
+        socials?: { key: string; url: string }[]
+        countryCode?: string
+      })
+    : null;
+
   const application = {
     id: applicant.application_id, 
     job_id: applicant.job_id,
@@ -220,14 +233,18 @@ export function RecruiterApplicationDetailsModal({
     timeline: timeline,
     notes: applicant.notes || "",
     contact: {
-      email: applicant.email || "",
-      phone: applicant.phone || "",
-      linkedin: applicant.linkedin || "",
-      github: applicant.github || "",
-      // Ensure portfolio is a string for the contact field
+      email: contactInfo?.email || "",
+      phone: contactInfo?.phone || "",
+      linkedin: Array.isArray(contactInfo?.socials)
+        ? (contactInfo.socials.find((s) => s.key === "linkedin")?.url || "")
+        : "",
+      github: Array.isArray(contactInfo?.socials)
+        ? (contactInfo.socials.find((s) => s.key === "github")?.url || "")
+        : "",
       portfolio: Array.isArray(applicant.portfolio)
         ? (applicant.portfolio.length > 0 ? applicant.portfolio[0] : "")
         : (typeof applicant.portfolio === "string" ? applicant.portfolio : ""),
+      countryCode: contactInfo?.countryCode || "",
     },
     documents: applicant.documents || [],
     course: applicant.course,
@@ -236,7 +253,7 @@ export function RecruiterApplicationDetailsModal({
     application_answers: applicant.application_answers,
     achievements: applicant.achievements || [],
     portfolio: applicant.portfolio || [],
-    // Optionally, you can also pass raw_achievements/raw_portfolio if needed
+    profile_image_url: applicant.profile_image_url,
   }
 
   async function handleCancelInterview() {
@@ -309,7 +326,6 @@ export function RecruiterApplicationDetailsModal({
                       : application.status.charAt(0).toUpperCase() + application.status.slice(1).toLowerCase()}
                   </Badge>
                 </motion.div>
-                {/* Removed the old match score with the star */}
               </div>
             </div>
           </div>
@@ -429,6 +445,7 @@ interface Application {
   timeline: TimelineEvent[]
   notes: string
   contact: {
+    countryCode: string
     email: string
     phone: string
     linkedin?: string
@@ -485,7 +502,7 @@ function RecruiterApplicationDetailsContent({
   setIsModalOpen,
   setShowSendOfferModal
 }: {
-  application: Application & { expertise?: { skill: string; mastery: number }[], resume?: string, job_id?: string, application_answers?: AnswersMap, achievements?: string[], portfolio?: string[] },
+  application: Application & { expertise?: { skill: string; mastery: number }[], resume?: string, job_id?: string, application_answers?: AnswersMap, achievements?: string[], portfolio?: string[], profile_image_url?: string },
   resumeUrl?: string | null,
   jobSkills: string[],
   onOpenInterviewModal?: () => void,
@@ -634,7 +651,6 @@ function RecruiterApplicationDetailsContent({
       const signed = await Promise.all(
         normalized.map(async (file) => {
           if (!file.url) return file
-          // Only sign if it's not already a full URL (http)
           if (file.url.startsWith("http")) return file
           try {
             const res = await fetch("/api/students/get-signed-url", {
@@ -847,16 +863,22 @@ function RecruiterApplicationDetailsContent({
             <h3 className="text-md font-semibold text-blue-700">Education</h3>
             {(application.education || []).map((edu: { degree: string; school: string; year?: string; years?: string; acronym?: string; iconColor?: string; level?: string }, index: number) => (
               <div key={index} className="bg-gray-50 border rounded-md p-3 flex items-center gap-3">
-                <span className="inline-block w-6 h-6 rounded-full" style={{ backgroundColor: edu.iconColor || '#facc15' }}></span>
+                <span className="inline-block w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: edu.iconColor || '#facc15' }}>
+                  {edu.acronym
+                    ? <span className="text-sm font-bold text-white">{edu.acronym}</span>
+                    : <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0v6m0 0H6m6 0h6" />
+                      </svg>
+                  }
+                </span>
                 <div>
                   <div className="font-medium">{edu.degree}</div>
-                  <div className="text-sm text-gray-500">{edu.school} {edu.acronym ? `(${edu.acronym})` : ''}, {edu.years || edu.year}</div>
+                  <div className="text-sm text-gray-500">{edu.school}{edu.acronym ? '' : ''}, {edu.years || edu.year}</div>
                   <div className="text-xs text-gray-400">{edu.level}</div>
                 </div>
               </div>
             ))}
           </div>
-
           <Separator />
 
           <div className="space-y-2">
@@ -876,74 +898,63 @@ function RecruiterApplicationDetailsContent({
 
           <div className="space-y-2">
             <h3 className="text-md font-semibold text-blue-700">Contact Information</h3>
-            <div className="bg-gray-50 border rounded-md p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">{application.contact.email}</span>
+            <div className="bg-gray-50 border rounded-md p-3 flex items-center gap-4 border-blue-200">
+              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                {application.profile_image_url ? (
+                  <Avatar
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      fontWeight: "bold",
+                      bgcolor: "#DBEAFE",
+                      color: "#2563EB",
+                      fontSize: 22,
+                    }}
+                    src={application.profile_image_url}
+                  >
+                    {application.name ? application.name[0] : ""}
+                  </Avatar>
+                ) : (
+                  <span className="text-sm font-medium">
+                    {application.name ? application.name[0] : ""}
+                  </span>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">{application.contact.phone}</span>
+              <div className="flex-1">
+                <div className="font-medium text-sm flex items-center gap-1">
+                  {application.name}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {application.year || "N/A"} | {application.course || "N/A"}
+                </div>
+                <div className="flex items-center gap-3 mt-2">
+                  {application.contact.email && (
+                    <span className="flex items-center gap-1 text-xs text-gray-500">
+                      <Mail className="h-3 w-3" />
+                      {application.contact.email ? application.contact.email : "No email provided"}
+                    </span>
+                  )}
+                  {application.contact.phone && (
+                    <span className="flex items-center gap-1 text-xs text-gray-500">
+                      <Phone className="h-3 w-3" />
+                      {application.contact.countryCode
+                        ? `+${application.contact.countryCode} ${application.contact.phone}`
+                        : application.contact.phone}
+                    </span>
+                  )}
+                </div>
               </div>
-              {application.contact.linkedin && (
-                <div className="flex items-center gap-2">
-                  <Linkedin className="w-4 h-4 text-muted-foreground" />
-                  <a href="#" className="text-sm text-blue-600 hover:underline">
-                    {application.contact.linkedin}
-                  </a>
-                </div>
-              )}
-              {application.contact.github && (
-                <div className="flex items-center gap-2">
-                  <Github className="w-4 h-4 text-muted-foreground" />
-                  <a href="#" className="text-sm text-blue-600 hover:underline">
-                    {application.contact.github}
-                  </a>
-                </div>
-              )}
-              {application.contact.portfolio && (
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-muted-foreground" />
-                  <a href="#" className="text-sm text-blue-600 hover:underline">
-                    {application.contact.portfolio}
-                  </a>
-                </div>
-              )}
+              <Button
+                variant="outline"
+                className="border-blue-500 text-blue-600 hover:bg-blue-100 hover:text-blue-700 ml-2 flex items-center"
+                style={{ borderWidth: 1, background: "transparent" }}
+                size="sm"
+              >
+                <TbMessage className="h-4 w-4 mr-1" />
+                Message
+              </Button>
             </div>
           </div>
-
-          <Separator />
-
-          {/* Achievements Section */}
-          <div className="space-y-2">
-            <h3 className="text-md font-semibold text-blue-700">Achievements</h3>
-            {(application.achievements && application.achievements.length > 0) ? (
-              <ul className="list-disc ml-6">
-                {application.achievements.map((ach, idx) => (
-                  <li key={idx} className="text-sm">{ach}</li>
-                ))}
-              </ul>
-            ) : (
-              <span className="text-sm text-gray-500">No achievements listed.</span>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Portfolio Section */}
-          <div className="space-y-2">
-            <h3 className="text-md font-semibold text-blue-700">Portfolio</h3>
-            {(application.portfolio && application.portfolio.length > 0) ? (
-              <ul className="list-disc ml-6">
-                {application.portfolio.map((item, idx) => (
-                  <li key={idx} className="text-sm break-all">{item}</li>
-                ))}
-              </ul>
-            ) : (
-              <span className="text-sm text-gray-500">No portfolio items listed.</span>
-            )}
-          </div>
-
           <Separator />
 
         </TabsContent>
@@ -1177,22 +1188,7 @@ function RecruiterApplicationDetailsContent({
                 </>
               )
             }
-            if (status === "hired") {
-              return (
-                <>
-                  <Button
-                    variant="outline"
-                    className="bg-yellow-100 text-yellow-600 hover:bg-yellow-200"
-                  >
-                    Rate Applicant
-                  </Button>
-                  <Button variant="outline">
-                    <Mail className="h-4 w-4 mr-2" />
-                    Contact
-                  </Button>
-                </>
-              )
-            }
+      
             return (
               <>
                 <Button variant="outline">
@@ -1300,6 +1296,21 @@ function RecruiterApplicationDetailsContent({
             }
             return null
           })()}
+          {(() => {
+            const status = application.status.toLowerCase()
+            if (status === "hired") {
+              return (
+                <Button
+                  variant="outline"
+                  className="bg-yellow-100 text-yellow-600 hover:bg-yellow-200 hover:text-yellow-600 flex items-center gap-2 ml-auto"
+                >
+                  <MdStars className="w-4 h-4 mr-1" />
+                  Rate Applicant
+                </Button>
+              )
+            }
+            return null
+          })()}
         </div>
       </div>
     </div>
@@ -1321,4 +1332,3 @@ function normalizeFiles(arr: (string | { name: string; url: string })[] = []): {
     return item
   })
 }
-

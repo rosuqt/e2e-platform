@@ -2,8 +2,8 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
-import Sidebar from "../../side-nav/sidebar";
-import BaseLayout from "../../base-layout";
+import Sidebar from "../side-nav/sidebar";
+import BaseLayout from "../base-layout";
 import { TbUserCheck, TbUserHeart, TbUserStar } from "react-icons/tb";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";

@@ -15,6 +15,14 @@
   border-radius: 4px; /* Keep the rounded corners */
 }
 
+/* Add dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background-color: #1e293b;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #334155;
+}
+
 .no-select {
   user-select: none;
 }
@@ -86,6 +94,23 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    --button: 217.2 91.2% 59.8%;
+    --button-hover: 222.2 84% 4.9%;
+    --custom-yellow: 44 80% 55%;
+    --dark-blue: 222 64% 22%;
+    --custom-purple: 250 40% 50%;
+    --custom-gray: 220 14% 96%;
+    --custom-red: 0 91% 71%;
+    --custom-gray-300: 210 13% 85%;
+    --custom-blue-300: 207 96% 85%;
+    --custom-blue-100: 210 100% 95%;
+    --custom-blue-50: 210 100% 98%;
+    --custom-blue-500: 217 91% 60%;
+    --custom-blue-600: 221 83% 53%;
+    --custom-sky-100: 204 94% 94%;
+    --custom-sky-400: 198 93% 60%;
+    --custom-sky-500: 200 98% 48%;
+    --custom-indigo-500: 243 80% 67%;
   }
 
   .dark {
@@ -108,6 +133,23 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
+    --button: 217.2 91.2% 40%;
+    --button-hover: 222.2 84% 20%;
+    --custom-yellow: 44 80% 45%;
+    --dark-blue: 222 64% 12%;
+    --custom-purple: 250 40% 35%;
+    --custom-gray: 220 14% 20%;
+    --custom-red: 0 91% 50%;
+    --custom-gray-300: 210 13% 30%;
+    --custom-blue-300: 207 96% 30%;
+    --custom-blue-100: 210 100% 20%;
+    --custom-blue-50: 210 100% 10%;
+    --custom-blue-500: 217 91% 40%;
+    --custom-blue-600: 221 83% 33%;
+    --custom-sky-100: 204 94% 20%;
+    --custom-sky-400: 198 93% 40%;
+    --custom-sky-500: 200 98% 28%;
+    --custom-indigo-500: 243 80% 37%;
   }
   .theme {
     --animate-marquee: marquee var(--duration) infinite linear;
@@ -133,6 +175,15 @@
 
 .autocomplete-item:hover {
   background-color: #f3f4f6; /* Light gray hover color */
+}
+
+/* Add dark mode for autocomplete and dropdowns if needed */
+.dark .autocomplete-item {
+  background-color: #1e293b;
+  color: #f3f4f6;
+}
+.dark .autocomplete-item:hover {
+  background-color: #334155;
 }
 
 .dropdown-arrow {
