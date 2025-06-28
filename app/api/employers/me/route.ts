@@ -45,12 +45,25 @@ export async function GET() {
     company_admin = true
   } else if (employerId && companyId) {
     const supabase = getAdminSupabase()
-    const { data } = await supabase
+    let { data } = await supabase
       .from("team_access")
       .select("edit_company_profile, can_view")
       .eq("employer_id", employerId)
       .eq("company_id", companyId)
       .single()
+    if (!data) {
+      const { data: inserted } = await supabase
+        .from("team_access")
+        .insert({
+          employer_id: employerId,
+          company_id: companyId,
+          can_view: true,
+          edit_company_profile: false
+        })
+        .select("edit_company_profile, can_view")
+        .single()
+      data = inserted
+    }
     if (data) {
       edit_company_profile = !!data.edit_company_profile
       can_view = !!data.can_view

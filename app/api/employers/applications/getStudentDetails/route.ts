@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const { data: regData, error: regError } = await supabase
     .from("registered_students")
-    .select("course, year")
+    .select("course, year, first_name, last_name")
     .eq("id", student_id)
     .maybeSingle()
 
@@ -29,6 +29,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     profile_img: profileData?.profile_img || null,
     course: regData?.course || null,
-    year: regData?.year || null
+    year: regData?.year || null,
+    first_name: regData?.first_name || null,
+    last_name: regData?.last_name || null
   })
 }

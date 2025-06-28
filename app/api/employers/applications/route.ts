@@ -37,7 +37,7 @@ export async function GET() {
   const studentIds = (applicants || []).map(app => app.student_id).filter(Boolean)
   const { data: profiles, error: profilesError } = await supabase
     .from("student_profile")
-    .select("student_id, skills, educations, expertise")
+    .select("student_id, skills, educations, expertise, contact_info")
     .in("student_id", studentIds)
 
   if (profilesError) {
@@ -72,24 +72,41 @@ export async function GET() {
   const applicantsWithJobTitle = (applicants || []).map(app => {
     const achievementsArr = parseArrayField(app.achievements)
     const portfolioArr = parseArrayField(app.portfolio)
+    const profile = profileMap[app.student_id] || {}
+    let contactInfo = { email: "", phone: "", socials: [], countryCode: "" }
+    if (profile.contact_info && typeof profile.contact_info === "object") {
+      contactInfo = {
+        email: profile.contact_info.email || "",
+        phone: profile.contact_info.phone || "",
+        socials: profile.contact_info.socials || [],
+        countryCode: profile.contact_info.countryCode || "",
+      }
+    } else {
+      contactInfo = {
+        email: app.personal_email || app.email || "",
+        phone: app.personal_phone || app.phone || "",
+        socials: [],
+        countryCode: app.country_code || "",
+      }
+    }
     return {
       ...app,
       job_title: app.job_postings?.job_title,
       company_name: app.job_postings?.registered_employers?.company_name,
       company_logo_image_path: app.job_postings?.registered_employers?.company_logo_image_path,
       remote_options: app.job_postings?.remote_options,
-      skills: profileMap[app.student_id]?.skills || [],
-      education: profileMap[app.student_id]?.educations || [],
-      expertise: profileMap[app.student_id]?.expertise || [],
+      skills: profile.skills || [],
+      education: profile.educations || [],
+      expertise: profile.expertise || [],
       achievements: achievementsArr.length > 0
         ? achievementsArr
         : parseArrayField(app.job_postings?.achievements),
       portfolio: portfolioArr.length > 0
         ? portfolioArr
         : parseArrayField(app.job_postings?.portfolio),
-      // pass raw fields for frontend access
       raw_achievements: app.achievements as string | string[] | Record<string, unknown> | null | undefined,
       raw_portfolio: app.portfolio as string | string[] | Record<string, unknown> | null | undefined,
+      contactInfo
     }
   })
 

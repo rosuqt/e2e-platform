@@ -8,31 +8,94 @@ import {
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
-
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  Zap,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import { useState, useEffect } from "react"
-import Switch from "@mui/material/Switch"
-import { styled } from "@mui/material/styles"
-import { RiRobot2Fill } from "react-icons/ri"
-import Tooltip from "@mui/material/Tooltip"
+import { motion } from "framer-motion"
+import { cn } from "@/lib/utils"
 import supabase from "@/lib/supabase"
 
-const PurpleSwitch = styled(Switch)({
-  "& .MuiSwitch-switchBase.Mui-checked": {
-    color: "#a21caf",
+const statsCards = [
+  {
+    title: "Total Users",
+    value: "2,853",
+    change: "+12%",
+    trend: "up",
+    icon: Users,
+    color: "from-blue-500 to-cyan-500",
+    bgColor: "from-blue-50 to-cyan-50",
   },
-  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-    backgroundColor: "#a21caf",
+  {
+    title: "Active Employers",
+    value: "432",
+    change: "+8%",
+    trend: "up",
+    icon: Building2,
+    color: "from-emerald-500 to-teal-500",
+    bgColor: "from-emerald-50 to-teal-50",
   },
-  "& .MuiSwitch-track": {
-    backgroundColor: "#e9d5ff",
+  {
+    title: "Companies",
+    value: "1,234",
+    change: "+18%",
+    trend: "up",
+    icon: FileText,
+    color: "from-purple-500 to-pink-500",
+    bgColor: "from-purple-50 to-pink-50",
   },
-  "& .MuiSwitch-thumb": {
-    backgroundColor: "#a21caf",
+  {
+    title: "Pending Reports",
+    value: "24",
+    change: "-4%",
+    trend: "down",
+    icon: BarChart3,
+    color: "from-orange-500 to-red-500",
+    bgColor: "from-orange-50 to-red-50",
   },
-})
+]
+
+const recentActivities = [
+  {
+    id: 1,
+    type: "user",
+    title: "New admin account created",
+    description: "John Smith created a new admin account",
+    time: "2 hours ago",
+    icon: Users,
+    color: "from-blue-500 to-cyan-500",
+  },
+  {
+    id: 2,
+    type: "company",
+    title: "Company verification completed",
+    description: "TechCorp Inc. has been verified",
+    time: "4 hours ago",
+    icon: CheckCircle,
+    color: "from-emerald-500 to-teal-500",
+  },
+  {
+    id: 3,
+    type: "report",
+    title: "New bug report submitted",
+    description: "Critical issue reported in job application system",
+    time: "6 hours ago",
+    icon: AlertTriangle,
+    color: "from-orange-500 to-red-500",
+  },
+]
+const topEmployers = [
+  { id: 1, name: "TechCorp Inc.", listings: 18, growth: "+15%" },
+  { id: 2, name: "InnovateLab", listings: 16, growth: "+12%" },
+  { id: 3, name: "DataSystems", listings: 14, growth: "+8%" },
+  { id: 4, name: "CloudTech", listings: 12, growth: "+22%" },
+  { id: 5, name: "StartupHub", listings: 10, growth: "+5%" },
+]
 
 export default function Dashboard() {
   const [showFeedback, setShowFeedback] = useState<boolean>(false)
@@ -51,7 +114,6 @@ export default function Dashboard() {
         setShowFeedback(data.show_feedback_button)
         setSettingId(data.id)
       } else {
-  
         const { data: inserted } = await supabase
           .from("site_settings")
           .insert([{ show_feedback_button: true }])
@@ -91,217 +153,329 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+    <div className="space-y-8">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6"
+      >
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">Overview of system performance and key metrics</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard</h1>
+          <p className="text-lg text-gray-600">Welcome back! Here&apos;s what&apos;s happening with your platform today.</p>
         </div>
-        <div className="mt-4 md:mt-0 flex items-center gap-2">
-          <Tooltip title="This will make the feedback button in the system visible" arrow>
-            <span className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-base bg-black/90">
-              <RiRobot2Fill className="text-purple-500 text-2xl" />
-              <PurpleSwitch
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="flex items-center space-x-4 p-6 rounded-3xl bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25"
+        >
+          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+            <Zap className="w-6 h-6" />
+          </div>
+          <div className="flex items-center space-x-4">
+            <div>
+              <p className="font-semibold">Testing Mode</p>
+              <p className="text-sm text-white/80">Enable feedback collection</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
                 checked={!!showFeedback}
                 onChange={handleToggle}
-                inputProps={{ "aria-label": "Testing Mode" }}
                 disabled={loading}
+                className="sr-only peer"
+                aria-label="Testing Mode"
               />
-              <span className="text-purple-400 font-bold">Testing Mode</span>
-            </span>
-          </Tooltip>
-        </div>
-      </div>
+              <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:bg-white/40 transition-all duration-200"></div>
+              <div
+                className={cn(
+                  "absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200",
+                  showFeedback ? "translate-x-5" : ""
+                )}
+              />
+            </label>
+          </div>
+        </motion.div>
+      </motion.div>
 
+      {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2,853</div>
-            <div className="flex items-center text-sm text-green-500 mt-1">
-              <ArrowUpRight className="h-4 w-4 mr-1" />
-              <span>12% from last month</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Employers</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">432</div>
-            <div className="flex items-center text-sm text-green-500 mt-1">
-              <ArrowUpRight className="h-4 w-4 mr-1" />
-              <span>8% from last month</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Companies</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
-            <div className="flex items-center text-sm text-green-500 mt-1">
-              <ArrowUpRight className="h-4 w-4 mr-1" />
-              <span>18% from last month</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending Reports</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <div className="flex items-center text-sm text-red-500 mt-1">
-              <ArrowDownRight className="h-4 w-4 mr-1" />
-              <span>4% from last month</span>
-            </div>
-          </CardContent>
-        </Card>
+        {statsCards.map((stat, index) => (
+          <motion.div
+            key={stat.title}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            whileHover={{ y: -5 }}
+            className="group"
+          >
+            <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white">
+              <div className={cn("absolute inset-0 bg-gradient-to-br opacity-5", stat.bgColor)} />
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                  {stat.title}
+                </CardTitle>
+                <div
+                  className={cn("w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center", stat.color)}
+                >
+                  <stat.icon className="w-6 h-6 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</div>
+                <div
+                  className={cn(
+                    "flex items-center text-sm font-semibold",
+                    stat.trend === "up" ? "text-emerald-600" : "text-red-600",
+                  )}
+                >
+                  {stat.trend === "up" ? (
+                    <ArrowUpRight className="w-4 h-4 mr-1" />
+                  ) : (
+                    <ArrowDownRight className="w-4 h-4 mr-1" />
+                  )}
+                  <span>{stat.change} from last month</span>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="overview" className="space-y-8">
+        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+          <TabsTrigger
+            value="overview"
+            className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger
+            value="analytics"
+            className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
+          >
+            Analytics
+          </TabsTrigger>
+          <TabsTrigger
+            value="reports"
+            className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
+          >
+            Reports
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="col-span-2">
-              <CardHeader>
-                <CardTitle>User Registration Trends</CardTitle>
-                <CardDescription>Monthly user registrations over the past year</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] flex items-center justify-center bg-slate-50 rounded-md">
-                  <p className="text-muted-foreground">Chart: Monthly user registrations</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>User Distribution</CardTitle>
-                <CardDescription>Breakdown by user type</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] flex items-center justify-center bg-slate-50 rounded-md">
-                  <p className="text-muted-foreground">Chart: User distribution</p>
-                </div>
-              </CardContent>
-            </Card>
+
+        <TabsContent value="overview" className="space-y-8">
+          <div className="grid gap-8 lg:grid-cols-3">
+            {/* Chart Placeholder */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="lg:col-span-2"
+            >
+              <Card className="border-0 shadow-lg bg-white">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-gray-900">User Registration Trends</CardTitle>
+                  <CardDescription className="text-gray-600">
+                    Monthly user registrations over the past year
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[350px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
+                    <div className="text-center">
+                      <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 font-medium text-lg">Chart: Monthly user registrations</p>
+                      <p className="text-gray-400 text-sm mt-2">Interactive chart will be displayed here</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Recent Activities */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+              <Card className="border-0 shadow-lg bg-white h-full">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-gray-900">Recent Activities</CardTitle>
+                  <CardDescription className="text-gray-600">Latest system activities</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {recentActivities.map((activity, index) => (
+                      <motion.div
+                        key={activity.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.5 + index * 0.1 }}
+                        className="flex items-start space-x-4 p-4 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer group"
+                      >
+                        <div
+                          className={cn(
+                            "w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center",
+                            activity.color,
+                          )}
+                        >
+                          <activity.icon className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                            {activity.title}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">{activity.description}</p>
+                          <div className="flex items-center space-x-1 mt-2">
+                            <Clock className="w-3 h-3 text-gray-400" />
+                            <p className="text-xs text-gray-500">{activity.time}</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activities</CardTitle>
-                <CardDescription>Latest system activities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-start gap-4 border-b pb-4 last:border-0 last:pb-0">
-                      <div className="rounded-full bg-blue-100 p-2">
-                        <Users className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">New admin account created</p>
-                        <p className="text-xs text-muted-foreground">2 hours ago</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Employers</CardTitle>
-                <CardDescription>Most active employers on the platform</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-slate-200"></div>
-                        <div>
-                          <p className="text-sm font-medium">Company {i}</p>
-                          <p className="text-xs text-muted-foreground">{20 - i * 2} job listings</p>
+          <div className="grid gap-8 lg:grid-cols-2">
+            {/* Top Employers */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+              <Card className="border-0 shadow-lg bg-white">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-gray-900">Top Employers</CardTitle>
+                  <CardDescription className="text-gray-600">Most active employers on the platform</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {topEmployers.map((employer, index) => (
+                      <motion.div
+                        key={employer.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 + index * 0.1 }}
+                        className="flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-colors group"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                            <Building2 className="w-6 h-6 text-indigo-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                              {employer.name}
+                            </p>
+                            <p className="text-sm text-gray-600">{employer.listings} job listings</p>
+                          </div>
                         </div>
-                      </div>
-                      <TrendingUp className="h-4 w-4 text-green-500" />
+                        <div className="flex items-center space-x-3">
+                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 font-semibold px-3 py-1 rounded-full">
+                            {employer.growth}
+                          </Badge>
+                          <TrendingUp className="w-5 h-5 text-emerald-500" />
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Company Verification Status */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+              <Card className="border-0 shadow-lg bg-white">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-gray-900">Company Verification</CardTitle>
+                  <CardDescription className="text-gray-600">Verification status overview</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-gray-700">Pending</span>
+                      <span className="font-bold text-2xl text-yellow-600">7</span>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Pending Company Verification</CardTitle>
-                <CardDescription>Companies awaiting verification</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium">Total Pending</p>
-                    <p className="text-sm text-yellow-500">7</p>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: "35%" }}
+                        transition={{ delay: 0.8, duration: 1 }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-500 w-[35%]"></div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-gray-700">Verified This Month</span>
+                      <span className="font-bold text-2xl text-emerald-600">15</span>
+                    </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: "75%" }}
+                        transition={{ delay: 1, duration: 1 }}
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between mb-1 mt-4">
-                    <p className="text-sm font-medium">Verified This Month</p>
-                    <p className="text-sm text-green-500">15</p>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-gray-700">Rejected</span>
+                      <span className="font-bold text-2xl text-red-600">2</span>
+                    </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-red-400 to-red-500 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: "10%" }}
+                        transition={{ delay: 1.2, duration: 1 }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 w-[75%]"></div>
-                  </div>
-                  <div className="flex items-center justify-between mb-1 mt-4">
-                    <p className="text-sm font-medium">Rejected</p>
-                    <p className="text-sm text-red-500">2</p>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-red-500 w-[10%]"></div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         </TabsContent>
+
         <TabsContent value="analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Advanced Analytics</CardTitle>
-              <CardDescription>Detailed platform analytics and insights</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px] flex items-center justify-center bg-slate-50 rounded-md">
-                <p className="text-muted-foreground">Advanced analytics content</p>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-gray-900">Advanced Analytics</CardTitle>
+                <CardDescription className="text-gray-600">Detailed platform analytics and insights</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[500px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
+                  <div className="text-center">
+                    <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium text-lg">Advanced Analytics Dashboard</p>
+                    <p className="text-gray-400 text-sm mt-2">Comprehensive analytics will be displayed here</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </TabsContent>
+
         <TabsContent value="reports">
-          <Card>
-            <CardHeader>
-              <CardTitle>System Reports</CardTitle>
-              <CardDescription>Generated reports and statistics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px] flex items-center justify-center bg-slate-50 rounded-md">
-                <p className="text-muted-foreground">Reports content</p>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-gray-900">System Reports</CardTitle>
+                <CardDescription className="text-gray-600">Generated reports and statistics</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[500px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
+                  <div className="text-center">
+                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium text-lg">System Reports</p>
+                    <p className="text-gray-400 text-sm mt-2">Detailed reports and statistics will be displayed here</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </TabsContent>
       </Tabs>
     </div>

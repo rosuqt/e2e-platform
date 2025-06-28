@@ -40,6 +40,7 @@ import { RiCalendarScheduleLine, RiEmotionSadLine } from "react-icons/ri"
 import { LuCalendarCog } from "react-icons/lu"
 import { FaHandHoldingUsd, FaRegCalendarTimes, FaUserCheck } from "react-icons/fa"
 import { FaHandHoldingDollar } from "react-icons/fa6"
+import { calculateSkillsMatch } from "../../../../../../lib/match-utils"
 
 type JobPosting = {
   job_title?: string
@@ -54,6 +55,8 @@ type JobPosting = {
 type AnswersMap = Record<string, string | string[]>;
 
 type Applicant = {
+  skills: never[]
+  contactInfo: { email: string; phone: string; socials: never[]; countryCode: string }
   application_id: string
   job_id: string
   job_title?: string
@@ -213,6 +216,8 @@ export default function RecruiterApplicationTracker() {
     application_id: string
   }
   const [recentActivity, setRecentActivity] = useState<RecentActivity[] | null>(null)
+  const [jobSkillsMap, setJobSkillsMap] = useState<Record<string, string[]>>({})
+  const [search, setSearch] = useState("")
 
   useEffect(() => {
     setLoading(true)
@@ -295,6 +300,27 @@ export default function RecruiterApplicationTracker() {
       setFilteredApplicants(applicants.filter(a => a.job_id === selectedJob?.id))
     }
   }, [selectedJob, applicants])
+
+  useEffect(() => {
+    let filtered = applicants
+    if (selectedJob?.id !== "all") {
+      filtered = filtered.filter(a => a.job_id === selectedJob?.id)
+    }
+    if (search.trim() !== "") {
+      const s = search.trim().toLowerCase()
+      filtered = filtered.filter(a => {
+        const name = `${a.first_name || ""} ${a.last_name || ""}`.toLowerCase()
+        const skills = Array.isArray(a.skills) ? a.skills.join(" ").toLowerCase() : ""
+        const experience = (a.experience_years || "").toLowerCase()
+        return (
+          name.includes(s) ||
+          skills.includes(s) ||
+          experience.includes(s)
+        )
+      })
+    }
+    setFilteredApplicants(filtered)
+  }, [search, applicants, selectedJob])
 
   function getTabStatus(applicantStatus: string | undefined) {
     if (!applicantStatus) return ""
@@ -419,6 +445,28 @@ export default function RecruiterApplicationTracker() {
     hired: { icon: <FaUserCheck  className="h-4 w-4 text-white" />, iconBg: "bg-green-700" },
   }
 
+  useEffect(() => {
+    async function fetchJobSkills() {
+      const jobs = applicants.map(a => a.job_id)
+      const uniqueJobs = Array.from(new Set(jobs))
+      const skillsMap: Record<string, string[]> = {}
+      await Promise.all(
+        uniqueJobs.map(async (jobId) => {
+          if (!jobId) return
+          try {
+            const res = await fetch(`/api/jobs/${jobId}/skills`)
+            const data = await res.json()
+            if (Array.isArray(data.skills)) {
+              skillsMap[jobId] = data.skills
+            }
+          } catch {}
+        })
+      )
+      setJobSkillsMap(skillsMap)
+    }
+    if (applicants.length > 0) fetchJobSkills()
+  }, [applicants])
+
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
@@ -488,8 +536,19 @@ export default function RecruiterApplicationTracker() {
                   type="text"
                   placeholder="Search applicants by name, skills, or experience"
                   className="border-0 text-black focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 sm:mb-0"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      setSearch(e.currentTarget.value)
+                    }
+                  }}
                 />
-                <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+                  onClick={() => setSearch(search)}
+                  type="button"
+                >
                   <Search className="mr-2 h-4 w-4" />
                   Search
                 </Button>
@@ -603,6 +662,7 @@ export default function RecruiterApplicationTracker() {
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
+                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -647,6 +707,7 @@ export default function RecruiterApplicationTracker() {
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
+                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -691,6 +752,7 @@ export default function RecruiterApplicationTracker() {
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
+                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -735,6 +797,7 @@ export default function RecruiterApplicationTracker() {
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
+                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -779,6 +842,7 @@ export default function RecruiterApplicationTracker() {
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
+                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -823,6 +887,7 @@ export default function RecruiterApplicationTracker() {
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
+                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -867,6 +932,7 @@ export default function RecruiterApplicationTracker() {
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
+                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -911,6 +977,7 @@ export default function RecruiterApplicationTracker() {
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
+                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1088,6 +1155,12 @@ export default function RecruiterApplicationTracker() {
                     Array.isArray(selectedApplicant.application_answers)
                       ? {}
                       : selectedApplicant.application_answers || {},
+                  contactInfo: selectedApplicant.contactInfo || {
+                    email: "",
+                    phone: "",
+                    socials: [],
+                    countryCode: "",
+                  },
                 }
               : null
           }
@@ -1144,7 +1217,8 @@ function ApplicantCard({
   onShortlist,
   onReject,
   setOfferApplicant,
-  setSendOfferModalOpen
+  setSendOfferModalOpen,
+  matchScore
 }: {
   applicant: Applicant
   selected: boolean 
@@ -1156,6 +1230,7 @@ function ApplicantCard({
   onReject: () => Promise<void>
   setOfferApplicant: (a: Applicant) => void
   setSendOfferModalOpen: (open: boolean) => void
+  matchScore: number
 }) {
 
   const formattedLocation = applicant.address
@@ -1212,6 +1287,12 @@ function ApplicantCard({
     await onShortlist()
     setLoadingShortlist(false)
     setCancelInterviewOpen(false)
+  }
+
+  function getMatchTooltip(score: number) {
+    if (score >= 70) return "Strong match for this job"
+    if (score >= 40) return "Partial match for this job"
+    return "Low skill match for this job"
   }
 
   return (
@@ -1358,10 +1439,25 @@ function ApplicantCard({
             </div>
           </div>
         </div>
-        <div className="flex gap-1">
-          {capitalize(applicant.status) === "Hired" && (
-            <Badge className="bg-green-100 text-green-700">Hired</Badge>
-          )}
+        <div className="flex gap-1 items-center">
+          <Tooltip title={getMatchTooltip(matchScore)} arrow>
+            <span>
+              <motion.div whileHover={{ scale: 1.15 }}>
+                <Badge
+                  className={
+                    matchScore >= 70
+                      ? "bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800"
+                      : matchScore >= 40
+                      ? "bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800"
+                      : "bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"
+                  }
+                  style={{ cursor: "pointer-events-none" }}
+                >
+                  {matchScore}% Match
+                </Badge>
+              </motion.div>
+            </span>
+          </Tooltip>
           <button className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50" onClick={e => e.stopPropagation()}>
             <Bookmark className="h-4 w-4" />
           </button>
