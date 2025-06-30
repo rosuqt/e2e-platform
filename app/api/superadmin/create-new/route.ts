@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   const supabase = getAdminSupabase()
   const { data: existing } = await supabase
-    .from("ojt_coordinators")
+    .from("registered_admins")
     .select("id")
     .eq("username", username)
     .maybeSingle()
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const hashedPassword = await bcrypt.hash(password, 10)
 
   const { data: inserted, error } = await supabase
-    .from("ojt_coordinators")
+    .from("registered_admins")
     .insert([
       {
         username,

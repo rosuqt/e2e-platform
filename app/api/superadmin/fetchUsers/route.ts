@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
 
   const supabase = getAdminSupabase()
   const { data, error } = await supabase
-    .from("ojt_coordinators")
+    .from("registered_admins")
     .select("*")
 
   if (error) {
