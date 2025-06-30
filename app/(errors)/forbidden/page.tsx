@@ -40,7 +40,11 @@ export default function ForbiddenPage() {
       ? "/students/dashboard"
       : role === "employer"
       ? "/employers/dashboard"
-      : "/dashboard"
+      : role === "superadmin"
+      ? "admin/superadmin/dashboard"
+      : role === "admin"
+      ? "/admin/coordinators/dashboard"
+      : "/sign-in"
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-600 via-red-700 to-red-900 flex items-center justify-center relative overflow-hidden">
       {/* Background decorative elements */}

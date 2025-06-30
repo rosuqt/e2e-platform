@@ -1,11 +1,23 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useEffect, useMemo, Suspense } from "react"
+import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { BarChart3, Users, LogOut, Menu, ChevronDown, Search, Bell, Flag, Settings } from "lucide-react"
+import { usePathname} from "next/navigation"
+import {
+  BarChart3,
+  Users,
+  LogOut,
+  Menu,
+  ChevronDown,
+  Search,
+  Bell,
+  Flag,
+  Settings,
+  Shield,
+  User,
+  X,
+} from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,8 +29,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
+import { motion, AnimatePresence } from "framer-motion"
+import { cn } from "@/lib/utils"
+import { useSession, signOut } from "next-auth/react"
 
 interface NavItem {
   title: string
@@ -28,298 +42,570 @@ interface NavItem {
   submenu?: { title: string; href: string; badge?: number }[]
 }
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
+const navItems: NavItem[] = [
+  {
+    title: "Dashboard",
+    href: "/admin/coordinators/dashboard",
+    icon: BarChart3,
+  },
+  {
+    title: "Student Management",
+    href: "/admin/coordinators/students",
+    icon: Users,
+    badge: 3,
+  },
+  {
+    title: "Report Management",
+    href: "#",
+    icon: Flag,
+    badge: 12,
+    submenu: [
+      { title: "Reported Employers", href: "/admin/coordinators/reports/employers", badge: 5 },
+      { title: "Reported Companies", href: "/admin/coordinators/reports/companies", badge: 3 },
+      { title: "Reported Listings", href: "/admin/coordinators/reports/listings", badge: 2 },
+      { title: "Reported Students", href: "/admin/coordinators/reports/students", badge: 2 },
+    ],
+  },
+]
 
-  const navItems: NavItem[] = useMemo(() => [
-    {
-      title: "Dashboard",
-      href: "/admin/coordinators/dashboard",
-      icon: BarChart3,
+const sidebarVariants = {
+  expanded: {
+    width: 280,
+    transition: {
+      type: "spring",
+      stiffness: 400,
+      damping: 40,
+      mass: 1,
     },
-    {
-      title: "Student Management",
-      href: "/admin/coordinators/students",
-      icon: Users,
-      badge: 3,
+  },
+  collapsed: {
+    width: 80,
+    transition: {
+      type: "spring",
+      stiffness: 400,
+      damping: 40,
+      mass: 1,
     },
-    {
-      title: "Report Management",
-      href: "#",
-      icon: Flag,
-      badge: 12,
-      submenu: [
-        { title: "Reported Employers", href: "/admin/coordinators/reports/employers", badge: 5 },
-        { title: "Reported Companies", href: "/admin/coordinators/reports/companies", badge: 3 },
-        { title: "Reported Listings", href: "/admin/coordinators/reports/listings", badge: 2 },
-        { title: "Reported Students", href: "/admin/coordinators/reports/students", badge: 2 },
-      ],
+  },
+}
+
+const contentVariants = {
+  expanded: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      delay: 0.1,
+      duration: 0.3,
+      ease: "easeOut",
     },
-  ], [])
+  },
+  collapsed: {
+    opacity: 0,
+    x: -10,
+    transition: {
+      duration: 0.2,
+      ease: "easeIn",
+    },
+  },
+}
+
+function MobileNavigation({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+          />
+          <motion.div
+            className="fixed left-0 top-0 bottom-0 z-50 w-80 bg-white shadow-2xl lg:hidden"
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+            }}
+          >
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold text-gray-900">Coordinator</h1>
+                    <p className="text-xs text-gray-500">Portal</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto py-4">
+                <NavContent onItemClick={onClose} />
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  )
+}
+
+function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; onItemClick?: () => void }) {
+  const pathname = usePathname()
+  // const router = useRouter() // Remove unused router
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
+  const { data: session } = useSession()
 
   useEffect(() => {
     const currentSubmenu = navItems.find((item) => item.submenu?.some((subItem) => pathname === subItem.href))
     if (currentSubmenu) {
       setOpenSubmenu(currentSubmenu.title)
     }
-  }, [pathname, navItems])
+  }, [pathname])
 
   const toggleSubmenu = (title: string) => {
-    if (openSubmenu === title) {
-      setOpenSubmenu(null)
-    } else {
-      setOpenSubmenu(title)
-    }
+    if (minimized) return
+    setOpenSubmenu(openSubmenu === title ? null : title)
   }
 
-  const isActive = (href: string) => {
-    return pathname === href
+  const isActive = (href: string) => pathname === href
+  const isSubmenuActive = (submenu: { title: string; href: string }[]) => submenu.some((item) => pathname === item.href)
+
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/admin/login" })
   }
 
-  const isSubmenuActive = (submenu: { title: string; href: string }[]) => {
-    return submenu.some((item) => pathname === item.href)
-  }
-
-  const handleLogout = () => {
-    console.log("Logging out...")
-
-    router.push("/login")
-  }
-
-  const NavContent = () => (
+  return (
     <div className="flex flex-col h-full">
-      <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
-          Coordinator Portal
-        </h1>
-      </div>
-      <div className="flex-1 py-6 overflow-auto">
-        <nav className="space-y-2 px-3">
-          {navItems.map((item) => (
-            <div key={item.title}>
-              {item.submenu ? (
-                <div className="space-y-1">
-                  <button
-                    onClick={() => toggleSubmenu(item.title)}
-                    className={`flex items-center justify-between w-full px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                      isSubmenuActive(item.submenu)
-                        ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                        : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <item.icon className="mr-3 h-5 w-5" />
-                      {item.title}
+      <nav className={cn("space-y-2", minimized ? "px-3" : "px-6")}>
+        {navItems.map((item, index) => (
+          <motion.div
+            key={item.title}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+          >
+            {item.submenu ? (
+              <div className="space-y-1">
+                <button
+                  onClick={() => toggleSubmenu(item.title)}
+                  className={cn(
+                    "flex items-center justify-between w-full px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-300 group relative overflow-hidden",
+                    isSubmenuActive(item.submenu)
+                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50",
+                    minimized && "justify-center px-3",
+                  )}
+                >
+                  <div className="flex items-center space-x-3">
+                    <item.icon className={cn("w-5 h-5 transition-transform duration-300", minimized && "w-6 h-6")} />
+                    <AnimatePresence>
+                      {!minimized && (
+                        <motion.div
+                          variants={contentVariants}
+                          initial="collapsed"
+                          animate="expanded"
+                          exit="collapsed"
+                          className="flex items-center space-x-2"
+                        >
+                          <span className="font-medium">{item.title}</span>
+                          {item.badge && (
+                            <Badge
+                              variant="secondary"
+                              className={cn(
+                                "text-xs px-2 py-0.5 rounded-full",
+                                isSubmenuActive(item.submenu)
+                                  ? "bg-white/20 text-white"
+                                  : "bg-indigo-100 text-indigo-600",
+                              )}
+                            >
+                              {item.badge}
+                            </Badge>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <AnimatePresence>
+                    {!minimized && (
+                      <motion.div variants={contentVariants} initial="collapsed" animate="expanded" exit="collapsed">
+                        <ChevronDown
+                          className={cn(
+                            "w-4 h-4 transition-transform duration-300",
+                            openSubmenu === item.title && "rotate-180",
+                          )}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </button>
+                <AnimatePresence>
+                  {!minimized && openSubmenu === item.title && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{
+                        height: { duration: 0.3, ease: "easeInOut" },
+                        opacity: { duration: 0.2, delay: 0.1 },
+                      }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pl-6 pr-4 py-2 space-y-1">
+                        {item.submenu.map((subItem, subIndex) => (
+                          <motion.div
+                            key={subItem.title}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: subIndex * 0.05 }}
+                          >
+                            <Link
+                              href={subItem.href}
+                              onClick={onItemClick}
+                              className={cn(
+                                "flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200",
+                                isActive(subItem.href)
+                                  ? "bg-gradient-to-r from-blue-50 to-purple-50 text-indigo-600 border border-indigo-100"
+                                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50",
+                              )}
+                            >
+                              <span>{subItem.title}</span>
+                              {subItem.badge && (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-xs px-2 py-0.5 rounded-full border",
+                                    isActive(subItem.href)
+                                      ? "bg-indigo-100 text-indigo-600 border-indigo-200"
+                                      : "bg-gray-100 text-gray-600 border-gray-200",
+                                  )}
+                                >
+                                  {subItem.badge}
+                                </Badge>
+                              )}
+                            </Link>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <Link
+                href={item.href}
+                onClick={onItemClick}
+                className={cn(
+                  "flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-300 group relative overflow-hidden",
+                  isActive(item.href)
+                    ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50",
+                  minimized && "justify-center px-3",
+                )}
+              >
+                <item.icon className={cn("w-5 h-5 transition-transform duration-300", minimized && "w-6 h-6")} />
+                <AnimatePresence>
+                  {!minimized && (
+                    <motion.div
+                      variants={contentVariants}
+                      initial="collapsed"
+                      animate="expanded"
+                      exit="collapsed"
+                      className="flex items-center space-x-2"
+                    >
+                      <span className="font-medium">{item.title}</span>
                       {item.badge && (
                         <Badge
                           variant="secondary"
-                          className="ml-2 bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300"
+                          className={cn(
+                            "text-xs px-2 py-0.5 rounded-full",
+                            isActive(item.href) ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-600",
+                          )}
                         >
                           {item.badge}
                         </Badge>
                       )}
-                    </div>
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform duration-200 ${
-                        openSubmenu === item.title ? "transform rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  <div
-                    className={`transition-all duration-200 overflow-hidden ${
-                      openSubmenu === item.title ? "max-h-96" : "max-h-0"
-                    }`}
-                  >
-                    <div className="pl-10 space-y-1 pt-1">
-                      {item.submenu.map((subItem) => (
-                        <Link
-                          key={subItem.title}
-                          href={subItem.href}
-                          className={`flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                            isActive(subItem.href)
-                              ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                              : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                          }`}
-                        >
-                          <span>{subItem.title}</span>
-                          {subItem.badge && (
-                            <Badge
-                              variant="outline"
-                              className="bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
-                            >
-                              {subItem.badge}
-                            </Badge>
-                          )}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <Link
-                  href={item.href}
-                  className={`flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    isActive(item.href)
-                      ? "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                      : "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.title}
-                  </div>
-                  {item.badge && (
-                    <Badge
-                      variant="secondary"
-                      className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300"
-                    >
-                      {item.badge}
-                    </Badge>
+                    </motion.div>
                   )}
-                </Link>
-              )}
-            </div>
-          ))}
-        </nav>
-      </div>
-      <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 rounded-lg mx-3 mb-3">
-        <div className="flex items-center">
-          <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-            <AvatarImage src="/placeholder.svg?height=40&width=40" alt="Jane Smith" />
-            <AvatarFallback className="bg-blue-100 text-blue-600">JS</AvatarFallback>
+                </AnimatePresence>
+              </Link>
+            )}
+          </motion.div>
+        ))}
+      </nav>
+
+      <div className="mt-auto p-6">
+        <div
+          className={cn(
+            "flex items-center space-x-3 p-4 rounded-2xl bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200",
+            minimized && "justify-center space-x-0",
+          )}
+        >
+          <Avatar className="w-10 h-10 ring-2 ring-white shadow-sm">
+            <AvatarImage
+              src="/placeholder.svg?height=40&width=40"
+              alt={
+                (session?.user && typeof session.user === "object" && "firstName" in session.user
+                  ? (session.user as { firstName?: string }).firstName
+                  : "") || ""
+              }
+            />
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+              {(session?.user && typeof session.user === "object" && "firstName" in session.user
+                ? ((session.user as { firstName?: string }).firstName?.[0] || "")
+                : "")}
+              {(session?.user && typeof session.user === "object" && "lastName" in session.user
+                ? ((session.user as { lastName?: string }).lastName?.[0] || "")
+                : "")}
+            </AvatarFallback>
           </Avatar>
-          <div className="ml-3 flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">Jane Smith</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">IT Department</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-          </Button>
+          <AnimatePresence>
+            {!minimized && (
+              <motion.div
+                variants={contentVariants}
+                initial="collapsed"
+                animate="expanded"
+                exit="collapsed"
+                className="flex-1 min-w-0"
+              >
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {(session?.user && typeof session.user === "object" && "firstName" in session.user
+                    ? (session.user as { firstName?: string }).firstName
+                    : "")}
+                  {" "}
+                  {(session?.user && typeof session.user === "object" && "lastName" in session.user
+                    ? (session.user as { lastName?: string }).lastName
+                    : "")}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {(() => {
+                    const role = (session?.user && typeof session.user === "object" && "role" in session.user
+                      ? (session.user as { role?: string }).role
+                      : "");
+                    return role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
+                  })()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {(() => {
+                    const dept = (session?.user && typeof session.user === "object" && "department" in session.user
+                      ? (session.user as { department?: string }).department
+                      : "");
+                    if (!dept) return "";
+                    if (dept.includes("Information Technology")) return "BSIT Department";
+                    if (dept.includes("Business Administration")) return "BSBA Department";
+                    if (dept.includes("Hospitality Management")) return "BSHM Department";
+                    if (dept.includes("Tourism Management")) return "BSTM Department";
+                    if (dept.includes("ABM")) return "ABM Department";
+                    if (dept.includes("HUMSS")) return "HUMSS Department";
+                    if (dept.includes("IT Mobile app and Web Development")) return "ICT Department";
+                    
+                    return dept;
+                  })()}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {!minimized && (
+              <motion.div variants={contentVariants} initial="collapsed" animate="expanded" exit="collapsed">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  className="w-8 h-8 rounded-xl hover:bg-red-50 hover:text-red-600 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
   )
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const { data: session } = useSession()
+
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/admin/login" })
+  }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
-      {/* Sidebar for desktop */}
-      <div className="hidden lg:block w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 shadow-sm overflow-y-auto">
-        <NavContent />
-      </div>
+    <Suspense fallback={null}>
+      <div className="flex h-screen bg-gray-50">
+        <MobileNavigation isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
-      {/* Mobile sidebar */}
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="lg:hidden absolute top-4 left-4 z-50">
-            <Menu className="h-6 w-6" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-72 border-r border-slate-200 dark:border-slate-700">
-          <NavContent />
-        </SheetContent>
-      </Sheet>
+        <motion.div
+          className="hidden lg:flex flex-col bg-white border-r border-gray-200 shadow-sm relative z-10"
+          variants={sidebarVariants}
+          animate={sidebarCollapsed ? "collapsed" : "expanded"}
+        >
+          <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <AnimatePresence>
+              {!sidebarCollapsed && (
+                <motion.div
+                  variants={contentVariants}
+                  initial="collapsed"
+                  animate="expanded"
+                  exit="collapsed"
+                  className="flex items-center space-x-3"
+                >
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold text-gray-900">Coordinator</h1>
+                    <p className="text-xs text-gray-500">Portal</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {sidebarCollapsed && (
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+            )}
+          </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center w-full max-w-md lg:ml-64">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
-                <Input
-                  placeholder="Search..."
-                  className="pl-10 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-blue-500"
-                />
+          <div className="flex-1 overflow-hidden py-6">
+            <NavContent minimized={sidebarCollapsed} />
+          </div>
+
+          <div className="p-4 border-t border-gray-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="w-full h-10 rounded-xl hover:bg-gray-100 transition-colors"
+            >
+              <motion.div
+                animate={{ rotate: sidebarCollapsed ? 180 : 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+              >
+                <ChevronDown className="w-4 h-4 rotate-90" />
+              </motion.div>
+            </Button>
+          </div>
+        </motion.div>
+
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <header className="bg-white border-b border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden rounded-xl"
+                  onClick={() => setMobileSidebarOpen(true)}
+                >
+                  <Menu className="w-5 h-5" />
+                </Button>
+                <div className="relative w-full max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search..."
+                    className="pl-10 bg-gray-50 border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 rounded-xl"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Button variant="ghost" size="icon" className="relative rounded-xl hover:bg-gray-100 transition-colors">
+                  <Bell className="w-5 h-5 text-gray-600" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-white"></span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:flex items-center space-x-2 rounded-xl border-gray-200 hover:bg-gray-50"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Settings</span>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative w-10 h-10 rounded-xl">
+                      <Avatar className="w-8 h-8 ring-2 ring-white shadow-sm">
+                        <AvatarImage
+                          src="/placeholder.svg?height=32&width=32"
+                          alt={
+                            `${(session?.user as { firstName?: string })?.firstName ?? ""} ${(session?.user as { lastName?: string })?.lastName ?? ""} ${(session?.user as { id?: string })?.id ?? ""}`.trim()
+                          }
+                        />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-semibold">
+                          {`${(session?.user as { firstName?: string })?.firstName?.[0] ?? ""}${(session?.user as { lastName?: string })?.lastName?.[0] ?? ""}${(session?.user as { id?: string })?.id?.slice(0, 2) ?? ""}`}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 rounded-2xl shadow-xl border-gray-200" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {`${(session?.user as { firstName?: string })?.firstName ?? ""} ${(session?.user as { lastName?: string })?.lastName ?? ""}`.trim()}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {(session?.user as { username?: string })?.username ?? ""}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="rounded-xl">
+                      <User className="mr-2 w-4 h-4" />
+                      Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="rounded-xl">
+                      <Settings className="mr-2 w-4 h-4" />
+                      Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="rounded-xl text-red-600 focus:text-red-600"
+                    >
+                      <LogOut className="mr-2 w-4 h-4" />
+                      Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden md:flex items-center gap-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </Button>
-              <Button variant="ghost" size="icon" className="relative hover:bg-slate-100 dark:hover:bg-slate-800">
-                <Bell className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900"></span>
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-                  >
-                    <Avatar className="h-8 w-8 border-2 border-white dark:border-slate-700 shadow-sm">
-                      <AvatarImage src="/placeholder.svg?height=32&width=32" alt="Jane Smith" />
-                      <AvatarFallback className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
-                        JS
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-56 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                >
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Jane Smith</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">jane.smith@example.com</p>
+          </header>
+          <main className="flex-1 overflow-auto">
+            <div className="p-8">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center h-full">
+                      <div className="animate-pulse flex flex-col items-center gap-4">
+                        <div className="h-12 w-48 bg-gray-200 rounded-lg"></div>
+                        <div className="h-64 w-full bg-gray-200 rounded-lg"></div>
+                      </div>
                     </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-slate-200 dark:bg-slate-700" />
-                  <DropdownMenuItem className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
-                    <span>Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-slate-200 dark:bg-slate-700" />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="cursor-pointer text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 focus:bg-red-50 dark:focus:bg-red-900/20"
-                  >
-                    <span>Logout</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  }
+                >
+                  {children}
+                </Suspense>
+              </motion.div>
             </div>
-          </div>
-        </header>
-
-        {/* Main content area */}
-        <main className="flex-1 overflow-auto p-6">
-          <div className="max-w-7xl mx-auto">
-            <Suspense
-              fallback={
-                <div className="flex items-center justify-center h-full">
-                  <div className="animate-pulse flex flex-col items-center gap-4">
-                    <div className="h-12 w-48 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
-                    <div className="h-64 w-full bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
-                  </div>
-                </div>
-              }
-            >
-              {children}
-            </Suspense>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+    </Suspense>
   )
 }
+
+

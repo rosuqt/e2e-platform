@@ -10,7 +10,6 @@ import JobCard from "../components/job-card"
 import JobModal from "../components/job-modal"
 import { Button } from "@/components/ui/button"
 
-// Animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 60 },
   visible: {
@@ -20,215 +19,71 @@ const fadeInUp = {
   },
 }
 
-// Job listings data
-const jobListings = [
-  {
-    id: 1,
-    title: "Academic Content Developer for Business Management",
-    department: "Academic Affairs",
-    location: "STI College Alabang",
-    type: "Full-time",
-    salary: "₱30,000 - ₱45,000",
-    posted: "2 days ago",
-    description:
-      "Develop and maintain high-quality academic content for business management courses. Collaborate with subject matter experts to ensure curriculum relevance and excellence.",
-    responsibilities: [
-      "Create engaging learning materials for business management courses",
-      "Review and update existing course content to ensure relevance",
-      "Collaborate with faculty to incorporate feedback and improvements",
-      "Ensure content aligns with industry standards and practices",
-      "Develop assessment materials that effectively measure learning outcomes",
-    ],
-    requirements: [
-      "Bachelor's degree in Business Management or related field (Master's preferred)",
-      "Minimum 3 years of experience in content development or teaching",
-      "Strong understanding of business principles and practices",
-      "Excellent writing and communication skills",
-      "Proficiency in educational technology and digital content creation",
-    ],
-    benefits: [
-      "Competitive salary package",
-      "Health insurance coverage",
-      "Professional development opportunities",
-      "Flexible work arrangements",
-      "Collaborative and innovative work environment",
-    ],
-  },
-  {
-    id: 2,
-    title: "Software Developer",
-    department: "Information Technology",
-    location: "STI College Alabang",
-    type: "Full-time",
-    salary: "₱40,000 - ₱60,000",
-    posted: "1 week ago",
-    description:
-      "Join our IT team to develop and maintain software applications for academic and administrative use. Contribute to creating innovative solutions that enhance the educational experience.",
-    responsibilities: [
-      "Design and develop software applications for educational purposes",
-      "Maintain and improve existing systems and applications",
-      "Collaborate with cross-functional teams to define requirements",
-      "Implement security and data protection measures",
-      "Provide technical support and troubleshooting",
-    ],
-    requirements: [
-      "Bachelor's degree in Computer Science, IT, or related field",
-      "Minimum 2 years of experience in software development",
-      "Proficiency in programming languages (Java, Python, JavaScript)",
-      "Experience with web development frameworks",
-      "Knowledge of database management and SQL",
-      "Strong problem-solving skills and attention to detail",
-    ],
-    benefits: [
-      "Competitive salary package",
-      "Health insurance coverage",
-      "Professional development opportunities",
-      "Flexible work arrangements",
-      "Collaborative and innovative work environment",
-    ],
-  },
-  {
-    id: 3,
-    title: "Corporate Finance Manager",
-    department: "Finance",
-    location: "STI College Alabang",
-    type: "Full-time",
-    salary: "₱50,000 - ₱70,000",
-    posted: "3 days ago",
-    description:
-      "Oversee financial operations and strategies for STI College. Lead financial planning, budgeting, and reporting to ensure fiscal responsibility and growth.",
-    responsibilities: [
-      "Develop and implement financial strategies and policies",
-      "Manage budgeting, forecasting, and financial reporting processes",
-      "Oversee accounting operations and ensure compliance",
-      "Analyze financial data to provide insights for decision-making",
-      "Collaborate with department heads on budget planning",
-    ],
-    requirements: [
-      "Bachelor's degree in Finance, Accounting, or related field (CPA preferred)",
-      "Minimum 5 years of experience in financial management",
-      "Strong knowledge of financial regulations and compliance",
-      "Experience with financial software and ERP systems",
-      "Excellent analytical and problem-solving skills",
-      "Strong leadership and communication abilities",
-    ],
-    benefits: [
-      "Competitive salary package",
-      "Health insurance coverage",
-      "Professional development opportunities",
-      "Flexible work arrangements",
-      "Collaborative and innovative work environment",
-    ],
-  },
-  {
-    id: 4,
-    title: "Welfare Services Counselor",
-    department: "Student Affairs",
-    location: "STI College Alabang",
-    type: "Full-time",
-    salary: "₱25,000 - ₱40,000",
-    posted: "5 days ago",
-    description:
-      "Provide counseling and support services to students. Help address academic, personal, and social challenges to promote student well-being and success.",
-    responsibilities: [
-      "Provide individual and group counseling to students",
-      "Develop and implement student welfare programs",
-      "Collaborate with faculty to address student needs",
-      "Maintain confidential records and documentation",
-      "Refer students to appropriate resources when needed",
-    ],
-    requirements: [
-      "Bachelor's degree in Psychology, Counseling, or related field (Master's preferred)",
-      "Minimum 2 years of experience in counseling or student services",
-      "Knowledge of counseling theories and techniques",
-      "Strong interpersonal and communication skills",
-      "Empathy and cultural sensitivity",
-      "Ability to maintain confidentiality and professional boundaries",
-    ],
-    benefits: [
-      "Competitive salary package",
-      "Health insurance coverage",
-      "Professional development opportunities",
-      "Flexible work arrangements",
-      "Collaborative and supportive work environment",
-    ],
-  },
-  {
-    id: 5,
-    title: "IT Instructor",
-    department: "Information Technology",
-    location: "STI College Alabang",
-    type: "Full-time",
-    salary: "₱35,000 - ₱50,000",
-    posted: "1 week ago",
-    description:
-      "Teach IT courses and mentor students in developing technical skills. Contribute to curriculum development and stay updated with industry trends.",
-    responsibilities: [
-      "Teach assigned IT courses and laboratory sessions",
-      "Develop and update course materials and assessments",
-      "Provide academic advising and mentoring to students",
-      "Participate in curriculum development and improvement",
-      "Stay updated with industry trends and technologies",
-    ],
-    requirements: [
-      "Bachelor's degree in Computer Science, IT, or related field (Master's preferred)",
-      "Minimum 3 years of industry experience in IT",
-      "Teaching experience is a plus",
-      "Strong knowledge of programming languages and IT concepts",
-      "Excellent communication and presentation skills",
-      "Passion for education and student development",
-    ],
-    benefits: [
-      "Competitive salary package",
-      "Health insurance coverage",
-      "Professional development opportunities",
-      "Flexible teaching schedule",
-      "Collaborative and innovative work environment",
-    ],
-  },
-  {
-    id: 6,
-    title: "Marketing Coordinator",
-    department: "Marketing",
-    location: "STI College Alabang",
-    type: "Full-time",
-    salary: "₱25,000 - ₱35,000",
-    posted: "3 days ago",
-    description:
-      "Coordinate marketing activities to promote STI College programs and events. Develop and implement marketing strategies to increase brand awareness and student enrollment.",
-    responsibilities: [
-      "Coordinate marketing campaigns and promotional activities",
-      "Manage social media accounts and digital marketing efforts",
-      "Create marketing materials and content",
-      "Organize recruitment events and campus tours",
-      "Track and analyze marketing metrics and results",
-    ],
-    requirements: [
-      "Bachelor's degree in Marketing, Communications, or related field",
-      "Minimum 2 years of experience in marketing or communications",
-      "Strong knowledge of digital marketing and social media platforms",
-      "Excellent writing and communication skills",
-      "Creativity and attention to detail",
-      "Experience with graphic design software is a plus",
-    ],
-    benefits: [
-      "Competitive salary package",
-      "Health insurance coverage",
-      "Professional development opportunities",
-      "Flexible work arrangements",
-      "Collaborative and dynamic work environment",
-    ],
-  },
-]
-
 export default function STIHiringPage() {
-  const [selectedJob, setSelectedJob] = useState<(typeof jobListings)[0] | null>(null)
+  type JobType = {
+    id: number
+    title: string
+    department: string
+    location: string
+    type: string
+    salary: string
+    posted: string
+    description: string
+    responsibilities: string[]
+    requirements: string[]
+    benefits: string[]
+    status?: string
+    raw: { id: string } & Record<string, unknown>
+  }
+
+  const [jobs, setJobs] = useState<JobType[]>([])
+  const [selectedJob, setSelectedJob] = useState<JobType | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [filterDepartment, setFilterDepartment] = useState<string>("")
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [showScrollTop, setShowScrollTop] = useState(false)
 
-  const openJobModal = (job: (typeof jobListings)[0]) => {
+  useEffect(() => {
+    fetch("/api/superadmin/careers/fetch")
+      .then(res => res.json())
+      .then(({ data }) => {
+        if (Array.isArray(data)) {
+          setJobs(
+            data.map((item, idx) => ({
+              id: idx + 1,
+              title: item.position_title,
+              department: item.department || "",
+              location: item.campus || "",
+              type: item.employment_type || "",
+              salary: item.salary_range || "",
+              posted: item.posted_date
+                ? new Date(item.posted_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                : "",
+              description: item.job_description || "",
+              responsibilities: Array.isArray(item.responsibilities)
+                ? item.responsibilities
+                : typeof item.responsibilities === "string" && item.responsibilities.length > 0
+                  ? item.responsibilities.split(",").map((s: string) => s.trim()).filter(Boolean)
+                  : [],
+              requirements: Array.isArray(item.requirements)
+                ? item.requirements
+                : typeof item.requirements === "string" && item.requirements.length > 0
+                  ? item.requirements.split(",").map((s: string) => s.trim()).filter(Boolean)
+                  : [],
+              benefits: Array.isArray(item.benefits)
+                ? item.benefits
+                : typeof item.benefits === "string" && item.benefits.length > 0
+                  ? item.benefits.split(",").map((s: string) => s.trim()).filter(Boolean)
+                  : [],
+              status: item.status || "",
+              raw: { id: String(item.id ?? idx + 1), ...item },
+            }))
+          )
+        }
+      })
+  }, [])
+
+  const openJobModal = (job: JobType) => {
     setSelectedJob(job)
     setIsModalOpen(true)
   }
@@ -237,17 +92,16 @@ export default function STIHiringPage() {
     setIsModalOpen(false)
   }
 
-  const filteredJobs = jobListings.filter((job) => {
+  const filteredJobs = jobs.filter((job) => {
     const matchesDepartment = filterDepartment === "" || job.department === filterDepartment
     const matchesSearch =
       searchQuery === "" ||
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       job.description.toLowerCase().includes(searchQuery.toLowerCase())
-
     return matchesDepartment && matchesSearch
   })
 
-  const departments = Array.from(new Set(jobListings.map((job) => job.department)))
+  const departments = Array.from(new Set(jobs.map((job) => job.department).filter(Boolean)))
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" })
@@ -257,7 +111,6 @@ export default function STIHiringPage() {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 300)
     }
-
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
@@ -499,7 +352,7 @@ export default function STIHiringPage() {
                 <Button
                   className="bg-white text-blue-700 hover:bg-blue-50"
                   onClick={() => {
-                    const job = jobListings.find((j) => j.title === "Software Developer")
+                    const job = jobs.find((j) => j.title === "Software Developer")
                     if (job) {
                       openJobModal(job)
                     }

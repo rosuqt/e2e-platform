@@ -14,36 +14,85 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
 import MuiPopover from "@mui/material/Popover"
 import MuiButton from "@mui/material/Button"
+import { motion } from "framer-motion"
+
+const statsCards = [
+  {
+    title: "Total Students",
+    value: "245",
+    change: "+5%",
+    trend: "up",
+    icon: GraduationCap,
+    color: "from-blue-500 to-cyan-500",
+    bgColor: "from-blue-50 to-cyan-50",
+    sub: "from last month",
+  },
+  {
+    title: "Hired Students",
+    value: "87",
+    change: "+12%",
+    trend: "up",
+    icon: Users,
+    color: "from-emerald-500 to-teal-500",
+    bgColor: "from-emerald-50 to-teal-50",
+    sub: "from last month",
+  },
+  {
+    title: "In Progress",
+    value: "124",
+    change: "-3%",
+    trend: "down",
+    icon: FileText,
+    color: "from-orange-500 to-red-500",
+    bgColor: "from-orange-50 to-red-50",
+    sub: "from last month",
+  },
+  {
+    title: "Pending Reports",
+    value: "12",
+    change: "+2%",
+    trend: "up",
+    icon: BarChart3,
+    color: "from-purple-500 to-pink-500",
+    bgColor: "from-purple-50 to-pink-50",
+    sub: "from last month",
+  },
+]
 
 export default function AdminDashboard() {
   const [dateRange, setDateRange] = useState("This Month")
-
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  const handlePopoverOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget)
-  }
-  const handlePopoverClose = () => {
-    setAnchorEl(null)
-  }
+  const handlePopoverOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget)
+  const handlePopoverClose = () => setAnchorEl(null)
   const open = Boolean(anchorEl)
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6"
+      >
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">IT Department Admin Dashboard</p>
+          <h2 className="text-4xl font-bold text-gray-900 mb-2">Dashboard</h2>
+          <p className="text-lg text-gray-600">IT Department Admin Dashboard</p>
         </div>
         <div className="mt-4 md:mt-0 flex items-center gap-2">
-          {/* MUI Popover for date range */}
           <MuiButton
             variant="outlined"
             className="flex items-center gap-2"
             onClick={handlePopoverOpen}
-            sx={{ textTransform: "none", borderRadius: "0.5rem", borderColor: "hsl(var(--border))" }}
+            sx={{
+              textTransform: "none",
+              borderRadius: "0.75rem",
+              borderColor: "hsl(var(--border))",
+              fontWeight: 500,
+              fontSize: "1rem",
+              background: "white",
+              boxShadow: "0 2px 8px 0 rgba(99,102,241,0.08)",
+            }}
             startIcon={<Calendar className="h-4 w-4" />}
             endIcon={<ChevronDown className="h-4 w-4" />}
           >
@@ -91,170 +140,216 @@ export default function AdminDashboard() {
               </div>
             </div>
           </MuiPopover>
-
         </div>
-      </div>
+      </motion.div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">245</div>
-            <div className="flex items-center text-sm text-green-500 mt-1">
-              <ArrowUpRight className="h-4 w-4 mr-1" />
-              <span>5% from last month</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Hired Students</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">87</div>
-            <div className="flex items-center text-sm text-green-500 mt-1">
-              <ArrowUpRight className="h-4 w-4 mr-1" />
-              <span>12% from last month</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">124</div>
-            <div className="flex items-center text-sm text-red-500 mt-1">
-              <ArrowDownRight className="h-4 w-4 mr-1" />
-              <span>3% from last month</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending Reports</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <div className="flex items-center text-sm text-green-500 mt-1">
-              <ArrowUpRight className="h-4 w-4 mr-1" />
-              <span>2% from last month</span>
-            </div>
-          </CardContent>
-        </Card>
+        {statsCards.map((stat, index) => (
+          <motion.div
+            key={stat.title}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            whileHover={{ y: -5 }}
+            className="group"
+          >
+            <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-white">
+              <div className={`absolute inset-0 bg-gradient-to-br opacity-5 ${stat.bgColor}`} />
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <CardTitle className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                  {stat.title}
+                </CardTitle>
+                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center ${stat.color}`}>
+                  <stat.icon className="w-6 h-6 text-white" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 mb-2">{stat.value}</div>
+                <div
+                  className={
+                    stat.trend === "up"
+                      ? "flex items-center text-sm font-semibold text-emerald-600"
+                      : "flex items-center text-sm font-semibold text-red-600"
+                  }
+                >
+                  {stat.trend === "up" ? (
+                    <ArrowUpRight className="w-4 h-4 mr-1" />
+                  ) : (
+                    <ArrowDownRight className="w-4 h-4 mr-1" />
+                  )}
+                  <span>{stat.change} {stat.sub}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="students">Students</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
+      <Tabs defaultValue="overview" className="space-y-8">
+        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+          <TabsTrigger
+            value="overview"
+            className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger
+            value="students"
+            className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
+          >
+            Students
+          </TabsTrigger>
+          <TabsTrigger
+            value="reports"
+            className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
+          >
+            Reports
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="col-span-2">
-              <CardHeader>
-                <CardTitle>Student Placement Trends</CardTitle>
-                <CardDescription>Monthly student placements over the past year</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] flex items-center justify-center bg-slate-50 rounded-md">
-                  <p className="text-muted-foreground">Chart: Monthly student placements</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Student Status</CardTitle>
-                <CardDescription>Breakdown by placement status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px] flex items-center justify-center bg-slate-50 rounded-md">
-                  <p className="text-muted-foreground">Chart: Student status distribution</p>
-                </div>
-              </CardContent>
-            </Card>
+        <TabsContent value="overview" className="space-y-8">
+          <div className="grid gap-8 lg:grid-cols-3">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="lg:col-span-2"
+            >
+              <Card className="border-0 shadow-lg bg-white">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-gray-900">Student Placement Trends</CardTitle>
+                  <CardDescription className="text-gray-600">
+                    Monthly student placements over the past year
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
+                    <p className="text-gray-500 font-medium text-lg">Chart: Monthly student placements</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+              <Card className="border-0 shadow-lg bg-white h-full">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-gray-900">Student Status</CardTitle>
+                  <CardDescription className="text-gray-600">Breakdown by placement status</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
+                    <p className="text-gray-500 font-medium text-lg">Chart: Student status distribution</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activities</CardTitle>
-                <CardDescription>Latest department activities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-start gap-4 border-b pb-4 last:border-0 last:pb-0">
-                      <div className="rounded-full bg-blue-100 p-2">
-                        <Users className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Student placement updated</p>
-                        <p className="text-xs text-muted-foreground">2 hours ago</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Companies</CardTitle>
-                <CardDescription>Companies hiring the most IT students</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-slate-200"></div>
-                        <div>
-                          <p className="text-sm font-medium">Tech Company {i}</p>
-                          <p className="text-xs text-muted-foreground">{15 - i * 2} students hired</p>
+          <div className="grid gap-8 lg:grid-cols-2">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+              <Card className="border-0 shadow-lg bg-white">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-gray-900">Recent Activities</CardTitle>
+                  <CardDescription className="text-gray-600">Latest department activities</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.5 + i * 0.1 }}
+                        className="flex items-start gap-4 p-4 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer group"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-white" />
                         </div>
-                      </div>
-                      <TrendingUp className="h-4 w-4 text-green-500" />
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                            Student placement updated
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">2 hours ago</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+              <Card className="border-0 shadow-lg bg-white">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-gray-900">Top Companies</CardTitle>
+                  <CardDescription className="text-gray-600">Companies hiring the most IT students</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.7 + i * 0.1 }}
+                        className="flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-colors group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center"></div>
+                          <div>
+                            <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                              Tech Company {i}
+                            </p>
+                            <p className="text-xs text-gray-600">{15 - i * 2} students hired</p>
+                          </div>
+                        </div>
+                        <TrendingUp className="h-5 w-5 text-emerald-500" />
+                      </motion.div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         </TabsContent>
         <TabsContent value="students">
-          <Card>
-            <CardHeader>
-              <CardTitle>Student Analytics</CardTitle>
-              <CardDescription>Detailed student performance and placement metrics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px] flex items-center justify-center bg-slate-50 rounded-md">
-                <p className="text-muted-foreground">Student analytics content</p>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader className="flex flex-row items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                  <GraduationCap className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold text-gray-900">Student Analytics</CardTitle>
+                  <CardDescription className="text-gray-600">Detailed student performance and placement metrics</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[400px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
+                  <p className="text-gray-500 font-medium text-lg">Student analytics content</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </TabsContent>
         <TabsContent value="reports">
-          <Card>
-            <CardHeader>
-              <CardTitle>Department Reports</CardTitle>
-              <CardDescription>Generated reports and statistics for IT department</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px] flex items-center justify-center bg-slate-50 rounded-md">
-                <p className="text-muted-foreground">Reports content</p>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader className="flex flex-row items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold text-gray-900">Department Reports</CardTitle>
+                  <CardDescription className="text-gray-600">Generated reports and statistics for IT department</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[400px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
+                  <p className="text-gray-500 font-medium text-lg">Reports content</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </TabsContent>
       </Tabs>
     </div>
   )
 }
+

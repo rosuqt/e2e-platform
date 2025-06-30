@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
   const supabase = getAdminSupabase()
   const { error } = await supabase
-    .from("ojt_coordinators")
+    .from("registered_admins")
     .update({ status: newStatus })
     .eq("id", id)
 

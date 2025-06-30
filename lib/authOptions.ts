@@ -63,6 +63,41 @@ export const authOptions: NextAuthOptions = {
         return null
       },
     }),
+    CredentialsProvider({
+      id: "admin-login",
+      name: "Admin Login",
+      credentials: {
+        username: { label: "Username", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const { username, password } = credentials ?? {}
+        if (!username || !password) return null
+
+        const { data: admin, error } = await supabase
+          .from("registered_admins")
+          .select("id, username, password, first_name, last_name, department, superadmin")
+          .eq("username", username)
+          .maybeSingle()
+
+        if (error) {
+          console.error("Admin CredentialsProvider authorize: error from db:", error)
+        }
+
+        if (admin && bcrypt.compareSync(password, admin.password)) {
+          return {
+            id: admin.id,
+            adminID: admin.id,
+            username: admin.username,
+            firstName: admin.first_name,
+            lastName: admin.last_name,
+            department: admin.department,
+            role: admin.superadmin ? "superadmin" : "admin"
+          }
+        }
+        return null
+      },
+    }),
   ],
 
   pages: {
@@ -165,7 +200,22 @@ export const authOptions: NextAuthOptions = {
         if (employerData?.company_id !== undefined) {
           token.company_id = employerData.company_id
         }
-      } 
+      } else if ((user as { role?: string })?.role === "admin" || (user as { role?: string })?.role === "superadmin") {
+        const adminUser = user as unknown as {
+          adminID: string
+          username: string
+          firstName: string
+          lastName: string
+          department: string
+          role: string
+        }
+        token.role = adminUser.role
+        token.adminID = adminUser.adminID
+        token.firstName = adminUser.firstName
+        token.lastName = adminUser.lastName
+        token.department = adminUser.department
+        token.username = adminUser.username // add this line
+      }
       return token
     },
 
@@ -198,6 +248,17 @@ export const authOptions: NextAuthOptions = {
           (session.user as { studentId?: string }).studentId = student.id
         }
       }
+      if (token.role === "admin" || token.role === "superadmin") {
+        if (token.adminID) {
+          (session.user as { adminID?: string }).adminID = token.adminID as string
+        }
+        (session.user as { firstName?: string }).firstName = token.firstName as string
+        (session.user as { lastName?: string }).lastName = token.lastName as string
+        (session.user as { department?: string }).department = token.department as string
+        if (token.username) {
+          (session.user as { username?: string }).username = token.username as string
+        }
+      }
       if (token.email) {
         session.user.email = token.email as string
       }
@@ -210,6 +271,8 @@ export const authOptions: NextAuthOptions = {
       if (token.role === "student" && "newStudent" in token) {
         (session.user as { newStudent?: boolean }).newStudent = token.newStudent as boolean
       }
+
+      console.log("SESSION OBJECT:", session)
       return session
     },
   },

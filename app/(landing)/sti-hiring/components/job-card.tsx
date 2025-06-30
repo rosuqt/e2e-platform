@@ -48,10 +48,17 @@ export default function JobCard({ job, onClick }: JobProps) {
 
             <div className="mt-3 flex flex-wrap gap-2">
               <span className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                {job.type}
+                {job.type.charAt(0).toUpperCase() + job.type.slice(1)}
               </span>
               <span className="inline-block bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                {job.salary}
+                {(() => {
+                  if (job.salary && job.salary.includes(",")) {
+                    const [min, max] = job.salary.split(",").map(s => s.trim())
+                    return `₱${min} - ₱${max}`
+                  }
+                  if (job.salary) return `₱${job.salary}`
+                  return ""
+                })()}
               </span>
             </div>
 

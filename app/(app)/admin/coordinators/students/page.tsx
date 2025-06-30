@@ -1,9 +1,7 @@
 "use client"
 import Image from "next/image"
-
 import type React from "react"
-
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
   Search,
   Filter,
@@ -11,9 +9,6 @@ import {
   MoreHorizontal,
   Eye,
   MessageSquare,
-  Clock,
-  CheckCircle,
-  AlertCircle,
   Edit,
   Upload,
   FileText,
@@ -21,7 +16,11 @@ import {
   Check,
   Info,
   AlertTriangle,
+  Loader2,
+  Building2,
 } from "lucide-react"
+import { FiCalendar } from "react-icons/fi"
+import { HiOutlineUserGroup } from "react-icons/hi2"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -42,17 +41,30 @@ import { Progress } from "@/components/ui/progress"
 import { Avatar } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { motion } from "framer-motion"
+import { HiRocketLaunch } from "react-icons/hi2"
+import { RiProgress6Fill } from "react-icons/ri"
+import { FaMagnifyingGlass } from "react-icons/fa6"
+import Tooltip from "@mui/material/Tooltip"
+import StudentDetailsModalContent from "./components/studentDetails"
+import { PiWarningCircleBold } from "react-icons/pi"
+import { LuGraduationCap } from "react-icons/lu"
 
 interface Student {
   id: number
   name: string
   studentId: string
-  course: string
+  email: string
   year: number
-  status: "not_hired" | "in_progress" | "hired" | "finished"
+  status: string
   progress: number
   company?: string
   employer?: string
+  course?: string
+  profile_img?: string | null
+  section?: string | null
+  application_id?: string
+  student_id?: string | number 
 }
 
 interface BulkUploadPreviewData {
@@ -84,77 +96,61 @@ export default function StudentManagement() {
     errors: string[]
   }>({ total: 0, successful: 0, failed: 0, errors: [] })
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [students, setStudents] = useState<Student[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
-  // Mock data
-  const students: Student[] = [
-    {
-      id: 1,
-      name: "Alex Johnson",
-      studentId: "2023-IT-0001",
-      course: "BSIT",
-      year: 4,
-      status: "hired",
-      progress: 100,
-      company: "Tech Solutions Inc.",
-      employer: "John Smith",
-    },
-    {
-      id: 2,
-      name: "Maria Garcia",
-      studentId: "2023-IT-0002",
-      course: "BSIT",
-      year: 4,
-      status: "in_progress",
-      progress: 65,
-      company: "Digital Innovations",
-      employer: "Sarah Williams",
-    },
-    {
-      id: 3,
-      name: "James Wilson",
-      studentId: "2023-IT-0003",
-      course: "BSIT",
-      year: 3,
-      status: "not_hired",
-      progress: 10,
-    },
-    {
-      id: 4,
-      name: "Emily Davis",
-      studentId: "2023-IT-0004",
-      course: "BSIT",
-      year: 4,
-      status: "finished",
-      progress: 100,
-      company: "WebTech Solutions",
-      employer: "Michael Brown",
-    },
-    {
-      id: 5,
-      name: "Robert Martinez",
-      studentId: "2023-IT-0005",
-      course: "BSIT",
-      year: 3,
-      status: "in_progress",
-      progress: 45,
-      company: "Innovative Systems",
-      employer: "Jennifer Lee",
-    },
-  ]
+  useEffect(() => {
+    setIsLoading(true)
+    fetch("/api/superadmin/coordinators/fetchDeptStudents")
+      .then((res) => res.json())
+      .then((data) => {
+        setIsLoading(false)
+        if (Array.isArray(data)) {
+          setStudents(
+            data.map((row) => {
+              let studentId = "No Student ID"
+              const email = String(row.email ?? "")
+              if (email.endsWith("@alabang.sti.edu.ph")) {
+                const match = email.match(/\.(\d+)@alabang\.sti\.edu\.ph$/)
+                if (match && match[1]) {
+                  studentId = `02000-${match[1]}`
+                }
+              }
+              return {
+                id: row.id,
+                name: [row.first_name, row.last_name].filter(Boolean).join(" "),
+                studentId,
+                email: row.email || "",
+                year: row.year || "",
+                status: row.status || "New",
+                progress: row.progress || 0,
+                company: row.company || "",
+                employer: row.employer || "",
+                course: row.course || "",
+                profile_img: row.profile_img || null,
+                section: row.section || null,
+                application_id: row.application_id || "",
+                student_id: row.id,
+              }
+            })
+          )
+        }
+      })
+  }, [])
 
   const filteredStudents = students.filter((student) => {
     const matchesSearch =
       student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.course.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (student.course ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (student.company && student.company.toLowerCase().includes(searchQuery.toLowerCase()))
 
     const matchesTab =
       activeTab === "all" ||
-      (activeTab === "not_hired" && student.status === "not_hired") ||
-      (activeTab === "in_progress" && student.status === "in_progress") ||
-      (activeTab === "hired" && student.status === "hired") ||
-      (activeTab === "finished" && student.status === "finished")
+      (activeTab === "not_hired" && student.status.toLowerCase() === "not_hired") ||
+      (activeTab === "in_progress" && student.status.toLowerCase() === "in_progress") ||
+      (activeTab === "hired" && student.status.toLowerCase() === "hired") ||
+      (activeTab === "finished" && student.status.toLowerCase() === "finished")
 
     return matchesSearch && matchesTab
   })
@@ -166,31 +162,15 @@ export default function StudentManagement() {
 
   const handleEditStatus = (student: Student) => {
     setSelectedStudent(student)
-    setSelectedStatus(mapStatusToEditOptions(student.status))
+    setSelectedStatus(student.status)
     setIsEditStatusDialogOpen(true)
-  }
-
-  const mapStatusToEditOptions = (status: string): string => {
-    switch (status) {
-      case "not_hired":
-        return "not-started"
-      case "in_progress":
-        return "in-progress"
-      case "hired":
-      case "finished":
-        return "completed"
-      default:
-        return "not-started"
-    }
   }
 
   const updateStudentStatus = () => {
     if (!selectedStudent) return
 
-    // In a real application, you would call an API to update the student status
     console.log(`Updating student ${selectedStudent.name} status to ${selectedStatus}`)
 
-    // Close the dialog
     setIsEditStatusDialogOpen(false)
   }
 
@@ -207,7 +187,6 @@ export default function StudentManagement() {
     const file = e.target.files?.[0]
     if (file) {
       setSelectedFile(file)
-      // Mock parsing CSV file
       setTimeout(() => {
         const mockPreviewData: BulkUploadPreviewData[] = [
           {
@@ -273,7 +252,6 @@ export default function StudentManagement() {
       const file = files[0]
       if (file.type === "text/csv" || file.name.endsWith(".csv")) {
         setSelectedFile(file)
-        // Mock parsing CSV file (same as handleFileChange)
         setTimeout(() => {
           const mockPreviewData: BulkUploadPreviewData[] = [
             {
@@ -331,7 +309,6 @@ export default function StudentManagement() {
   const handleUpload = () => {
     setUploadStep("uploading")
 
-    // Simulate upload progress
     let progress = 0
     const interval = setInterval(() => {
       progress += 10
@@ -340,7 +317,6 @@ export default function StudentManagement() {
       if (progress >= 100) {
         clearInterval(interval)
 
-        // Mock results
         const validRecords = previewData.filter((record) => record.isValid)
         const invalidRecords = previewData.filter((record) => !record.isValid)
 
@@ -370,10 +346,8 @@ export default function StudentManagement() {
   }
 
   const downloadTemplate = () => {
-    // Create CSV content
     const csvContent = "studentId,name,course,year,status\n2023-IT-XXXX,Student Name,BSIT,3,not_hired"
 
-    // Create a blob and download
     const blob = new Blob([csvContent], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -386,499 +360,522 @@ export default function StudentManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Student Management</h2>
-          <p className="text-muted-foreground">Manage IT department students and track their progress</p>
+    <div className="space-y-8">
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-24">
+          <div className="w-12 h-12 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mb-4" />
+          <div className="text-lg font-semibold text-indigo-500 animate-pulse">Fetching users...</div>
         </div>
-        <div className="mt-4 md:mt-0 flex gap-3">
-          <Button variant="outline" className="flex items-center gap-2" onClick={handleBulkUploadClick}>
-            <Upload className="h-4 w-4" />
-            Bulk Upload
-          </Button>
-          <Button className="flex items-center gap-2" >
-            <Download className="h-4 w-4" />
-            Export List
-          </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle>IT Department Students</CardTitle>
-          <CardDescription>View and manage all students in the IT department</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <Input
-                  placeholder="Search students..."
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Filter
+      ) : (
+        <>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6"
+          >
+            <div>
+              <h2 className="text-4xl font-bold text-gray-900 mb-2">Student Management</h2>
+              <p className="text-lg text-gray-600">Manage IT department students and track their progress</p>
+            </div>
+            <div className="mt-4 md:mt-0 flex gap-3">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 rounded-2xl border-gray-200 shadow"
+                onClick={handleBulkUploadClick}
+              >
+                <Upload className="h-4 w-4" />
+                Bulk Upload
+              </Button>
+              <Button
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg rounded-2xl px-6 py-3 font-semibold"
+                onClick={() => {
+                  const csvRows = [
+                    [
+                      "Student ID",
+                      "Name",
+                      "School Email",
+                      "Year",
+                      "Status",
+                      "Company",
+                      "Course",
+                      "Section"
+                    ].join(","),
+                    ...students.map(s =>
+                      [
+                        `"${s.studentId}"`,
+                        `"${s.name}"`,
+                        `"${s.email}"`,
+                        `"${s.year}"`,
+                        `"${s.status}"`,
+                        `"${s.company || ""}"`,
+                        `"${s.course || ""}"`,
+                        `"${s.section || ""}"`
+                      ].join(",")
+                    )
+                  ]
+                  const csvContent = csvRows.join("\r\n")
+                  const blob = new Blob([csvContent], { type: "text/csv" })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = "students_export.csv"
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  URL.revokeObjectURL(url)
+                }}
+              >
+                <Download className="h-4 w-4" />
+                Export List
               </Button>
             </div>
-          </div>
+          </motion.div>
 
-          <Tabs defaultValue="all" onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="not_hired">Not Hired</TabsTrigger>
-              <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-              <TabsTrigger value="hired">Hired</TabsTrigger>
-              <TabsTrigger value="finished">Finished</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" className="mt-4">
-              <StudentsTable
-                students={filteredStudents}
-                onViewStudent={handleViewStudent}
-                onEditStatus={handleEditStatus}
-              />
-            </TabsContent>
-            <TabsContent value="not_hired" className="mt-4">
-              <StudentsTable
-                students={filteredStudents}
-                onViewStudent={handleViewStudent}
-                onEditStatus={handleEditStatus}
-              />
-            </TabsContent>
-            <TabsContent value="in_progress" className="mt-4">
-              <StudentsTable
-                students={filteredStudents}
-                onViewStudent={handleViewStudent}
-                onEditStatus={handleEditStatus}
-              />
-            </TabsContent>
-            <TabsContent value="hired" className="mt-4">
-              <StudentsTable
-                students={filteredStudents}
-                onViewStudent={handleViewStudent}
-                onEditStatus={handleEditStatus}
-              />
-            </TabsContent>
-            <TabsContent value="finished" className="mt-4">
-              <StudentsTable
-                students={filteredStudents}
-                onViewStudent={handleViewStudent}
-                onEditStatus={handleEditStatus}
-              />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-
-      {/* View Student Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Student Details</DialogTitle>
-            <DialogDescription>Detailed information about the student and their progress.</DialogDescription>
-          </DialogHeader>
-          {selectedStudent && (
-            <div className="grid gap-6 py-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
-                  <Image src="/placeholder.svg?height=64&width=64" alt="Student" width={64} height={64} />
-                </Avatar>
-                <div>
-                  <h3 className="text-xl font-bold">{selectedStudent.name}</h3>
-                  <p className="text-muted-foreground">{selectedStudent.studentId}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <StatusBadge status={selectedStudent.status} />
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Card className="border-0 shadow-xl bg-white rounded-3xl overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 pb-8">
+                <CardTitle className="text-2xl font-bold text-gray-900">IT Department Students</CardTitle>
+                <CardDescription className="text-gray-600 text-lg">
+                  View and manage all students in the IT department
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-8">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-6">
+                  <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                    <div className="relative w-full lg:w-96">
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <Input
+                        placeholder="Search students..."
+                        className="pl-12 rounded-2xl border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 h-12 text-base"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <Button variant="outline" className="flex items-center gap-2 rounded-2xl border-gray-200">
+                      <Filter className="h-4 w-4" />
+                      Filter
+                    </Button>
                   </div>
                 </div>
-              </div>
+                <Tabs defaultValue="all" onValueChange={setActiveTab} className="space-y-8">
+                  <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+                    <TabsTrigger
+                      value="all"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      All
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="not_hired"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Not Hired
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="in_progress"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      In Progress
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="hired"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Hired
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="finished"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Finished
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="all" className="mt-4">
+                    <StudentsTable
+                      students={filteredStudents}
+                      onViewStudent={handleViewStudent}
+                      onEditStatus={handleEditStatus}
+                    />
+                  </TabsContent>
+                  <TabsContent value="not_hired" className="mt-4">
+                    <StudentsTable
+                      students={filteredStudents}
+                      onViewStudent={handleViewStudent}
+                      onEditStatus={handleEditStatus}
+                    />
+                  </TabsContent>
+                  <TabsContent value="in_progress" className="mt-4">
+                    <StudentsTable
+                      students={filteredStudents}
+                      onViewStudent={handleViewStudent}
+                      onEditStatus={handleEditStatus}
+                    />
+                  </TabsContent>
+                  <TabsContent value="hired" className="mt-4">
+                    <StudentsTable
+                      students={filteredStudents}
+                      onViewStudent={handleViewStudent}
+                      onEditStatus={handleEditStatus}
+                    />
+                  </TabsContent>
+                  <TabsContent value="finished" className="mt-4">
+                    <StudentsTable
+                      students={filteredStudents}
+                      onViewStudent={handleViewStudent}
+                      onEditStatus={handleEditStatus}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm text-muted-foreground">Course</Label>
-                  <p className="font-medium">{selectedStudent.course}</p>
-                </div>
-                <div>
-                  <Label className="text-sm text-muted-foreground">Year</Label>
-                  <p className="font-medium">{selectedStudent.year}</p>
-                </div>
-                {selectedStudent.company && (
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Company</Label>
-                    <p className="font-medium">{selectedStudent.company}</p>
-                  </div>
-                )}
-                {selectedStudent.employer && (
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Employer</Label>
-                    <p className="font-medium">{selectedStudent.employer}</p>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <Label className="text-sm text-muted-foreground">Progress</Label>
-                <div className="mt-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium">{selectedStudent.progress}% Complete</span>
-                  </div>
-                  <Progress value={selectedStudent.progress} className="h-2" />
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Timeline</h4>
-                <div className="space-y-4">
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="rounded-full bg-blue-500 p-1">
-                        <CheckCircle className="h-4 w-4 text-white" />
+          {/* View Student Dialog */}
+          <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+            <DialogContent className="sm:max-w-[800px] p-0">
+              {selectedStudent && (
+                <div className="w-full">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="w-full rounded-t-xl bg-gradient-to-br from-blue-700 to-indigo-400 border-b border-blue-700 p-8"
+                    style={{ marginBottom: 0 }}
+                  >
+                    <div className="relative flex items-center gap-4 w-full">
+                      <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 300 }}>
+                        <Avatar className="h-16 w-16 ring-4 ring-white shadow-lg">
+                          <ProfileImage profile_img={selectedStudent.profile_img} name={selectedStudent.name} />
+                        </Avatar>
+                      </motion.div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xl font-bold text-white">{selectedStudent.name}</h3>
+                          <motion.span
+                            whileHover={{ scale: 1.2 }}
+                            transition={{ type: "spring", stiffness: 300 }}
+                            className="scale-110 font-bold"
+                          >
+                            <StatusBadge status={selectedStudent.status} />
+                          </motion.span>
+                        </div>
+                        <p className="text-blue-100 font-medium">{selectedStudent.studentId}</p>
+                        <div
+                          className="whitespace-nowrap flex flex-nowrap items-center gap-8 mt-2 text-sm text-blue-100 overflow-x-auto"
+                          style={{ minWidth: 0 }}
+                        >
+                          <span className="flex items-center gap-1 min-w-0">
+                            <LuGraduationCap className="w-4 h-4" />
+                            <span className="font-bold">Course:</span>
+                            <span className="truncate font-normal">{selectedStudent.course}</span>
+                          </span>
+                          <span className="flex items-center gap-1 min-w-0">
+                            <FiCalendar className="w-4 h-4" />
+                            <span className="font-bold">Year:</span>
+                            <span className="truncate font-medium">{selectedStudent.year}</span>
+                          </span>
+                          <span className="flex items-center gap-1 min-w-0">
+                            <HiOutlineUserGroup className="w-4 h-4" />
+                            <span className="font-bold">Section:</span>
+                            <span className="truncate font-medium">{selectedStudent.section}</span>
+                          </span>
+                        </div>
                       </div>
-                      <div className="w-px h-full bg-blue-200"></div>
-                    </div>
-                    <div>
-                      <p className="font-medium">Application Submitted</p>
-                      <p className="text-sm text-muted-foreground">Jan 15, 2023</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="rounded-full bg-blue-500 p-1">
-                        <CheckCircle className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="w-px h-full bg-blue-200"></div>
-                    </div>
-                    <div>
-                      <p className="font-medium">Interview Scheduled</p>
-                      <p className="text-sm text-muted-foreground">Jan 20, 2023</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`rounded-full p-1 ${selectedStudent.progress >= 50 ? "bg-blue-500" : "bg-gray-300"}`}
-                      >
-                        {selectedStudent.progress >= 50 ? (
-                          <CheckCircle className="h-4 w-4 text-white" />
-                        ) : (
-                          <Clock className="h-4 w-4 text-white" />
+                      <div className="text-right">
+                        {selectedStudent.company && (
+                          <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className="text-sm text-blue-100 mt-2 flex items-center gap-1"
+                          >
+                            <Building2 className="w-4 h-4" />
+                            {selectedStudent.company}
+                          </motion.p>
                         )}
                       </div>
-                      <div className="w-px h-full bg-blue-200"></div>
                     </div>
-                    <div>
-                      <p className="font-medium">Placement Confirmed</p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedStudent.progress >= 50 ? "Feb 1, 2023" : "Pending"}
-                      </p>
-                    </div>
+                  </motion.div>
+                  <div className="px-8">
+                    <StudentDetailsModalContent
+                      student={selectedStudent}
+                      onClose={() => setIsViewDialogOpen(false)}
+                    />
                   </div>
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`rounded-full p-1 ${selectedStudent.progress === 100 ? "bg-blue-500" : "bg-gray-300"}`}
-                      >
-                        {selectedStudent.progress === 100 ? (
-                          <CheckCircle className="h-4 w-4 text-white" />
-                        ) : (
-                          <Clock className="h-4 w-4 text-white" />
-                        )}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Status Dialog */}
+          <Dialog open={isEditStatusDialogOpen} onOpenChange={setIsEditStatusDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Update Student Status</DialogTitle>
+                <DialogDescription>Change the current status of the student.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                {selectedStudent && (
+                  <>
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <Image src="/placeholder.svg?height=48&width=48" alt="Student" width={48} height={48} />
+                      </Avatar>
+                      <div>
+                        <h3 className="font-medium">{selectedStudent.name}</h3>
+                        <p className="text-sm text-muted-foreground">{selectedStudent.studentId}</p>
                       </div>
                     </div>
-                    <div>
-                      <p className="font-medium">Internship Completed</p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedStudent.progress === 100 ? "May 30, 2023" : "Pending"}
-                      </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="not-started">Not-started</SelectItem>
+                          <SelectItem value="in-progress">In-progress</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Close
-            </Button>
-            <Button className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Message Employer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Status Dialog */}
-      <Dialog open={isEditStatusDialogOpen} onOpenChange={setIsEditStatusDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Update Student Status</DialogTitle>
-            <DialogDescription>Change the current status of the student.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {selectedStudent && (
-              <>
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <Image src="/placeholder.svg?height=48&width=48" alt="Student" width={48} height={48} />
-                  </Avatar>
-                  <div>
-                    <h3 className="font-medium">{selectedStudent.name}</h3>
-                    <p className="text-sm text-muted-foreground">{selectedStudent.studentId}</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="not-started">Not-started</SelectItem>
-                      <SelectItem value="in-progress">In-progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditStatusDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={updateStudentStatus}>Update Status</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Bulk Upload Dialog */}
-      <Dialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>Bulk Upload Students</DialogTitle>
-            <DialogDescription>Upload multiple student records at once using a CSV file.</DialogDescription>
-          </DialogHeader>
-
-          {uploadStep === "select" && (
-            <div className="grid gap-6 py-4">
-              <div
-                className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer"
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <FileText className="h-10 w-10 text-gray-400" />
-                  <h3 className="font-medium text-lg">Upload CSV File</h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    Drag and drop your CSV file here, or click to browse
-                  </p>
-                  <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleFileChange} />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      fileInputRef.current?.click()
-                    }}
-                  >
-                    Select File
-                  </Button>
-                </div>
-              </div>
-
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>CSV Format</AlertTitle>
-                <AlertDescription>
-                  Your CSV file should include the following columns: studentId, name, course, year, status.
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto text-blue-600 hover:text-blue-800"
-                    onClick={downloadTemplate}
-                  >
-                    Download template
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {uploadStep === "preview" && (
-            <div className="grid gap-6 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium">File Preview</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedFile?.name} ({previewData.length} records)
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" onClick={resetBulkUpload}>
-                  Change File
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsEditStatusDialogOpen(false)}>
+                  Cancel
                 </Button>
-              </div>
+                <Button onClick={updateStudentStatus}>Update Status</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-              {previewData.some((record) => !record.isValid) && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Validation Errors</AlertTitle>
-                  <AlertDescription>
-                    Some records have validation errors. Please fix them before uploading.
-                  </AlertDescription>
-                </Alert>
+          {/* Bulk Upload Dialog */}
+          <Dialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen}>
+            <DialogContent className="sm:max-w-[700px]">
+              <DialogHeader>
+                <DialogTitle>Bulk Upload Students</DialogTitle>
+                <DialogDescription>Upload multiple student records at once using a CSV file.</DialogDescription>
+              </DialogHeader>
+
+              {uploadStep === "select" && (
+                <div className="grid gap-6 py-4">
+                  <div
+                    className="border-2 border-dashed rounded-lg p-8 text-center hover:bg-gray-50 transition-colors cursor-pointer"
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <FileText className="h-10 w-10 text-gray-400" />
+                      <h3 className="font-medium text-lg">Upload CSV File</h3>
+                      <p className="text-sm text-muted-foreground max-w-md">
+                        Drag and drop your CSV file here, or click to browse
+                      </p>
+                      <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleFileChange} />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          fileInputRef.current?.click()
+                        }}
+                      >
+                        Select File
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>CSV Format</AlertTitle>
+                    <AlertDescription>
+                      Your CSV file should include the following columns: studentId, name, course, year, status.
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                        onClick={downloadTemplate}
+                      >
+                        Download template
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                </div>
               )}
 
-              <div className="rounded-md border max-h-[300px] overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[100px]">Student ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Course</TableHead>
-                      <TableHead>Year</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[100px]">Valid</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {previewData.map((record, index) => (
-                      <TableRow key={index} className={!record.isValid ? "bg-red-50" : ""}>
-                        <TableCell className="font-medium">{record.studentId || "-"}</TableCell>
-                        <TableCell>{record.name}</TableCell>
-                        <TableCell>{record.course}</TableCell>
-                        <TableCell>{record.year}</TableCell>
-                        <TableCell>{record.status}</TableCell>
-                        <TableCell>
-                          {record.isValid ? (
-                            <Check className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <div className="group relative">
-                              <X className="h-4 w-4 text-red-500" />
-                              {record.errors && record.errors.length > 0 && (
-                                <div className="absolute left-6 top-0 hidden group-hover:block bg-white p-2 rounded shadow-md border z-10 w-48">
-                                  <ul className="text-xs text-red-600 list-disc pl-4">
-                                    {record.errors.map((error, i) => (
-                                      <li key={i}>{error}</li>
-                                    ))}
-                                  </ul>
+              {uploadStep === "preview" && (
+                <div className="grid gap-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium">File Preview</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedFile?.name} ({previewData.length} records)
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={resetBulkUpload}>
+                      Change File
+                    </Button>
+                  </div>
+
+                  {previewData.some((record) => !record.isValid) && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Validation Errors</AlertTitle>
+                      <AlertDescription>
+                        Some records have validation errors. Please fix them before uploading.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="rounded-md border max-h-[300px] overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[100px]">Student ID</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Course</TableHead>
+                          <TableHead>Year</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="w-[100px]">Valid</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {previewData.map((record, index) => (
+                          <TableRow key={index} className={!record.isValid ? "bg-red-50" : ""}>
+                            <TableCell className="font-medium">{record.studentId || "-"}</TableCell>
+                            <TableCell>{record.name}</TableCell>
+                            <TableCell>{record.course}</TableCell>
+                            <TableCell>{record.year}</TableCell>
+                            <TableCell>{record.status}</TableCell>
+                            <TableCell>
+                              {record.isValid ? (
+                                <Check className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <div className="group relative">
+                                  <X className="h-4 w-4 text-red-500" />
+                                  {record.errors && record.errors.length > 0 && (
+                                    <div className="absolute left-6 top-0 hidden group-hover:block bg-white p-2 rounded shadow-md border z-10 w-48">
+                                      <ul className="text-xs text-red-600 list-disc pl-4">
+                                        {record.errors.map((error, i) => (
+                                          <li key={i}>{error}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
                                 </div>
                               )}
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
-
-          {uploadStep === "uploading" && (
-            <div className="grid gap-6 py-8">
-              <div className="flex flex-col items-center justify-center">
-                <h3 className="font-medium text-lg mb-4">Uploading Students...</h3>
-                <Progress value={uploadProgress} className="w-full h-2 mb-2" />
-                <p className="text-sm text-muted-foreground">{uploadProgress}% complete</p>
-              </div>
-            </div>
-          )}
-
-          {uploadStep === "results" && (
-            <div className="grid gap-6 py-4">
-              <div className="flex flex-col items-center justify-center">
-                {uploadResults.failed === 0 ? (
-                  <div className="bg-green-100 rounded-full p-3 mb-4">
-                    <Check className="h-6 w-6 text-green-600" />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                ) : (
-                  <div className="bg-yellow-100 rounded-full p-3 mb-4">
-                    <AlertTriangle className="h-6 w-6 text-yellow-600" />
+                </div>
+              )}
+
+              {uploadStep === "uploading" && (
+                <div className="grid gap-6 py-8">
+                  <div className="flex flex-col items-center justify-center">
+                    <h3 className="font-medium text-lg mb-4">Uploading Students...</h3>
+                    <Progress value={uploadProgress} className="w-full h-2 mb-2" />
+                    <p className="text-sm text-muted-foreground">{uploadProgress}% complete</p>
                   </div>
+                </div>
+              )}
+
+              {uploadStep === "results" && (
+                <div className="grid gap-6 py-4">
+                  <div className="flex flex-col items-center justify-center">
+                    {uploadResults.failed === 0 ? (
+                      <div className="bg-green-100 rounded-full p-3 mb-4">
+                        <Check className="h-6 w-6 text-green-600" />
+                      </div>
+                    ) : (
+                      <div className="bg-yellow-100 rounded-full p-3 mb-4">
+                        <AlertTriangle className="h-6 w-6 text-yellow-600" />
+                      </div>
+                    )}
+
+                    <h3 className="font-medium text-lg">Upload Complete</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {uploadResults.successful} of {uploadResults.total} records were successfully uploaded
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <Card>
+                      <CardContent className="pt-6 text-center">
+                        <p className="text-2xl font-bold">{uploadResults.total}</p>
+                        <p className="text-sm text-muted-foreground">Total Records</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6 text-center">
+                        <p className="text-2xl font-bold text-green-600">{uploadResults.successful}</p>
+                        <p className="text-sm text-muted-foreground">Successful</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-6 text-center">
+                        <p className="text-2xl font-bold text-red-600">{uploadResults.failed}</p>
+                        <p className="text-sm text-muted-foreground">Failed</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {uploadResults.failed > 0 && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Upload Errors</AlertTitle>
+                      <AlertDescription>
+                        <p className="mb-2">The following errors occurred during upload:</p>
+                        <ul className="list-disc pl-5 text-sm">
+                          {uploadResults.errors.slice(0, 3).map((error, index) => (
+                            <li key={index}>{error}</li>
+                          ))}
+                          {uploadResults.errors.length > 3 && <li>...and {uploadResults.errors.length - 3} more errors</li>}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter>
+                {uploadStep === "select" && (
+                  <Button variant="outline" onClick={closeBulkUpload}>
+                    Cancel
+                  </Button>
                 )}
 
-                <h3 className="font-medium text-lg">Upload Complete</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {uploadResults.successful} of {uploadResults.total} records were successfully uploaded
-                </p>
-              </div>
+                {uploadStep === "preview" && (
+                  <>
+                    <Button variant="outline" onClick={resetBulkUpload}>
+                      Back
+                    </Button>
+                    <Button onClick={handleUpload} disabled={previewData.some((record) => !record.isValid)}>
+                      Upload {previewData.filter((record) => record.isValid).length} Records
+                    </Button>
+                  </>
+                )}
 
-              <div className="grid grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <p className="text-2xl font-bold">{uploadResults.total}</p>
-                    <p className="text-sm text-muted-foreground">Total Records</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <p className="text-2xl font-bold text-green-600">{uploadResults.successful}</p>
-                    <p className="text-sm text-muted-foreground">Successful</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <p className="text-2xl font-bold text-red-600">{uploadResults.failed}</p>
-                    <p className="text-sm text-muted-foreground">Failed</p>
-                  </CardContent>
-                </Card>
-              </div>
+                {uploadStep === "uploading" && <Button disabled>Uploading...</Button>}
 
-              {uploadResults.failed > 0 && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Upload Errors</AlertTitle>
-                  <AlertDescription>
-                    <p className="mb-2">The following errors occurred during upload:</p>
-                    <ul className="list-disc pl-5 text-sm">
-                      {uploadResults.errors.slice(0, 3).map((error, index) => (
-                        <li key={index}>{error}</li>
-                      ))}
-                      {uploadResults.errors.length > 3 && <li>...and {uploadResults.errors.length - 3} more errors</li>}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            {uploadStep === "select" && (
-              <Button variant="outline" onClick={closeBulkUpload}>
-                Cancel
-              </Button>
-            )}
-
-            {uploadStep === "preview" && (
-              <>
-                <Button variant="outline" onClick={resetBulkUpload}>
-                  Back
-                </Button>
-                <Button onClick={handleUpload} disabled={previewData.some((record) => !record.isValid)}>
-                  Upload {previewData.filter((record) => record.isValid).length} Records
-                </Button>
-              </>
-            )}
-
-            {uploadStep === "uploading" && <Button disabled>Uploading...</Button>}
-
-            {uploadStep === "results" && (
-              <>
-                <Button variant="outline" onClick={resetBulkUpload}>
-                  Upload More
-                </Button>
-                <Button onClick={closeBulkUpload}>Done</Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                {uploadStep === "results" && (
+                  <>
+                    <Button variant="outline" onClick={resetBulkUpload}>
+                      Upload More
+                    </Button>
+                    <Button onClick={closeBulkUpload}>Done</Button>
+                  </>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </div>
   )
 }
@@ -893,45 +890,48 @@ function StudentsTable({
   onEditStatus: (student: Student) => void
 }) {
   return (
-    <div className="rounded-md border">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-sm"
+    >
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Student ID</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Course</TableHead>
-            <TableHead>Year</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Progress</TableHead>
-            <TableHead>Company</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+          <TableRow className="bg-gray-50">
+            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Student ID</TableHead>
+            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Name</TableHead>
+            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">School Email</TableHead>
+            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Year</TableHead>
+            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Status</TableHead>
+            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Company</TableHead>
+            <TableHead className="font-bold text-gray-700 py-4 px-6 text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {students.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                 No students found
               </TableCell>
             </TableRow>
           ) : (
-            students.map((student) => (
-              <TableRow key={student.id}>
-                <TableCell className="font-medium">{student.studentId}</TableCell>
-                <TableCell>{student.name}</TableCell>
-                <TableCell>{student.course}</TableCell>
-                <TableCell>{student.year}</TableCell>
-                <TableCell>
+            students.map((student, idx) => (
+              <motion.tr
+                key={student.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+              >
+                <TableCell className="font-semibold text-gray-900 py-4 px-6">{student.studentId}</TableCell>
+                <TableCell className="text-gray-700 py-4 px-6">{student.name}</TableCell>
+                <TableCell className="text-gray-700 py-4 px-6">{student.email}</TableCell>
+                <TableCell className="text-gray-700 py-4 px-6">{student.year}</TableCell>
+                <TableCell className="text-gray-700 py-4 px-6">
                   <StatusBadge status={student.status} />
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Progress value={student.progress} className="h-2 w-24" />
-                    <span className="text-xs">{student.progress}%</span>
-                  </div>
-                </TableCell>
-                <TableCell>{student.company || "-"}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-gray-700 py-4 px-6">{student.company || "-"}</TableCell>
+                <TableCell className="text-right py-4 px-6">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
@@ -942,7 +942,7 @@ function StudentsTable({
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => onViewStudent(student)}>
                         <Eye className="mr-2 h-4 w-4" />
-                        View Details
+                        View Progress
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onEditStatus(student)}>
                         <Edit className="mr-2 h-4 w-4" />
@@ -955,44 +955,167 @@ function StudentsTable({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
-              </TableRow>
+              </motion.tr>
             ))
           )}
         </TableBody>
       </Table>
+    </motion.div>
+  )
+}
+
+
+
+function getStatusDisplay(status: string) {
+  switch (status.toLowerCase()) {
+    case "new":
+      return {
+        label: "Not Applied",
+        bg: "bg-orange-100",
+        text: "text-orange-700",
+        border: "border-orange-200",
+        icon: <PiWarningCircleBold  className="inline-block mr-1 -mt-0.5" size={16} />,
+      }
+    case "shortlisted":
+    case "waitlisted":
+      return {
+        label: "Seeking Jobs",
+        bg: "bg-yellow-100",
+        text: "text-yellow-700",
+        border: "border-yellow-200",
+        icon: <FaMagnifyingGlass className="inline-block mr-1 -mt-0.5" size={15} />,
+      }
+    case "interview scheduled":
+      return {
+        label: "In Progress",
+        bg: "bg-blue-100",
+        text: "text-blue-700",
+        border: "border-blue-200",
+        icon: <RiProgress6Fill className="inline-block mr-1 -mt-0.5" size={16} />,
+      }
+    case "hired":
+      return {
+        label: "Hired",
+        bg: "bg-green-100",
+        text: "text-green-700",
+        border: "border-green-200",
+        icon: <HiRocketLaunch className="inline-block mr-1 -mt-0.5" size={16} />,
+      }
+    case "rejected":
+      return {
+        label: "",
+        bg: "",
+        text: "",
+        border: "",
+        icon: null,
+      }
+    default:
+      return {
+        label: status.charAt(0).toUpperCase() + status.slice(1),
+        bg: "bg-gray-100",
+        text: "text-gray-700",
+        border: "border-gray-200",
+        icon: null,
+      }
+  }
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const display = getStatusDisplay(status)
+  if (!display.label) return null
+  let tooltip = "Indicates the highest progress reached in the application process."
+  if (display.label === "Not Applied") {
+    tooltip = "This student hasn't applied for any jobs yet."
+  } else if (display.label === "Seeking Jobs") {
+    tooltip = "This student has applied for some jobs and is awaiting updates."
+  } else if (display.label === "In Progress") {
+    tooltip = "This student has an application currently in progress."
+  } else if (display.label === "Hired") {
+    tooltip = "This student has been hired for an OJT placement."
+  } else if (display.label === "Rejected") {
+    tooltip = "This student's application was not successful."
+  }
+  return (
+    <Tooltip title={tooltip} arrow>
+      <span>
+        <Badge
+          variant="outline"
+          className={`${display.bg} ${display.text} ${display.border} flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold`}
+        >
+          {display.icon}
+          {display.label}
+        </Badge>
+      </span>
+    </Tooltip>
+  )
+}
+
+function ProfileImage({ profile_img, name }: { profile_img?: string | null, name: string }) {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    let ignore = false
+    async function fetchAvatar() {
+      if (profile_img) {
+        setLoading(true)
+        try {
+          const res = await fetch("/api/students/get-signed-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bucket: "user.avatars",
+              path: profile_img,
+            }),
+          })
+          const data = await res.json()
+          if (!ignore) setAvatarUrl(data.signedUrl || null)
+        } catch {
+          if (!ignore) setAvatarUrl(null)
+        } finally {
+          if (!ignore) setLoading(false)
+        }
+      } else {
+        setAvatarUrl(null)
+      }
+    }
+    fetchAvatar()
+    return () => { ignore = true }
+  }, [profile_img])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-blue-400 to-purple-500">
+        <Loader2 className="w-6 h-6 animate-spin text-white" />
+      </div>
+    )
+  }
+  if (avatarUrl) {
+    return (
+      <Image
+        src={avatarUrl}
+        alt={name}
+        width={64}
+        height={64}
+        className="object-cover"
+        unoptimized
+      />
+    )
+  }
+  if (profile_img === null) {
+    return (
+      <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-blue-400 to-purple-500">
+        <Loader2 className="w-6 h-6 animate-spin text-white" />
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-blue-400 to-purple-500 text-white">
+      <svg width="32" height="32" fill="none" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4" fill="currentColor" />
+        <path d="M4 20c0-2.21 3.582-4 8-4s8 1.79 8 4" fill="currentColor" />
+      </svg>
     </div>
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === "not_hired") {
-    return (
-      <Badge variant="outline" className="text-yellow-600 border-yellow-600 flex items-center gap-1">
-        <AlertCircle className="h-3 w-3" />
-        Not Hired
-      </Badge>
-    )
-  } else if (status === "in_progress") {
-    return (
-      <Badge className="bg-blue-500 hover:bg-blue-600 flex items-center gap-1">
-        <Clock className="h-3 w-3" />
-        In Progress
-      </Badge>
-    )
-  } else if (status === "hired") {
-    return (
-      <Badge className="bg-green-500 hover:bg-green-600 flex items-center gap-1">
-        <CheckCircle className="h-3 w-3" />
-        Hired
-      </Badge>
-    )
-  } else if (status === "finished") {
-    return (
-      <Badge variant="secondary" className="flex items-center gap-1">
-        <CheckCircle className="h-3 w-3" />
-        Finished
-      </Badge>
-    )
-  }
-  return null
-}
