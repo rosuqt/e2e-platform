@@ -4,7 +4,6 @@ import { Label } from "@/components/ui/label"
 import Avatar from "@mui/material/Avatar"
 import { User, Mail, Phone, Building, Calendar, Briefcase, MapPin } from "lucide-react"
 import { PiSubtitlesBold } from "react-icons/pi"
-import { StatusBadge } from "../page"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useEffect, useState } from "react"
 
@@ -116,8 +115,6 @@ export function EmployerDetailsModal({
                     </h3>
                     <p className="text-muted-foreground">{employer.username || "-"}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <StatusBadge status={employer.status} />
-                      <StatusBadge status={employer.verify_status || ""} />
                     </div>
                   </div>
                 </div>
@@ -209,3 +206,4 @@ export function EmployerDetailsModal({
     </Dialog>
   )
 }
+

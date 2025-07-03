@@ -75,6 +75,77 @@ interface ApiEmployer {
   company_website?: string
 }
 
+function StatusBadge({ status }: { status: string }) {
+  let label = ""
+  let badgeClass = ""
+  let icon = null
+  let badgeContent = null
+
+  if (status === "full") {
+    label = "Full"
+    badgeClass =
+      "bg-blue-100 text-blue-700 border-blue-200 flex items-center gap-1"
+    icon = <HiBadgeCheck className="inline-block mr-1 h-4 w-4" />
+    badgeContent = (
+      <Tooltip title="Fully Verified" arrow>
+        <span className="flex items-center cursor-pointer">{icon}{label}</span>
+      </Tooltip>
+    )
+  } else if (status === "basic") {
+    label = "Basic"
+    badgeClass =
+      "bg-orange-100 text-orange-700 border-orange-200 flex items-center gap-1"
+    icon = <PiWarningFill className="inline-block mr-1 h-4 w-4" />
+    badgeContent = (
+      <Tooltip title="Not Verified" arrow>
+        <span className="flex items-center cursor-pointer">{icon}{label}</span>
+      </Tooltip>
+    )
+  } else if (status === "standard") {
+    label = "Standard"
+    badgeClass =
+      "bg-violet-100 text-violet-700 border-violet-200 flex items-center gap-1"
+    icon = <LuBadgeCheck className="inline-block mr-1 h-4 w-4" />
+    badgeContent = (
+      <Tooltip title="Partially Verified" arrow>
+        <span className="flex items-center cursor-pointer">{icon}{label}</span>
+      </Tooltip>
+    )
+  } else if (status === "active") {
+    label = "Active"
+    badgeClass =
+      "bg-green-100 text-green-700 border-green-200 flex items-center gap-1"
+    badgeContent = <span className="flex items-center">{label}</span>
+  } else if (status === "inactive") {
+    label = "Inactive"
+    badgeClass =
+      "bg-gray-100 text-gray-700 border-gray-200 flex items-center gap-1"
+    badgeContent = <span className="flex items-center">{label}</span>
+  } else if (status === "suspended") {
+    label = "Suspended"
+    badgeClass =
+      "bg-red-100 text-red-700 border-red-200 flex items-center gap-1"
+    badgeContent = <span className="flex items-center">{label}</span>
+  } else {
+    label = status.charAt(0).toUpperCase() + status.slice(1)
+    badgeClass =
+      "bg-gray-100 text-gray-700 border-gray-200 flex items-center gap-1"
+    badgeContent = <span className="flex items-center">{label}</span>
+  }
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "rounded-full px-3 py-1 text-sm font-semibold",
+        badgeClass
+      )}
+    >
+      {badgeContent}
+    </Badge>
+  )
+}
+
 export default function EmployersManagement() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
@@ -558,76 +629,5 @@ function EmployersTable({
         </tbody>
       </table>
     </div>
-  )
-}
-
-export function StatusBadge({ status }: { status: string }) {
-  let label = ""
-  let badgeClass = ""
-  let icon = null
-  let badgeContent = null
-
-  if (status === "full") {
-    label = "Full"
-    badgeClass =
-      "bg-blue-100 text-blue-700 border-blue-200 flex items-center gap-1"
-    icon = <HiBadgeCheck className="inline-block mr-1 h-4 w-4" />
-    badgeContent = (
-      <Tooltip title="Fully Verified" arrow>
-        <span className="flex items-center cursor-pointer">{icon}{label}</span>
-      </Tooltip>
-    )
-  } else if (status === "basic") {
-    label = "Basic"
-    badgeClass =
-      "bg-orange-100 text-orange-700 border-orange-200 flex items-center gap-1"
-    icon = <PiWarningFill className="inline-block mr-1 h-4 w-4" />
-    badgeContent = (
-      <Tooltip title="Not Verified" arrow>
-        <span className="flex items-center cursor-pointer">{icon}{label}</span>
-      </Tooltip>
-    )
-  } else if (status === "standard") {
-    label = "Standard"
-    badgeClass =
-      "bg-violet-100 text-violet-700 border-violet-200 flex items-center gap-1"
-    icon = <LuBadgeCheck className="inline-block mr-1 h-4 w-4" />
-    badgeContent = (
-      <Tooltip title="Partially Verified" arrow>
-        <span className="flex items-center cursor-pointer">{icon}{label}</span>
-      </Tooltip>
-    )
-  } else if (status === "active") {
-    label = "Active"
-    badgeClass =
-      "bg-green-100 text-green-700 border-green-200 flex items-center gap-1"
-    badgeContent = <span className="flex items-center">{label}</span>
-  } else if (status === "inactive") {
-    label = "Inactive"
-    badgeClass =
-      "bg-gray-100 text-gray-700 border-gray-200 flex items-center gap-1"
-    badgeContent = <span className="flex items-center">{label}</span>
-  } else if (status === "suspended") {
-    label = "Suspended"
-    badgeClass =
-      "bg-red-100 text-red-700 border-red-200 flex items-center gap-1"
-    badgeContent = <span className="flex items-center">{label}</span>
-  } else {
-    label = status.charAt(0).toUpperCase() + status.slice(1)
-    badgeClass =
-      "bg-gray-100 text-gray-700 border-gray-200 flex items-center gap-1"
-    badgeContent = <span className="flex items-center">{label}</span>
-  }
-
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "rounded-full px-3 py-1 text-sm font-semibold",
-        badgeClass
-      )}
-    >
-      {badgeContent}
-    </Badge>
   )
 }
