@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import JobCard from "../components/job-card"
 import JobDetails from "../components/job-details"
+import Link from "next/link"
 
 export default function JobsPage() {
   const [selectedJob, setSelectedJob] = useState<number | null>(null)
@@ -181,11 +182,11 @@ export default function JobsPage() {
             </div>
 
             <div className="flex justify-center">
-              <a href="/sign-in" className="w-1/2">
+              <Link href="/sign-in" className="w-1/2">
                 <Button className="w-full bg-white hover:bg-yellow-500 border-2 border-blue-500 text-blue-700 font-bold py-7 rounded-full">
                   Join us now
                 </Button>
-              </a>
+              </Link>
             </div>
           </div>
         </motion.div>

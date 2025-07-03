@@ -86,12 +86,12 @@ export default function ForgotPasswordPage() {
             {error === "No account found with this email address" && (
               <div className="mt-2">
                 <span className="text-gray-700">Don&apos;t have an account yet? </span>
-                <a
+                <Link
                   href="/sign-up"
                   className="text-blue-500 font-medium hover:underline transition-colors cursor-pointer"
                 >
                   Sign up now.
-                </a>
+                </Link>
               </div>
             )}
           </motion.div>
