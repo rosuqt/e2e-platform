@@ -4,10 +4,9 @@ import { authOptions } from "../../../../lib/authOptions";
 import { getAdminSupabase } from "@/lib/supabase";
 
 export async function GET() {
-  // Get session
+
   const session = await getServerSession(authOptions);
 
-  // Get employerId from session.user.company_id (set in session callback)
   const employerId = (session?.user as { company_id?: string })?.company_id;
 
   if (!session?.user?.role || session.user.role !== "employer" || !employerId) {
@@ -16,10 +15,8 @@ export async function GET() {
 
   const supabase = getAdminSupabase();
 
-  // Get company_id for this employer (employerId is actually company_id)
   const companyId = employerId;
 
-  // Get jobs for this company
   const { data: jobs, error: jobsError } = await supabase
     .from("job_postings")
     .select("id, job_title")
@@ -36,7 +33,6 @@ export async function GET() {
   let topPerformingJob = null;
 
   if (jobIds.length > 0) {
-    // Applicants for these jobs
     const { data: applications, error: appsError } = await supabase
       .from("applications")
       .select("application_id, job_id, applied_at, status")
@@ -54,7 +50,6 @@ export async function GET() {
     }).length;
     interviewsScheduled = applications.filter(app => app.status === "interview").length;
 
-    // Top performing job by number of applicants
     const jobApplicantCounts: Record<string, number> = {};
     applications.forEach(app => {
       jobApplicantCounts[app.job_id] = (jobApplicantCounts[app.job_id] || 0) + 1;
@@ -72,14 +67,12 @@ export async function GET() {
       topPerformingJob = {
         title: topJob?.job_title || "",
         applicants: maxApplicants,
-        views: 0, // Replace with real views if available
-        applicationsRate: "0%", // Replace with real rate if available
+        views: 0,
+        applicationsRate: "0%", 
       };
     }
   }
 
-  // Active jobs (e.g., jobs that are not expired/closed)
-  // Since job status is not available, count all jobs as active
   const activeJobs = jobs.length;
 
   return NextResponse.json({
@@ -90,10 +83,3 @@ export async function GET() {
     topPerformingJob,
   });
 }
-  return NextResponse.json({
-    totalApplicants,
-    newToday,
-    activeJobs,
-    interviewsScheduled,
-    topPerformingJob,
-  });
