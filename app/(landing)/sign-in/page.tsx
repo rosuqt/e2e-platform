@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { TextField, IconButton, InputAdornment, Checkbox, FormControlLabel } from "@mui/material";
 import Image from "next/image";
 import { signIn } from "next-auth/react";
@@ -22,6 +22,7 @@ export default function SignInPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleMicrosoftLogin = async () => {
     await signIn("azure-ad", {
@@ -38,6 +39,20 @@ export default function SignInPage() {
       } else {
         setError("Invalid email or password");
       }
+    }
+
+    if (searchParams?.get("success") === "verified") {
+      setShowSuccess(true);
+      const employerId = searchParams.get("employerId")
+      if (employerId) {
+        fetch("/api/employers/update-verify-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ employerId }),
+        })
+      }
+    } else {
+      setShowSuccess(false);
     }
 
     const handleDoubleClick = (e: MouseEvent) => {
@@ -93,6 +108,19 @@ export default function SignInPage() {
         >
           <span className="bg-gradient-to-r from-blue-500 to-sky-400 text-transparent bg-clip-text">Sign in</span>
         </motion.h2>
+
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center p-3 mb-4 bg-green-100 text-green-700 rounded-xl text-sm text-left"
+          >
+            <span className="mr-2">
+              <Sparkles className="h-6 w-6 text-green-500" />
+            </span>
+            <span>You&apos;re all set! Your email has been successfully registered. Please log in again to continue.</span>
+          </motion.div>
+        )}
 
         {error && (
           <motion.div
@@ -161,7 +189,14 @@ export default function SignInPage() {
             whileTap={{ scale: 0.97 }}
             disabled={loading}
           >
-            {loading ? "Signing in..." : "Sign in as Employer"}
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <span className="w-5 h-5 border-2 border-white border-t-blue-400 rounded-full animate-spin mr-2"></span>
+                Signing in...
+              </span>
+            ) : (
+              "Sign in as Employer"
+            )}
           </motion.button>
         </motion.form>
 

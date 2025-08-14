@@ -1,7 +1,10 @@
+"use client"
 import Image from "next/image"
-import { ShieldCheck, CheckCircle2 } from "lucide-react"
+import {  CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { VerificationTierCard } from "../components/verification-tier-card"
+import { HiShieldCheck } from "react-icons/hi"
+import { motion } from "framer-motion"
 
 export default function FullyVerifiedPage() {
   return (
@@ -11,7 +14,7 @@ export default function FullyVerifiedPage() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center text-center">
             <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full mb-4">
-              <ShieldCheck className="h-10 w-10 text-white" />
+              <HiShieldCheck  className="h-10 w-10 text-white" />
             </div>
             <h1 className="text-3xl font-bold mb-2">Fully Verified Account</h1>
             <p className="text-white/90 max-w-xl">
@@ -27,11 +30,11 @@ export default function FullyVerifiedPage() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <Image
-                src="/placeholder.svg?height=400&width=500"
+                src="/images/verification/test3.png"
                 alt="Fully verified features illustration"
                 width={500}
                 height={400}
-                className="rounded-lg"
+                className="rounded-lg ml-10"
               />
             </div>
             <div className="space-y-6">
@@ -107,63 +110,69 @@ export default function FullyVerifiedPage() {
           <h2 className="text-2xl font-bold text-center mb-12">Verification Tiers</h2>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <VerificationTierCard
-              title="Unverified"
-              description="Basic access with limited features"
-              currentTier={false}
-              color="gray"
-              features={[
-                { name: "Job Listings", value: "3 listings", included: true },
-                { name: "Listing Visibility", value: "Invisible", included: false },
-                { name: "AI Job Writer", value: "Locked", included: false },
-                { name: "Messaging", value: "Locked", included: false },
-                { name: "Candidate Matches", value: "Locked", included: false },
-                { name: "Invitations", value: "Locked", included: false },
-              ]}
-              buttonText="Previous"
-              buttonDisabled={true}
-            />
+            <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 350, damping: 30 }}>
+              <VerificationTierCard
+                title="Unverified"
+                description="Basic access with limited features"
+                currentTier={false}
+                color="gray"
+                features={[
+                  { name: "Job Listings", value: "3 listings", included: true },
+                  { name: "Listing Visibility", value: "Invisible", included: false },
+                  { name: "AI Job Writer", value: "Locked", included: false },
+                  { name: "Messaging", value: "Locked", included: false },
+                  { name: "Candidate Matches", value: "Locked", included: false },
+                  { name: "Invitations", value: "Locked", included: false },
+                ]}
+                buttonText="Previous"
+                buttonDisabled={true}
+              />
+            </motion.div>
 
-            <VerificationTierCard
-              title="Partially Verified"
-              description="Enhanced access with more features"
-              currentTier={false}
-              color="purple"
-              features={[
-                { name: "Job Listings", value: "5 listings", included: true },
-                { name: "Listing Visibility", value: "Low visibility", included: true },
-                { name: "AI Job Writer", value: "Locked", included: false },
-                { name: "Messaging", value: "Unlocked", included: true },
-                { name: "Candidate Matches", value: "Unlocked", included: true },
-                { name: "Invitations", value: "Locked", included: false },
-              ]}
-              buttonText="Previous"
-              buttonDisabled={true}
-            />
+            <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 350, damping: 30 }}>
+              <VerificationTierCard
+                title="Partially Verified"
+                description="Enhanced access with more features"
+                currentTier={false}
+                color="purple"
+                features={[
+                  { name: "Job Listings", value: "5 listings", included: true },
+                  { name: "Listing Visibility", value: "Low visibility", included: true },
+                  { name: "AI Job Writer", value: "Locked", included: false },
+                  { name: "Messaging", value: "Unlocked", included: true },
+                  { name: "Candidate Matches", value: "Unlocked", included: true },
+                  { name: "Invitations", value: "Locked", included: false },
+                ]}
+                buttonText="Previous"
+                buttonDisabled={true}
+              />
+            </motion.div>
 
-            <VerificationTierCard
-              title="Fully Verified"
-              description="Complete access to all features"
-              currentTier={true}
-              color="blue"
-              features={[
-                { name: "Job Listings", value: "Unlimited", included: true },
-                { name: "Listing Visibility", value: "Highest visibility", included: true },
-                { name: "AI Job Writer", value: "Unlocked", included: true },
-                { name: "Messaging", value: "Unlocked", included: true },
-                { name: "Candidate Matches", value: "Unlocked", included: true },
-                { name: "Invitations", value: "Unlocked", included: true },
-              ]}
-              buttonText="Current Tier"
-              buttonDisabled={true}
-            />
+            <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 350, damping: 30 }}>
+              <VerificationTierCard
+                title="Fully Verified"
+                description="Complete access to all features"
+                currentTier={true}
+                color="blue"
+                features={[
+                  { name: "Job Listings", value: "Unlimited", included: true },
+                  { name: "Listing Visibility", value: "Highest visibility", included: true },
+                  { name: "AI Job Writer", value: "Unlocked", included: true },
+                  { name: "Messaging", value: "Unlocked", included: true },
+                  { name: "Candidate Matches", value: "Unlocked", included: true },
+                  { name: "Invitations", value: "Unlocked", included: true },
+                ]}
+                buttonText="Current Tier"
+                buttonDisabled={true}
+              />
+            </motion.div>
           </div>
         </div>
       </section>
 
       <footer className="border-t py-6">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Job Platform. All rights reserved.
+          &copy; {new Date().getFullYear()} Seekr. All rights reserved.
         </div>
       </footer>
     </div>

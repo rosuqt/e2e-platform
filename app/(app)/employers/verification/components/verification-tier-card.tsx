@@ -31,7 +31,7 @@ export function VerificationTierCard({
   buttonAction,
   buttonDisabled = false,
 }: VerificationTierCardProps) {
-  // Define color classes based on the color prop
+
   const colorClasses = {
     header: {
       gray: "bg-gray-100 border-gray-200",
@@ -57,16 +57,16 @@ export function VerificationTierCard({
 
   return (
     <Card
-      className={`border ${currentTier ? "ring-2 ring-offset-2 " + (color === "blue" ? "ring-blue-500" : color === "purple" ? "ring-purple-500" : "ring-gray-500") : ""}`}
+      className={`border ${currentTier ? "ring-2 ring-offset-2 ring-blue-500" : ""} relative`}
     >
-      <CardHeader className={`${colorClasses.header[color]} border-b`}>
-        <CardTitle className={`${colorClasses.title[color]}`}>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+      <CardHeader className={`${colorClasses.header[color]} border-b rounded-t-lg`}>
         {currentTier && (
-          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
+          <div className="absolute top-3 right-3 z-10 bg-green-400 text-white px-3 py-1 rounded-full text-xs font-bold shadow">
             Current Tier
           </div>
         )}
+        <CardTitle className={`${colorClasses.title[color]}`}>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
         <ul className="space-y-4">

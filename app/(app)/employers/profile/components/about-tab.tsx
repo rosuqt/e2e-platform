@@ -17,7 +17,7 @@ import {
   Star,
   Building2,
 } from "lucide-react"
-import { FaLinkedin, FaFacebook, FaTwitter, FaInstagram, FaGithub, FaYoutube } from "react-icons/fa"
+import { FaLinkedin, FaFacebook, FaTwitter, FaInstagram, FaGithub, FaYoutube, FaTools, FaBug } from "react-icons/fa"
 import dynamic from "next/dynamic"
 import Image from "next/image"
 import { RatingsCards } from "./marquee-ratings"
@@ -482,7 +482,27 @@ export default function AboutTab() {
           {companyLoading ? (
             <div className="text-center text-gray-500">Loading company info...</div>
           ) : companyError ? (
-            <div className="text-center text-red-500">{companyError}</div>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="text-[5rem] font-extrabold text-red-500 leading-none mb-2">404</div>
+              <div className="flex flex-col items-center">
+                <div className="flex items-center gap-2 mb-4 justify-center">
+                  <FaTools className="w-7 h-7 text-red-500" />
+                  <span className="text-red-600 font-semibold text-base text-center">
+                    Woah! This page pulled a disappearing act.<br />
+                    We can’t seem to find what you’re looking for — it might’ve wandered off!<br />
+                    If you think this shouldn’t have happened, let us know so we can chase it down!
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="font-bold text-red-700 hover:text-red-900 hover:text-red-900 flex items-center gap-2 px-0 py-0"
+                  onClick={() => window.open('https://github.com/allyzdev/e2e-platform/issues/new', '_blank')}
+                >
+                  <FaBug className="w-5 h-5 mr-1" />
+                  Report Bug
+                </Button>
+              </div>
+            </div>
           ) : companyProfile ? (
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
@@ -633,7 +653,7 @@ export default function AboutTab() {
                   <p className="text-sm text-gray-600">
                     {contactInfo?.email ||
                       registeredEmployer?.email ||
-                      "—"}
+                      <span className="text-gray-500">Set up your email</span>}
                   </p>
                 </div>
               </div>
@@ -648,7 +668,7 @@ export default function AboutTab() {
                       ? `+${registeredEmployer.countryCode || ""} ${registeredEmployer.phone}`
                       : contactInfo?.phone
                       ? `+${contactInfo.countryCode || ""} ${contactInfo.phone}`
-                      : "—"}
+                      : <span className="text-gray-500">Set up your phone number</span>}
                   </p>
                 </div>
               </div>
@@ -666,7 +686,7 @@ export default function AboutTab() {
                 </div>
               </div>
             </div>
-            <div>
+            <div className="flex flex-col h-full">
               <h4 className="font-semibold mb-4">Social Media</h4>
               <div className="flex gap-4 flex-wrap">
                 {(contactInfo?.socials || []).filter((s: SocialLink) => s.key !== "website").map((s: SocialLink) => {
@@ -709,32 +729,29 @@ export default function AboutTab() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-blue-300 text-blue-600 hover:bg-blue-50 mt-6"
+                className="border-blue-300 text-blue-600 hover:bg-blue-50 mt-6 w-full"
                 onClick={() => setContactModalOpen(true)}
               >
                 Edit Contact Info
               </Button>
-              <AddEditContactModal
-                open={contactModalOpen}
-                onClose={() => setContactModalOpen(false)}
-                onSave={saveContactInfo}
-                initial={{
-        
-                  email: contactInfo?.email || registeredEmployer?.email || "",
-                  personal_email: registeredEmployer?.email || "", 
-                  countryCode: contactInfo?.countryCode || registeredEmployer?.countryCode || "",
-                  phone: contactInfo?.phone || registeredEmployer?.phone || "",
-                  socials: contactInfo?.socials || [],
-                  website: contactInfo?.website || registeredCompany?.company_website || "",
-                  company_email: registeredEmployer?.company_email
-                }}
-              />
             </div>
-            <div>
-              <h4 className="font-semibold mb-4 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-blue-600" />
-                Response Time
-              </h4>
+            <div className="relative border-l border-gray-200 pl-8">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-600" />
+                  Response Time
+                </h4>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="border-blue-300 text-blue-600 hover:bg-blue-50 p-1"
+                  onClick={() => setAvailabilityModalOpen(true)}
+                >
+                  <svg width={18} height={18} viewBox="0 0 20 20" fill="none">
+                    <path d="M12.5 5.5l2 2m0 0l-7.5 7.5H5v-2l7.5-7.5m2 2l-2-2" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </Button>
+              </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -800,20 +817,24 @@ export default function AboutTab() {
                       return "Anytime";
                     })()}
                   </span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="border-blue-300 text-blue-600 hover:bg-blue-50 p-1 ml-2"
-                    onClick={() => setAvailabilityModalOpen(true)}
-                  >
-                    <svg width={18} height={18} viewBox="0 0 20 20" fill="none">
-                      <path d="M12.5 5.5l2 2m0 0l-7.5 7.5H5v-2l7.5-7.5m2 2l-2-2" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </Button>
                 </div>
               </div>
             </div>
           </div>
+          <AddEditContactModal
+            open={contactModalOpen}
+            onClose={() => setContactModalOpen(false)}
+            onSave={saveContactInfo}
+            initial={{
+              email: contactInfo?.email || registeredEmployer?.email || "",
+              personal_email: registeredEmployer?.email || "", 
+              countryCode: contactInfo?.countryCode || registeredEmployer?.countryCode || "",
+              phone: contactInfo?.phone || registeredEmployer?.phone || "",
+              socials: contactInfo?.socials || [],
+              website: contactInfo?.website || registeredCompany?.company_website || "",
+              company_email: registeredEmployer?.company_email
+            }}
+          />
         </CardContent>
       </Card>
 

@@ -6,6 +6,10 @@ import { ChevronRight, LogOut, Settings, User, Palette, AlertCircle } from "luci
 import { Avatar } from "@mui/material"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
+import { HiBadgeCheck } from "react-icons/hi"
+import { LuBadgeCheck } from "react-icons/lu"
+import { PiWarningFill } from "react-icons/pi"
+import Tooltip from "@mui/material/Tooltip"
 
 interface ProfileModalProps {
   user: {
@@ -67,7 +71,11 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
       setDbName(name)
       setDbEmail(email)
       setUserType(cachedRole as "student" | "employer")
-      setDbAvatar(cachedAvatar || undefined)
+      if (cachedAvatar) {
+        setDbAvatar(cachedAvatar + (cachedAvatar.includes("?") ? "&" : "?") + `t=${Date.now()}`)
+      } else {
+        setDbAvatar(undefined)
+      }
       setLoading(false)
       return
     }
@@ -98,8 +106,9 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               })
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json()
-                setDbAvatar(signedUrl)
-                sessionStorage.setItem(sessionAvatarKey, signedUrl)
+                const avatarWithTs = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`
+                setDbAvatar(avatarWithTs)
+                sessionStorage.setItem(sessionAvatarKey, avatarWithTs)
               } else {
                 setDbAvatar(undefined)
                 sessionStorage.removeItem(sessionAvatarKey)
@@ -139,8 +148,9 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               })
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json()
-                setDbAvatar(signedUrl)
-                sessionStorage.setItem(sessionAvatarKey, signedUrl)
+                const avatarWithTs = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`
+                setDbAvatar(avatarWithTs)
+                sessionStorage.setItem(sessionAvatarKey, avatarWithTs)
               } else {
                 setDbAvatar(undefined)
                 sessionStorage.removeItem(sessionAvatarKey)
@@ -191,8 +201,9 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               })
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json()
-                setDbAvatar(signedUrl)
-                sessionStorage.setItem("profileModalUserAvatar", signedUrl)
+                const avatarWithTs = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`
+                setDbAvatar(avatarWithTs)
+                sessionStorage.setItem("profileModalUserAvatar", avatarWithTs)
               } else {
                 setDbAvatar(undefined)
                 sessionStorage.removeItem("profileModalUserAvatar")
@@ -232,8 +243,9 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               })
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json()
-                setDbAvatar(signedUrl)
-                sessionStorage.setItem("profileModalUserAvatar", signedUrl)
+                const avatarWithTs = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`
+                setDbAvatar(avatarWithTs)
+                sessionStorage.setItem("profileModalUserAvatar", avatarWithTs)
               } else {
                 setDbAvatar(undefined)
                 sessionStorage.removeItem("profileModalUserAvatar")
@@ -334,7 +346,61 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                         .join("")}
                   </Avatar>
                   <div>
-                    <div className="font-medium text-gray-800">{dbName}</div>
+                    <div className="font-medium text-gray-800 flex items-center gap-2">
+                      {dbName}
+                      {userType === "employer" && (() => {
+                        let verifyStatus = null
+                        try {
+                          const sidebarCached = sessionStorage.getItem("sidebarUserData")
+                          if (sidebarCached) {
+                            const data = JSON.parse(sidebarCached)
+                            verifyStatus = data.verify_status
+                          }
+                        } catch {}
+                        if (!verifyStatus) return null
+                        if (verifyStatus === "full") {
+                          return (
+                            <Tooltip title="Fully Verified" arrow>
+                              <motion.span
+                                className="flex items-center"
+                                whileHover={{ scale: 1.18 }}
+                                transition={{ type: "spring", stiffness: 340, damping: 16 }}
+                              >
+                               
+                                  <HiBadgeCheck className="w-4 h-4 text-blue-600" />
+
+                              </motion.span>
+                            </Tooltip>
+                          )
+                        }
+                        if (verifyStatus === "standard") {
+                          return (
+                            <Tooltip title="Partially Verified" arrow>
+                              <motion.span
+                                className="flex items-center"
+                                whileHover={{ scale: 1.18 }}
+                                transition={{ type: "spring", stiffness: 340, damping: 16 }}
+                              >
+
+                                  <LuBadgeCheck className="w-4 h-4" style={{ color: "#7c3aed" }} />
+         
+                              </motion.span>
+                            </Tooltip>
+                          )
+                        }
+                        return (
+                          <Tooltip title="Unverified" arrow>
+                            <motion.span
+                              className="flex items-center"
+                              whileHover={{ scale: 1.18 }}
+                              transition={{ type: "spring", stiffness: 340, damping: 16 }}
+                            >
+                              <PiWarningFill className="w-4 h-4 text-orange-500 ml-1" />
+                            </motion.span>
+                          </Tooltip>
+                        )
+                      })()}
+                    </div>
                     <div className="text-sm text-gray-500">{dbEmail}</div>
                   </div>
                 </>

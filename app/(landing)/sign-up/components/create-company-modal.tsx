@@ -128,9 +128,9 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
               : "")
         : "";
       const websiteError = formData.companyWebsite
-        ? validateLength("Company Website", formData.companyWebsite, 10, 40) ||
-          (!/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyWebsite)
-            ? "Invalid website format (e.g., example.com)"
+        ? validateLength("Company Website", formData.companyWebsite, 10, 100) ||
+          (!/^https?:\/\/[^\s/$.?#].[^\s]*$/.test(formData.companyWebsite)
+            ? "Invalid website format (e.g., https://example.com)"
             : "")
         : "";
 
@@ -298,486 +298,576 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
       <div
-        className="p-6 max-w-3xl mx-auto bg-white rounded-lg overflow-y-auto"
-        style={{ height: "700px" }}
+        className="max-w-3xl mx-auto rounded-lg overflow-hidden"
+        style={{ height: "700px", width: 700, minWidth: 600, padding: 0, background: "none", boxShadow: "0 8px 32px 0 #0003" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-blue-700">Create New Company</h2>
-          <Button
-            variant="text"
-            onClick={() => onClose()}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            Close
-          </Button>
-        </div>
-
-        <Tabs
-          value={activeTab}
-          onChange={(e, newValue) => {
-            if (activeTab === 0) {
-              const isInvalid = !formData.companyName || !formData.companyBranch || !formData.companyIndustry;
-              if (isInvalid) {
-                setIsNextDisabled(true);
-                return;
-              }
-            }
-            if (newValue === 2) {
-              const addressValid =
-                !!formData.address.address &&
-                !!formData.address.contactEmail &&
-                /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.address.contactEmail) &&
-                !!formData.address.contactNumber &&
-                /^[0-9+\-()\s]+$/.test(formData.address.contactNumber);
-              if (!addressValid) {
-                setShowAddressErrors(true);
-                setIsNextDisabled(true);
-                return;
-              }
-            }
-            setActiveTab(newValue);
-          }}
-          className="mb-4"
-        >
-          <Tab label="Company Information" />
-          <Tab label="Company Address" disabled={activeTab === 0 && isNextDisabled} />
-          <Tab
-            label="Preview"
-            disabled={
-              (activeTab === 0 && isNextDisabled) ||
-              !formData.address.address ||
-              !formData.address.contactEmail ||
-              !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.address.contactEmail) ||
-              !formData.address.contactNumber ||
-              !/^[0-9+\-()\s]+$/.test(formData.address.contactNumber)
-            }
-          />
-        </Tabs>
-
-        {activeTab === 0 && (
-          <motion.div
-            className="space-y-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="space-y-4"> 
-              <motion.div
-                {...(companyNameError ? shakeAnimation : {})} 
-              >
-                <TextField
-                  id="companyName"
-                  label={<span>Company Name <span style={{ color: "red"  }}>*</span></span>}
-                  placeholder="Enter the full name of the company"
-                  variant="outlined"
-                  fullWidth
-                  value={formData.companyName}
-                  onChange={handleChange}
-                  error={!!companyNameError}
-                  helperText={
-                    companyNameError ||
-                    (isNextDisabled && !formData.companyName ? "Company Name is required" : "Enter the full name of the company")
-                  } 
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      "& fieldset": {
-                        borderColor: companyNameError ? "red" : "darkgray", 
-                      },
-                      "&:hover fieldset": {
-                        borderColor: "#2563eb",
-                      },
-                    },
-                    "& .MuiInputLabel-root": {
-                      color: companyNameError ? "red" : "gray",
-                      "&:hover": {
-                        color: "#2563eb",
-                      },
-                    },
-                  }}
-                />
-              </motion.div>
-              <motion.div
-                {...(branchNameError ? shakeAnimation : {})}
-                className="relative"
-              >
-                <TextField
-                  id="companyBranch"
-                  label={<span>Company Branch Name <span style={{ color: "red" }}>*</span></span>}
-                  placeholder="Enter the main branch name"
-                  variant="outlined"
-                  fullWidth
-                  value={noBranches ? "Headquarters" : formData.companyBranch}
-                  onChange={handleChange}
-                  disabled={noBranches}
-                  error={!!branchNameError}
-                  helperText={
-                    branchNameError ||
-                    (isNextDisabled && !formData.companyBranch ? "Company Branch Name is required" : "")
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      "&:hover fieldset": {
-                        borderColor: "#2563eb",
-                      },
-                    },
-                    "& .MuiInputLabel-root": {
-                      "&:hover": {
-                        color: "#2563eb",
-                      },
-                    },
-                  }}
-                />
-                <div className="flex items-center mt-2">
-                  <Tooltip title="This will be the main branch in the app, used as the primary reference point. It doesn't necessarily reflect the actual main office of the company." arrow>
-                    <InfoOutlined className="text-gray-500 mr-1 cursor-pointer" fontSize="small" />
-                  </Tooltip>
-                  <label htmlFor="companyBranch" className="text-sm text-gray-600">
-                    Specify the main branch of the company
-                  </label>
-                </div>
-                <div className="flex items-center mt-2">
-                  <Switch
-                    id="noBranches"
-                    checked={!formData.multipleBranch}
-                    onChange={(e) => {
-                      setFormData({ ...formData, multipleBranch: !e.target.checked });
-                      if (e.target.checked) {
-                        setFormData({ ...formData, companyBranch: "Headquarters", multipleBranch: false });
-                        setBranchNameError("");
-                        setIsNextDisabled(false);
-                      } else {
-                        setFormData({ ...formData, companyBranch: "", multipleBranch: true });
-                      }
-                    }}
-                  />
-                  <label htmlFor="noBranches" className="ml-2 text-blue-700">
-                    This company doesn&apos;t have branches
-                  </label>
-                </div>
-              </motion.div>
-            </div>
-
-            <motion.div
-              {...(isNextDisabled && !formData.companyIndustry ? shakeAnimation : {})}
-              className="grid grid-cols-2 gap-4"
-            >
-              <div>
-                <TextField
-                  id="companyIndustry"
-                  select
-                  label={<span>Industry <span style={{ color: "red" }}>*</span></span>}
-                  placeholder="Select the industry"
-                  variant="outlined"
-                  fullWidth
-                  value={formData.companyIndustry}
-                  onChange={(e) => {
-                    setFormData({ ...formData, companyIndustry: e.target.value });
-                    if (isNextDisabled && e.target.value) {
-                      setIsNextDisabled(false);
-                    }
-                  }}
-                  error={isNextDisabled && !formData.companyIndustry}
-                  helperText={isNextDisabled && !formData.companyIndustry ? "Industry is required" : ""}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      "&:hover fieldset": {
-                        borderColor: "#2563eb",
-                      },
-                    },
-                    "& .MuiInputLabel-root": {
-                      "&:hover": {
-                        color: "#2563eb",
-                      },
-                    },
-                  }}
-                >
-                  <MenuItem value="technology">Technology</MenuItem>
-                  <MenuItem value="healthcare">Healthcare</MenuItem>
-                  <MenuItem value="finance">Finance</MenuItem>
-                  <MenuItem value="education">Education</MenuItem>
-                  <MenuItem value="retail">Retail</MenuItem>
-                  <MenuItem value="manufacturing">Manufacturing</MenuItem>
-                  <MenuItem value="other">Other</MenuItem>
-                </TextField>
-                <label htmlFor="companyIndustry" className="text-sm text-gray-600">Select the industry the company operates in</label>
-              </div>
-              <div>
-                <TextField
-                  id="companySize"
-                  select
-                  label="Company Size (Optional)"
-                  placeholder="Select company size"
-                  variant="outlined"
-                  fullWidth
-                  value={formData.companySize}
-                  onChange={(e) =>
-                    setFormData({ ...formData, companySize: e.target.value })
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      "&:hover fieldset": {
-                        borderColor: "#2563eb",
-                      },
-                    },
-                    "& .MuiInputLabel-root": {
-                      "&:hover": {
-                        color: "#2563eb",
-                      },
-                    },
-                  }}
-                >
-                  <MenuItem value="1-10">1-10 employees</MenuItem>
-                  <MenuItem value="11-50">11-50 employees</MenuItem>
-                  <MenuItem value="51-200">51-200 employees</MenuItem>
-                  <MenuItem value="201-500">201-500 employees</MenuItem>
-                  <MenuItem value="501-1000">501-1000 employees</MenuItem>
-                  <MenuItem value="1000+">1000+ employees</MenuItem>
-                </TextField>
-                <label htmlFor="companySize" className="text-sm text-gray-600">Specify the approximate size of the company</label>
-              </div>
-            </motion.div>
-
-            <div className="flex items-center">
-              <TextField
-                value="@"
-                variant="outlined"
-                disabled
-                className="w-16 text-center"
-                InputProps={{
-                  style: {
-                    borderTopRightRadius: 0,
-                    borderBottomRightRadius: 0,
-                  },
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    "&:hover fieldset": {
-                      borderColor: "#2563eb",
-                    },
-                  },
-                  "& .MuiInputLabel-root": {
-                    "&:hover": {
-                      color: "#2563eb",
-                    },
-                  },
-                }}
-              />
-              <TextField
-                id="companyEmailDomain"
-                label="Company Email Domain (if applicable)"
-                placeholder="e.g. company.com"
-                variant="outlined"
-                fullWidth
-                value={formData.companyEmailDomain.startsWith("@") ? formData.companyEmailDomain.slice(1) : formData.companyEmailDomain}
-                onChange={handleChange}
-                error={
-                  !!formData.companyEmailDomain &&
-                  !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyEmailDomain.slice(1))
+        <div className="bg-blue-600 w-full flex flex-col justify-end rounded-t-lg relative">
+          <div className="flex justify-between items-center px-8 pt-6 pb-1">
+            <h2 className="text-2xl font-bold text-white">Create New Company</h2>
+            <Button
+              variant="text"
+              onClick={() => onClose()}
+              className="text-white hover:bg-white/20"
+              sx={{
+                color: "#fff",
+                background: "transparent",
+                '&:hover': {
+                  background: "rgba(255,255,255,0.15)",
+                  color: "#fff"
                 }
-                helperText={
-                  formData.companyEmailDomain &&
-                  !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyEmailDomain.slice(1))
-                    ? "Invalid domain format (e.g., company.com)"
+              }}
+            >
+              Close
+            </Button>
+          </div>
+          <div className="px-8 pb-4 pt-0">
+            <p className="text-white text-base">
+              Create your company profile to let others from your organization sign up under it.
+            </p>
+          </div>
+        </div>
+        <div className="bg-white w-full h-[calc(100%-96px)] px-8 py-6 overflow-y-auto" style={{ borderBottomLeftRadius: 12, borderBottomRightRadius: 12 }}>
+          <div>
+            <Tabs
+              value={activeTab}
+              onChange={(_e, newValue) => {
+                // Only allow tab change if the tab is enabled
+                if (newValue === 1) {
+                  if (
+                    !formData.companyName.trim() ||
+                    !formData.companyBranch.trim() ||
+                    !formData.companyIndustry.trim()
+                  ) {
+                    return;
+                  }
+                }
+                if (newValue === 2) {
+                  if (
+                    !formData.companyName.trim() ||
+                    !formData.companyBranch.trim() ||
+                    !formData.companyIndustry.trim() ||
+                    !formData.address.address ||
+                    !formData.address.contactEmail ||
+                    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.address.contactEmail) ||
+                    !formData.address.contactNumber ||
+                    !/^[0-9+\-()\s]+$/.test(formData.address.contactNumber)
+                  ) {
+                    return;
+                  }
+                }
+                setActiveTab(newValue);
+              }}
+              className="mb-4"
+            >
+              <Tab
+                label="Company Information"
+                value={0}
+              />
+              <Tooltip
+                title={
+                  !formData.companyName.trim() ||
+                  !formData.companyBranch.trim() ||
+                  !formData.companyIndustry.trim()
+                    ? "Fill out all required company information first"
                     : ""
                 }
-                InputProps={{
-                  style: {
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                  },
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    "&:hover fieldset": {
-                      borderColor: "#2563eb",
-                    },
-                  },
-                  "& .MuiInputLabel-root": {
-                    "&:hover": {
-                      color: "#2563eb",
-                    },
-                  },
-                }}
-              />
-            </div>
-            <label htmlFor="companyEmailDomain" className="text-sm text-gray-600">Provide the email domain used by the company (e.g company.com)</label>
-            <div className="flex justify-end">
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleNext}
-                disabled={isNextDisabled || isLoading}
-                startIcon={isLoading && <CircularProgress size={20} />}
+                arrow
+                disableHoverListener
+                placement="top"
               >
-                {isLoading ? "Loading..." : "Next"}
-              </Button>
-            </div>
-          </motion.div>
-        )}
+                <span>
+                  <Tab
+                    label="Company Address"
+                    value={1}
+                    disabled={
+                      !formData.companyName.trim() ||
+                      !formData.companyBranch.trim() ||
+                      !formData.companyIndustry.trim()
+                    }
+                    style={
+                      formData.companyName.trim() &&
+                      formData.companyBranch.trim() &&
+                      formData.companyIndustry.trim()
+                        ? { pointerEvents: "auto" }
+                        : { pointerEvents: "none" }
+                    }
+                  />
+                </span>
+              </Tooltip>
+              <Tooltip
+                title={
+                  (!formData.companyName.trim() ||
+                    !formData.companyBranch.trim() ||
+                    !formData.companyIndustry.trim())
+                    ? "Fill out all required company information first"
+                    : (!formData.address.address ||
+                      !formData.address.contactEmail ||
+                      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.address.contactEmail) ||
+                      !formData.address.contactNumber ||
+                      !/^[0-9+\-()\s]+$/.test(formData.address.contactNumber))
+                    ? "Fill out all required address fields first"
+                    : ""
+                }
+                arrow
+                disableHoverListener
+                placement="top"
+              >
+                <span>
+                  <Tab
+                    label="Preview"
+                    value={2}
+                    disabled={
+                      !formData.companyName.trim() ||
+                      !formData.companyBranch.trim() ||
+                      !formData.companyIndustry.trim() ||
+                      !formData.address.address ||
+                      !formData.address.contactEmail ||
+                      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.address.contactEmail) ||
+                      !formData.address.contactNumber ||
+                      !/^[0-9+\-()\s]+$/.test(formData.address.contactNumber)
+                    }
+                    style={
+                      formData.companyName.trim() &&
+                      formData.companyBranch.trim() &&
+                      formData.companyIndustry.trim() &&
+                      formData.address.address &&
+                      formData.address.contactEmail &&
+                      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.address.contactEmail) &&
+                      formData.address.contactNumber &&
+                      /^[0-9+\-()\s]+$/.test(formData.address.contactNumber)
+                        ? { pointerEvents: "auto" }
+                        : { pointerEvents: "none" }
+                    }
+                  />
+                </span>
+              </Tooltip>
+            </Tabs>
+          </div>
 
-        {activeTab === 1 && (
-          <motion.div
-            className="space-y-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="w-full">
-              <AddressAutocomplete
-                value={formData.address.address}
-                onChange={(val: string) =>
-                  setFormData({
-                    ...formData,
-                    address: { ...formData.address, address: val },
-                  })
-                }
-                error={!!(addressErrors as Record<string, string>).address || (showAddressErrors && !formData.address.address)}
-                helperText={
-                  (addressErrors as Record<string, string>).address ||
-                  ((showAddressErrors && !formData.address.address) ? "Address is required" : "")
-                }
-              />
-              <p className="text-xs text-gray-500 mt-1">Enter the full address of the company.</p>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <TextField
-                  id="suiteUnitFloor"
-                  label="Suite / Unit / Floor (optional)"
-                  placeholder="e.g. Suite 401, 3rd Floor"
-                  variant="outlined"
-                  fullWidth
-                  value={formData.address.suiteUnitFloor || ""}
-                  onChange={e =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, suiteUnitFloor: e.target.value },
-                    })
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      "&:hover fieldset": {
-                        borderColor: "#2563eb",
+          {activeTab === 0 && (
+            <motion.div
+              className="space-y-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="space-y-4"> 
+                <motion.div
+                  {...(companyNameError ? shakeAnimation : {})} 
+                >
+                  <TextField
+                    id="companyName"
+                    label={<span>Company Name <span style={{ color: "red"  }}>*</span></span>}
+                    placeholder="Enter the full name of the company"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.companyName}
+                    onChange={handleChange}
+                    error={!!companyNameError}
+                    helperText={
+                      companyNameError ||
+                      (isNextDisabled && !formData.companyName ? "Company Name is required" : "Enter the full name of the company")
+                    } 
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "& fieldset": {
+                          borderColor: companyNameError ? "red" : "darkgray", 
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "#2563eb",
+                        },
                       },
-                    },
-                    "& .MuiInputLabel-root": {
-                      "&:hover": {
-                        color: "#2563eb",
+                      "& .MuiInputLabel-root": {
+                        color: companyNameError ? "red" : "gray",
+                        "&:hover": {
+                          color: "#2563eb",
+                        },
                       },
-                    },
-                  }}
-                />
-                <p className="text-xs text-gray-500 mt-1">Enter suite, unit, or floor</p>
-              </div>
-              <div>
-                <TextField
-                  id="businessPark"
-                  label="Landmark"
-                  placeholder="e.g. Technohub Business Park"
-                  variant="outlined"
-                  fullWidth
-                  value={formData.address.businessPark || ""}
-                  onChange={e =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, businessPark: e.target.value },
-                    })
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      "&:hover fieldset": {
-                        borderColor: "#2563eb",
-                      },
-                    },
-                    "& .MuiInputLabel-root": {
-                      "&:hover": {
-                        color: "#2563eb",
-                      },
-                    },
-                  }}
-                />
-                <p className="text-xs text-gray-500 mt-1">Enter business park or landmark</p>
-              </div>
-              <div>
-                <TextField
-                  id="buildingName"
-                  label="Building Name"
-                  placeholder="e.g. Cyber One Tower"
-                  variant="outlined"
-                  fullWidth
-                  value={formData.address.buildingName || ""}
-                  onChange={e =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, buildingName: e.target.value },
-                    })
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      "&:hover fieldset": {
-                        borderColor: "#2563eb",
-                      },
-                    },
-                    "& .MuiInputLabel-root": {
-                      "&:hover": {
-                        color: "#2563eb",
-                      },
-                    },
-                  }}
-                />
-                <p className="text-xs text-gray-500 mt-1">Enter building name</p>
-              </div>
-            </div>
-            <div className="w-full flex flex-col gap-4">
-              <div>
-                <div className="flex gap-2 w-full">
-                  <Autocomplete
-                    id="companyCountryCode"
-                    options={countries}
-                    autoHighlight
-                    disablePortal
-                    PopperComponent={(props) => <Popper {...props} placement="bottom-start" />}
-                    getOptionLabel={(option) => `${option.code} (+${option.phone})`}
-                    renderOption={(props, option) => {
-                      const { key, ...optionProps } = props;
-                      return (
-                        <Box
-                          key={key}
-                          component="li"
-                          sx={{ '& > img': { mr: 2, flexShrink: 0 } }}
-                          {...optionProps}
-                        >
-                          <Image
-                            loading="lazy"
-                            width={20}
-                            height={15}
-                            src={`https://flagcdn.com/w20/${option.code.toLowerCase()}.png`}
-                            alt=""
-                          />
-                          {option.code} (+{option.phone})
-                        </Box>
-                      );
                     }}
-                    value={countries.find((c) => c.phone === formData.address.countryCode) || null}
-                    onChange={(event, newValue) => {
+                  />
+                </motion.div>
+                <motion.div
+                  {...(branchNameError ? shakeAnimation : {})}
+                  className="relative"
+                >
+                  <TextField
+                    id="companyBranch"
+                    label={<span>Company Branch Name <span style={{ color: "red" }}>*</span></span>}
+                    placeholder="Enter the main branch name"
+                    variant="outlined"
+                    fullWidth
+                    value={noBranches ? "Headquarters" : formData.companyBranch}
+                    onChange={handleChange}
+                    disabled={noBranches}
+                    error={!!branchNameError}
+                    helperText={
+                      branchNameError ||
+                      (isNextDisabled && !formData.companyBranch ? "Company Branch Name is required" : "")
+                    }
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "&:hover fieldset": {
+                          borderColor: "#2563eb",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        "&:hover": {
+                          color: "#2563eb",
+                        },
+                      },
+                    }}
+                  />
+                  <div className="flex items-center mt-2">
+                    <Tooltip title="This will be the main branch in the app, used as the primary reference point. It doesn't necessarily reflect the actual main office of the company." arrow>
+                      <InfoOutlined className="text-gray-500 mr-1 cursor-pointer" fontSize="small" />
+                    </Tooltip>
+                    <label htmlFor="companyBranch" className="text-sm text-gray-600">
+                      Specify the main branch of the company
+                    </label>
+                  </div>
+                  <div className="flex items-center mt-2">
+                    <Switch
+                      id="noBranches"
+                      checked={!formData.multipleBranch}
+                      onChange={(e) => {
+                        setFormData({ ...formData, multipleBranch: !e.target.checked });
+                        if (e.target.checked) {
+                          setFormData({ ...formData, companyBranch: "Headquarters", multipleBranch: false });
+                          setBranchNameError("");
+                          setIsNextDisabled(false);
+                        } else {
+                          setFormData({ ...formData, companyBranch: "", multipleBranch: true });
+                        }
+                      }}
+                    />
+                    <label htmlFor="noBranches" className="ml-2 text-blue-700">
+                      This company doesn&apos;t have branches
+                    </label>
+                  </div>
+                </motion.div>
+              </div>
+
+              <motion.div
+                {...(isNextDisabled && !formData.companyIndustry ? shakeAnimation : {})}
+                className="grid grid-cols-2 gap-4"
+              >
+                <div>
+                  <TextField
+                    id="companyIndustry"
+                    select
+                    label={<span>Industry <span style={{ color: "red" }}>*</span></span>}
+                    placeholder="Select the industry"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.companyIndustry}
+                    onChange={(e) => {
+                      setFormData({ ...formData, companyIndustry: e.target.value });
+                      if (isNextDisabled && e.target.value) {
+                        setIsNextDisabled(false);
+                      }
+                    }}
+                    error={isNextDisabled && !formData.companyIndustry}
+                    helperText={isNextDisabled && !formData.companyIndustry ? "Industry is required" : ""}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "&:hover fieldset": {
+                          borderColor: "#2563eb",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        "&:hover": {
+                          color: "#2563eb",
+                        },
+                      },
+                    }}
+                  >
+                    <MenuItem value="technology">Technology</MenuItem>
+                    <MenuItem value="healthcare">Healthcare</MenuItem>
+                    <MenuItem value="finance">Finance</MenuItem>
+                    <MenuItem value="education">Education</MenuItem>
+                    <MenuItem value="retail">Retail</MenuItem>
+                    <MenuItem value="manufacturing">Manufacturing</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
+                  </TextField>
+                  <label htmlFor="companyIndustry" className="text-sm text-gray-600">Select the industry the company operates in</label>
+                </div>
+                <div>
+                  <TextField
+                    id="companySize"
+                    select
+                    label="Company Size (Optional)"
+                    placeholder="Select company size"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.companySize}
+                    onChange={(e) =>
+                      setFormData({ ...formData, companySize: e.target.value })
+                    }
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "&:hover fieldset": {
+                          borderColor: "#2563eb",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        "&:hover": {
+                          color: "#2563eb",
+                        },
+                      },
+                    }}
+                  >
+                    <MenuItem value="1-10">1-10 employees</MenuItem>
+                    <MenuItem value="11-50">11-50 employees</MenuItem>
+                    <MenuItem value="51-200">51-200 employees</MenuItem>
+                    <MenuItem value="201-500">201-500 employees</MenuItem>
+                    <MenuItem value="501-1000">501-1000 employees</MenuItem>
+                    <MenuItem value="1000+">1000+ employees</MenuItem>
+                  </TextField>
+                  <label htmlFor="companySize" className="text-sm text-gray-600">Specify the approximate size of the company</label>
+                </div>
+              </motion.div>
+
+              <div className="flex items-center">
+                <TextField
+                  value="@"
+                  variant="outlined"
+                  disabled
+                  className="w-16 text-center"
+                  InputProps={{
+                    style: {
+                      borderTopRightRadius: 0,
+                      borderBottomRightRadius: 0,
+                    },
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
+                    },
+                  }}
+                />
+                <TextField
+                  id="companyEmailDomain"
+                  label="Company Email Domain (if applicable)"
+                  placeholder="e.g. company.com"
+                  variant="outlined"
+                  fullWidth
+                  value={formData.companyEmailDomain.startsWith("@") ? formData.companyEmailDomain.slice(1) : formData.companyEmailDomain}
+                  onChange={handleChange}
+                  error={
+                    !!formData.companyEmailDomain &&
+                    !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyEmailDomain.slice(1))
+                  }
+                  helperText={
+                    formData.companyEmailDomain &&
+                    !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyEmailDomain.slice(1))
+                      ? "Invalid domain format (e.g., company.com)"
+                      : ""
+                  }
+                  InputProps={{
+                    style: {
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                    },
+                  }}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "&:hover fieldset": {
+                        borderColor: "#2563eb",
+                      },
+                    },
+                    "& .MuiInputLabel-root": {
+                      "&:hover": {
+                        color: "#2563eb",
+                      },
+                    },
+                  }}
+                />
+              </div>
+              <label htmlFor="companyEmailDomain" className="text-sm text-gray-600">Provide the email domain used by the company (e.g company.com)</label>
+              <div className="flex justify-end">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleNext}
+                  disabled={isNextDisabled || isLoading}
+                  startIcon={isLoading && <CircularProgress size={20} />}
+                >
+                  {isLoading ? "Loading..." : "Next"}
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 1 && (
+            <motion.div
+              className="space-y-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="w-full">
+                <AddressAutocomplete
+                  value={formData.address.address}
+                  onChange={(val: string) =>
+                    setFormData({
+                      ...formData,
+                      address: { ...formData.address, address: val },
+                    })
+                  }
+                  error={!!(addressErrors as Record<string, string>).address || (showAddressErrors && !formData.address.address)}
+                  helperText={
+                    (addressErrors as Record<string, string>).address ||
+                    ((showAddressErrors && !formData.address.address) ? "Address is required" : "")
+                  }
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter the full address of the company.</p>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <TextField
+                    id="suiteUnitFloor"
+                    label="Suite / Unit / Floor (optional)"
+                    placeholder="e.g. Suite 401, 3rd Floor"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.address.suiteUnitFloor || ""}
+                    onChange={e =>
                       setFormData({
                         ...formData,
-                        address: { ...formData.address, countryCode: newValue?.phone || "" },
-                      });
+                        address: { ...formData.address, suiteUnitFloor: e.target.value },
+                      })
+                    }
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "&:hover fieldset": {
+                          borderColor: "#2563eb",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        "&:hover": {
+                          color: "#2563eb",
+                        },
+                      },
                     }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Country Code *"
-                        placeholder="Select country code"
-                        error={!!addressErrors.countryCode}
-                        helperText={addressErrors.countryCode}
-                        sx={{
-                          minWidth: 120,
-                          "& .MuiOutlinedInput-root": {
-                            "&:hover fieldset": {
-                              borderColor: "#2563eb",
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter suite, unit, or floor</p>
+                </div>
+                <div>
+                  <TextField
+                    id="businessPark"
+                    label="Landmark"
+                    placeholder="e.g. Technohub Business Park"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.address.businessPark || ""}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        address: { ...formData.address, businessPark: e.target.value },
+                      })
+                    }
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "&:hover fieldset": {
+                          borderColor: "#2563eb",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        "&:hover": {
+                          color: "#2563eb",
+                        },
+                      },
+                    }}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter business park or landmark</p>
+                </div>
+                <div>
+                  <TextField
+                    id="buildingName"
+                    label="Building Name"
+                    placeholder="e.g. Cyber One Tower"
+                    variant="outlined"
+                    fullWidth
+                    value={formData.address.buildingName || ""}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        address: { ...formData.address, buildingName: e.target.value },
+                      })
+                    }
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        "&:hover fieldset": {
+                          borderColor: "#2563eb",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        "&:hover": {
+                          color: "#2563eb",
+                        },
+                      },
+                    }}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter building name</p>
+                </div>
+              </div>
+              <div className="w-full flex flex-col gap-4">
+                <div>
+                  <div className="flex gap-2 w-full">
+                    <Autocomplete
+                      id="companyCountryCode"
+                      options={countries}
+                      autoHighlight
+                      disablePortal
+                      PopperComponent={(props) => <Popper {...props} placement="bottom-start" />}
+                      getOptionLabel={(option) => `${option.code} (+${option.phone})`}
+                      renderOption={(props, option) => {
+                        const { key, ...optionProps } = props;
+                        return (
+                          <Box
+                            key={key}
+                            component="li"
+                            sx={{ '& > img': { mr: 2, flexShrink: 0 } }}
+                            {...optionProps}
+                          >
+                            <Image
+                              loading="lazy"
+                              width={20}
+                              height={15}
+                              src={`https://flagcdn.com/w20/${option.code.toLowerCase()}.png`}
+                              alt=""
+                            />
+                            {option.code} (+{option.phone})
+                          </Box>
+                        );
+                      }}
+                      value={countries.find((c) => c.phone === formData.address.countryCode) || null}
+                      onChange={(event, newValue) => {
+                        setFormData({
+                          ...formData,
+                          address: { ...formData.address, countryCode: newValue?.phone || "" },
+                        });
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Country Code *"
+                          placeholder="Select country code"
+                          error={!!addressErrors.countryCode}
+                          helperText={addressErrors.countryCode}
+                          sx={{
+                            minWidth: 120,
+                            "& .MuiOutlinedInput-root": {
+                              "&:hover fieldset": {
+                                borderColor: "#2563eb",
                             },
                           },
                           "& .MuiInputLabel-root": {
@@ -876,12 +966,12 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                 onChange={handleChange}
                 error={
                   !!formData.companyWebsite &&
-                  !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyWebsite)
+                  !/^https?:\/\/[^\s/$.?#].[^\s]*$/.test(formData.companyWebsite)
                 }
                 helperText={
                   formData.companyWebsite &&
-                  !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyWebsite)
-                    ? "Invalid website format (e.g., example.com)"
+                  !/^https?:\/\/[^\s/$.?#].[^\s]*$/.test(formData.companyWebsite)
+                    ? "Invalid website format (e.g., https://example.com)"
                     : ""
                 }
                 sx={{
@@ -926,84 +1016,102 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
 
         {activeTab === 2 && (
           <motion.div
-            className="space-y-6 p-6 w-[700px] mx-auto flex flex-col items-center justify-center"
+            className="space-y-8 p-8 w-[700px] mx-auto flex flex-col items-center justify-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="space-y-6 w-full">
-              <div className="px-6">
-                <h3 className="text-md font-semibold text-gray-700">Preview</h3>
-                <p className="text-sm text-gray-500">Review the details of the company you are about to create.</p>
+            <div className="w-full flex flex-col items-center mb-4">
+              <div className="rounded-full bg-gradient-to-r from-blue-500 to-sky-400 shadow-lg flex items-center justify-center mb-3" style={{ width: 64, height: 64 }}>
+                <svg width={36} height={36} fill="none" viewBox="0 0 24 24">
+                  <path d="M12 17.25L6.545 20.045C5.79 20.43 5 19.87 5 19.02V5.98C5 5.13 5.79 4.57 6.545 4.955L12 7.75M12 17.25L17.455 20.045C18.21 20.43 19 19.87 19 19.02V5.98C19 5.13 18.21 4.57 17.455 4.955L12 7.75M12 17.25V7.75" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
-          
-              <div className="bg-gray-50 p-6 rounded-lg shadow-md w-full">
-                <h4 className="text-lg font-medium text-blue-600 mb-4">Company Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+              <h3 className="text-2xl font-bold text-blue-700 mb-1">Preview Company Profile</h3>
+              <p className="text-base text-gray-500 text-center max-w-xl">
+                Review all the details below before submitting your company profile. Make sure everything is accurate!
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+              <div className="bg-white border border-blue-100 rounded-xl shadow-sm p-6 flex flex-col gap-4">
+                <h4 className="text-lg font-semibold text-blue-600 mb-2 flex items-center gap-2">
+                  <svg width={20} height={20} fill="none" viewBox="0 0 24 24"><path d="M3 21V7a2 2 0 012-2h14a2 2 0 012 2v14M3 21h18M3 21v-2a2 2 0 012-2h14a2 2 0 012 2v2" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Company Information
+                </h4>
+                <div className="flex flex-col gap-2">
                   <div>
-                    <p className="font-semibold">Company Name:</p>
-                    <p>{formData.companyName || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Company Name:</span>
+                    <span className="ml-2 text-gray-900">{formData.companyName || <span className="italic text-gray-400">Not Provided</span>}</span>
                   </div>
                   <div>
-                    <p className="font-semibold">Company Branch Name:</p>
-                    <p>{formData.companyBranch || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Branch Name:</span>
+                    <span className="ml-2 text-gray-900">{formData.companyBranch || <span className="italic text-gray-400">Not Provided</span>}</span>
                   </div>
                   <div>
-                    <p className="font-semibold">Industry:</p>
-                    <p>{formData.companyIndustry || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Industry:</span>
+                    <span className="ml-2 text-gray-900">{formData.companyIndustry || <span className="italic text-gray-400">Not Provided</span>}</span>
                   </div>
                   <div>
-                    <p className="font-semibold">Company Size:</p>
-                    <p>{formData.companySize || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Company Size:</span>
+                    <span className="ml-2 text-gray-900">{formData.companySize || <span className="italic text-gray-400">Not Provided</span>}</span>
                   </div>
                   <div>
-                    <p className="font-semibold">Email Domain:</p>
-                    <p>{formData.companyEmailDomain || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Email Domain:</span>
+                    <span className="ml-2 text-gray-900">{formData.companyEmailDomain || <span className="italic text-gray-400">Not Provided</span>}</span>
                   </div>
                   <div>
-                    <p className="font-semibold">Website:</p>
-                    <p>{formData.companyWebsite || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Website:</span>
+                    <span className="ml-2 text-blue-700 underline break-all">
+                      {formData.companyWebsite
+                        ? <a href={formData.companyWebsite} target="_blank" rel="noopener noreferrer">{formData.companyWebsite}</a>
+                        : <span className="italic text-gray-400">Not Provided</span>
+                      }
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gray-50 p-6 rounded-lg shadow-md w-full">
-                <h4 className="text-lg font-medium text-blue-600 mb-4">Address Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+              <div className="bg-white border border-blue-100 rounded-xl shadow-sm p-6 flex flex-col gap-4">
+                <h4 className="text-lg font-semibold text-blue-600 mb-2 flex items-center gap-2">
+                  <svg width={20} height={20} fill="none" viewBox="0 0 24 24"><path d="M4 21V9a2 2 0 012-2h12a2 2 0 012 2v12M4 21h16M4 21v-2a2 2 0 012-2h12a2 2 0 012 2v2" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Address Information
+                </h4>
+                <div className="flex flex-col gap-2">
                   <div>
-                    <p className="font-semibold">Address:</p>
-                    <p>{formData.address.address || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Address:</span>
+                    <span className="ml-2 text-gray-900">{formData.address.address || <span className="italic text-gray-400">Not Provided</span>}</span>
                   </div>
                   <div>
-                    <p className="font-semibold">Suite / Unit / Floor:</p>
-                    <p>{formData.address.suiteUnitFloor || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Suite / Unit / Floor:</span>
+                    <span className="ml-2 text-gray-900">{formData.address.suiteUnitFloor || <span className="italic text-gray-400">Not Provided</span>}</span>
                   </div>
                   <div>
-                    <p className="font-semibold">Business Park / Landmark:</p>
-                    <p>{formData.address.businessPark || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Business Park / Landmark:</span>
+                    <span className="ml-2 text-gray-900">{formData.address.businessPark || <span className="italic text-gray-400">Not Provided</span>}</span>
                   </div>
                   <div>
-                    <p className="font-semibold">Building Name:</p>
-                    <p>{formData.address.buildingName || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Building Name:</span>
+                    <span className="ml-2 text-gray-900">{formData.address.buildingName || <span className="italic text-gray-400">Not Provided</span>}</span>
                   </div>
                   <div>
-                    <p className="font-semibold">Contact Email:</p>
-                    <p>{formData.address.contactEmail || "Not Provided"}</p>
+                    <span className="font-medium text-gray-700">Contact Email:</span>
+                    <span className="ml-2 text-gray-900">{formData.address.contactEmail || <span className="italic text-gray-400">Not Provided</span>}</span>
                   </div>
                   <div>
-                    <p className="font-semibold">Contact Number:</p>
-                    <p>
+                    <span className="font-medium text-gray-700">Contact Number:</span>
+                    <span className="ml-2 text-gray-900">
                       {formData.address.countryCode
                         ? `+${formData.address.countryCode} `
                         : ""}
-                      {formData.address.contactNumber || "Not Provided"}
-                    </p>
+                      {formData.address.contactNumber || <span className="italic text-gray-400">Not Provided</span>}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-between items-center w-full">
+            <div className="flex justify-between items-center w-full mt-6">
               <Button
                 variant="outlined"
                 onClick={handleBack}
@@ -1025,6 +1133,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
             </div>
           </motion.div>
         )}
+      </div>
       </div>
     </div>
   );

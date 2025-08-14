@@ -9,7 +9,7 @@ import { motion } from "framer-motion"
 import { Card, CardContent } from "../ui/card"
 import type { JobPostingData } from "../../lib/types"
 import { TextField } from "@mui/material"
-import { getRandomJobDetails } from "../../lib/randomDetails"
+import { generateJobDetailsAI } from "../../lib/ai-job-details"
 
 interface WriteStepProps {
   formData: JobPostingData
@@ -19,6 +19,8 @@ interface WriteStepProps {
 }
 
 export function WriteStep({ formData, updateFormData, errors, setErrors }: WriteStepProps) {
+  console.log("WriteStep jobTitle:", formData.jobTitle)
+
   const [mustHaves, setMustHaves] = useState<string[]>(
     formData.mustHaveQualifications.length ? formData.mustHaveQualifications : [""],
   )
@@ -94,22 +96,39 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
     }
   }
 
-  const handleSmartWriter = () => {
+  const handleSmartWriter = async () => {
     setLoading(true)
-    setTimeout(() => {
-      const random = getRandomJobDetails()
-      setMustHaves(random.mustHaveQualifications)
-      setNiceToHaves(random.niceToHaveQualifications)
-      setResponsibilities(random.responsibilities)
-      updateFormData({
-        jobDescription: random.jobDescription,
-        jobSummary: random.jobSummary,
-        mustHaveQualifications: random.mustHaveQualifications,
-        niceToHaveQualifications: random.niceToHaveQualifications,
-        responsibilities: random.responsibilities,
+    try {
+      const res = await fetch("/api/ai-job-details", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobTitle: formData.jobTitle }),
       })
-      setLoading(false)
-    }, 1200)
+      const aiDetails = await res.json()
+      if (
+        !aiDetails.jobDescription &&
+        !aiDetails.jobSummary &&
+        aiDetails.mustHaveQualifications?.length === 0 &&
+        aiDetails.niceToHaveQualifications?.length === 0 &&
+        aiDetails.responsibilities?.length === 0
+      ) {
+        alert("AI could not generate job details. Try a more descriptive job title.")
+      } else {
+        setMustHaves(aiDetails.mustHaveQualifications)
+        setNiceToHaves(aiDetails.niceToHaveQualifications)
+        setResponsibilities(aiDetails.responsibilities)
+        updateFormData({
+          jobDescription: aiDetails.jobDescription,
+          jobSummary: aiDetails.jobSummary,
+          mustHaveQualifications: aiDetails.mustHaveQualifications,
+          niceToHaveQualifications: aiDetails.niceToHaveQualifications,
+          responsibilities: aiDetails.responsibilities,
+        })
+      }
+    } catch {
+      alert("AI failed to generate job details. Please try again.")
+    }
+    setLoading(false)
   }
 
   return (

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../lib/authOptions";
 import supabase from "../../../../src/lib/supabase";
+import { extractSkillsFromJob, buildJobText } from "../../../../src/lib/ai";
 
 interface ApplicationQuestion {
     question: string;
@@ -140,6 +141,28 @@ export async function POST(request: Request) {
             console.log("Publishing job...");
             console.log("formData:", formData);
 
+            let skillsToInsert: string[] = [];
+            if (formData.skills && Array.isArray(formData.skills) && formData.skills.length > 0) {
+                skillsToInsert = formData.skills.filter(s => typeof s === "string" && s.trim() !== "");
+            } else {
+                const jobText = buildJobText({
+                    job_title: formData.jobTitle,
+                    job_summary: formData.jobSummary,
+                    job_description: formData.jobDescription,
+                    must_have_qualifications: formData.mustHaveQualifications,
+                    nice_to_have_qualifications: formData.niceToHaveQualifications,
+                    responsibilities: Array.isArray(formData.responsibilities)
+                        ? formData.responsibilities.join(", ")
+                        : formData.responsibilities
+                });
+                try {
+                    skillsToInsert = await extractSkillsFromJob(jobText);
+                    console.log("AI-extracted skills:", skillsToInsert);
+                } catch (aiErr) {
+                    console.error("AI skill extraction failed:", aiErr);
+                }
+            }
+
             const jobInsertResult = await supabase
                 .from("job_postings")
                 .insert({
@@ -163,6 +186,7 @@ export async function POST(request: Request) {
                     perks_and_benefits: formData.perksAndBenefits,
                     responsibilities: formData.responsibilities,
                     verification_tier: formData.verificationTier,
+                    ai_skills: skillsToInsert.length > 0 ? skillsToInsert : null,
                 })
                 .select()
                 .single();
@@ -240,31 +264,6 @@ export async function POST(request: Request) {
                             .update({ options: JSON.stringify(optionsWithQid) })
                             .eq("id", insertedQ.id);
                     }
-                }
-            }
-
-            if (formData.skills && Array.isArray(formData.skills) && formData.skills.length > 0 && data?.id) {
-                const filteredSkills = formData.skills.filter(s => typeof s === "string" && s.trim() !== "");
-                if (filteredSkills.length > 0) {
-                    console.log("Inserting skills array as jsonb:", filteredSkills, "for job_posting_id:", data.id);
-                    const { error: skillsError } = await supabase.from("job_skills").insert([
-                        {
-                            job_posting_id: data.id,
-                            skills: filteredSkills,
-                        }
-                    ]);
-                    if (skillsError) {
-                        console.error("Error inserting job_skills:", skillsError);
-                        return NextResponse.json({ error: "Failed to insert skills" }, { status: 500 });
-                    }
-                } else {
-                    console.log("No valid skills to insert.");
-                }
-            } else {
-                if (!data?.id) {
-                    console.log("No job_posting_id found after insert, cannot insert skills.");
-                } else {
-                    console.log("No skills to insert.");
                 }
             }
 

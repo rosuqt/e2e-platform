@@ -5,7 +5,6 @@ import Link from "next/link";
 import { LogIn } from "lucide-react";
 
 export default function Home() {
-
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-sky-100 relative">
       <Link href="/" className="absolute top-6 left-4 text-xl font-bold text-blue-600 z-10 flex items-center">
@@ -23,3 +22,4 @@ export default function Home() {
     </main>
   );
 }
+

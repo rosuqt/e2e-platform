@@ -36,7 +36,7 @@ export default function HomePage() {
       </main>
       <footer className="border-t py-6">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Job Platform. All rights reserved.
+          &copy; {new Date().getFullYear()} Seekr. All rights reserved.
         </div>
       </footer>
     </div>

@@ -1,5 +1,9 @@
 "use client";
 import Image from "next/image";
+import { HiBadgeCheck } from "react-icons/hi";
+import { LuBadgeCheck } from "react-icons/lu";
+import { PiWarningFill } from "react-icons/pi";
+import Tooltip from "@mui/material/Tooltip";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -56,7 +60,18 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
       setRefreshKey((k) => k + 1);
     };
     window.addEventListener("profilePictureUpdated", handleProfilePicUpdate);
-    return () => window.removeEventListener("profilePictureUpdated", handleProfilePicUpdate);
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "sidebarUserData") {
+        setRefreshKey((k) => k + 1);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("profilePictureUpdated", handleProfilePicUpdate);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   useEffect(() => {
@@ -67,7 +82,11 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
       setStudentName(data.studentName);
       setEmail(data.email);
       setJobTitle(data.jobTitle);
-      setProfileImg(data.profileImg);
+      if (data.role === "employer" && data.profileImg) {
+        setProfileImg(data.profileImg + (data.profileImg.includes("?") ? "&" : "?") + `t=${Date.now()}`);
+      } else {
+        setProfileImg(data.profileImg);
+      }
       setCourse(data.course);
       setLoading(false);
       return;
@@ -76,10 +95,10 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
       setLoading(true);
       let detailsRes: Response | null = null;
       try {
-        detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" });
+        detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include", cache: "reload" });
         if (detailsRes.ok) {
           setRole("employer");
-          const { first_name, last_name, email, job_title, profile_img } = await detailsRes.json();
+          const { first_name, last_name, email, job_title, profile_img, verify_status } = await detailsRes.json();
           const studentName =
             first_name && last_name
               ? `${first_name} ${last_name}`
@@ -97,11 +116,12 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ bucket: "user.avatars", path: profile_img }),
                 credentials: "include",
+                cache: "reload"
               });
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json();
-                imgUrl = signedUrl;
-                setProfileImg(signedUrl);
+                imgUrl = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`;
+                setProfileImg(imgUrl);
               } else {
                 setProfileImg(null);
               }
@@ -121,6 +141,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
               jobTitle: job_title || null,
               profileImg: imgUrl,
               course: null,
+              verify_status
             })
           );
           setLoading(false);
@@ -128,7 +149,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
         }
       } catch {}
       try {
-        detailsRes = await fetch("/api/students/get-student-details", { credentials: "include" });
+        detailsRes = await fetch("/api/students/get-student-details", { credentials: "include", cache: "reload" });
         if (detailsRes.ok) {
           setRole("student");
           const { first_name, last_name, course, profile_img } = await detailsRes.json();
@@ -149,11 +170,12 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ bucket: "user.avatars", path: profile_img }),
                 credentials: "include",
+                cache: "reload"
               });
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json();
-                imgUrl = signedUrl;
-                setProfileImg(signedUrl);
+                imgUrl = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`;
+                setProfileImg(imgUrl);
               } else {
                 setProfileImg(null);
               }
@@ -314,8 +336,61 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                   {loading ? (
                     <Skeleton variant="text" width={120} height={24} />
                   ) : (
-                    <div className="font-medium">
+                    <div className="font-medium flex items-center gap-2">
                       {studentName || "Full Name"}
+                      {role === "employer" && (() => {
+                        let verifyStatus = null
+                        if (!loading) {
+                          const cached = sessionStorage.getItem("sidebarUserData")
+                          if (cached) {
+                            const data = JSON.parse(cached)
+                            verifyStatus = data.verify_status
+                          }
+                        }
+                        if (!verifyStatus) return null
+                        if (verifyStatus === "full") {
+                          return (
+                            <Tooltip title="Fully Verified" arrow>
+                              <motion.span
+                                className="ml-1 flex items-center mr-2"
+                                whileHover={{ scale: 1.18 }}
+                                transition={{ type: "spring", stiffness: 340, damping: 16 }}
+                              >
+                             
+                                  <HiBadgeCheck className="w-4 h-4 text-blue-50" />
+                              
+                              </motion.span>
+                            </Tooltip>
+                          )
+                        }
+                        if (verifyStatus === "standard") {
+                          return (
+                            <Tooltip title="Partially Verified" arrow>
+                              <motion.span
+                                className="flex items-center mr-2"
+                                whileHover={{ scale: 1.18 }}
+                                transition={{ type: "spring", stiffness: 340, damping: 16 }}
+                              >
+
+                                  <LuBadgeCheck className="w-4 h-4 text-purple-100"  />
+
+                              </motion.span>
+                            </Tooltip>
+                          )
+                        }
+                        return (
+                          <Tooltip title="Unverified" arrow>
+                            <motion.span
+                              className="ml-1 flex items-center mr-2"
+                              whileHover={{ scale: 1.18 }}
+                              transition={{ type: "spring", stiffness: 340, damping: 16 }}
+                            >
+
+                              <PiWarningFill className="w-4 h-4 text-orange-100" />
+                            </motion.span>
+                          </Tooltip>
+                        )
+                      })()}
                     </div>
                   )}
                   <div className="text-xs text-white/70">

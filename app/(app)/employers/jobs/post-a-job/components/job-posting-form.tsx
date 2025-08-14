@@ -374,7 +374,7 @@ export default function JobPostingForm() {
       <div className="w-full flex justify-center items-start">
         <div className="w-full">
           <div className="p-0 sm:p-10 mt-0">
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-blue-100">
+            <div className="bg-white rounded-xl shadow-lg  border border-blue-100">
               <div className="h-2 w-full bg-gradient-to-r from-blue-600 to-indigo-600" />
               <div className="p-6 sm:p-14">
                 <div className="flex items-center justify-between mb-8">

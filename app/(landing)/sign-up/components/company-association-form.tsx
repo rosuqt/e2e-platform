@@ -149,6 +149,11 @@ export default function CompanyAssociationForm({
 
       setSelectedCompanyId(newCompanyData.id);
       fetchBranches(newCompanyData.id);
+
+      setTimeout(() => {
+        setSearchInput(newCompany.companyName);
+        setBranchInput(newCompany.companyBranch);
+      }, 0);
     }
   }, [data, fetchBranches, onChange, saveCompanyAssociation]);
 

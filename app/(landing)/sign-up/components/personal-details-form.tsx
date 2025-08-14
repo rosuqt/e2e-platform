@@ -32,19 +32,19 @@ export default function PersonalDetailsForm({
 
   return (
     <motion.div
-      className="space-y-3"
+      className="space-y-4 overflow-hidden"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="mb-8 -mt-2 flex items-center space-x-2 pb-2 border-b border-gray-300">
+      <div className="mb-4  flex items-center space-x-2 pb-2 border-b border-gray-300">
         <div className="bg-blue-100 p-2 rounded-full">
           <FaUser className="h-5 w-5 text-blue-600" />
         </div>
         <h2 className="text-lg font-semibold text-gray-800">Personal Details</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_120px_1fr_100px] gap-3 px-6">
+      <div className="overflow-hidden grid grid-cols-1 md:grid-cols-[1fr_150px_1fr_100px] gap-3 px-6 mb-6 ">
         <motion.div {...(errors.firstName ? errorAnimation : {})}>
           <TextField
             id="firstName"
@@ -71,7 +71,7 @@ export default function PersonalDetailsForm({
         </motion.div>
         <motion.div
           className="md:col-span-1"
-          style={{ minWidth: 0, maxWidth: 120 }}
+          style={{ minWidth: 0, maxWidth: 150 }}
           {...(errors.middleName ? errorAnimation : {})}
         >
           <TextField
@@ -89,7 +89,7 @@ export default function PersonalDetailsForm({
             helperText={errors.middleName}
             inputProps={{ maxLength: 35 }}
             sx={{
-              width: 120,
+              width: 150,
               "& .MuiOutlinedInput-root": {
                 "& fieldset": { borderColor: "darkgray" },
                 "&:hover fieldset": { borderColor: "#2563eb" },
@@ -136,7 +136,6 @@ export default function PersonalDetailsForm({
             value={data.suffix || ""}
             label="Suffix"
             onChange={(e) => onChange({ ...data, suffix: e.target.value })}
-            size="small"
           >
             <MenuItem value="">None</MenuItem>
             <MenuItem value="Jr.">Jr.</MenuItem>
@@ -147,8 +146,7 @@ export default function PersonalDetailsForm({
           </Select>
         </FormControl>
       </div>
-
-      <div className="grid grid-cols-3 gap-3 px-6">
+      <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-3 px-6 mb-6">
         <motion.div className="col-span-1" {...(errors.countryCode ? errorAnimation : {})}>
           <Autocomplete
             id="countryCode"
@@ -200,7 +198,7 @@ export default function PersonalDetailsForm({
             sx={{ minWidth: 120 }}
           />
         </motion.div>
-        <motion.div className="col-span-2" {...(errors.phone ? errorAnimation : {})}>
+        <motion.div className="col-span-1" {...(errors.phone ? errorAnimation : {})}>
           <TextField
             id="phone"
             label={<span>Phone Number <span className="text-red-600">*</span></span>}
@@ -230,7 +228,7 @@ export default function PersonalDetailsForm({
         </motion.div>
       </div>
 
-      <motion.div className="px-6" {...(errors.email ? errorAnimation : {})}>
+      <motion.div className="px-6 mb-6" {...(errors.email ? errorAnimation : {})}>
         <TextField
           id="email"
           label={<span>Personal Email <span className="text-red-600">*</span></span>}
@@ -274,7 +272,7 @@ export default function PersonalDetailsForm({
         />
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-6 mb-6">
         <motion.div {...(errors.password ? errorAnimation : {})}>
           <TextField
             id="password"
@@ -378,3 +376,6 @@ export default function PersonalDetailsForm({
     </motion.div>
   )
 }
+
+
+

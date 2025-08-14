@@ -84,20 +84,19 @@ export default function EmployerProfilePage() {
         }
       })
 
-    // Fetch employer profile image from employer_profile table
     fetch("/api/employers/employer-profile/getHandlers")
       .then(res => res.json())
       .then(async data => {
         if (data && typeof data.short_bio === "string" && data.short_bio.length > 0) {
           setBio(data.short_bio)
         }
-        // Fetch signed URL for employer profile image if present
+
         if (typeof data?.profile_img === "string" && data.profile_img.trim() !== "") {
           const res = await fetch("/api/employers/get-signed-url", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              bucket: "employer.profile",
+              bucket: "user.avatars",
               path: data.profile_img,
             }),
           });
@@ -110,7 +109,6 @@ export default function EmployerProfilePage() {
         } else {
           setAvatarUrl(null);
         }
-        // Cover image logic unchanged
         const cover = await getSignedUrlIfNeeded(data?.cover_image, "user.covers")
         setCoverUrl(cover)
       })
@@ -138,7 +136,10 @@ export default function EmployerProfilePage() {
       const bucket = fileType === "avatar" ? "user.avatars" : "user.covers"
       const filePath = data.filePath 
       const signedUrl = await getSignedUrlIfNeeded(filePath, bucket)
-      if (fileType === "avatar") setAvatarUrl(signedUrl)
+      if (fileType === "avatar") {
+        setAvatarUrl(signedUrl)
+        window.dispatchEvent(new Event("profilePictureUpdated"))
+      }
       if (fileType === "cover") setCoverUrl(signedUrl)
     } else {
       const errorText = await res.text()
@@ -186,6 +187,13 @@ export default function EmployerProfilePage() {
   }
 
   const loading = !employer 
+
+  function getInitials(name: string | undefined) {
+    if (!name) return ""
+    const parts = name.trim().split(" ")
+    if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? ""
+    return (parts[0][0] ?? "") + (parts[1][0] ?? "")
+  }
 
   return (
     <div className="container mx-auto p-4 max-w-6xl">
@@ -244,14 +252,30 @@ export default function EmployerProfilePage() {
                 <div className="relative w-full h-full">
                   <div className="w-full h-full rounded-full bg-white border-4 border-white flex items-center justify-center overflow-hidden">
                     {uploadingAvatar ? (
-                      <Skeleton variant="circular" width={128} height={128} />
+                      <>
+                        <Skeleton variant="circular" width={128} height={128} />
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/60">
+                          <div className="w-10 h-10 border-4 border-blue-400 border-t-transparent border-b-transparent rounded-full animate-spin"></div>
+                        </div>
+                      </>
                     ) : avatarUrl ? (
                       <img
                         src={avatarUrl}
                         alt="Avatar"
                         className="w-full h-full rounded-full object-cover"
                       />
-                    ) : null}
+                    ) : (
+  
+                      <div className="w-full h-full flex items-center justify-center bg-blue-100 rounded-full">
+                        <span className="text-4xl font-bold text-blue-600 select-none">
+                          {getInitials(
+                            [employer?.first_name, employer?.last_name]
+                              .filter(Boolean)
+                              .join(" ")
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <button
                     className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 bg-white border border-blue-300 text-blue-600 hover:bg-blue-50 rounded-full p-2 shadow"
@@ -417,7 +441,7 @@ export default function EmployerProfilePage() {
                 <div className="flex gap-3">
                   <Button
                     variant="outline"
-                    className="rounded-full gap-2 border-blue-300 text-blue-600 hover:bg-blue-50"
+                    className="rounded-full gap-2 border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                     onClick={() => router.push("/employers/profile/company")}
                   >
                     <Building2 className="w-4 h-4" />
@@ -484,7 +508,13 @@ export default function EmployerProfilePage() {
             </div>
             <div className="text-[#5b21b6] text-sm">
               Complete your verification to unlock more features, gain maximum visibility, and build the highest trust with candidates.{" "}
-              <span className="font-bold underline cursor-pointer">Verify Now.</span>
+              <Button
+                variant="ghost"
+                className="font-bold underline ml-2 px-0 py-0 text-[#6d28d9] border-0 shadow-none bg-transparent hover:bg-transparent hover:underline cursor-pointer"
+                onClick={() => router.push("/employers/verification/partially-verified")}
+              >
+                Verify Now
+              </Button>
             </div>
           </div>
         </div>
@@ -500,7 +530,13 @@ export default function EmployerProfilePage() {
             </div>
             <div className="text-[#c2410c] text-sm">
               Please verify your account to unlock features, improve visibility, and gain trust from candidates.{" "}
-              <span className="font-bold underline cursor-pointer">Verify Now.</span>
+              <Button
+                variant="ghost"
+                className="font-bold underline ml-2 px-0 py-0 text-[#ea580c] hover:text-orange-700 border-0 shadow-none bg-transparent hover:bg-transparent hover:underline cursor-pointer"
+                onClick={() => router.push("/employers/verification/unverified")}
+              >
+                Verify Now
+              </Button>
             </div>
           </div>
         </div>

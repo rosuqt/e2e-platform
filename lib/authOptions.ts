@@ -214,7 +214,7 @@ export const authOptions: NextAuthOptions = {
         token.firstName = adminUser.firstName
         token.lastName = adminUser.lastName
         token.department = adminUser.department
-        token.username = adminUser.username // add this line
+        token.username = adminUser.username 
       }
       return token
     },

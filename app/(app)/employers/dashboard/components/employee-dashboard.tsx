@@ -23,10 +23,13 @@ import { DashboardHeader, DashboardLayout, DashboardMain, DashboardSection } fro
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 import { RecruiterApplicationDetailsModal } from "../../jobs/applications/components/recruiter-application-details"
-import { MdStars } from "react-icons/md";
+import { MdOutlineContentPasteSearch, MdStars } from "react-icons/md";
 import { IoCloseCircle } from "react-icons/io5";
 import { RiUserSearchFill } from "react-icons/ri"
 import { FaUsers } from "react-icons/fa"
+import { PiCoffeeFill } from "react-icons/pi"
+import { LuCalendarSearch } from "react-icons/lu"
+import { TbFileSad } from "react-icons/tb"
 
 type EducationItem = { degree: string; school: string; year: string }
 
@@ -357,25 +360,35 @@ export default function EmployeeDashboard() {
             transition={{ duration: 0.3 }}
             whileHover={{ y: -5, transition: { duration: 0.2 } }}
           >
-            <Card className="overflow-hidden border-blue-200 bg-gradient-to-br from-white to-blue-50 h-full">
+            <Card className="overflow-hidden border-blue-200 bg-gradient-to-br from-white to-blue-50 h-full flex flex-col">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                   <CardDescription className="text-blue-600 font-medium">Total Applicants</CardDescription>
                   <div className="p-2 bg-blue-100 rounded-lg">
-                    <Users className="h-5 w-5 text-blue-600" />
+                    <FaUsers className="h-5 w-5 text-blue-600" />
                   </div>
                 </div>
                 <CardTitle className="text-3xl text-blue-900">
-                  {analyticsLoading ? "..." : analytics?.totalApplicants ?? 0}
+                  {analyticsLoading
+                    ? "..."
+                    : (analytics?.totalApplicants ?? 0) === 0
+                      ? ""
+                      : analytics?.totalApplicants}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="min-h-[48px]">
-                <div className="flex items-center text-sm text-green-600 font-medium">
-                  <ArrowUpRight className="h-4 w-4 mr-1" />
-                  <span>
-                    {analyticsLoading
-                      ? "..."
-                      : (() => {
+              <CardContent className="min-h-[48px] flex-1 flex items-center">
+                {analyticsLoading ? (
+                  <div className="flex items-center text-sm font-medium" style={{ color: "#f59e42" }}>Loading...</div>
+                ) : (analytics?.totalApplicants ?? 0) === 0 ? (
+                  <div className="flex items-center text-sm font-medium text-gray-400 gap-2 w-full">
+                    <PiCoffeeFill className="h-5 w-5 text-gray-300" />
+                    Looks like there&apos;s no applicants yet
+                  </div>
+                ) : (
+                  <div className="flex items-center text-sm text-green-600 font-medium">
+                    <ArrowUpRight className="h-4 w-4 mr-1" />
+                    <span>
+                      {(() => {
                         const percent = analytics?.totalApplicantsThisMonth !== undefined && analytics?.totalApplicantsLastMonth !== undefined
                           ? Math.min(100, Math.round(
                             ((analytics.totalApplicantsThisMonth - analytics.totalApplicantsLastMonth) /
@@ -386,7 +399,7 @@ export default function EmployeeDashboard() {
                           return (
                             <div className="flex items-center text-sm font-medium text-red-500">
                               <ArrowDownLeft className="h-4 w-4 mr-1" />
-                              0% increase this month
+                              No new applicants this month
                             </div>
                           )
                         }
@@ -396,10 +409,11 @@ export default function EmployeeDashboard() {
                           </div>
                         )
                       })()}
-                  </span>
-                </div>
+                    </span>
+                  </div>
+                )}
               </CardContent>
-              <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+              <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600 mt-auto"></div>
             </Card>
           </motion.div>
 
@@ -409,35 +423,40 @@ export default function EmployeeDashboard() {
             transition={{ duration: 0.3, delay: 0.1 }}
             whileHover={{ y: -5, transition: { duration: 0.2 } }}
           >
-            <Card className="overflow-hidden border-blue-200 bg-gradient-to-br from-white to-blue-50 h-full">
+            <Card className="overflow-hidden border-blue-200 bg-gradient-to-br from-white to-blue-50 h-full flex flex-col">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                   <CardDescription className="text-blue-600 font-medium">Active Jobs</CardDescription>
                   <div className="p-2 bg-blue-100 rounded-lg">
-                    <FileText className="h-5 w-5 text-blue-600" />
+                    <Briefcase className="h-5 w-5 text-blue-600" />
                   </div>
                 </div>
                 <CardTitle className="text-3xl text-blue-900">
-                  {analyticsLoading ? "..." : analytics?.activeJobs ?? 0}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="min-h-[48px]">
-                <div className="flex items-center text-sm text-green-600 font-medium">
                   {analyticsLoading
                     ? "..."
-                    : analytics?.newJobsThisWeek === 0 ? (
-                      <div className="flex items-center text-sm font-medium" style={{ color: "#f59e42" }}>
-                        0 new postings this week
-                      </div>
-                    ) : (
-                      <div className="flex items-center text-sm font-medium text-green-600">
-                        <ArrowUpRight className="h-4 w-4 mr-1" />
-                        {analytics?.newJobsThisWeek} new postings this week
-                      </div>
-                    )}
-                </div>
+                    : (analytics?.activeJobs ?? 0) === 0
+                      ? ""
+                      : analytics?.activeJobs}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="min-h-[48px] flex-1 flex items-center">
+                {analyticsLoading ? (
+                  <div className="flex items-center text-sm font-medium" style={{ color: "#f59e42" }}>Loading...</div>
+                ) : (analytics?.activeJobs ?? 0) === 0 ? (
+                  <div className="flex items-center text-sm  font-medium text-gray-400 gap-2 w-full">
+                    <MdOutlineContentPasteSearch  className="h-9 w-9 text-gray-300" />
+                    Nothing here. Ope n some listings or create one!
+                  </div>
+                ) : (
+                  <div className="flex items-center text-sm font-medium text-green-600">
+                    <ArrowUpRight className="h-4 w-4 mr-1" />
+                    {analytics?.newJobsThisWeek === 0
+                      ? "No new postings this week"
+                      : `${analytics?.newJobsThisWeek} new postings this week`}
+                  </div>
+                )}
               </CardContent>
-              <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+              <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600 mt-auto"></div>
             </Card>
           </motion.div>
 
@@ -447,7 +466,7 @@ export default function EmployeeDashboard() {
             transition={{ duration: 0.3, delay: 0.2 }}
             whileHover={{ y: -5, transition: { duration: 0.2 } }}
           >
-            <Card className="overflow-hidden border-blue-200 bg-gradient-to-br from-white to-blue-50 h-full">
+            <Card className="overflow-hidden border-blue-200 bg-gradient-to-br from-white to-blue-50 h-full flex flex-col">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                   <CardDescription className="text-blue-600 font-medium">Interviews Scheduled</CardDescription>
@@ -456,15 +475,20 @@ export default function EmployeeDashboard() {
                   </div>
                 </div>
                 <CardTitle className="text-3xl text-blue-900">
-                  {analyticsLoading ? "..." : analytics?.interviewsScheduled ?? 0}
+                  {analyticsLoading
+                    ? "..."
+                    : (analytics?.interviewsScheduled ?? 0) === 0
+                      ? ""
+                      : analytics?.interviewsScheduled}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="min-h-[48px]">
+              <CardContent className="min-h-[48px] flex-1 flex items-center">
                 {analyticsLoading ? (
-                  <div className="flex items-center text-sm font-medium" style={{ color: "#f59e42" }}>...</div>
-                ) : analytics?.interviewsScheduled === 0 ? (
-                  <div className="flex items-center text-sm font-medium" style={{ color: "#f59e42" }}>
-                    No upcoming schedules
+                  <div className="flex items-center text-sm font-medium" style={{ color: "#f59e42" }}>Loading...</div>
+                ) : (analytics?.interviewsScheduled ?? 0) === 0 ? (
+                  <div className="flex items-center text-sm font-medium text-gray-400 gap-2 w-full">
+                    <LuCalendarSearch className="h-5 w-5 text-gray-300" />
+                    No Interviews scheduled
                   </div>
                 ) : (
                   <div className="flex items-center text-sm font-medium text-green-600">
@@ -475,7 +499,7 @@ export default function EmployeeDashboard() {
                   </div>
                 )}
               </CardContent>
-              <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+              <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600 mt-auto"></div>
             </Card>
           </motion.div>
 
@@ -485,7 +509,7 @@ export default function EmployeeDashboard() {
             transition={{ duration: 0.3, delay: 0.3 }}
             whileHover={{ y: -5, transition: { duration: 0.2 } }}
           >
-            <Card className="overflow-hidden border-blue-200 bg-gradient-to-br from-white to-blue-50 h-full">
+            <Card className="overflow-hidden border-blue-200 bg-gradient-to-br from-white to-blue-50 h-full flex flex-col">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                   <CardDescription className="text-blue-600 font-medium">Top Performing Job Listing</CardDescription>
@@ -496,11 +520,18 @@ export default function EmployeeDashboard() {
                 <CardTitle className="text-2xl text-blue-900">
                   {analyticsLoading
                     ? "..."
-                    : analytics?.topPerformingJob?.title || "N/A"}
+                    : !analytics?.topPerformingJob?.title || analytics?.topPerformingJob?.applicants === 0
+                      ? ""
+                      : analytics?.topPerformingJob?.title}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="min-h-[48px]">
-                {analyticsLoading ? null : analytics?.topPerformingJob && (
+              <CardContent className="min-h-[48px] flex-1 flex items-center">
+                {analyticsLoading ? null : !analytics?.topPerformingJob?.title || analytics?.topPerformingJob?.applicants === 0 ? (
+                  <div className="flex items-center text-sm font-medium text-gray-400 gap-2 w-full">
+                    <TbFileSad  className="h-6 w-6 text-gray-300" />
+                    No job listings are trending yet.
+                  </div>
+                ) : (
                   <div className="flex items-center text-sm font-medium text-green-600 gap-2 mt-1">
                     <FaUsers className="h-4 w-4" />
                     <span>
@@ -509,7 +540,7 @@ export default function EmployeeDashboard() {
                   </div>
                 )}
               </CardContent>
-              <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+              <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600 mt-auto"></div>
             </Card>
           </motion.div>
         </div>

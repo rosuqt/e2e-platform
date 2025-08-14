@@ -342,7 +342,7 @@ export default function SignUpForm() {
   }
 
   return (
-    <Card className="mt-18 pt-6 w-full max-w-3xl shadow-xl border-2 border-blue-200 bg-white relative overflow-hidden">
+    <Card className="mt-18 pt-8 w-full max-w-4xl shadow-xl border-2 border-blue-200 bg-white relative overflow-hidden">
       <CardHeader className="relative z-10">
         <motion.h1
           className="text-2xl font-bold text-center bg-gradient-to-r from-blue-500 to-sky-400 text-transparent bg-clip-text"
@@ -392,7 +392,7 @@ export default function SignUpForm() {
                   />
                 )}
               </motion.div>
-              <div className="mt-1 text-sm font-medium text-blue-700">
+              <div className="mt-4 text-sm font-medium text-blue-700">
                 {step === 1 ? "Personal Details" : step === 2 ? "Company" : "Verification"}
               </div>
               {index < 2 && (

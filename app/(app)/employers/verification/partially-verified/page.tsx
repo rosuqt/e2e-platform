@@ -6,6 +6,7 @@ import { ShieldCheck, Lock, CheckCircle2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { VerificationTierCard } from "../components/verification-tier-card"
 import { CompanyVerificationModal } from "../components/company-verification-modal"
+import { motion } from "framer-motion"
 
 export default function PartiallyVerifiedPage() {
   const [showCompanyModal, setShowCompanyModal] = useState(false)
@@ -33,11 +34,11 @@ export default function PartiallyVerifiedPage() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <Image
-                src="/placeholder.svg?height=400&width=500"
+                src="/images/verification/test2.png"
                 alt="Partially verified features illustration"
                 width={500}
                 height={400}
-                className="rounded-lg"
+                className="rounded-lg ml-10"
               />
             </div>
             <div className="space-y-6">
@@ -111,56 +112,62 @@ export default function PartiallyVerifiedPage() {
           <h2 className="text-2xl font-bold text-center mb-12">Verification Tiers</h2>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <VerificationTierCard
-              title="Unverified"
-              description="Basic access with limited features"
-              currentTier={false}
-              color="gray"
-              features={[
-                { name: "Job Listings", value: "3 listings", included: true },
-                { name: "Listing Visibility", value: "Invisible", included: false },
-                { name: "AI Job Writer", value: "Locked", included: false },
-                { name: "Messaging", value: "Locked", included: false },
-                { name: "Candidate Matches", value: "Locked", included: false },
-                { name: "Invitations", value: "Locked", included: false },
-              ]}
-              buttonText="Previous"
-              buttonDisabled={true}
-            />
+            <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 350, damping: 30 }}>
+              <VerificationTierCard
+                title="Unverified"
+                description="Basic access with limited features"
+                currentTier={false}
+                color="gray"
+                features={[
+                  { name: "Job Listings", value: "3 listings", included: true },
+                  { name: "Listing Visibility", value: "Invisible", included: false },
+                  { name: "AI Job Writer", value: "Locked", included: false },
+                  { name: "Messaging", value: "Locked", included: false },
+                  { name: "Candidate Matches", value: "Locked", included: false },
+                  { name: "Invitations", value: "Locked", included: false },
+                ]}
+                buttonText="Previous"
+                buttonDisabled={true}
+              />
+            </motion.div>
 
-            <VerificationTierCard
-              title="Partially Verified"
-              description="Enhanced access with more features"
-              currentTier={true}
-              color="purple"
-              features={[
-                { name: "Job Listings", value: "5 listings", included: true },
-                { name: "Listing Visibility", value: "Low visibility", included: true },
-                { name: "AI Job Writer", value: "Locked", included: false },
-                { name: "Messaging", value: "Unlocked", included: true },
-                { name: "Candidate Matches", value: "Unlocked", included: true },
-                { name: "Invitations", value: "Locked", included: false },
-              ]}
-              buttonText="Current Tier"
-              buttonDisabled={true}
-            />
+            <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 350, damping: 30 }}>
+              <VerificationTierCard
+                title="Partially Verified"
+                description="Enhanced access with more features"
+                currentTier={true}
+                color="purple"
+                features={[
+                  { name: "Job Listings", value: "5 listings", included: true },
+                  { name: "Listing Visibility", value: "Low visibility", included: true },
+                  { name: "AI Job Writer", value: "Locked", included: false },
+                  { name: "Messaging", value: "Unlocked", included: true },
+                  { name: "Candidate Matches", value: "Unlocked", included: true },
+                  { name: "Invitations", value: "Locked", included: false },
+                ]}
+                buttonText="Current Tier"
+                buttonDisabled={true}
+              />
+            </motion.div>
 
-            <VerificationTierCard
-              title="Fully Verified"
-              description="Complete access to all features"
-              currentTier={false}
-              color="blue"
-              features={[
-                { name: "Job Listings", value: "Unlimited", included: true },
-                { name: "Listing Visibility", value: "Highest visibility", included: true },
-                { name: "AI Job Writer", value: "Unlocked", included: true },
-                { name: "Messaging", value: "Unlocked", included: true },
-                { name: "Candidate Matches", value: "Unlocked", included: true },
-                { name: "Invitations", value: "Unlocked", included: true },
-              ]}
-              buttonText="Complete Verification"
-              buttonAction={() => setShowCompanyModal(true)}
-            />
+            <motion.div whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 350, damping: 30 }}>
+              <VerificationTierCard
+                title="Fully Verified"
+                description="Complete access to all features"
+                currentTier={false}
+                color="blue"
+                features={[
+                  { name: "Job Listings", value: "Unlimited", included: true },
+                  { name: "Listing Visibility", value: "Highest visibility", included: true },
+                  { name: "AI Job Writer", value: "Unlocked", included: true },
+                  { name: "Messaging", value: "Unlocked", included: true },
+                  { name: "Candidate Matches", value: "Unlocked", included: true },
+                  { name: "Invitations", value: "Unlocked", included: true },
+                ]}
+                buttonText="Complete Verification"
+                buttonAction={() => setShowCompanyModal(true)}
+              />
+            </motion.div>
           </div>
         </div>
       </section>
@@ -170,7 +177,7 @@ export default function PartiallyVerifiedPage() {
 
       <footer className="border-t py-6">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Job Platform. All rights reserved.
+          &copy; {new Date().getFullYear()} Seekr. All rights reserved.
         </div>
       </footer>
     </div>
