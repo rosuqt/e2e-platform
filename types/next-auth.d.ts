@@ -8,6 +8,17 @@ declare module "next-auth" {
       email?: string | null
       image?: string | null
       role?: string | null
+      studentId?: string
+      employerId?: string
+      adminID?: string
+      firstName?: string
+      lastName?: string
+      department?: string
+      username?: string
+      verifyStatus?: string
+      company_admin?: boolean
+      company_id?: string
+      newStudent?: boolean
     }
   }
 
@@ -19,5 +30,16 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     role?: string | null
+    studentId?: string
+    employerId?: string
+    adminID?: string
+    firstName?: string
+    lastName?: string
+    department?: string
+    username?: string
+    verifyStatus?: string
+    company_admin?: boolean
+    company_id?: string
+    newStudent?: boolean
   }
 }
