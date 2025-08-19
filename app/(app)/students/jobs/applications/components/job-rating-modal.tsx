@@ -119,7 +119,7 @@ export function JobRatingModal({
     }))
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     switch (currentStep) {
       case "intro":
         setCurrentStep("recruiter")
@@ -131,8 +131,16 @@ export function JobRatingModal({
         setCurrentStep("overall")
         break
       case "overall":
-        setCurrentStep("complete")
-        break
+        try {await fetch("/api/students/ratings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(ratings),
+        })
+      } catch (error) {
+        console.error("Failed to submit ratings:", error)
+      }
+      setCurrentStep("complete")
+      break
       case "complete":
         onClose()
         setCurrentStep("intro")
