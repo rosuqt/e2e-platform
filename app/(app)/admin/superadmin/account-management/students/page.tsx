@@ -41,6 +41,7 @@ import MuiMenuItem from "@mui/material/MenuItem"
 import MuiIconButton from "@mui/material/IconButton"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import Image from "next/image"
 
 interface Student {
   id: string 
@@ -465,11 +466,14 @@ export default function StudentsManagement() {
                   {avatarLoading ? (
                     <span className="w-8 h-8 block animate-spin border-4 border-indigo-400 border-t-transparent rounded-full mx-auto" />
                   ) : profileImgUrl ? (
-                    <img
+                    <Image
                       src={profileImgUrl}
                       alt="Avatar"
-                      style={{ width: 64, height: 64, borderRadius: "50%" }}
+                      width={64}
+                      height={64}
                       className="rounded-full object-cover"
+                      style={{ width: 64, height: 64, borderRadius: "50%" }}
+                      unoptimized
                       onLoad={() => setAvatarLoading(false)}
                     />
                   ) : (

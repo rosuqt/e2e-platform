@@ -94,7 +94,7 @@ export default function AddEditContactModal({
     } else {
       setEmail(personalEmail);
     }
-  }, [useCompanyEmail, companyEmail, personalEmail]);
+  }, [useCompanyEmail, companyEmail, personalEmail, hasCompanyEmail]);
 
   const handleClose = () => {
     onClose?.();
@@ -200,7 +200,6 @@ export default function AddEditContactModal({
       setWebsite(initial?.website ?? "");
       setSocials(initial?.socials ?? []);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, personalEmail, initial]);
 
   return (
@@ -556,3 +555,4 @@ export default function AddEditContactModal({
     </Dialog>
   );
 }
+

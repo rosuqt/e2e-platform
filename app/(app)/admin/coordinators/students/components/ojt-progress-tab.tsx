@@ -27,6 +27,7 @@ import { LuNotebookPen } from "react-icons/lu"
 import { MdEventNote } from "react-icons/md"
 import { Checkbox } from "@/components/ui/checkbox"
 import { HiMiniClipboardDocumentList } from "react-icons/hi2"
+import Image from "next/image"
 
 const REQUIRED_DOCUMENTS = [
   "Application Letter",
@@ -470,10 +471,13 @@ export default function OJTProgressTab({
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div className="flex items-center gap-3">
                     {companyLogoUrl ? (
-                      <img
+                      <Image
                         src={companyLogoUrl || "/placeholder.svg"}
                         alt={displayCompanyName || "Company Logo"}
+                        width={56}
+                        height={56}
                         className="w-14 h-14 rounded-full object-cover bg-white border-2 border-white shadow-md"
+                        unoptimized
                       />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-emerald-600 text-xl font-bold shadow-md">
@@ -675,7 +679,14 @@ export function OJTProgressWrapper({
       {ojtApplicationsLoading ? (
         <div className="flex flex-col items-center justify-center py-16">
           <div className="w-32 h-32 mb-4">
-            <img src="/animations/ojt-track.json" alt="Loading" className="w-full h-full object-contain" />
+            <Image
+              src="/animations/ojt-track.json"
+              alt="Loading"
+              width={128}
+              height={128}
+              className="w-full h-full object-contain"
+              unoptimized
+            />
           </div>
           <span className="mt-2 text-slate-700 font-semibold text-base animate-pulse">Loading OJT progress...</span>
         </div>

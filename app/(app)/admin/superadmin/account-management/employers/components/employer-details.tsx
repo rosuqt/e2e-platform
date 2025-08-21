@@ -6,6 +6,7 @@ import { User, Mail, Phone, Building, Calendar, Briefcase, MapPin } from "lucide
 import { PiSubtitlesBold } from "react-icons/pi"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useEffect, useState } from "react"
+import Image from "next/image"
 
 interface Employer {
   id: number
@@ -88,11 +89,14 @@ export function EmployerDetailsModal({
                     {avatarLoading ? (
                       <span className="w-8 h-8 block animate-spin border-4 border-indigo-400 border-t-transparent rounded-full mx-auto" />
                     ) : avatarUrl ? (
-                      <img
+                      <Image
                         src={avatarUrl}
                         alt="Avatar"
-                        style={{ width: 64, height: 64, borderRadius: "50%" }}
+                        width={64}
+                        height={64}
                         className="rounded-full object-cover"
+                        style={{ width: 64, height: 64, borderRadius: "50%" }}
+                        unoptimized
                         onLoad={() => setAvatarLoading(false)}
                       />
                     ) : (

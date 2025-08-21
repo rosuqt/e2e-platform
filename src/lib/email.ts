@@ -1,4 +1,3 @@
-// @ts-expect-error: no type definitions for nodemailer
 import nodemailer from "nodemailer";
 
 export async function sendPasswordResetEmail(email: string, resetLink: string): Promise<boolean> {

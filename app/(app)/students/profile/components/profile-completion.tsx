@@ -62,7 +62,7 @@ export default function ProfileCompletion({ onRefetch }: { onRefetch?: (refetch:
 
         const interval = setInterval(fetchProfileCompletion, 5000)
         return () => clearInterval(interval)
-    }, [])
+    }, [onRefetch])
 
     return (
         <>

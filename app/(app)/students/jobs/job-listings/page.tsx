@@ -332,7 +332,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
 
   useEffect(() => {
     onSelectJob(null);
-  }, [jobs]);
+  }, [jobs, onSelectJob]);
 
   useEffect(() => {
     fetch("/api/students/job-listings/saved-jobs")

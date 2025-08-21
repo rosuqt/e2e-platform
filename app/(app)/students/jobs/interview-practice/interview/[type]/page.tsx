@@ -1260,7 +1260,7 @@ function TypingAnimation() {
     }
     setText(samples[sampleIdx].slice(0, charIdx))
     return () => clearTimeout(timeout)
-  }, [charIdx, deleting, sampleIdx])
+  }, [charIdx, deleting, sampleIdx, samples])
 
   return (
     <div className="w-full max-w-md border border-blue-200 rounded-lg p-4 text-lg bg-white min-h-[72px] font-mono text-blue-700 shadow-inner">

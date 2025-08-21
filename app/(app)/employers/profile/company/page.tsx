@@ -17,6 +17,7 @@ import { TextField, MenuItem } from "@mui/material"
 import { RiUserSettingsLine } from "react-icons/ri"
 import { BsSendPlus } from "react-icons/bs"
 import TeamAccessModal from "./components/modals/team-access"
+import Image from "next/image"
 
 type Company = {
   id: string
@@ -324,16 +325,17 @@ export default function CompanyProfilePage() {
           <div className="bg-white rounded-xl overflow-hidden shadow-md mb-6 border border-blue-200">
             <div className="h-48 bg-gradient-to-r from-blue-600 to-purple-600 relative">
               {coverUrl && (
-                <img
+                <Image
                   src={coverUrl}
-
-                  className="absolute inset-0 w-full h-full object-cover"
+                  alt="Company Cover"
                   width={1200}
                   height={192}
+                  className="absolute inset-0 w-full h-full object-cover"
                   style={{
                     zIndex: 0,
                     objectPosition: "center 50%"
                   }}
+                  unoptimized
                 />
               )}
               <button
@@ -352,10 +354,13 @@ export default function CompanyProfilePage() {
                   {/* White border around profile icon */}
                   <div className="w-full h-full rounded-md bg-white border-4 border-white flex items-center justify-center overflow-hidden">
                     {logoUrl ? (
-                      <img
+                      <Image
                         src={logoUrl}
                         alt="Company Logo"
+                        width={128}
+                        height={128}
                         className="w-full h-full rounded-md object-cover"
+                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full rounded-md bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-2xl select-none relative">

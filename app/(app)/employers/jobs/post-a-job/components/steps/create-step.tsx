@@ -56,7 +56,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
         })
         .catch(() => {})
     }
-  }, [session?.user, handleFieldChange])
+  }, [session?.user, handleFieldChange, formData.location])
 
   useEffect(() => {
     if (!Array.isArray(formData.skills)) {

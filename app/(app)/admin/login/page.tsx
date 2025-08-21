@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { MdQuestionMark } from "react-icons/md"
 import { signIn } from "next-auth/react"
+import Image from "next/image"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -42,7 +43,6 @@ export default function LoginPage() {
     }
 
     if (res?.ok) {
-      // Get the session to check the role
       const { getSession } = await import("next-auth/react")
       const session = await getSession()
       if (session?.user?.role === "superadmin") {
@@ -106,7 +106,14 @@ export default function LoginPage() {
             transition={{ delay: 0.3, duration: 0.6 }}
           >
             <div className="flex items-center ">
-              <img src="/images/logo.white.png" alt="Seekr Logo" className="h-40 w-auto -mb-7" />
+              <Image
+                src="/images/logo.white.png"
+                alt="Seekr Logo"
+                width={160}
+                height={160}
+                className="h-40 w-auto -mb-7"
+                priority
+              />
             </div>
             <div className="space-y-2">
               <h2 className="text-4xl font-bold leading-tight">
@@ -171,7 +178,14 @@ export default function LoginPage() {
           {/* Mobile header */}
           <div className="lg:hidden mb-8 text-center">
             <div className="flex items-center justify-center space-x-3 mb-4">
-              <img src="/seekr-logo.png" alt="Seekr Logo" className="h-14 w-auto" />
+              <Image
+                src="/seekr-logo.png"
+                alt="Seekr Logo"
+                width={56}
+                height={56}
+                className="h-14 w-auto"
+                priority
+              />
             </div>
           </div>
 

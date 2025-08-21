@@ -263,7 +263,7 @@ export default function StudentDetailsModalContent({
       }
     }
     fetchAvatar()
-  }, [student.profile_img])
+  }, [student.profile_img, student])
 
   useEffect(() => {
     if (tab === "timeline" && student && student.student_id) {
@@ -276,7 +276,7 @@ export default function StudentDetailsModalContent({
         })
         .catch(() => setTimelineLoading(false))
     }
-  }, [tab, student.student_id])
+  }, [tab, student.student_id, student])
 
   useEffect(() => {
     if (tab === "ojt" && student && student.student_id) {
@@ -288,7 +288,7 @@ export default function StudentDetailsModalContent({
         .catch(() => {
         })
     }
-  }, [tab, student.student_id])
+  }, [tab, student.student_id, student])
 
   useEffect(() => {
     if (tab === "timeline" && timeline.length > 0) {

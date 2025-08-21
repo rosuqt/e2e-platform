@@ -14,6 +14,7 @@ import { Tooltip, Dialog, DialogActions, DialogContent, DialogContentText, Dialo
 import { useSession } from "next-auth/react"
 import { PiCrownSimpleFill } from "react-icons/pi"
 import { FaUser } from "react-icons/fa"
+import Image from "next/image"
 
 
 type TagType = {
@@ -393,10 +394,13 @@ export default function JobSettings({ jobId, companyName }: { jobId: string, com
               <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center gap-3">
                   {member.avatarUrl ? (
-                    <img
+                    <Image
                       src={member.avatarUrl}
                       alt={member.name}
+                      width={40}
+                      height={40}
                       className="w-10 h-10 rounded-full object-cover"
+                      unoptimized
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
@@ -493,10 +497,13 @@ export default function JobSettings({ jobId, companyName }: { jobId: string, com
                         <SelectItem key={c.id} value={c.id ?? ""}>
                           <div className="flex items-center gap-2">
                             {c.avatarUrl ? (
-                              <img
+                              <Image
                                 src={c.avatarUrl}
                                 alt={`${c.first_name} ${c.last_name}`}
+                                width={28}
+                                height={28}
                                 className="w-7 h-7 rounded-full object-cover"
+                                unoptimized
                               />
                             ) : (
                               <div className="w-7 h-7 rounded-full bg-blue-400 flex items-center justify-center">

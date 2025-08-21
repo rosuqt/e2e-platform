@@ -9,7 +9,6 @@ import { motion } from "framer-motion"
 import { Card, CardContent } from "../ui/card"
 import type { JobPostingData } from "../../lib/types"
 import { TextField } from "@mui/material"
-import { generateJobDetailsAI } from "../../lib/ai-job-details"
 
 interface WriteStepProps {
   formData: JobPostingData
@@ -428,3 +427,4 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
     </div>
   )
 }
+

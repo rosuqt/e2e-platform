@@ -83,7 +83,6 @@ export default function AddEditContactModal({
       setErrors({});
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
 
   const availableSocials = SOCIALS.filter(s => !socials.some(link => link.key === s.key));
@@ -477,3 +476,4 @@ export default function AddEditContactModal({
     </Dialog>
   );
 }
+

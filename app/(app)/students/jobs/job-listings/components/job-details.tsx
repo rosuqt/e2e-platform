@@ -498,11 +498,13 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                 <Briefcase className="w-7 h-7 text-white" />
               </div>
             ) : logoUrl && typeof logoUrl === "string" && (logoUrl.startsWith("http") || logoUrl.startsWith("/")) ? (
-              <img
+              <Image
                 src={logoUrl}
                 alt=""
-                className="object-cover w-full h-full"
-                style={{ borderRadius: "9999px" }}
+                width={56}
+                height={56}
+                className="object-cover w-full h-full rounded-full"
+                unoptimized
                 onError={async e => {
                   e.currentTarget.onerror = null;
                   await refreshLogoUrl(job);
@@ -871,10 +873,13 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
             <div className="w-16 h-16 flex items-center justify-center bg-gray-100 rounded-md overflow-hidden">
               <div className="relative w-16 h-16">
                 {logoUrl && typeof logoUrl === "string" ? (
-                  <img
+                  <Image
                     src={logoUrl}
                     alt="Company Logo"
+                    width={64}
+                    height={64}
                     className="object-cover w-full h-full rounded-md"
+                    unoptimized
                     onError={async e => {
                       e.currentTarget.onerror = null;
                       await refreshLogoUrl(job);

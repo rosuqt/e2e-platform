@@ -1,6 +1,7 @@
 import { FileText, Download, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
+import Image from "next/image"
 
 export default function ResumeTab({
   resumeUrl,
@@ -42,7 +43,14 @@ export default function ResumeTab({
               }
               if (["png", "jpg", "jpeg", "gif", "webp"].includes(ext)) {
                 return (
-                  <img src={previewUrl} alt={previewLabel} className="w-full max-h-[600px] object-contain rounded" />
+                  <Image
+                    src={previewUrl}
+                    alt={previewLabel}
+                    width={800}
+                    height={600}
+                    className="w-full max-h-[600px] object-contain rounded"
+                    unoptimized
+                  />
                 )
               }
               return (

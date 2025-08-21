@@ -120,9 +120,6 @@ export default function AboutTab() {
   }, [employerID, refreshKey])
 
   useEffect(() => {
-    if (!employerID) return
-    setCompanyLoading(true)
-    setCompanyError(null)
     fetch("/api/employers/company-profile/getHandlers")
       .then(res => res.json())
       .then(async data => {
@@ -158,7 +155,7 @@ export default function AboutTab() {
         setCompanyLoading(false)
         setCompanyLogoUrl(null)
       })
-  }, [employerID])
+  }, [])
 
   useEffect(() => {
     if (!companyProfile || typeof companyProfile.company_name !== "string") return

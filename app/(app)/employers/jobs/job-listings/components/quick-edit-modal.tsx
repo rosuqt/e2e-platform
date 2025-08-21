@@ -195,7 +195,7 @@ export default function QuickEditModal({
 			}))
 		}
 		return () => { ignore = true }
-	}, [open, job?.id])
+	}, [open, job, job?.id])
 
 	const handleArrayChange = (field: keyof Pick<QuickEditModalState, "responsibilities" | "mustHaveQualifications" | "niceToHaveQualifications">, idx: number, value: string) => {
 		setState((prev) => {

@@ -13,6 +13,7 @@ import Tooltip, { TooltipProps, tooltipClasses } from "@mui/material/Tooltip"
 import { styled } from "@mui/material/styles"
 import Skeleton from "@mui/material/Skeleton"
 import { motion } from "framer-motion"
+import Image from "next/image"
 
 import AboutTab from "./components/about-tab"
 import JobListingsTab from "./components/job-listings-tab"
@@ -231,11 +232,14 @@ export default function EmployerProfilePage() {
               {uploadingCover ? (
                 <Skeleton variant="rectangular" width="100%" height="100%" sx={{ position: "absolute", top: 0, left: 0, height: "100%", width: "100%" }} />
               ) : coverUrl ? (
-                <img
+                <Image
                   src={coverUrl}
                   alt="Cover"
+                  width={1200}
+                  height={192}
                   className="object-cover w-full h-full"
                   style={{ height: "100%" }}
+                  unoptimized
                 />
               ) : null}
               <button
@@ -259,10 +263,13 @@ export default function EmployerProfilePage() {
                         </div>
                       </>
                     ) : avatarUrl ? (
-                      <img
+                      <Image
                         src={avatarUrl}
                         alt="Avatar"
+                        width={128}
+                        height={128}
                         className="w-full h-full rounded-full object-cover"
+                        unoptimized
                       />
                     ) : (
   

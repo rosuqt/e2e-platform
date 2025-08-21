@@ -93,7 +93,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
       updateFormData(updatedData);
       sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
     }
-  }, [selectedPerks]);
+  }, [selectedPerks, formData, updateFormData]);
 
   useEffect(() => {
     if (syncingQuestions.current) {
@@ -108,7 +108,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
       updateFormData(updatedData);
       sessionStorage.setItem("jobFormData", JSON.stringify(updatedData));
     }
-  }, [questions]);
+  }, [questions, formData, updateFormData]);
 
   const toggleSection = (section: keyof typeof sections) => {
     setSections((prev) => {

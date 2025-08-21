@@ -154,7 +154,7 @@ export default function AdminsManagement() {
 
   useEffect(() => {
     if (page > pageCount && pageCount > 0) setPage(pageCount)
-  }, [pageCount])
+  }, [pageCount, page])
 
   const handleViewAdmin = (admin: Admin) => {
     setSelectedAdmin(admin)
