@@ -114,7 +114,8 @@ export const authOptions: NextAuthOptions = {
           console.log("AzureAD signIn: normalized email received:", normalizedEmail);
           if (
             !normalizedEmail.endsWith("@alabang.sti.edu.ph") &&
-            normalizedEmail !== "alro8612140@gmail.com"
+            normalizedEmail !== "alro8612140@gmail.com" &&
+            normalizedEmail !== "seekr.assist@gmail.com"
           ) {
             console.log("AzureAD signIn: invalid domain, redirecting to /sign-in?error=invalid_domain");
             return "/sign-in?error=invalid_domain"
@@ -159,6 +160,9 @@ export const authOptions: NextAuthOptions = {
         const u = user as UserWithNewStudent;
         if (u && typeof u === "object" && "newStudent" in u) {
           token.newStudent = u.newStudent
+        }
+        if (u && typeof u === "object" && "name" in u && u.name) {
+          token.name = u.name
         }
  
         if (token.email) {
@@ -219,7 +223,7 @@ export const authOptions: NextAuthOptions = {
       return token
     },
 
-    async session({ session, token }) {
+    async session({ session, token, user }) {
       if (!session.user) {
         session.user = {}
       }
@@ -264,6 +268,10 @@ export const authOptions: NextAuthOptions = {
       }
       if (token.name) {
         session.user.name = token.name as string
+      } else if (token.firstName && token.lastName) {
+        session.user.name = `${token.firstName} ${token.lastName}`
+      } else if (user && typeof user === "object" && "name" in user && user.name) {
+        session.user.name = user.name as string
       }
       if (token.image) {
         session.user.image = token.image as string

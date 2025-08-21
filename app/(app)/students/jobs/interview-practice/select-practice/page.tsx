@@ -1,7 +1,73 @@
+"use client"
 import Link from "next/link"
 import { ArrowLeft, Briefcase, Users } from "lucide-react"
+import { useEffect, useState } from "react"
+import Button from "@mui/material/Button"
+import Menu from "@mui/material/Menu"
+import MenuItem from "@mui/material/MenuItem"
+import ListSubheader from "@mui/material/ListSubheader"
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown"
+import { TiChevronRight } from "react-icons/ti"
+
+const techJobs = [
+  "Software Engineer",
+  "Frontend Developer",
+  "Backend Developer",
+  "IT Support Specialist",
+  "Data Analyst"
+]
+const hospitalityJobs = [
+  "Hotel Manager",
+  "Front Desk Agent",
+  "Housekeeping Supervisor",
+  "Food and Beverage Manager",
+  "Event Coordinator"
+]
+const tourismJobs = [
+  "Tour Guide",
+  "Travel Consultant",
+  "Reservation Agent",
+  "Tourism Marketing Specialist",
+  "Cruise Staff"
+]
+const businessJobs = [
+  "Business Analyst",
+  "Marketing Manager",
+  "Sales Representative",
+  "Accountant",
+  "Human Resources Coordinator"
+]
 
 export default function SelectPractice() {
+  const [jobTitles, setJobTitles] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [selected, setSelected] = useState<string>("")
+  const open = Boolean(anchorEl)
+
+  useEffect(() => {
+    fetch("/api/interview-practice/fetchApplications")
+      .then(res => res.json())
+      .then(data => {
+        setJobTitles(data.jobTitles || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget)
+  }
+
+  const handleMenuClose = () => {
+    setAnchorEl(null)
+  }
+
+  const handleSelect = (title: string) => {
+    setSelected(title)
+    setAnchorEl(null)
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -34,26 +100,210 @@ export default function SelectPractice() {
                   Choose a specific job title to get interview questions tailored to that role&apos;s requirements and
                   expectations.
                 </p>
-                <div className="relative w-full max-w-xs">
-                  <select className="appearance-none w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium px-6 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md">
-                    <option value="" className="text-black">Select a Job Title</option>
-                    <option value="software-engineer" className="text-black">Software Engineer</option>
-                    <option value="product-manager" className="text-black">Product Manager</option>
-                    <option value="ux-designer" className="text-black">UX Designer</option>
-                    <option value="data-scientist" className="text-black">Data Scientist</option>
-                    <option value="marketing-manager" className="text-black">Marketing Manager</option>
-                  </select>
-                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                    <svg
-                      className="w-5 h-5 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
+                <div className="relative w-full flex flex-col items-center">
+                  <div className="flex w-full gap-4 justify-center px-4">
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      endIcon={<KeyboardArrowDownIcon />}
+                      onClick={handleMenuClick}
+                      className="!justify-between !rounded-xl !shadow-sm"
+                      disabled={loading && jobTitles.length === 0}
+                      sx={{
+                        minWidth: 220,
+                        borderRadius: 3,
+                        borderColor: "#2563eb",
+                        bgcolor: "#f8fafc",
+                        color: "#2563eb",
+                        fontWeight: 600,
+                        fontSize: "16px",
+                        px: 3,
+                        py: 1.7,
+                        textTransform: "none",
+                        boxShadow: "0 2px 8px 0 rgba(37,99,235,0.06)",
+                        '&:hover': {
+                          bgcolor: "#e0edff",
+                          borderColor: "#2563eb"
+                        }
+                      }}
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                      {loading
+                        ? "Loading..."
+                        : selected
+                          ? selected
+                          : "Select a Job Title"}
+                    </Button>
+                    {selected && (
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        sx={{
+                          minWidth: 110,
+                          borderRadius: 3,
+                          fontWeight: 600,
+                          fontSize: "16px",
+                          textTransform: "none",
+                          bgcolor: "#2563eb",
+                          boxShadow: "0 2px 8px 0 rgba(37,99,235,0.12)",
+                          '&:hover': { bgcolor: "#1746a2" }
+                        }}
+                        href={`interview/job-specific?title=${encodeURIComponent(selected)}`}
+                      >
+                        Start <span className="ml-2"><TiChevronRight  size={20} /></span>
+                      </Button>
+                    )}
                   </div>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={open}
+                    onClose={handleMenuClose}
+                    PaperProps={{
+                      style: {
+                        width: "100%",
+                        maxWidth: 340,
+                        maxHeight: 320,
+                        marginTop: 8
+                      }
+                    }}
+                    anchorOrigin={{
+                      vertical: "bottom",
+                      horizontal: "left"
+                    }}
+                    transformOrigin={{
+                      vertical: "top",
+                      horizontal: "left"
+                    }}
+                  >
+                    <ListSubheader
+                      disableSticky
+                      sx={{
+                        bgcolor: "#e0edff",
+                        color: "#2563eb",
+                        fontWeight: 700,
+                        borderRadius: 1,
+                        mx: 1,
+                        my: 1,
+                        py: 0.5,
+                        px: 2,
+                        fontSize: "0.95rem"
+                      }}
+                    >
+                      Job titles you&apos;ve applied for
+                    </ListSubheader>
+                    {jobTitles.length === 0 && !loading ? (
+                      <MenuItem disabled>You havent applied to any jobs yet.</MenuItem>
+                    ) : (
+                      jobTitles.map(title => (
+                        <MenuItem
+                          key={"your-" + title}
+                          selected={selected === title}
+                          onClick={() => handleSelect(title)}
+                        >
+                          {title}
+                        </MenuItem>
+                      ))
+                    )}
+                    <ListSubheader
+                      disableSticky
+                      sx={{
+                        bgcolor: "#e0edff",
+                        color: "#2563eb",
+                        fontWeight: 700,
+                        borderRadius: 1,
+                        mx: 1,
+                        my: 1,
+                        py: 0.5,
+                        px: 2,
+                        fontSize: "0.95rem"
+                      }}
+                    >
+                      Technology
+                    </ListSubheader>
+                    {techJobs.map(title => (
+                      <MenuItem
+                        key={"tech-" + title}
+                        selected={selected === title}
+                        onClick={() => handleSelect(title)}
+                      >
+                        {title}
+                      </MenuItem>
+                    ))}
+                    <ListSubheader
+                      disableSticky
+                      sx={{
+                        bgcolor: "#e0edff",
+                        color: "#2563eb",
+                        fontWeight: 700,
+                        borderRadius: 1,
+                        mx: 1,
+                        my: 1,
+                        py: 0.5,
+                        px: 2,
+                        fontSize: "0.95rem"
+                      }}
+                    >
+                      Hospitality
+                    </ListSubheader>
+                    {hospitalityJobs.map(title => (
+                      <MenuItem
+                        key={"hosp-" + title}
+                        selected={selected === title}
+                        onClick={() => handleSelect(title)}
+                      >
+                        {title}
+                      </MenuItem>
+                    ))}
+                    <ListSubheader
+                      disableSticky
+                      sx={{
+                        bgcolor: "#e0edff",
+                        color: "#2563eb",
+                        fontWeight: 700,
+                        borderRadius: 1,
+                        mx: 1,
+                        my: 1,
+                        py: 0.5,
+                        px: 2,
+                        fontSize: "0.95rem"
+                      }}
+                    >
+                      Tourism
+                    </ListSubheader>
+                    {tourismJobs.map(title => (
+                      <MenuItem
+                        key={"tour-" + title}
+                        selected={selected === title}
+                        onClick={() => handleSelect(title)}
+                      >
+                        {title}
+                      </MenuItem>
+                    ))}
+                    <ListSubheader
+                      disableSticky
+                      sx={{
+                        bgcolor: "#e0edff",
+                        color: "#2563eb",
+                        fontWeight: 700,
+                        borderRadius: 1,
+                        mx: 1,
+                        my: 1,
+                        py: 0.5,
+                        px: 2,
+                        fontSize: "0.95rem"
+                      }}
+                    >
+                      Business
+                    </ListSubheader>
+                    {businessJobs.map(title => (
+                      <MenuItem
+                        key={"biz-" + title}
+                        selected={selected === title}
+                        onClick={() => handleSelect(title)}
+                      >
+                        {title}
+                      </MenuItem>
+                    ))}
+                  </Menu>
                 </div>
               </div>
 

@@ -19,6 +19,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { MdWarningAmber } from "react-icons/md";
+import { TbBusinessplan } from "react-icons/tb";
 
 export type EmployerJobCardJob = {
   id: number;
@@ -35,7 +36,7 @@ export type EmployerJobCardJob = {
   total_applicants?: number;
   qualified_applicants?: number;
   interviews?: number;
-  companyName?: string; // <-- Add this line
+  companyName?: string;
 };
 
 export default function EmployerJobCard({
@@ -68,37 +69,121 @@ export default function EmployerJobCard({
   if (!job) return null;
 
   let daysLeft = 0;
-  if (job.closing) {
+  let deadlineLabel = "";
+  let closingColor = "";
+  if (job.closing && job.closing !== "Closed") {
     const match = job.closing.match(/\d+/);
-    if (match) daysLeft = parseInt(match[0]);
+    if (match) {
+      daysLeft = parseInt(match[0]);
+      const now = new Date();
+      const deadlineDate = new Date();
+      deadlineDate.setDate(now.getDate() + daysLeft);
+      const diffMs = deadlineDate.getTime() - now.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      const diffWeeks = Math.floor(diffDays / 7);
+      const diffMonths = Math.floor(diffDays / 30);
+      if (diffMonths >= 1) {
+        deadlineLabel = `${diffMonths} month${diffMonths > 1 ? "s" : ""} left`;
+      } else if (diffWeeks >= 1) {
+        deadlineLabel = `${diffWeeks} week${diffWeeks > 1 ? "s" : ""} left`;
+      } else if (diffDays >= 1) {
+        deadlineLabel = `${diffDays} day${diffDays > 1 ? "s" : ""} left`;
+      } else if (diffHours >= 1) {
+        deadlineLabel = `${diffHours} hour${diffHours > 1 ? "s" : ""} left`;
+      } else if (diffMins >= 1) {
+        deadlineLabel = `${diffMins} min${diffMins > 1 ? "s" : ""} left`;
+      } else {
+        deadlineLabel = "Deadline soon";
+      }
+      closingColor =
+        diffDays <= 9
+          ? "bg-red-100 text-red-600"
+          : diffDays <= 15
+          ? "bg-orange-50 text-orange-500"
+          : "bg-blue-50 text-blue-500";
+    }
+  } else if (job.closing === "Closed") {
+    closingColor = "bg-red-100 text-red-600";
+    deadlineLabel = "Closed";
   }
-  const closingColor =
-    daysLeft <= 9
-      ? "bg-red-100 text-red-600"
-      : daysLeft <= 15
-      ? "bg-orange-50 text-orange-500"
-      : "bg-blue-50 text-blue-500";
 
   let courseIcon = null;
   let courseBg = "";
   if (job.recommended_course && job.recommended_course.includes(",")) {
     courseIcon = <IoMdPlanet className="w-7 h-7" />;
-    courseBg = "bg-purple-500";
-  } else if (job.recommended_course === "BSIT - Bachelor of Science in Information Technology") {
+    courseBg = "bg-orange-500";
+  } else if (
+    job.recommended_course === "BSIT - Bachelor of Science in Information Technology" ||
+    job.recommended_course === "BS - Information Technology"
+  ) {
     courseIcon = <FaComputer className="w-7 h-7" />;
     courseBg = "bg-green-500";
-  } else if (job.recommended_course === "BSHM - Bachelor of Science in Hospitaly Management") {
+  } else if (
+    job.recommended_course === "BSHM - Bachelor of Science in Hospitaly Management" ||
+    job.recommended_course === "BS - Hospitality Management"
+  ) {
     courseIcon = <FaHotel className="w-7 h-7" />;
     courseBg = "bg-pink-500";
-  } else if (job.recommended_course === "BSBA - Bachelor of Science in Business Administration") {
-    courseIcon = <MdBusinessCenter className="w-7 h-7" />;
-    courseBg = "bg-blue-500";
-  } else if (job.recommended_course === "BSTM - Bachelor of Science in Tourism Management") {
+  } else if (
+    job.recommended_course === "BSBA - Bachelor of Science in Business Administration" ||
+    job.recommended_course === "BS - Business Administration"
+  ) {
+    courseIcon = <TbBusinessplan className="w-7 h-7" />;
+    courseBg = "bg-purple-500";
+  } else if (
+    job.recommended_course === "BSTM - Bachelor of Science in Tourism Management" ||
+    job.recommended_course === "BS - Tourism Management"
+  ) {
     courseIcon = <BiSolidPlaneAlt className="w-7 h-7" />;
     courseBg = "bg-yellow-400";
   } else {
-    courseIcon = <span className="font-bold text-lg">?</span>;
-    courseBg = "bg-gray-300";
+    courseIcon = <MdBusinessCenter className="w-7 h-7" />;
+    courseBg = "bg-blue-500";
+  }
+
+  function getPostedLabel(posted: string) {
+    const now = new Date();
+    let postedDate: Date | null = null;
+
+    if (!isNaN(Date.parse(posted))) {
+      postedDate = new Date(posted);
+    } else {
+
+      const match = posted.match(/(\d+)\s*(min|hour|day|week|month|year)s?\s*ago/i);
+      if (match) {
+        const value = parseInt(match[1]);
+        const unit = match[2];
+        postedDate = new Date(now);
+        if (unit === "min") postedDate.setMinutes(now.getMinutes() - value);
+        else if (unit === "hour") postedDate.setHours(now.getHours() - value);
+        else if (unit === "day") postedDate.setDate(now.getDate() - value);
+        else if (unit === "week") postedDate.setDate(now.getDate() - value * 7);
+        else if (unit === "month") postedDate.setMonth(now.getMonth() - value);
+        else if (unit === "year") postedDate.setFullYear(now.getFullYear() - value);
+      }
+    }
+
+    if (!postedDate || isNaN(postedDate.getTime())) return posted;
+
+    const diffMs = now.getTime() - postedDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+
+    if (diffMins < 5) return "Posted Just Now";
+    if (diffMins < 60) return `Posted ${diffMins} min${diffMins === 1 ? "" : "s"} ago`;
+    if (diffHours < 24) return `Posted ${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+    if (diffDays === 1) return "Posted 1 day ago";
+    if (diffDays < 7) return `Posted ${diffDays} days ago`;
+    if (diffWeeks === 1) return "Posted 1 week ago";
+    if (diffWeeks < 5) return `Posted ${diffWeeks} weeks ago`;
+    if (diffMonths === 1) return "Posted 1 month ago";
+    if (diffMonths < 12) return `Posted ${diffMonths} months ago`;
+    return `Posted ${postedDate.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}`;
   }
 
   return (
@@ -156,7 +241,7 @@ export default function EmployerJobCard({
               )}
               {job.closing && job.closing !== "Closed" && (
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${closingColor}`}>
-                  {job.closing}
+                  {deadlineLabel}
                 </span>
               )}
             </div>
@@ -177,7 +262,7 @@ export default function EmployerJobCard({
               </div>
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <Clock className="h-3 w-3" />
-                <span>Posted {job.posted}</span>
+                <span>{getPostedLabel(job.posted)}</span>
               </div>
             </div>
           </div>

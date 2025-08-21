@@ -266,7 +266,7 @@ export default function HowItWorksPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/sign-up">
+              <Link href="/sign-in">
                 <motion.button
                   className="bg-white text-blue-700 hover:bg-blue-50 px-8 py-4 rounded-lg font-medium text-lg flex items-center gap-2"
                   whileHover={{ scale: 1.05 }}

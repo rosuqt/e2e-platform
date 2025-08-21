@@ -29,7 +29,7 @@ import ApplicantsTab from "./applicants-tab"
 import JobAnalytics from "./analytics-tab"
 import JobSettings from "./settings-tab"
 import { PiMoneyLight } from "react-icons/pi";
-import { FaUser } from "react-icons/fa";
+import { FaUser, FaUsers } from "react-icons/fa";
 import React from "react"
 import QuickEditModal from "../quick-edit-modal"
 
@@ -139,15 +139,14 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
 
       <div className="container mx-auto py-6 max-w-7xl">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{jobData.jobTitle}</h1>
-            {/* Show company name if available */}
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-bold text-gray-900 break-words whitespace-normal leading-snug">{jobData.jobTitle}</h1>
             {jobData.companyName && (
               <div className="text-sm text-gray-600 font-semibold mb-1">
                 {jobData.companyName}
               </div>
             )}
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <div className="flex items-center gap-2 text-gray-500 text-sm flex-wrap">
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" />
                 {jobData.location}
@@ -187,27 +186,28 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
               )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-row flex-nowrap gap-2 shrink-0">
             <Button
               variant="outline"
               size="sm"
-              className="gap-1"
+              className="gap-1 text-blue-500 border-blue-200 hover:bg-blue-50 hover:text-blue-600"
               onClick={() => setQuickEditOpen(true)}
             >
               <Edit className="h-4 w-4" />
               Edit
             </Button>
-            <Button variant="outline" size="sm" className="gap-1">
-              <Share2 className="h-4 w-4" />
-              Share
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1 text-amber-500 border-amber-200 hover:bg-amber-50">
+
+            <Button variant="outline" size="sm" className="gap-1 text-amber-500 border-amber-200 hover:bg-amber-50 hover:text-amber-700">
               <Pause className="h-4 w-4" />
               Pause
             </Button>
-            <Button variant="outline" size="sm" className="gap-1 text-red-500 border-red-200 hover:bg-red-50">
+            <Button variant="outline" size="sm" className="gap-1 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-700">
               <Trash2 className="h-4 w-4" />
               Delete
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1 text-gray-700 hover:bg-purple-50 hover:text-purple-700">
+              <Share2 className="h-4 w-4" />
+              Share
             </Button>
           </div>
         </div>
@@ -271,7 +271,11 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                         <PiMoneyLight className="h-4 w-4 text-gray-400" />
                         <div>
                           <div className="text-sm font-medium">Salary</div>
-                          <div className="text-sm text-gray-500">PHP {jobData.payAmount}</div>
+                          <div className="text-sm text-gray-500">
+                            {jobData.payAmount && jobData.payAmount.trim() !== ""
+                              ? `PHP ${jobData.payAmount}`
+                              : "No Pay"}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -326,9 +330,15 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                     <div>
                       <h3 className="text-sm font-medium mb-2">Responsibilities</h3>
                       <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
-                        {(Array.isArray(jobData.responsibilities) ? jobData.responsibilities : [jobData.responsibilities]).map((item: string, index: number) => (
-                          <li key={index}>{item}</li>
-                        ))}
+                        {Array.isArray(jobData.responsibilities)
+                          ? jobData.responsibilities.map((item, index) => (
+                              <li key={index}>{item}</li>
+                            ))
+                          : typeof jobData.responsibilities === "string"
+                            ? JSON.parse(jobData.responsibilities).map((item: string, index: number) => (
+                                <li key={index}>{item}</li>
+                              ))
+                            : null}
                       </ul>
                     </div>
 
@@ -401,32 +411,39 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg">Recent Applicants</CardTitle>
-                    <Button variant="ghost" size="sm" className="text-blue-600">
+                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-900 ">
                       View More
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((applicant) => (
-                        <div key={applicant} className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
-                              <FaUser className="text-white w-4 h-4" />
+                    {(!jobData.total_applicants || jobData.total_applicants === 0) ? (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <FaUsers className="w-14 h-14 text-gray-300 mb-2" />
+                        <div className="text-gray-400 text-sm">No Applicants yet</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {[1, 2, 3].map((applicant) => (
+                          <div key={applicant} className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
+                                <FaUser className="text-white w-4 h-4" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium">{`Applicant ${applicant}`}</div>
+                                <div className="text-xs text-gray-500">Applied 2 days ago</div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="text-sm font-medium">{`Applicant ${applicant}`}</div>
-                              <div className="text-xs text-gray-500">Applied 2 days ago</div>
+                            <div className="flex items-center gap-2">
+                              <Chip label="85% Match" className="bg-green-100 text-green-600 hover:bg-green-200" />
+                              <Button variant="outline" size="sm">
+                                View
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Chip label="85% Match" className="bg-green-100 text-green-600 hover:bg-green-200" />
-                            <Button variant="outline" size="sm">
-                              View
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -590,7 +607,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           </TabsContent>
 
           <TabsContent value="applicants" className="mt-6">
-            <ApplicantsTab />
+            <ApplicantsTab jobId={selectedJob ? String(selectedJob) : ""} />
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-6">
@@ -638,3 +655,4 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
     </div>
   )
 }
+

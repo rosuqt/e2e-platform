@@ -1,14 +1,155 @@
+"use client"
 import Link from "next/link"
 import { Clock, BarChart2, Award, Zap } from "lucide-react"
 import { IoIosRocket } from "react-icons/io";
 import StackCards from "./components/stack-cards"
+import { useEffect, useState } from "react"
+import Tooltip from "@mui/material/Tooltip";
+import Button from "@mui/material/Button";
+import { useRouter } from "next/navigation";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+
+
+function capitalizeWords(str: string) {
+  return str.replace(/\b\w/g, l => l.toUpperCase())
+}
+
+function formatDuration(interval: string) {
+  const match = interval.match(/(\d+):(\d+):(\d+)/)
+  if (!match) return interval
+  const [, h, m, s] = match
+  const hours = parseInt(h)
+  const mins = parseInt(m)
+  const secs = parseInt(s)
+  const out = []
+  if (hours) out.push(`${hours}h`)
+  if (mins) out.push(`${mins}m`)
+  if (secs && !hours && !mins) out.push(`${secs}s`)
+  return out.join(" ")
+}
+
+function getAnswerTypeLabel(type: string) {
+  if (type === "type") return "Typed Answer"
+  if (type === "record") return "Recorded Answer"
+  return capitalizeWords(type)
+}
+
+function getProgressCircleColor(score: number) {
+  if (score < 30) return "#ef4444"
+  if (score >= 90) return "#22c55e"
+  if (score >= 70) return "#3b82f6"
+  if (score >= 40) return "#facc15"
+  return "#ef4444"
+}
+
+function ProgressCircle({ value }: { value: number }) {
+  const radius = 22
+  const stroke = 4
+  const normalizedRadius = radius - stroke / 2
+  const circumference = normalizedRadius * 2 * Math.PI
+  const percent = Math.max(0, Math.min(1, value / 100))
+  const strokeDashoffset = circumference - percent * circumference
+  const color = getProgressCircleColor(value)
+  return (
+    <svg width={radius * 2} height={radius * 2}>
+      <circle
+        stroke="#e5e7eb"
+        fill="transparent"
+        strokeWidth={stroke}
+        r={normalizedRadius}
+        cx={radius}
+        cy={radius}
+      />
+      <circle
+        stroke={color}
+        fill="transparent"
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={circumference + " " + circumference}
+        strokeDashoffset={strokeDashoffset}
+        r={normalizedRadius}
+        cx={radius}
+        cy={radius}
+        style={{ transition: "stroke-dashoffset 0.5s" }}
+      />
+      <text
+        x="50%"
+        y="54%"
+        textAnchor="middle"
+        fill={color}
+        fontSize="1rem"
+        fontWeight="bold"
+        dy=".3em"
+      >
+        {Math.round(value)}
+      </text>
+    </svg>
+  )
+}
 
 export default function Home() {
+  type PracticeHistory = {
+    id: string
+    finished_at: string
+    interview_type: string
+    difficulty: string
+    answer_type: string
+    duration: string
+    score: number
+    questions: string[]
+  }
+  const [history, setHistory] = useState<PracticeHistory[]>([])
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const [sort, setSort] = useState<"recent" | "oldest" | "score">("recent")
+  const itemsPerPage = 10
+  const router = useRouter();
+  useEffect(() => {
+    fetch("/api/interview-practice/getHistory")
+      .then(res => res.json())
+      .then(res => {
+        setHistory(res.history || [])
+        setLoading(false)
+      })
+  }, [])
+  let avgScore = 0
+  if (history.length) {
+    const scores = history.map(h => typeof h.score === "number" ? h.score : 0)
+    avgScore = scores.reduce((a, b) => a + b, 0) / scores.length
+  }
+  const grouped = history.reduce((acc: Record<string, PracticeHistory[]>, item) => {
+    const date = new Date(item.finished_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+    if (!acc[date]) acc[date] = []
+    acc[date].push(item)
+    return acc
+  }, {})
+  const sortedDates = Object.keys(grouped).sort((a, b) => {
+    if (sort === "recent") return new Date(b).getTime() - new Date(a).getTime()
+    if (sort === "oldest") return new Date(a).getTime() - new Date(b).getTime()
+    return new Date(b).getTime() - new Date(a).getTime()
+  })
+  const allItems: { date: string, item: PracticeHistory }[] = []
+  sortedDates.forEach(date => {
+    let items = grouped[date]
+    if (sort === "score") {
+      items = [...items].sort((a, b) => b.score - a.score)
+    }
+    items.forEach(item => {
+      allItems.push({ date, item })
+    })
+  })
+  const totalPages = Math.ceil(allItems.length / itemsPerPage)
+  const pagedItems = allItems.slice((page - 1) * itemsPerPage, page * itemsPerPage)
+  const pagedGrouped: Record<string, PracticeHistory[]> = {}
+  pagedItems.forEach(({ date, item }) => {
+    if (!pagedGrouped[date]) pagedGrouped[date] = []
+    pagedGrouped[date].push(item)
+  })
+  const pagedSortedDates = Object.keys(pagedGrouped).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
       <div className="min-h-screen max-w-6xl mx-auto p-4 md:p-8">
-      
-
         {/* Hero Section */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-12">
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-1"></div>
@@ -84,78 +225,88 @@ export default function Home() {
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">Your Practice History</h2>
                 <p className="text-gray-600">Track your progress and see how you&apos;re improving over time.</p>
               </div>
-              <div className="relative">
-                <select
-                  className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-10 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                  defaultValue="recent"
-                >
-                  <option value="recent">Sort by: Recent</option>
-                  <option value="oldest">Sort by: Oldest</option>
-                  <option value="score">Sort by: Score</option>
-                </select>
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                  <svg
-                    className="w-4 h-4 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
+              <div className="flex items-center gap-4">
+                <div className="flex flex-col items-center">
+                  <span className="text-xs text-gray-500 mb-1">Avg. Score</span>
+                  <ProgressCircle value={avgScore} />
+                </div>
+                <div>
+                  <Select
+                    size="small"
+                    value={sort}
+                    onChange={e => { setSort(e.target.value as "recent" | "oldest" | "score"); setPage(1); }}
+                    sx={{
+                      minWidth: 170,
+                      fontSize: 14,
+                      background: "#fff",
+                      borderRadius: "8px",
+                      boxShadow: 1,
+                      "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e5e7eb" },
+                    }}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                    <MenuItem value="recent">Sort by: Recent</MenuItem>
+                    <MenuItem value="oldest">Sort by: Oldest</MenuItem>
+                    <MenuItem value="score">Sort by: Score</MenuItem>
+                  </Select>
                 </div>
               </div>
             </div>
-
             <div className="space-y-8">
-              <div className="border-b border-gray-100 pb-6">
-                <h3 className="text-sm font-medium text-gray-500 mb-6">Today</h3>
-                <div className="space-y-8">
-                  <HistoryItem
-                    time="12 mins ago"
-                    type="UI/UX Designer Mock Interview"
-                    skills={["Strong Communication", "Needs More Confidence"]}
-                    score="good"
-                  />
-                  <HistoryItem
-                    time="8 hours ago"
-                    type="Generic Mock Interview"
-                    skills={["Strong Communication", "Confident"]}
-                    score="good"
-                  />
-                  <HistoryItem
-                    time="9:20 am"
-                    type="Software Engineer Mock Interview"
-                    skills={["Poor Communication", "Needs More Confidence"]}
-                    score="bad"
-                  />
+              {loading ? (
+                <div className="text-center text-gray-400 py-12 flex flex-col items-center justify-center gap-4">
+                  <svg className="animate-spin h-8 w-8 text-blue-400 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  Loading...
                 </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-6">Dec 22, 2001</h3>
-                <div className="space-y-8">
-                  <HistoryItem
-                    time="1:00 am"
-                    type="UI/UX Designer Mock Interview"
-                    skills={["Strong Communication", "Needs More Confidence"]}
-                    score="good"
-                  />
-                  <HistoryItem
-                    time="3:12 pm"
-                    type="Generic Mock Interview"
-                    skills={["Strong Communication", "Confident"]}
-                    score="good"
-                  />
-                  <HistoryItem
-                    time="9:30 am"
-                    type="Software Engineer Mock Interview"
-                    skills={["Poor Communication", "Needs More Confidence"]}
-                    score="bad"
-                  />
-                </div>
-              </div>
+              ) : history.length === 0 ? (
+                <div className="text-center text-gray-400 py-12">No practice history yet.</div>
+              ) : (
+                pagedSortedDates.map(date => (
+                  <div key={date} className="border-b border-gray-100 pb-6">
+                    <h3 className="text-sm font-medium text-gray-500 mb-6">{date}</h3>
+                    <div className="space-y-8">
+                      {pagedGrouped[date].map(item => (
+                        <HistoryItem
+                          key={item.id}
+                          id={item.id}
+                          time={new Date(item.finished_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          title={item.interview_type.toLowerCase() === "generic"
+                            ? "Generic Interview Practice"
+                            : capitalizeWords(item.interview_type) + " Interview Practice"}
+                          difficulty={capitalizeWords(item.difficulty)}
+                          answerType={getAnswerTypeLabel(item.answer_type)}
+                          duration={formatDuration(item.duration)}
+                          score={typeof item.score === "number" ? item.score : 0}
+                          questionsCount={Array.isArray(item.questions) ? item.questions.length : 0}
+                          onViewDetails={() => router.push(`/students/jobs/interview-practice/interview/summary?id=${item.id}`)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
+            {!loading && history.length > itemsPerPage && (
+              <div className="flex justify-center mt-8 gap-2">
+                <button
+                  className="px-4 py-2 rounded-lg border text-blue-700 border-blue-200 bg-white hover:bg-blue-50 disabled:opacity-50"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                >
+                  Prev
+                </button>
+                <span className="px-3 py-2 text-gray-600">{page} / {totalPages}</span>
+                <button
+                  className="px-4 py-2 rounded-lg border text-blue-700 border-blue-200 bg-white hover:bg-blue-50 disabled:opacity-50"
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -170,7 +321,7 @@ export default function Home() {
               Start practicing now and get personalized feedback to improve your interview skills.
             </p>
             <Link
-              href="/select-practice"
+              href="interview-practice/select-practice"
               className="inline-flex items-center gap-2 bg-white text-blue-700 hover:bg-blue-50 font-medium px-8 py-4 rounded-xl transition-all shadow-md hover:shadow-lg text-lg"
             >
               Start Free Practice <IoIosRocket className="w-5 h-5" />
@@ -182,75 +333,118 @@ export default function Home() {
   )
 }
 
+function getDifficultyBadgeColor(difficulty: string) {
+  const d = difficulty.toLowerCase()
+  if (d === "easy") return "bg-green-100 text-green-800"
+  if (d === "medium") return "bg-blue-100 text-blue-800"
+  if (d === "hard") return "bg-red-100 text-red-800"
+  return "bg-gray-100 text-gray-800"
+}
+
+function getScoreColor(score: number) {
+  if (score < 30) return "bg-red-100 text-red-600"
+  if (score >= 90) return "bg-green-100 text-green-700"
+  if (score >= 70) return "bg-blue-100 text-blue-700"
+  if (score >= 40) return "bg-orange-100 text-orange-700"
+  return "bg-red-100 text-red-600"
+}
+
 function HistoryItem({
-  time,
-  type,
-  skills,
+  title,
+  difficulty,
+  answerType,
+  duration,
   score,
+  questionsCount,
+  onViewDetails,
 }: {
+  id: string
   time: string
-  type: string
-  skills: string[]
-  score: "good" | "bad"
+  title: string
+  difficulty: string
+  answerType: string
+  duration: string
+  score: number
+  questionsCount: number
+  onViewDetails: () => void
 }) {
   return (
-    <div className="relative pl-10 flex justify-between items-start group">
-      <div className="absolute left-0 top-0 h-full flex flex-col items-center">
-        <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            score === "good" ? "bg-green-500 group-hover:bg-green-600" : "bg-red-500 group-hover:bg-red-600"
-          } text-white transition-colors`}
-        >
-          {score === "good" ? (
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          )}
-        </div>
+    <div
+      className="relative pl-10 flex justify-between items-center group"
+      style={{ position: "relative" }}
+    >
+      <div
+        className="absolute -inset-2 z-0 rounded-2xl transition-all duration-200 pointer-events-none group-hover:bg-blue-100/30 group-hover:scale-105"
+      ></div>
+      <div className="absolute left-0 top-0 h-full flex flex-col items-center z-10">
+        <Tooltip title="Interview Score" arrow>
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs ${getScoreColor(score)} transition-transform duration-200 group-hover:scale-110`}
+            style={{ pointerEvents: "auto" }}
+          >
+            {Math.round(score)}%
+          </div>
+        </Tooltip>
         <div className="w-0.5 h-full bg-gray-200 mt-1"></div>
       </div>
-
-      <div className="flex-1">
-        <div className="text-xs text-gray-500 mb-1">{time}</div>
-        <div className="font-medium text-gray-800 mb-2 group-hover:text-blue-700 transition-colors">{type}</div>
-        <div className="flex flex-wrap gap-2">
-          {skills.map((skill, index) => (
-            <span
-              key={index}
-              className={`text-xs px-2 py-1 rounded-full ${
-                skill.includes("Strong") || skill.includes("Confident")
-                  ? "bg-green-100 text-green-800"
-                  : "bg-amber-100 text-amber-800"
-              }`}
+      <div className="flex-1 z-10">
+        <div className="text-xs text-gray-400 mb-1">{duration} duration</div>
+        <div className="font-medium text-gray-800 mb-2 group-hover:text-blue-700 transition-colors">{title}</div>
+        <div className="flex flex-wrap gap-3 py-1">
+          <Tooltip title="Difficulty" arrow>
+            <div
+              className={`text-xs px-3 py-1.5 rounded-full ${getDifficultyBadgeColor(difficulty)} transition-transform duration-200 group-hover:scale-110`}
+              style={{ display: "inline-block", pointerEvents: "auto" }}
             >
-              {skill}
-            </span>
-          ))}
+              {difficulty}
+            </div>
+          </Tooltip>
+          <Tooltip title="Answer Type" arrow>
+            <div
+              className="text-xs px-3 py-1.5 rounded-full bg-indigo-100 text-indigo-800 transition-transform duration-200 group-hover:scale-110"
+              style={{ display: "inline-block", pointerEvents: "auto" }}
+            >
+              {answerType}
+            </div>
+          </Tooltip>
+          <Tooltip title="Questions" arrow>
+            <div
+              className="text-xs px-3 py-1.5 rounded-full bg-pink-100 text-pink-800 transition-transform duration-200 group-hover:scale-110"
+              style={{ display: "inline-block", pointerEvents: "auto" }}
+            >
+              {questionsCount} questions
+            </div>
+          </Tooltip>
         </div>
       </div>
-
-      <Link
-        href="#"
-        className="text-blue-500 hover:text-blue-700 text-sm font-medium bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-lg transition-colors"
-      >
-        View
-      </Link>
+      <div className="flex items-center z-10 ml-4">
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={onViewDetails}
+          sx={{
+            borderRadius: "10px",
+            textTransform: "none",
+            fontWeight: 500,
+            fontSize: 13,
+            padding: "4px 20px",
+            minWidth: "90px",
+            borderColor: "#2563eb",
+            color: "#2563eb",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            '&:hover': {
+              background: "#2563eb",
+              color: "#fff",
+              borderColor: "#2563eb",
+            },
+          }}
+        >
+          View Details
+        </Button>
+      </div>
     </div>
   )
 }
+

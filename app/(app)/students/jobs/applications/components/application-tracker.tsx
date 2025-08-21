@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ApplicationDetailsModal } from "./application-details"
 import { FollowUpChatModal } from "./follow-up-chat-modal"
+import { JobRatingModal } from "./job-rating-modal"
 import { toast } from "react-toastify"
 import Menu from "@mui/material/Menu"
 import MenuItem from "@mui/material/MenuItem"
@@ -38,6 +39,7 @@ import { RiErrorWarningLine } from "react-icons/ri"
 import { BadgeCheck as LuBadgeCheck } from "lucide-react"
 import Tooltip from "@mui/material/Tooltip"
 import { styled } from "@mui/material/styles"
+import { AiFillStar } from "react-icons/ai"
 
 type JobPosting = {
   employer_id?: string
@@ -89,6 +91,17 @@ type ApplicationData = {
   id?: string | number
   achievements?: string[]
   portfolio?: string[]
+}
+
+type JobRatingData = {
+  companyLogo: string
+  jobTitle: string
+  recruiterName: string
+  companyName: string
+  dateOfHiring: string
+  jobType: string
+  department: string
+  location: string
 }
 
 const CustomTooltip = styled(Tooltip)(() => ({
@@ -264,8 +277,13 @@ export default function ApplicationTrackerNoSidebar() {
           if (cached) {
             try {
               const parsed = JSON.parse(cached)
+              if (typeof parsed === "string") {
+                newLogoUrls[idx] = parsed
+                return
+              }
               if (parsed && typeof parsed === "object" && parsed.url && typeof parsed.url === "string") {
                 newLogoUrls[idx] = parsed.url
+                sessionStorage.setItem(cacheKey, JSON.stringify(parsed.url))
                 return
               }
             } catch {}
@@ -280,9 +298,16 @@ export default function ApplicationTrackerNoSidebar() {
             }),
           })
           const json = await res.json()
-          if (json.signedUrl && typeof json.signedUrl === "string") {
-            newLogoUrls[idx] = json.signedUrl
-            sessionStorage.setItem(cacheKey, JSON.stringify({ url: json.signedUrl }))
+
+          let url = ""
+          if (typeof json.signedUrl === "string") {
+            url = json.signedUrl
+          } else if (json.url && typeof json.url === "string") {
+            url = json.url
+          }
+          if (url && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("/"))) {
+            newLogoUrls[idx] = url
+            sessionStorage.setItem(cacheKey, JSON.stringify(url))
           } else {
             newLogoUrls[idx] = null
             sessionStorage.removeItem(cacheKey)
@@ -353,6 +378,74 @@ export default function ApplicationTrackerNoSidebar() {
   };
 
   const [activeTab, setActiveTab] = useState("all")
+  const [isJobRatingModalOpen, setIsJobRatingModalOpen] = useState(false)
+  const [jobRatingData, setJobRatingData] = useState<JobRatingData | null>(null)
+  const [jobRatingCompanyImg, setJobRatingCompanyImg] = useState<string>("")
+  const [jobRatingRecruiterImg, setJobRatingRecruiterImg] = useState<string>("")
+  const [jobRatingRecruiterName, setJobRatingRecruiterName] = useState<string>("")
+
+  async function handleOpenJobRatingModal(app: ApplicationData) {
+    let logo = ""
+    let recruiterImg = ""
+    let recruiterName = ""
+    const logoPath = app.company_logo_image_path || app.job_postings?.company_logo_image_path || ""
+    if (logoPath) {
+      try {
+        const res = await fetch("/api/employers/get-signed-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bucket: "company.logo",
+            path: logoPath,
+          }),
+        })
+        const json = await res.json()
+        if (json.signedUrl && typeof json.signedUrl === "string") {
+          logo = json.signedUrl
+        }
+      } catch {
+        logo = ""
+      }
+    }
+    const recruiterProfileImg = app.profile_img || ""
+    if (recruiterProfileImg) {
+      if (recruiterProfileImg.startsWith("http")) {
+        recruiterImg = recruiterProfileImg
+      } else {
+        try {
+          const res = await fetch("/api/employers/get-signed-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bucket: "user.avatars",
+              path: recruiterProfileImg,
+            }),
+          })
+          const json = await res.json()
+          recruiterImg = json.signedUrl || ""
+        } catch {
+          recruiterImg = ""
+        }
+      }
+    }
+    recruiterName = app.job_postings?.registered_employers?.first_name
+      ? `${app.job_postings?.registered_employers?.first_name} ${app.job_postings?.registered_employers?.last_name || ""}`.trim()
+      : ""
+    setJobRatingCompanyImg(logo)
+    setJobRatingRecruiterImg(recruiterImg)
+    setJobRatingRecruiterName(recruiterName)
+    setJobRatingData({
+      companyLogo: logo,
+      jobTitle: app.job_postings?.job_title || "",
+      recruiterName,
+      companyName: app.company_name || app.job_postings?.registered_employers?.company_name || "",
+      dateOfHiring: app.applied_at || "",
+      jobType: app.job_postings?.work_type || "",
+      department: "",
+      location: app.job_postings?.location || "",
+    })
+    setIsJobRatingModalOpen(true)
+  }
 
   return (
     <>
@@ -473,7 +566,7 @@ export default function ApplicationTrackerNoSidebar() {
                             handleMenuOpen,
                             applicationsData,
                             logoUrls,
-                            
+                            handleOpenJobRatingModal
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -496,7 +589,7 @@ export default function ApplicationTrackerNoSidebar() {
                             handleMenuOpen,
                             applicationsData.filter(a => (a.status || "").toLowerCase() === "new"),
                             logoUrls,
-                            
+                            handleOpenJobRatingModal
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -519,7 +612,7 @@ export default function ApplicationTrackerNoSidebar() {
                             handleMenuOpen,
                             applicationsData.filter(a => (a.status || "").toLowerCase() === "shortlisted"),
                             logoUrls,
-                            
+                            handleOpenJobRatingModal
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -542,7 +635,7 @@ export default function ApplicationTrackerNoSidebar() {
                             handleMenuOpen,
                             applicationsData.filter(a => (a.status || "").toLowerCase() === "interview scheduled"),
                             logoUrls,
-                            
+                            handleOpenJobRatingModal
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -565,7 +658,7 @@ export default function ApplicationTrackerNoSidebar() {
                             handleMenuOpen,
                             applicationsData.filter(a => (a.status || "").toLowerCase() === "hired"),
                             logoUrls,
-                            
+                            handleOpenJobRatingModal
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -588,7 +681,7 @@ export default function ApplicationTrackerNoSidebar() {
                             handleMenuOpen,
                             applicationsData.filter(a => (a.status || "").toLowerCase() === "rejected"),
                             logoUrls,
-                          
+                            handleOpenJobRatingModal
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -743,6 +836,16 @@ export default function ApplicationTrackerNoSidebar() {
         jobTitle={followUpDetails?.jobTitle || ""}
         company={followUpDetails?.company || ""}
       />
+
+      <JobRatingModal
+        isOpen={isJobRatingModalOpen}
+        onClose={() => setIsJobRatingModalOpen(false)}
+        jobTitle={jobRatingData?.jobTitle || ""}
+        companyName={jobRatingData?.companyName || ""}
+        recruiterProfileImg={jobRatingRecruiterImg}
+        companyLogoImg={jobRatingCompanyImg}
+        recruiterName={jobRatingRecruiterName}
+      />
     </>
   )
 }
@@ -757,6 +860,7 @@ function generateApplicationCards(
   handleMenuOpen: (event: React.MouseEvent<HTMLButtonElement>, id: number) => void,
   applicationsData?: ApplicationData[],
   logoUrls?: { [key: number]: string | null },
+  handleOpenJobRatingModal?: (app: ApplicationData) => void
 ) {
   const statusConfig = {
     all: { title: "Mixed", badge: "", hover: "hover:border-l-yellow-400" },
@@ -982,6 +1086,26 @@ function generateApplicationCards(
                     Follow Up
                   </Button>
                 )}
+                {cardStatus === "hired" && (
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-xs flex items-center gap-1"
+                    onClick={async e => {
+                      e.stopPropagation()
+                      if (
+                        applicationsData &&
+                        applicationsData[index] &&
+                        handleOpenJobRatingModal
+                      ) {
+                        const app = applicationsData[index]
+                        await handleOpenJobRatingModal(app)
+                      }
+                    }}
+                  >
+                    <AiFillStar className="w-4 h-4" />
+                    Rate Job
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -1030,4 +1154,6 @@ function generateApplicationCards(
     </>
   )
 }
+
+
 

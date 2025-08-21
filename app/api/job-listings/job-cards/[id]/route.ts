@@ -59,7 +59,13 @@ export async function GET(req: Request) {
 			recommendedCourse: data.recommended_course ?? "",
 			verificationTier: data.verification_tier ?? "basic",
 			jobDescription: data.job_description ?? "",
-			responsibilities: data.responsibilities ?? [""],
+			responsibilities: Array.isArray(data.responsibilities)
+				? data.responsibilities
+				: typeof data.responsibilities === "string"
+					? data.responsibilities.includes("[") && data.responsibilities.includes("]")
+						? JSON.parse(data.responsibilities)
+						: data.responsibilities.split("|").map((s: string) => s.trim()).filter(Boolean)
+					: [""],
 			mustHaveQualifications: data.must_have_qualifications ?? [""],
 			niceToHaveQualifications: data.nice_to_have_qualifications ?? [""],
 			jobSummary: data.job_summary ?? "",
