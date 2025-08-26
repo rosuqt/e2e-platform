@@ -383,8 +383,10 @@ export default function ApplicationTrackerNoSidebar() {
   const [jobRatingCompanyImg, setJobRatingCompanyImg] = useState<string>("")
   const [jobRatingRecruiterImg, setJobRatingRecruiterImg] = useState<string>("")
   const [jobRatingRecruiterName, setJobRatingRecruiterName] = useState<string>("")
+  const [jobRatingJobId, setJobRatingJobId] = useState<string>("")
 
   async function handleOpenJobRatingModal(app: ApplicationData) {
+    setJobRatingJobId(app.job_postings?.id || "")
     let logo = ""
     let recruiterImg = ""
     let recruiterName = ""
@@ -840,6 +842,7 @@ export default function ApplicationTrackerNoSidebar() {
       <JobRatingModal
         isOpen={isJobRatingModalOpen}
         onClose={() => setIsJobRatingModalOpen(false)}
+        jobId={jobRatingJobId}
         jobTitle={jobRatingData?.jobTitle || ""}
         companyName={jobRatingData?.companyName || ""}
         recruiterProfileImg={jobRatingRecruiterImg}
