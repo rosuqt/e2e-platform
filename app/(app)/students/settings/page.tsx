@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { User, Book, Sun, Bell, Shield,   Save, Moon } from "lucide-react"
+import { User, Book, Sun, Bell, Shield, Megaphone,   Save, Moon } from "lucide-react"
 import { FormControl, InputLabel, Chip } from "@mui/material"
 import TextField from "@mui/material/TextField"
 import Autocomplete from "@mui/material/Autocomplete"
@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import AddressAutocomplete from "@/components/AddressAutocomplete"
 import { countries } from "../../../(landing)/sign-up/data/countries"
+import { IoChatbubble } from "react-icons/io5"
 
 type StudentProfile = {
   id: string
@@ -59,6 +60,7 @@ const jobTypes = [
   { value: "ojt", label: "OJT" },
   { value: "full-time", label: "Full Time" },
 ]
+
 
 const remoteOptions = [
   { value: "hybrid", label: "Hybrid" },
@@ -111,6 +113,7 @@ export default function SettingsPage() {
   const [editPersonalEmail, setEditPersonalEmail] = useState<string>("")
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ phone?: string; email?: string; section?: string }>({})
+  const [feedback, setFeedback] = useState<{ [key: string]: number | string }>({})
 
   useEffect(() => {
     fetch("/api/students/settings")
@@ -289,6 +292,7 @@ export default function SettingsPage() {
     { id: "appearance", icon: Sun, label: "Appearance", description: "Customize the application look" },
     { id: "notifications", icon: Bell, label: "Notifications", description: "Manage notification settings" },
     { id: "account", icon: Shield, label: "Account", description: "Account preferences and password" },
+    { id: "feedback", icon: Megaphone, label: "Feedback", description: "Help us improve the app" },
   ]
 
   return (
@@ -911,6 +915,101 @@ export default function SettingsPage() {
                 </Card>
               </motion.div>
             )}
+
+              {activeTab === "feedback" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.6 }}
+                >
+                  <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
+                    <CardHeader>
+                      <CardTitle className="text-blue-600 flex items-center">
+                        <Megaphone className="h-5 w-5 mr-2" />
+                        Feedback
+                      </CardTitle>
+                      <CardDescription>Help us improve the app</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {[
+                        "Overall satisfaction",
+                        "Ease of use",
+                        "Performance",
+                        "Features",
+                        "Likelihood to recommend",
+                        "Frequency of use",
+                      ].map((label) => (
+                        <div key={label} className="space-y-1">
+                          <Label className="text-blue-700">{label}</Label>
+                          <div className="flex gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                className="text-gray-300 hover:text-yellow-400 text-xl"
+                                onClick={() => setFeedback(prev => ({ ...prev, [label]: star }))}
+                              >
+                                {feedback[label] && typeof feedback[label] === 'number' && feedback[label] >= star ? "★" : "☆"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="space-y-1">
+                        <Label className="text-blue-700">Improvement Suggestions</Label>
+                        <textarea
+                          maxLength={800}
+                          value={feedback.suggestions || ""}
+                          onChange={(e) =>
+                            setFeedback(prev => ({ ...prev, suggestions: e.target.value }))
+                          }
+                          placeholder="Share your thoughts (max 800 characters)"
+                          className="w-full border-blue-200 rounded-md p-2 bg-blue-50/50 focus:border-blue-400 focus:ring-1 focus:ring-blue-300"
+                          rows={4}
+                        />
+                        <p className="text-sm text-blue-500/70">
+                          {typeof feedback.suggestions === 'string' ? feedback.suggestions.length : 0}/800 characters
+                        </p>
+                        <button
+  type="button"
+  className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition"
+  onClick={async () => {
+    try {
+      const response = await fetch('/api/feedback-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ratings: Object.fromEntries(
+            Object.entries(feedback).filter(([k, v]) => k !== 'suggestions')
+          ),
+          suggestions: feedback.suggestions || ''
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        alert('✅ Thank you! Your feedback has been submitted.')
+        setFeedback({}) // reset feedback
+      } else {
+        alert('❌ Failed to submit feedback: ' + (data.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error(error)
+      alert('❌ Something went wrong while submitting feedback.')
+    }
+  }}
+>
+  Submit Feedback
+</button>
+
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
 
             <motion.div
               className="flex justify-end mt-6"
