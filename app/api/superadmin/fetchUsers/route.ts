@@ -10,14 +10,14 @@ export async function GET(req: NextRequest) {
     const supabase = getAdminSupabase()
     let { data, error } = await supabase
       .from("student_profile")
-      .select("profile_img, contact_info,username")
+      .select("profile_img, contact_info, username")
       .eq("id", profileStudentId)
       .single()
 
     if (error || !data) {
       const fallback = await supabase
         .from("student_profile")
-        .select("profile_img, contact_info,username")
+        .select("profile_img, contact_info, username")
         .eq("student_id", profileStudentId)
         .single()
       data = fallback.data
@@ -124,3 +124,52 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ coordinators: data }, { status: 200 })
 }
 
+// 👇 PATCH endpoint to update student profile
+export async function PATCH(req: NextRequest) {
+  try {
+    const supabase = getAdminSupabase()
+    const {
+      id, // required PK
+      first_name,
+      last_name,
+      email,
+      phone,
+      course,
+      year,
+      section,
+      department,
+      address,
+      status,
+    } = await req.json()
+
+    if (!id) {
+      return NextResponse.json({ error: "Missing student id" }, { status: 400 })
+    }
+
+    const { data, error } = await supabase
+      .from("registered_students")
+      .update({
+        first_name,
+        last_name,
+        email,
+        phone,
+        course,
+        year,
+        section,
+        department,
+        address,
+        status,
+      })
+      .eq("id", id) // use PK id
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, student: data }, { status: 200 })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
