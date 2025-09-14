@@ -125,15 +125,18 @@ export default function AdminsManagement() {
     fetchAdmins()
   }, [])
 
+  const safeLower = (str: string | null | undefined) =>
+  str ? str.toLowerCase() : ""
+
   const filteredAdmins = adminList.filter((admin) => {
-    const search = searchQuery.trim().toLowerCase()
+    const search = (searchQuery ||"").trim().toLowerCase()
     const nameParts = [
-      admin.name.first,
-      admin.name.middle,
-      admin.name.last,
-      `${admin.name.first} ${admin.name.last}`,
-      `${admin.name.first} ${admin.name.middle} ${admin.name.last}`,
-      `${admin.name.last} ${admin.name.first}`,
+      admin.name.first || "",
+      admin.name.middle || "",
+      admin.name.last || "",
+      `${admin.name.first || ""} ${admin.name.last || ""}`,
+      `${admin.name.first || ""} ${admin.name.middle || ""} ${admin.name.last || ""}`,
+      `${admin.name.last || ""} ${admin.name.first || ""}`,
     ].map(s => s.toLowerCase())
     const matchesSearch =
       admin.username.toLowerCase().includes(search) ||
