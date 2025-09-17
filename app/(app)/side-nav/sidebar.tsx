@@ -74,6 +74,21 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
     };
   }, []);
 
+  function appendOrUpdateTimestamp(url: string | null): string | null {
+    if (!url) return url;
+    try {
+      const u = new URL(url, window.location.origin);
+      u.searchParams.set("t", Date.now().toString());
+      return u.toString();
+    } catch {
+      // fallback for relative URLs or invalid URLs
+      const [base, query = ""] = url.split("?");
+      const params = new URLSearchParams(query);
+      params.set("t", Date.now().toString());
+      return `${base}?${params.toString()}`;
+    }
+  }
+
   useEffect(() => {
     const cached = sessionStorage.getItem("sidebarUserData");
     if (cached) {
@@ -82,11 +97,8 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
       setStudentName(data.studentName);
       setEmail(data.email);
       setJobTitle(data.jobTitle);
-      if (data.role === "employer" && data.profileImg) {
-        setProfileImg(data.profileImg + (data.profileImg.includes("?") ? "&" : "?") + `t=${Date.now()}`);
-      } else {
-        setProfileImg(data.profileImg);
-      }
+      // Use cached profileImg as-is, do not append/update timestamp here
+      setProfileImg(data.profileImg);
       setCourse(data.course);
       setLoading(false);
       return;
@@ -120,7 +132,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
               });
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json();
-                imgUrl = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`;
+                imgUrl = appendOrUpdateTimestamp(signedUrl); // Only here
                 setProfileImg(imgUrl);
               } else {
                 setProfileImg(null);
@@ -174,7 +186,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
               });
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json();
-                imgUrl = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`;
+                imgUrl = appendOrUpdateTimestamp(signedUrl); // Only here
                 setProfileImg(imgUrl);
               } else {
                 setProfileImg(null);
@@ -469,3 +481,4 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
     </div>
   );
 }
+   

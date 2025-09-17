@@ -467,6 +467,14 @@ export default function RecruiterApplicationTracker() {
     if (applicants.length > 0) fetchJobSkills()
   }, [applicants])
 
+  function sortByAppliedAtDesc(applicants: Applicant[]) {
+    return [...applicants].sort((a, b) => {
+      const aDate = a.applied_at ? new Date(a.applied_at).getTime() : 0
+      const bDate = b.applied_at ? new Date(b.applied_at).getTime() : 0
+      return bDate - aDate
+    })
+  }
+
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
@@ -635,7 +643,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="all" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = filteredApplicants
+                          const filtered = sortByAppliedAtDesc(filteredApplicants)
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -680,7 +688,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="new" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = filteredApplicants.filter(a => capitalize(a.status) === "New")
+                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => capitalize(a.status) === "New"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -725,7 +733,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="shortlisted" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = filteredApplicants.filter(a => capitalize(a.status) === "Shortlisted")
+                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => capitalize(a.status) === "Shortlisted"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -770,7 +778,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="interview" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = filteredApplicants.filter(a => getTabStatus(a.status) === "Interview")
+                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => getTabStatus(a.status) === "Interview"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -815,7 +823,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="invited" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = filteredApplicants.filter(a => capitalize(a.status) === "Invited")
+                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => capitalize(a.status) === "Invited"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -860,7 +868,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="rejected" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = filteredApplicants.filter(a => capitalize(a.status) === "Rejected")
+                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => capitalize(a.status) === "Rejected"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -905,7 +913,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="waitlisted" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = filteredApplicants.filter(a => capitalize(a.status) === "Waitlisted")
+                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => capitalize(a.status) === "Waitlisted"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -950,7 +958,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="hired" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "hired")
+                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "hired"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -1445,11 +1453,13 @@ function ApplicantCard({
               <motion.div whileHover={{ scale: 1.15 }}>
                 <Badge
                   className={
-                    matchScore >= 70
+                    (matchScore >= 70
                       ? "bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800"
                       : matchScore >= 40
                       ? "bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800"
                       : "bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"
+                    )
+                    + " whitespace-nowrap min-w-[70px]"
                   }
                   style={{ cursor: "pointer-events-none" }}
                 >
@@ -1691,7 +1701,7 @@ function ApplicantCard({
                     style={{ minWidth: 0 }}
                     onClick={e => { e.stopPropagation(); setCancelInterviewOpen(true); }}
                     disabled={loadingShortlist || loadingReject}
-                  >
+>
                     <FaRegCalendarTimes className="w-4 h-4" />
                     Cancel Interview
                   </button>

@@ -31,6 +31,15 @@ async function getEmployerDetails(employer_id: string) {
   return { ...employer, profile_img: profile?.profile_img || null };
 }
 
+async function getCompanyLogoImagePath(company_name: string) {
+  const { data } = await supabase
+    .from("registered_companies")
+    .select("company_logo_image_path")
+    .eq("company_name", company_name)
+    .single();
+  return data?.company_logo_image_path || null;
+}
+
 export async function GET(req: NextRequest) {
   const { employerId, role } = await getEmployerIdAndRoleFromSession(req);
   if (!employerId || role !== "employer") {
@@ -40,5 +49,6 @@ export async function GET(req: NextRequest) {
   if (!details) {
     return NextResponse.json({ error: "Employer not found" }, { status: 404 });
   }
-  return NextResponse.json(details);
+  const companyLogoImagePath = await getCompanyLogoImagePath(details.company_name);
+  return NextResponse.json({ ...details, company_logo_image_path: companyLogoImagePath });
 }

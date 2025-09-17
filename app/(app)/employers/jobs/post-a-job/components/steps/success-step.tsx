@@ -3,10 +3,15 @@ import { CheckCircle, ExternalLink, Share2, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { ConfettiCustomShapes } from "@/components/magicui/shapes";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { ShareModal } from "../share-modal";
 
-export default function JobPostingLive({ onPostAnotherJob }: { onPostAnotherJob?: () => void }) {
+export default function JobPostingLive({ onPostAnotherJob, jobId }: { onPostAnotherJob?: () => void, jobId?: string }) {
   const router = useRouter();
+  const [showShare, setShowShare] = useState(false);
+  const shareUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/students/jobs/job-listings?jobId=${jobId ?? "job-slug"}`
+    : "https://example.com/share-link";
 
   useEffect(() => {
     window.scrollTo(0, 320); 
@@ -18,6 +23,7 @@ export default function JobPostingLive({ onPostAnotherJob }: { onPostAnotherJob?
 
   return (
     <div className="flex justify-center items-center min-h-screen">
+      <ShareModal open={showShare} onClose={() => setShowShare(false)} shareUrl={shareUrl} />
       <div className="bg-white rounded-3xl p-12 md:p-16 max-w-[70rem] w-full mx-auto mt-[-50px]">
         <ConfettiCustomShapes />
 
@@ -125,7 +131,7 @@ export default function JobPostingLive({ onPostAnotherJob }: { onPostAnotherJob?
               >
                 <button
                   type="button"
-                  onClick={() => { window.location.href = "#"; }}
+                  onClick={() => setShowShare(true)}
                   className="flex flex-col items-center text-center w-full"
                 >
                   <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">

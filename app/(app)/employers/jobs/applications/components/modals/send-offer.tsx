@@ -221,7 +221,7 @@ function SendOfferModal({
     setTimeout(() => {
       setWorkSetup(val => val ? val : "Onsite")
     }, 0)
-  }, [initial, jobPost, benefitOptions, daysOfWeek])
+  }, [initial, jobPost])
 
   useEffect(() => {
     if (selectedDays.length && startTime && endTime) {

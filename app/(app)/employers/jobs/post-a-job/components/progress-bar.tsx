@@ -6,20 +6,22 @@ import { AnimatedCheckIcon } from "./animated-check-icon"
 
 interface ProgressBarProps {
   currentStep: number
+  onStepClick?: (step: number) => void
 }
 
-export function ProgressBar({ currentStep }: ProgressBarProps) {
+export function ProgressBar({ currentStep, onStepClick }: ProgressBarProps) {
   const steps = [
-    { id: 1, name: "Create", status: "upcoming" },
-    { id: 2, name: "Validation", status: "upcoming" },
-    { id: 3, name: "Write", status: "upcoming" },
-    { id: 4, name: "Manage", status: "upcoming" },
-  ].map((step) => ({
+    { id: 1, name: "Create" },
+    { id: 2, name: "Validation" },
+    { id: 3, name: "Write" },
+    { id: 4, name: "Manage" },
+    { id: 5, name: "Preview" },
+  ].map((step, index) => ({
     ...step,
     status:
-      step.id < currentStep
+      index + 1 < currentStep
         ? "completed"
-        : step.id === currentStep
+        : index + 1 === currentStep
         ? "current"
         : "upcoming",
   }))
@@ -29,53 +31,63 @@ export function ProgressBar({ currentStep }: ProgressBarProps) {
       <div className="flex justify-between items-center">
         {steps.map((step, index) => (
           <div key={step.id} className="flex flex-col items-center relative w-full">
-            {/* Step indicator with animations */}
-            <motion.div
-              className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all duration-500 ease-in-out",
-                step.status === "completed"
-                  ? "bg-blue-500 border-blue-500"
-                  : step.status === "current"
-                  ? "border-blue-500"
-                  : "border-gray-300",
-              )}
-              initial={{ scale: 0.9 }}
-              animate={{ scale: step.status === "current" ? 1.2 : 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            >
-              {step.status === "completed" ? (
-                <AnimatedCheckIcon isVisible={true} />
-              ) : step.status === "current" ? (
-                <AnimatePresence>
-                  {/* Border circle bounces in */}
-                  <motion.div
-                    key="current-border"
-                    className="absolute inset-0 border-2 border-blue-500 rounded-full pointer-events-none"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1.3 }}
-                    exit={{ scale: 0 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                  />
-                  {/* Inner circle bounces out with delay */}
-                  <motion.div
-                    key="current-inner"
-                    className="w-3.5 h-3.5 bg-blue-500 rounded-full"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 15,
-                      delay: 0.2,
-                    }}
-                  />
-                </AnimatePresence>
-              ) : null}
-            </motion.div>
-
-            {/* Step name */}
-            <div className="mt-2 text-sm font-medium">{step.name}</div>
+            <div className="relative flex flex-col items-center">
+              <button
+                type="button"
+                disabled={!onStepClick}
+                onClick={() => onStepClick && onStepClick(step.id)}
+                className={`focus:outline-none ${
+                  onStepClick ? "cursor-pointer" : "cursor-default"
+                } bg-transparent border-none p-0`}
+                style={{ width: "auto", background: "none" }}
+              >
+                {/* Step indicator with animations */}
+                <motion.div
+                  className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all duration-500 ease-in-out",
+                    step.status === "completed"
+                      ? "bg-blue-500 border-blue-500"
+                      : step.status === "current"
+                      ? "border-blue-500"
+                      : "border-gray-300",
+                  )}
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: step.status === "current" ? 1.2 : 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  {step.status === "completed" ? (
+                    <AnimatedCheckIcon isVisible={true} />
+                  ) : step.status === "current" ? (
+                    <AnimatePresence>
+                      {/* Border circle bounces in */}
+                      <motion.div
+                        key="current-border"
+                        className="absolute inset-0 border-2 border-blue-500 rounded-full pointer-events-none"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1.3 }}
+                        exit={{ scale: 0 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                      />
+                      {/* Inner circle bounces out with delay */}
+                      <motion.div
+                        key="current-inner"
+                        className="w-3.5 h-3.5 bg-blue-500 rounded-full"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 15,
+                          delay: 0.2,
+                        }}
+                      />
+                    </AnimatePresence>
+                  ) : null}
+                </motion.div>
+              </button>
+              <div className="mt-2 text-sm font-medium">{step.name}</div>
+            </div>
 
             {/* Progress line */}
             {index < steps.length - 1 && (

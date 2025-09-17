@@ -20,14 +20,24 @@ import { useState, useEffect } from "react"
 import clsx from "clsx"
 import CtaModal from "./cta-modal"
 
-const JobDetails = ({ onClose }: { onClose: () => void }) => {
+type JobData = {
+  id: number
+  course: string
+  job: string
+  company: string
+  title: string
+  description: string
+  match: number
+}
+
+const JobDetails = ({ onClose, jobData }: { onClose: () => void; jobData?: JobData }) => {
   const [currentState, setCurrentState] = useState(0)
   const [showText, setShowText] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const states = [
-    { value: 15, color: "#ef4444", label: "15%" },
-    { value: 36, color: "#f97316", label: "36%" }, 
+    { value: jobData?.match || 15, color: "#22c55e", label: jobData?.match ? `${jobData.match}%` : "15%" },
+    { value: 36, color: "#f97316", label: "36%" },
     { value: 98, color: "#22c55e", label: "98%" },
   ]
 
@@ -35,7 +45,6 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
     const interval = setInterval(() => {
       setCurrentState((prev) => (prev + 1) % states.length)
     }, 2000)
-
     return () => clearInterval(interval)
   }, [states.length])
 
@@ -69,14 +78,14 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
           </button>
           <div className="mt-12 flex items-start gap-4">
             <div className="bg-black rounded-full w-14 h-14 flex items-center justify-center text-white">
-              <span className="font-bold text-sm">Mark-It</span>
+              <span className="font-bold text-sm">{jobData?.company?.slice(0,7) || "Mark-It"}</span>
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold">UI/UX Designer</h1>
+                <h1 className="text-2xl font-bold">{jobData?.title || "UI/UX Designer"}</h1>
                 <CheckCircle className="w-5 h-5 text-primary" />
               </div>
-              <div className="text-muted-foreground">Fb Mark-It Place</div>
+              <div className="text-muted-foreground">{jobData?.company || "Fb Mark-It Place"}</div>
               <div className="text-sm text-muted-foreground flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
                 <span>9/686 Jumper Road, Fernway Drive, San Jose Del Monte Malancat, Pampanga, NCR</span>
@@ -103,8 +112,8 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
           </div>
 
           <p className="mt-4 text-sm text-muted-foreground">
-            Seeking a creative UI/UX Designer to craft intuitive and visually engaging user experiences. You will design
-            user-friendly interfaces that enhance functionality and aesthetics.
+            {jobData?.description ||
+              "Seeking a creative UI/UX Designer to craft intuitive and visually engaging user experiences. You will design user-friendly interfaces that enhance functionality and aesthetics."}
           </p>
         </div>
 
@@ -137,7 +146,7 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
             </div>
             <div className="flex items-center gap-3">
               <CheckCircle className="w-3 h-3 text-muted-foreground" />
-              <span className="text-sm">Recommended for BSIT Students</span>
+              <span className="text-sm">Recommended for {jobData?.course || "BSIT"} Students</span>
             </div>
           </div>
         </div>
@@ -246,7 +255,7 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
                   <span className="font-medium">Juan Ponce Dionisio</span>
                   <CheckCircle className="w-4 h-4 text-primary" />
                 </div>
-                <span className="text-xs text-muted-foreground">HR Manager at FB Mark-It Place</span>
+                <span className="text-xs text-muted-foreground">HR Manager at {jobData?.company || "FB Mark-It Place"}</span>
               </div>
             </div>
             <Button variant="outline" className="rounded-full" onClick={() => setIsModalOpen(true)}>
@@ -275,7 +284,7 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
               </div>
 
               <div className="flex-1">
-                <h3 className="font-bold">Job-All Tech Solutions</h3>
+                <h3 className="font-bold">{jobData?.company || "Job-All Tech Solutions"}</h3>
                 <div className="text-sm font-medium">Software Development</div>
                 <div className="text-xs text-muted-foreground mt-1">San Francisco, USA | Berlin, Germany</div>
                 <div className="text-xs text-muted-foreground">Medium (200-500 employees)</div>
@@ -302,3 +311,4 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
 }
 
 export default JobDetails
+

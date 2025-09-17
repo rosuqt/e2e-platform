@@ -71,8 +71,11 @@ type ApplicationQuestion = {
   question: string
   type: string
   auto_reject: boolean
-  correct_answer?: string | null
+  correct_answer?: string | string[] | null
+  options?: string[] | ApplicationQuestionOption[]
 }
+
+type ApplicationQuestionOption = { id: string; question_id: string; option_value: string };
 
 const PERKS_MAP = [
   { id: "training", label: "Free Training & Workshops - Skill development", icon: <BookOpen className="h-5 w-5 text-green-500" /> },
@@ -83,12 +86,13 @@ const PERKS_MAP = [
   { id: "flexible", label: "Flexible Hours - Adjusted schedules for students", icon: <ClockIcon className="h-5 w-5 text-pink-500" /> },
 ]
 
-export default function EmployerJobOverview({ selectedJob, onClose }: { selectedJob: number | null; onClose: () => void }) {
+export default function EmployerJobOverview({ selectedJob, onClose }: { selectedJob: string | null; onClose: () => void }) {
   const [jobData, setJobData] = React.useState<JobData | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [questions, setQuestions] = React.useState<ApplicationQuestion[]>([])
   const [quickEditOpen, setQuickEditOpen] = React.useState(false);
+  const [showAllQuestions, setShowAllQuestions] = React.useState(false);
 
   React.useEffect(() => {
     if (selectedJob == null) return
@@ -99,7 +103,10 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
       fetch(`/api/job-listings/job-cards/${selectedJob}/questions`).then(r => r.json())
     ])
       .then(([job, questions]) => {
-        setJobData(job)
+        setJobData({
+          ...job,
+          jobTitle: job.jobTitle || job.title || "",
+        })
         setQuestions(Array.isArray(questions) ? questions : [])
         setLoading(false)
       })
@@ -380,69 +387,87 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                         )}
                       </ul>
                     </div>
-                    {/* Application Questions Section */}
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Application Questions</h3>
-                      <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
-                        {questions.length === 0 ? (
-                          <li>No application questions.</li>
-                        ) : (
-                          questions.map((q, idx) => (
-                            <li key={q.id || idx}>{q.question}</li>
-                          ))
-                        )}
-                      </ul>
-                    </div>
-                    {jobData.recommendedCourse && (
-                      <div>
-                        <h3 className="text-sm font-medium mb-2">Recommended Course</h3>
-                        <ul className="text-sm text-gray-500 list-disc pl-5 space-y-1">
-                          {jobData.recommendedCourse
-                            .split(",")
-                            .map((course, idx) => (
-                              <li key={idx}>{course.trim()}</li>
-                            ))}
-                        </ul>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg">Recent Applicants</CardTitle>
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-900 ">
-                      View More
-                    </Button>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Application Questions</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {(!jobData.total_applicants || jobData.total_applicants === 0) ? (
-                      <div className="flex flex-col items-center justify-center py-8">
-                        <FaUsers className="w-14 h-14 text-gray-300 mb-2" />
-                        <div className="text-gray-400 text-sm">No Applicants yet</div>
-                      </div>
+                    {questions.length === 0 ? (
+                      <div className="text-sm text-gray-500">No application questions.</div>
                     ) : (
-                      <div className="space-y-4">
-                        {[1, 2, 3].map((applicant) => (
-                          <div key={applicant} className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
-                                <FaUser className="text-white w-4 h-4" />
+                      <>
+                        <div className="space-y-4">
+                          {(showAllQuestions ? questions : questions.slice(0, 3)).map((q, idx) => {
+                            let opts: string[] = [];
+                            if (q.options) {
+                              let parsedOptions: unknown = q.options;
+                              if (typeof parsedOptions === "string") {
+                                try {
+                                  parsedOptions = JSON.parse(parsedOptions);
+                                } catch {
+                                  parsedOptions = [parsedOptions];
+                                }
+                              }
+                              if (Array.isArray(parsedOptions)) {
+                                if (parsedOptions.length > 0 && typeof parsedOptions[0] === "object" && parsedOptions[0] !== null && "option_value" in parsedOptions[0]) {
+                                  opts = (parsedOptions as ApplicationQuestionOption[]).map(optObj => optObj.option_value);
+                                } else {
+                                  opts = parsedOptions as string[];
+                                }
+                              }
+                            }
+                            return (
+                              <div key={q.id || idx} className="p-4 rounded-lg border border-gray-200 bg-white shadow-sm">
+                                <div className="flex flex-col gap-2">
+                                  <div className="font-medium text-gray-800">{q.question}</div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                      {q.type === "text"
+                                        ? "Text"
+                                        : q.type === "single"
+                                          ? "Single select"
+                                          : q.type === "multi"
+                                            ? "Multi select"
+                                            : "Yes/No"}
+                                    </span>
+                                    {q.auto_reject && (
+                                      <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Auto-reject</span>
+                                    )}
+                                  </div>
+                                  {opts.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {opts.map((opt, i) => (
+                                        <span key={i} className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">{opt}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {q.auto_reject && q.correct_answer && (
+                                    <div className="flex flex-wrap gap-1 mt-2">
+                                      <span className="text-xs text-red-500 font-semibold">Auto-reject criteria:</span>
+                                      {Array.isArray(q.correct_answer)
+                                        ? q.correct_answer.map((ans, i) => (
+                                            <span key={i} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{ans}</span>
+                                          ))
+                                        : <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{q.correct_answer}</span>
+                                      }
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div>
-                                <div className="text-sm font-medium">{`Applicant ${applicant}`}</div>
-                                <div className="text-xs text-gray-500">Applied 2 days ago</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Chip label="85% Match" className="bg-green-100 text-green-600 hover:bg-green-200" />
-                              <Button variant="outline" size="sm">
-                                View
-                              </Button>
-                            </div>
+                            );
+                          })}
+                        </div>
+                        {questions.length > 3 && (
+                          <div className="mt-2 flex justify-center">
+                            <Button variant="ghost" size="sm" onClick={() => setShowAllQuestions(v => !v)}>
+                              {showAllQuestions ? "Show Less" : `Show More (${questions.length - 3} more)`}
+                            </Button>
                           </div>
-                        ))}
-                      </div>
+                        )}
+                      </>
                     )}
                   </CardContent>
                 </Card>
@@ -577,31 +602,44 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                   </CardContent>
                 </Card>
 
-                {Array.isArray(jobData.tags) && jobData.tags.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Tags</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-wrap gap-2">
-                      {jobData.tags.map((tag, idx) => (
-                        <span
-                          key={tag.name + idx}
-                          style={{
-                            backgroundColor: tag.color,
-                            color: "#fff",
-                            borderRadius: "9999px",
-                            padding: "0.25rem 0.75rem",
-                            fontSize: "0.875rem",
-                            fontWeight: 500,
-                            display: "inline-block",
-                          }}
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                    </CardContent>
-                  </Card>
-                )}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg">Recent Applicants</CardTitle>
+                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-900 ">
+                      View More
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    {(!jobData.total_applicants || jobData.total_applicants === 0) ? (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <FaUsers className="w-14 h-14 text-gray-300 mb-2" />
+                        <div className="text-gray-400 text-sm">No Applicants yet</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {[1, 2, 3].map((applicant) => (
+                          <div key={applicant} className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
+                                <FaUser className="text-white w-4 h-4" />
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium">{`Applicant ${applicant}`}</div>
+                                <div className="text-xs text-gray-500">Applied 2 days ago</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Chip label="85% Match" className="bg-green-100 text-green-600 hover:bg-green-200" />
+                              <Button variant="outline" size="sm">
+                                View
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </TabsContent>
@@ -621,7 +659,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
       </div>
       <QuickEditModal
         open={quickEditOpen}
-        job={{
+        draftData={{
           id: selectedJob ?? undefined,
           jobTitle: jobData.jobTitle,
           location: jobData.location,
@@ -647,10 +685,6 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           perksAndBenefits: jobData.perksAndBenefits,
         }}
         onClose={() => setQuickEditOpen(false)}
-        onSave={() => {
-          setQuickEditOpen(false);
-
-        }}
       />
     </div>
   )

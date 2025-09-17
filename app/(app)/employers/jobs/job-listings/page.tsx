@@ -11,37 +11,43 @@ import { Input } from "@/components/ui/input"
 import Drawer from "@mui/material/Drawer"
 import EmployerJobCard, { EmployerJobCardJob, sortJobsActiveFirst } from "./components/job-cards"
 import EmployerJobOverview from "./components/tabs/overview-tab"
-import QuickEditModal from "./components/quick-edit-modal"
 import CandidateMatches from "./components/candidate-matches"
 import TopJobListing from "./top-job-listing"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Lottie from "lottie-react"
 import { FaFolderOpen } from "react-icons/fa6"
+import QuickEditModal from "./components/quick-edit-modal"
 
 export default function JobListingPage() {
   useEffect(() => {
-    document.documentElement.classList.add("overflow-hidden")
+    document.body.classList.remove("overflow-hidden")
+    document.body.classList.add("overflow-hidden")
+
+    window.scrollTo(0, 0)
 
     return () => {
-      document.documentElement.classList.remove("overflow-hidden")
+      document.body.classList.remove("overflow-hidden")
     }
   }, [])
 
-  const [selectedJob, setSelectedJob] = useState<number | null>(null)
+  const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showProfileColumn, setShowProfileColumn] = useState(true)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editJobData, setEditJobData] = useState<Record<string, unknown> | null>(null)
 
   const rightSectionRef = useRef<HTMLDivElement | null>(null)
   const leftSectionRef = useRef<HTMLDivElement | null>(null)
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
-  const handleJobSelect = (id: number) => {
-    setSelectedJob(id)
-    setIsModalOpen(true) 
+  const handleJobSelect = (id: string) => {
+    router.push(`/employers/jobs/job-listings?job=${id}`)
   }
 
   const closeModal = () => {
-    setIsModalOpen(false) 
+    router.push("/employers/jobs/job-listings")
   }
 
   useEffect(() => {
@@ -69,6 +75,17 @@ export default function JobListingPage() {
       window.removeEventListener("resize", adjustSectionWidths)
     }
   }, [selectedJob])
+
+  useEffect(() => {
+    const jobParam = searchParams?.get("job")
+    if (jobParam) {
+      setSelectedJob(jobParam)
+      setIsModalOpen(true)
+    } else {
+      setSelectedJob(null)
+      setIsModalOpen(false)
+    }
+  }, [searchParams])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
@@ -107,7 +124,6 @@ export default function JobListingPage() {
         {/* Collapsible Profile Column */}
         {showProfileColumn && (
           <div className="hidden md:block w-80 flex-shrink-0 overflow-y-auto border-r border-blue-200 relative">
-            {/* Toggle button to hide column */}
             <button
               className="absolute top-2 right-2 z-20 bg-white border border-blue-200 rounded-full p-1 shadow hover:bg-blue-50 transition-colors"
               title="Hide Column"
@@ -131,7 +147,7 @@ export default function JobListingPage() {
             <UserProfile />
           </div>
         )}
-        {/* Show button when column is hidden */}
+
         {!showProfileColumn && (
           <div className="hidden md:flex w-6 flex-shrink-0 items-start justify-center pt-4">
             <button
@@ -162,13 +178,20 @@ export default function JobListingPage() {
           style={{ width: "100%" }}
         >
           <div className="ml-3 mt-3 flex flex-col h-full">
-            <JobListings onSelectJob={handleJobSelect} selectedJob={selectedJob} />
+            <JobListings
+              onSelectJob={handleJobSelect}
+              selectedJob={selectedJob}
+              onEditJob={jobData => {
+                setEditJobData(jobData)
+                setEditModalOpen(true)
+              }}
+            />
           </div>
         </div>
       </div>
 
       {/* Employer Job Overview Modal */}
-      {isModalOpen && (
+      {isModalOpen && selectedJob && (
         <motion.div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
@@ -193,6 +216,12 @@ export default function JobListingPage() {
           </motion.div>
         </motion.div>
       )}
+
+      <QuickEditModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        draftData={editJobData}
+      />
     </div>
   )
 }
@@ -217,17 +246,16 @@ function UserProfile() {
 }
 
 // Job Listings Component
-function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) => void; selectedJob: number | null }) {
+function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id: string) => void; selectedJob: string | null; onEditJob: (jobData: Record<string, unknown>) => void }) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("all")
-  const [showQuickApply, setShowQuickApply] = useState(false)
-  const [currentJobId, setCurrentJobId] = useState<number | null>(null)
   const [sortOption, setSortOption] = useState("Newest first")
-  const [locationFilter, setLocationFilter] = useState("Remote options")
+  const [locationFilter, setLocationFilter] = useState("All job types")
   const debounceRef = useRef<number | null>(null)
   const collapsedRef = useRef(false)
   const [collapsed, setCollapsed] = useState(false)
   const [jobs, setJobs] = useState<EmployerJobCardJob[]>([])
+  const [drafts, setDrafts] = useState<EmployerJobCardJob[]>([])
   const [loading, setLoading] = useState(true)
   const [listLoadAnimation, setListLoadAnimation] = useState<object | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -247,6 +275,26 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
         setJobs([]);
         setLoading(false)
       });
+    fetch("/api/job-listings/fetchDrafts")
+      .then(res => res.json())
+      .then(data => {
+        const mappedDrafts: EmployerJobCardJob[] = Array.isArray(data.data)
+          ? data.data.map((draft: Record<string, unknown>) => ({
+              id: String(draft.id),
+              title: String(draft.job_title ?? ""),
+              status: "Draft",
+              closing: "",
+              type: String(draft.work_type ?? ""),
+              salary: String(draft.pay_amount ?? ""),
+              posted: String(draft.created_at ?? ""),
+              recommended_course: typeof draft.recommended_course === "string" ? draft.recommended_course : undefined,
+              paused: false,
+              companyName: undefined,
+            }))
+          : []
+        setDrafts(mappedDrafts)
+      })
+      .catch(() => setDrafts([]))
   }, []);
 
   useEffect(() => {
@@ -288,7 +336,8 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
     return "active"
   }
 
-  const tabCounts = jobs.reduce(
+  // Fix: tabCounts should include drafts from the drafts state
+  const tabCounts = jobs.concat(drafts).reduce(
     (acc, job) => {
       const status = getJobStatus(job)
       acc.all++
@@ -302,22 +351,23 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
   )
 
   const filteredJobs = jobs.filter((job) => {
+    // Always include all jobs for "all" tab
     const status = getJobStatus(job)
     const matchesTab = activeTab === "all" || status === activeTab
     let matchesLocation = true
-    if (locationFilter === "Work from Home") {
-      matchesLocation = job.type?.toLowerCase().includes("remote") || job.type?.toLowerCase().includes("home")
-    } else if (locationFilter === "On-site") {
-      matchesLocation = job.type?.toLowerCase().includes("on-site") || job.type?.toLowerCase().includes("onsite")
-    } else if (locationFilter === "Hybrid") {
-      matchesLocation = job.type?.toLowerCase().includes("hybrid")
+
+    if (locationFilter !== "All job types") {
+      matchesLocation = job.type?.toLowerCase() === locationFilter.toLowerCase()
     }
+    // For "all" tab, matchesTab is always true, so all jobs (including paused) are included
     return matchesTab && matchesLocation
   })
 
+  // Add: filteredDrafts for drafts tab
+  const filteredDrafts = drafts
+
   function parsePostedToDate(posted: string): Date {
     if (!posted) return new Date(0)
-    // Example: "2 days ago", "3 hours ago", "just now"
     if (posted.includes("just now")) return new Date()
     const match = posted.match(/(\d+)\s+(minute|hour|day|week|month|year)s?\s+ago/)
     if (!match) return new Date(0)
@@ -366,6 +416,17 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
     { id: "closed", label: "Closed", count: tabCounts.closed },
     { id: "draft", label: "Drafts", count: tabCounts.draft },
   ]
+
+  const handleJobStatusChange = (jobId: string, newPaused: boolean) => {
+    setJobs(prevJobs =>
+      prevJobs.map(job =>
+        String(job.id) === String(jobId) ? { ...job, paused: newPaused } : job
+      )
+    )
+  }
+
+  const handleViewDraftDetails = async () => {
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -515,48 +576,50 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number) =
               <span className="text-blue-500 font-semibold text-lg -mt-10">Fetching job listings...</span>
             </div>
           )}
-          {filteredJobs.length === 0 && !loading ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <span className="flex justify-center items-center mb-2">
-                <FaFolderOpen className="text-gray-400 h-40 w-40" />
-              </span>
-              <div className="text-gray-500 text-center">Nothing to see here.</div>
-            </div>
+          {activeTab === "draft" ? (
+            filteredDrafts.length === 0 && !loading ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <span className="flex justify-center items-center mb-2">
+                  <FaFolderOpen className="text-gray-400 h-40 w-40" />
+                </span>
+                <div className="text-gray-500 text-center">No drafts found.</div>
+              </div>
+            ) : (
+              !loading && filteredDrafts.map((draft) => (
+                <EmployerJobCard
+                  key={draft.id}
+                  job={draft}
+                  isSelected={selectedJob === String(draft.id)}
+                  onSelect={() => handleViewDraftDetails()}
+                  onEdit={() => onEditJob(draft)}
+                  onStatusChange={() => {}}
+                />
+              ))
+            )
           ) : (
-            !loading && sortJobsActiveFirst(sortedJobs).map((job) => (
-              <EmployerJobCard
-                key={job.id}
-                job={job}
-                isSelected={selectedJob === job.id}
-                onSelect={() => onSelectJob(job.id)}
-                onEdit={() => {
-                  setCurrentJobId(job.id);
-                  setShowQuickApply(true);
-                }}
-              />
-            ))
-         ) }
+            filteredJobs.length === 0 && !loading ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <span className="flex justify-center items-center mb-2">
+                  <FaFolderOpen className="text-gray-400 h-40 w-40" />
+                </span>
+                <div className="text-gray-500 text-center">Nothing to see here.</div>
+              </div>
+            ) : (
+              !loading && sortJobsActiveFirst(sortedJobs).map((job) => (
+                <EmployerJobCard
+                  key={job.id}
+                  job={job}
+                  isSelected={selectedJob === String(job.id)}
+                  onSelect={() => onSelectJob(String(job.id))}
+                  onEdit={() => onEditJob(job)}
+                  onStatusChange={() => handleJobStatusChange(job.id, !job.paused)}
+                />
+              ))
+            )
+          )}
         </div>
-
-        {/* Quick Edit Modal */}
-        {showQuickApply && (
-          <QuickEditModal
-            open={showQuickApply}
-            job={
-              currentJobId !== null
-                ? {
-                    id: currentJobId,
-                    jobTitle: `Job Title ${currentJobId}`,
-                    location: "Sample Location",
-                    jobDescription: "Sample job description.",
-                  }
-                : null
-            }
-            onClose={() => setShowQuickApply(false)}
-            onSave={() => setShowQuickApply(false)}
-          />
-        )}
       </div>
     </div>
   )
 }
+

@@ -5,7 +5,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const { id: jobId } = await context.params
   const { data, error } = await supabase
     .from("application_questions")
-    .select("id, question, type, auto_reject, correct_answer")
+    .select("id, question, type, auto_reject, correct_answer, options")
     .eq("job_id", jobId)
 
   if (error) {

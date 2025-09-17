@@ -1,7 +1,6 @@
 "use client"
 import { useState, forwardRef, useEffect } from "react"
 import {
-  Dialog,
   DialogContent,
   Button,
   Box,
@@ -19,6 +18,7 @@ import type { SlideProps } from "@mui/material"
 import { MapPin, Video } from "lucide-react"
 import Lottie from "lottie-react"
 import interviewSchedAnim from "../../../../../../../public/animations/interview-sched.json"
+import DialogMui from "@mui/material/Dialog"
 
 const SlideUp = forwardRef(function Transition(
   props: SlideProps,
@@ -265,7 +265,7 @@ function InterviewScheduleModal({
   }
 
   return (
-    <Dialog
+    <DialogMui
       open={open}
       onClose={handleClose}
       TransitionComponent={SlideUp}
@@ -280,6 +280,10 @@ function InterviewScheduleModal({
           overflow: "hidden"
         }
       }}
+      hideBackdrop={false}
+      disableEnforceFocus={false}
+      disableAutoFocus={false}
+      disableRestoreFocus={false}
     >
       <DialogContent sx={{ p: 0 }}>
         <Box
@@ -630,7 +634,7 @@ function InterviewScheduleModal({
           </Box>
         </Box>
       </DialogContent>
-    </Dialog>
+    </DialogMui>
   )
 }
 

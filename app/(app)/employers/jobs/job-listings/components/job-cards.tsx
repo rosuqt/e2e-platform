@@ -6,7 +6,7 @@ import { FaComputer, FaHotel } from "react-icons/fa6";
 import { MdBusinessCenter, MdOutlinePlayCircle } from "react-icons/md";
 import { BiSolidPlaneAlt } from "react-icons/bi";
 import { IoMdPlanet } from "react-icons/io";
-import { FaRegCirclePause , FaMoneyBill } from "react-icons/fa6";
+import { FaRegCirclePause , FaMoneyBill, FaTrash } from "react-icons/fa6";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -22,7 +22,7 @@ import { MdWarningAmber } from "react-icons/md";
 import { TbBusinessplan } from "react-icons/tb";
 
 export type EmployerJobCardJob = {
-  id: number;
+  id: string;
   title: string;
   status: string;
   closing: string;
@@ -56,15 +56,9 @@ export default function EmployerJobCard({
   const [openResume, setOpenResume] = React.useState(false);
   const [openDelete, setOpenDelete] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [paused, setPaused] = React.useState(job?.paused ?? false);
-  const [pausedStatus, setPausedStatus] = React.useState<"paused" | "active" | "paused_orange">(
-    job?.paused_status ?? (job?.paused ? "paused" : "active")
-  );
 
-  React.useEffect(() => {
-    setPaused(job?.paused ?? false);
-    setPausedStatus(job?.paused_status ?? (job?.paused ? "paused" : "active"));
-  }, [job?.paused, job?.paused_status]);
+  const paused = job?.paused ?? false;
+  const pausedStatus = job?.paused_status ?? (paused ? "paused" : "active");
 
   if (!job) return null;
 
@@ -191,7 +185,7 @@ export default function EmployerJobCard({
       className={`bg-white rounded-lg shadow-sm p-5 border-l-4 border-l-gray-200 relative overflow-hidden`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: job.id * 0.1 }}
+      transition={{ duration: 0.5, delay: 0 }}
       whileHover={{
         y: -2,
         boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
@@ -268,7 +262,24 @@ export default function EmployerJobCard({
           </div>
         </div>
         <div className="flex gap-1">
-          {paused ? (
+          {job.status === "Draft" ? (
+            <button
+              className="text-red-500 hover:text-red-600 transition-colors p-1 rounded-full hover:bg-red-50"
+              onClick={async (e) => {
+                e.stopPropagation();
+                setLoading(true);
+                await fetch(`/api/job-listings/drafts/${job.id}`, {
+                  method: "DELETE",
+                });
+                setLoading(false);
+                if (typeof onStatusChange === "function") onStatusChange();
+              }}
+              disabled={loading}
+              title="Delete Draft"
+            >
+              <FaTrash className="w-4 h-4" />
+            </button>
+          ) : paused ? (
             <AlertDialog open={openResume} onOpenChange={setOpenResume}>
               <AlertDialogTrigger asChild>
                 <button
@@ -301,7 +312,6 @@ export default function EmployerJobCard({
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ paused: false }),
                       });
-                      setPaused(false);
                       setLoading(false);
                       if (typeof onStatusChange === "function") onStatusChange();
                     }}
@@ -344,7 +354,6 @@ export default function EmployerJobCard({
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ paused: true }),
                       });
-                      setPaused(true);
                       setLoading(false);
                       if (typeof onStatusChange === "function") onStatusChange();
                     }}
@@ -355,27 +364,29 @@ export default function EmployerJobCard({
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <button
-            className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
-            onClick={(e) => e.stopPropagation()}
-            disabled={loading}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {job.status !== "Draft" && (
+            <button
+              className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
+              onClick={(e) => e.stopPropagation()}
+              disabled={loading}
             >
-              <circle cx="12" cy="12" r="1" />
-              <circle cx="19" cy="12" r="1" />
-              <circle cx="5" cy="12" r="1" />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="1" />
+                <circle cx="19" cy="12" r="1" />
+                <circle cx="5" cy="12" r="1" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
       <div className="mt-4 grid grid-cols-4 gap-2">
@@ -408,121 +419,126 @@ export default function EmployerJobCard({
             <RiListView />
             View Details
           </button>
-
-          <button
-            className="border border-blue-500 text-blue-500 hover:bg-blue-50 px-4 py-1.5 rounded-md text-sm flex items-center gap-1.5 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {job.status !== "Draft" && (
+            <button
+              className="border border-blue-500 text-blue-500 hover:bg-blue-50 px-4 py-1.5 rounded-md text-sm flex items-center gap-1.5 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
             >
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-            Edit
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Edit
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-            <AlertDialogTrigger asChild>
-              <button
-                className="text-gray-500 hover:text-red-500 text-xs flex items-center gap-1 hover:underline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenDelete(true);
-                }}
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="w-4 h-4 border-2 border-red-200 border-t-red-500 rounded-full animate-spin inline-block" />
-                ) : (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+          {job.status !== "Draft" && (
+            <>
+              <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+                <AlertDialogTrigger asChild>
+                  <button
+                    className="text-gray-500 hover:text-red-500 text-xs flex items-center gap-1 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenDelete(true);
+                    }}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <span className="w-4 h-4 border-2 border-red-200 border-t-red-500 rounded-full animate-spin inline-block" />
+                    ) : (
+                      <>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M3 6h18" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+                          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                        Delete
+                      </>
+                    )}
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-white">
+                  <AlertDialogHeader>
+                    <div className="flex items-center gap-2">
+                      <MdWarningAmber className="w-6 h-6 text-orange-500" />
+                      <AlertDialogTitle>Delete Job Listing</AlertDialogTitle>
+                    </div>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete this job listing? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-red-500 hover:bg-red-600 text-white"
+                      onClick={async () => {
+                        setLoading(true);
+                        await fetch(`/api/job-listings/${job?.id}/delete`, {
+                          method: "PATCH",
+                        });
+                        setLoading(false);
+                        setOpenDelete(false);
+                        if (typeof onStatusChange === "function") onStatusChange();
+                      }}
+                      disabled={loading}
                     >
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                    Delete
-                  </>
-                )}
-              </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="bg-white">
-              <AlertDialogHeader>
-                <div className="flex items-center gap-2">
-                  <MdWarningAmber className="w-6 h-6 text-orange-500" />
-                  <AlertDialogTitle>Delete Job Listing</AlertDialogTitle>
-                </div>
-                <AlertDialogDescription>
-                  Are you sure you want to delete this job listing? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-red-500 hover:bg-red-600 text-white"
-                  onClick={async () => {
-                    setLoading(true);
-                    await fetch(`/api/job-listings/${job?.id}/delete`, {
-                      method: "PATCH",
-                    });
-                    setLoading(false);
-                    setOpenDelete(false);
-                    if (typeof onStatusChange === "function") onStatusChange();
-                  }}
-                  disabled={loading}
+                      {loading ? (
+                        <span className="w-4 h-4 border-2 border-white border-t-red-200 rounded-full animate-spin inline-block" />
+                      ) : (
+                        "Delete"
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <span className="text-gray-300">|</span>
+              <button
+                className="text-gray-500 hover:text-yellow-500 text-xs flex items-center gap-1 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  {loading ? (
-                    <span className="w-4 h-4 border-2 border-white border-t-red-200 rounded-full animate-spin inline-block" />
-                  ) : (
-                    "Delete"
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <span className="text-gray-300">|</span>
-          <button
-            className="text-gray-500 hover:text-yellow-500 text-xs flex items-center gap-1 hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-            </svg>
-            Duplicate
-          </button>
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                Duplicate
+              </button>
+            </>
+          )}
         </div>
       </div>
     </motion.div>

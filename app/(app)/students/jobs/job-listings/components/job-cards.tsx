@@ -74,6 +74,7 @@ function JobCard({
   onQuickApply,
   job,
   onSaveToggle,
+  companyLogoImagePath,
 }: {
   id: number | string;
   isSelected: boolean;
@@ -81,6 +82,7 @@ function JobCard({
   onQuickApply: () => void;
   job: Job;
   onSaveToggle?: (jobId: number | string, isSaved: boolean) => void;
+  companyLogoImagePath?: string | null;
 }) {
   function getDaysLeft(deadline?: string): string {
     if (!deadline) return "No application deadline";
@@ -120,6 +122,7 @@ function JobCard({
   const [studentSkills, setStudentSkills] = useState<string[]>([]);
 
   const logoPath =
+    companyLogoImagePath ||
     job.registered_companies?.company_logo_image_path ||
     job.company_logo_image_path;
 
@@ -128,6 +131,13 @@ function JobCard({
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    if (job.id === "preview" && companyLogoImagePath) {
+      const publicUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/company.logo/${companyLogoImagePath}`;
+      setLogoUrl(publicUrl);
+      setLogoLoading(false);
+      console.log("JobCard preview logoUrl:", publicUrl);
+      return;
+    }
     setLogoLoading(true);
     let ignore = false;
     async function fetchLogoUrl() {
@@ -171,7 +181,7 @@ function JobCard({
     }
     fetchLogoUrl();
     return () => { ignore = true; };
-  }, [logoPath]);
+  }, [logoPath, job.id, companyLogoImagePath]);
 
   useEffect(() => {
     let ignore = false;

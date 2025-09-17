@@ -10,7 +10,7 @@ export default function CourseSelector() {
   const [selectedJob, setSelectedJob] = useState<string>("")
   const [isOpenCourse, setIsOpenCourse] = useState(false)
   const [isOpenJob, setIsOpenJob] = useState(false)
-const router = useRouter()
+  const router = useRouter()
   const courseOptions: string[] = ["BSIT", "BSBA", "BSTM", "BSHM"]
   const jobOptions: { [key: string]: string[] } = {
     BSIT: ["Web Developer", "Software Engineer", "System Analyst", "UI/UX Designer", "Cybersecurity Analyst"],
@@ -107,7 +107,16 @@ const router = useRouter()
         className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-medium rounded-lg p-3 flex items-center justify-center gap-2 mt-auto"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => router.push("/jobs")}
+        onClick={() => {
+          if (selectedCourse) {
+            const params = new URLSearchParams()
+            params.set("course", selectedCourse)
+            if (selectedJob) params.set("job", selectedJob)
+            router.push(`/jobs?${params.toString()}`)
+          } else {
+            router.push("/jobs")
+          }
+        }}
       >
         <Search className="w-4 h-4" />
         <span>Find Jobs</span>

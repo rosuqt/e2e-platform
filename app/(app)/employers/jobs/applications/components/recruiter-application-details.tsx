@@ -25,7 +25,7 @@ import { useSession } from "next-auth/react"
 import { MdStars } from "react-icons/md"
 import { TbMessage } from "react-icons/tb"
 import { TfiMoreAlt } from "react-icons/tfi"
-import { Menu, MenuItem } from "@mui/material"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { ArrowUpRight } from "lucide-react"
 import InterviewScheduleModal from "./modals/interview-schedule"
 import { FaHandHoldingUsd, FaRegCalendarTimes } from "react-icons/fa"
@@ -193,6 +193,15 @@ export function RecruiterApplicationDetailsModal({
         })
     }
   }, [applicant])
+
+  useEffect(() => {
+    function handleOpenInterviewModal() {
+      setEditInterviewMode(false)
+      setShowInterviewModal(true)
+    }
+    window.addEventListener("__openInterviewModal", handleOpenInterviewModal)
+    return () => window.removeEventListener("__openInterviewModal", handleOpenInterviewModal)
+  }, [])
 
   if (!applicant) return null
 
@@ -521,8 +530,8 @@ function RecruiterApplicationDetailsContent({
   const [employerName, setEmployerName] = useState<string>("")
   const [employerJobTitle, setEmployerJobTitle] = useState<string>("")
   const [employerProfileImg, setEmployerProfileImg] = useState<string | null>(null)
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  const open = Boolean(anchorEl)
+  // const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  // const open = Boolean(anchorEl)
   const [signedAchievements, setSignedAchievements] = useState<{ name: string; url: string }[]>([])
   const [signedPortfolio, setSignedPortfolio] = useState<{ name: string; url: string }[]>([])
 
@@ -805,7 +814,7 @@ function RecruiterApplicationDetailsContent({
 
           <div className="space-y-2">
             <h3 className="text-md font-semibold text-blue-700">Skills</h3>
-            <span className="text-sm text-gray-500">Highlighted skills are your skills that matches this job </span> 
+            <span className="text-sm text-gray-500">Highlighted skills are applicant&apos;s skills that matches this job </span> 
             <div className="flex flex-wrap gap-2">
               {application.skills.map((skill: string, index: number) => {
                 const isMatched = jobSkills
@@ -1005,45 +1014,57 @@ function RecruiterApplicationDetailsContent({
             if (status === "new" || status === "shortlisted") {
               return (
                 <>
-                  <Button
-                    variant="outline"
-                    className="text-gray-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-                    onClick={e => setAnchorEl(e.currentTarget)}
-                  >
-                    <TfiMoreAlt className="h-4 w-4 mr-2" />
-                    More Actions
-                  </Button>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={open}
-                    onClose={() => setAnchorEl(null)}
-                    anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-                    transformOrigin={{ vertical: "top", horizontal: "left" }}
-                    slotProps={{
-                      paper: {
-                        sx: { minWidth: 200, borderRadius: 2, boxShadow: 2, p: 0.5 }
-                      }
-                    }}
-                  >
-                    <MenuItem onClick={() => setAnchorEl(null)}>
-                      <User className="w-4 h-4 mr-2 text-gray-500" />
-                      View Profile
-                    </MenuItem>
-                    <MenuItem onClick={() => setAnchorEl(null)}>
-                      <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
-                      View Job Listing
-                    </MenuItem>
-                    {status === "new" && (
-                      <MenuItem onClick={() => { setAnchorEl(null); if (onOpenInterviewModal) onOpenInterviewModal(); }}>
-                        <Calendar className="w-4 h-4 mr-2 text-purple-600" />
-                        Schedule Interview
-                      </MenuItem>
-                    )}
-                    <MenuItem onClick={() => setAnchorEl(null)}>
-                      <ArrowUpRight className="w-4 h-4 mr-2 text-yellow-500" />
-                      Send Offer
-                    </MenuItem>
-                  </Menu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="text-gray-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                      >
+                        <TfiMoreAlt className="h-4 w-4 mr-2" />
+                        More Actions
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      sideOffset={8}
+                      className="min-w-[200px]"
+                    >
+                      <DropdownMenuItem onSelect={() => {}}>
+                        <User className="w-4 h-4 mr-2 text-gray-500" />
+                        View Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => {
+                        window.location.href = `/employers/jobs/job-listings?job=${application.job_id}`;
+                      }}>
+                        <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
+                        View Job Listing
+                      </DropdownMenuItem>
+                      {status === "new" && (
+                        <DropdownMenuItem
+                          onSelect={e => {
+                            e.preventDefault()
+                            if (setIsModalOpen) setIsModalOpen(false)
+                            setTimeout(() => {
+                              window.dispatchEvent(new CustomEvent("__openInterviewModal"))
+                            }, 200)
+                          }}
+                        >
+                          <Calendar className="w-4 h-4 mr-2 text-purple-600" />
+                          Schedule Interview
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onSelect={e => {
+                          e.preventDefault()
+                          setIsModalOpen?.(false)
+                          setTimeout(() => setShowSendOfferModal?.(true), 200)
+                        }}
+                      >
+                        <ArrowUpRight className="w-4 h-4 mr-2 text-yellow-500" />
+                        Send Offer
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     variant="outline"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
@@ -1084,39 +1105,33 @@ function RecruiterApplicationDetailsContent({
             if (status === "interview" || status === "interview scheduled") {
               return (
                 <>
-                  <Button
-                    variant="outline"
-                    className="text-gray-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-                    onClick={e => setAnchorEl(e.currentTarget)}
-                  >
-                    <TfiMoreAlt className="h-4 w-4 mr-2" />
-                    More Actions
-                  </Button>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={open}
-                    onClose={() => setAnchorEl(null)}
-                    anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-                    transformOrigin={{ vertical: "top", horizontal: "left" }}
-                    slotProps={{
-                      paper: {
-                        sx: { minWidth: 200, borderRadius: 2, boxShadow: 2, p: 0.5 }
-                      }
-                    }}
-                  >
-                    <MenuItem onClick={() => setAnchorEl(null)}>
-                      <User className="w-4 h-4 mr-2 text-gray-500" />
-                      View Profile
-                    </MenuItem>
-                    <MenuItem onClick={() => setAnchorEl(null)}>
-                      <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
-                      View Job Listing
-                    </MenuItem>
-                    <MenuItem onClick={() => setAnchorEl(null)}>
-                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                      Mark as Done
-                    </MenuItem>
-                  </Menu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="text-gray-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                      >
+                        <TfiMoreAlt className="h-4 w-4 mr-2" />
+                        More Actions
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" sideOffset={8} className="min-w-[200px]">
+                      <DropdownMenuItem onSelect={() => {}}>
+                        <User className="w-4 h-4 mr-2 text-gray-500" />
+                        View Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => {
+                        window.location.href = `/employers/jobs/job-listings?job=${application.job_id}`;
+                      }}>
+                        <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
+                        View Job Listing
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => {}}>
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                        Mark as Done
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     variant="outline"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
@@ -1133,35 +1148,29 @@ function RecruiterApplicationDetailsContent({
             if (status === "waitlisted") {
               return (
                 <>
-                  <Button
-                    variant="outline"
-                    className="text-gray-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-                    onClick={e => setAnchorEl(e.currentTarget)}
-                  >
-                    <TfiMoreAlt className="h-4 w-4 mr-2" />
-                    More Actions
-                  </Button>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={open}
-                    onClose={() => setAnchorEl(null)}
-                    anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-                    transformOrigin={{ vertical: "top", horizontal: "left" }}
-                    slotProps={{
-                      paper: {
-                        sx: { minWidth: 200, borderRadius: 2, boxShadow: 2, p: 0.5 }
-                      }
-                    }}
-                  >
-                    <MenuItem onClick={() => setAnchorEl(null)}>
-                      <User className="w-4 h-4 mr-2 text-gray-500" />
-                      View Profile
-                    </MenuItem>
-                    <MenuItem onClick={() => setAnchorEl(null)}>
-                      <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
-                      View Job Listing
-                    </MenuItem>
-                  </Menu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="text-gray-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                      >
+                        <TfiMoreAlt className="h-4 w-4 mr-2" />
+                        More Actions
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" sideOffset={8} className="min-w-[200px]">
+                      <DropdownMenuItem onSelect={() => {}}>
+                        <User className="w-4 h-4 mr-2 text-gray-500" />
+                        View Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => {
+                        window.location.href = `/employers/jobs/job-listings?job=${application.job_id}`;
+                      }}>
+                        <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
+                        View Job Listing
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     variant="outline"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
@@ -1212,7 +1221,17 @@ function RecruiterApplicationDetailsContent({
                     <TbMessage className="h-4 w-4 mr-2 text-blue-500" />
                     Message Applicant
                   </Button>
-                  <Button className="bg-cyan-600 hover:bg-cyan-700 text-white flex items-center gap-2">
+                  <Button
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white flex items-center gap-2"
+                    onClick={async () => {
+                      await fetch("/api/employers/applications/actions", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ application_id: application.id, action: "shortlist" }),
+                      })
+                      setIsModalOpen?.(false)
+                    }}
+                  >
                     <MdStars className="w-4 h-4 mr-1" />
                     Shortlist Applicant
                   </Button>

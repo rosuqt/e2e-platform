@@ -9,15 +9,26 @@ import { CgSmile } from "react-icons/cg"
 import { useState } from "react"
 import CtaModal from "./cta-modal"
 
+type JobData = {
+  id: number
+  course: string
+  job: string
+  company: string
+  title: string
+  description: string
+  match: number
+}
+
 function JobCard({
   id,
   isSelected,
   onSelect,
+  jobData,
 }: {
   id: number
   isSelected: boolean
   onSelect: () => void
-  onQuickApply: () => void
+  jobData?: JobData
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -30,7 +41,6 @@ function JobCard({
     "Join our engineering team to build scalable software solutions.",
     "Help us analyze data and provide insights to drive business decisions.",
   ]
-
   const matchPercentages = [93, 87, 76, 95, 82]
 
   const handleQuickApply = (e: React.MouseEvent) => {
@@ -60,10 +70,10 @@ function JobCard({
               whileHover={{ scale: 1.1 }}
             >
               {id === 0 ? (
-                <div className="text-center text-xs font-bold">Mark.it</div>
+                <div className="text-center text-xs font-bold">{jobData?.company?.slice(0,7) || "Mark.it"}</div>
               ) : (
                 <Image
-                  src={`/placeholder.svg?height=48&width=48&text=${companies[id % companies.length].charAt(0)}`}
+                  src={`/placeholder.svg?height=48&width=48&text=${(jobData?.company || companies[id % companies.length]).charAt(0)}`}
                   alt="Company logo"
                   width={48}
                   height={48}
@@ -73,7 +83,7 @@ function JobCard({
             </motion.div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg text-gray-800">{titles[id % titles.length]}</h3>
+                <h3 className="font-semibold text-lg text-gray-800">{jobData?.title || titles[id % titles.length]}</h3>
                 {id === 0 && (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -89,7 +99,7 @@ function JobCard({
                   </svg>
                 )}
               </div>
-              <p className="text-sm text-gray-500">{companies[id % companies.length]}</p>
+              <p className="text-sm text-gray-500">{jobData?.company || companies[id % companies.length]}</p>
             </div>
           </div>
           <motion.button
@@ -112,14 +122,16 @@ function JobCard({
           <Badge className="bg-red-100 text-red-700 hover:bg-red-200 border-none">Java</Badge>
         </div>
 
-        {descriptions[id % descriptions.length] && (
-          <p className="text-gray-600 text-sm mt-3">{descriptions[id % descriptions.length]}</p>
+        {(jobData?.description || descriptions[id % descriptions.length]) && (
+          <p className="text-gray-600 text-sm mt-3">{jobData?.description || descriptions[id % descriptions.length]}</p>
         )}
 
-        {matchPercentages[id % matchPercentages.length] && (
+        {(jobData?.match || matchPercentages[id % matchPercentages.length]) && (
           <div className="bg-green-100 text-green-700 text-sm font-semibold mt-4 px-4 py-2 rounded-lg flex items-center gap-2">
             <CgSmile className="w-5 h-5" />
-            <span>You are {matchPercentages[id % matchPercentages.length]}% match to this job.</span>
+            <span>
+              You are {jobData?.match || matchPercentages[id % matchPercentages.length]}% match to this job.
+            </span>
           </div>
         )}
 

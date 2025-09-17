@@ -82,7 +82,7 @@ export default function JobListingPage() {
           flex flex-col md:flex-row h-[calc(100vh-56px)] md:h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100
         `}
       >
-        {/* Left Column - User Profile - Hidden on mobile, visible on md and up */}
+    
         {showProfileColumn && (
           <div className="hidden md:block w-80 flex-shrink-0 overflow-y-auto border-r border-blue-200 relative">
             <button

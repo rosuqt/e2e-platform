@@ -369,22 +369,31 @@ export default function JobPostingForm() {
     }
   }, [])
 
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isFormEmpty() && currentStep !== 6) {
+        e.preventDefault()
+        e.returnValue = ""
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+    }
+  }, [formData, currentStep])
+
   return (
     <>
       <div className="w-full flex justify-center items-start">
         <div className="w-full">
-          <div className="p-0 sm:p-10 mt-0">
+          <div className="p-0">
             <div className="bg-white rounded-xl shadow-lg  border border-blue-100">
               <div className="h-2 w-full bg-gradient-to-r from-blue-600 to-indigo-600" />
               <div className="p-6 sm:p-14">
                 <div className="flex items-center justify-between mb-8">
-                  <h1 className="text-2xl font-bold text-gray-800">Create a job posting</h1>
-
-                  {currentStep >= 1 && currentStep <= 5 && (
-                    <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
-                      Step {currentStep} of 5
-                    </div>
-                  )}
+                  <h1 className="text-2xl font-bold text-gray-800">
+                    Create a job posting
+                  </h1>
                 </div>
 
                 <ProgressBar currentStep={currentStep} />

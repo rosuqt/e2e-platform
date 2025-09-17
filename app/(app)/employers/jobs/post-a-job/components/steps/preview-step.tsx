@@ -7,12 +7,14 @@ import { Card, CardContent } from "../ui/card";
 import { Briefcase, MapPin, Calendar, Users, Award, Eye, CheckCircle, MessageSquare } from "lucide-react";
 import { PiNotepadBold } from "react-icons/pi";
 import type { JobPostingData } from "../../lib/types";
-import { useRouter } from "next/navigation";
-import Swal from "sweetalert2";
+
+import { useState } from "react";
+import JobPreviewModal from "../job-preview-modal";
 
 interface PreviewStepProps {
   formData: JobPostingData;
   onPreview: () => void;
+  companyLogoImagePath?: string;
 }
 
 function capitalizeWords(str: string) {
@@ -20,34 +22,15 @@ function capitalizeWords(str: string) {
   return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
 }
 
-export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
-  const router = useRouter();
+export function PreviewStep({ formData, companyLogoImagePath }: PreviewStepProps) {
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  const supabaseLogoUrl = companyLogoImagePath
+    ? `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/company.logo/${companyLogoImagePath}`
+    : null;
 
   const handlePreview = async () => {
-    try {
-      const isSuccessful = true; 
-      if (isSuccessful) {
-        router.push("/employers/post-a-job/components/steps/job-posting-live");
-      } else {
-        throw new Error("Failed to post the job.");
-      }
-    } catch (error) {
-      const errorMessage = typeof error === "string" ? error : (error as Error).message;
-
-      if (errorMessage.includes("Invalid EmployerID")) {
-        Swal.fire({
-          icon: "warning",
-          title: "Session Expired",
-          text: "Your session has expired. Please sign in again to continue.",
-        });
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Oops...",
-          text: errorMessage || "Something went wrong!",
-        });
-      }
-    }
+    setShowPreviewModal(true);
   };
 
   return (
@@ -70,7 +53,11 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
         <Card className="border-gray-200 shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-blue-100">
-              <Briefcase className="h-5 w-5 text-blue-500" />
+              {supabaseLogoUrl ? (
+                <Image src={supabaseLogoUrl} alt="Company Logo" width={20} height={20} className="rounded-full" />
+              ) : (
+                <Briefcase className="h-5 w-5 text-blue-500" />
+              )}
               <h3 className="font-medium text-gray-800">Job Details</h3>
             </div>
 
@@ -283,7 +270,7 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
           transition={{ duration: 0.5, type: "spring" }}
         >
           <Image
-            src="https://img.freepik.com/free-vector/copywriting-social-media-post-content-marketing-internet-commercial-cartoon-character-writing-text-advertising-promotional-strategy-concept-illustration_335657-2066.jpg?semt=ais_hybrid&w=740"
+            src="https://img.freepik.com/premium-vector/online-job-interview-concept_23-2148626347.jpg"
             alt="Job posting illustration"
             width={200}
             height={150}
@@ -306,7 +293,15 @@ export function PreviewStep({ formData /*, onPreview */ }: PreviewStepProps) {
           <Eye size={18} />
           Preview Job Posting
         </Button>
+        {showPreviewModal && (
+          <JobPreviewModal
+            open={showPreviewModal}
+            onClose={() => setShowPreviewModal(false)}
+            formData={formData}
+          />
+        )}
       </div>
     </div>
   );
 }
+
