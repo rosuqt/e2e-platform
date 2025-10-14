@@ -241,7 +241,8 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
       <QuickEditModal
         open={isQuickEditOpen}
         onClose={() => setIsQuickEditOpen(false)}
-        onSave={() => setIsQuickEditOpen(false)}
+        draftData={null}
+        onSuccess={() => setIsQuickEditOpen(false)}
       />
     </div>
   );
