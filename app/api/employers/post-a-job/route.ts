@@ -26,7 +26,7 @@ interface FormData {
     niceToHaveQualifications: string[];
     jobSummary: string;
     applicationDeadline: { date: string; time: string };
-    maxApplicants: string | number | null; // Allow string for input compatibility
+    maxApplicants: string | number | null;
     applicationQuestions: ApplicationQuestion[];
     perksAndBenefits: string[];
     responsibilities: string[];
@@ -141,14 +141,12 @@ export async function POST(request: Request) {
             console.log("Publishing job...");
             console.log("formData:", formData);
 
-            // Fix: Convert empty string maxApplicants to null, handle both string and number
             let maxApplicantsToInsert: number | null = null;
             if (
                 formData.maxApplicants !== undefined &&
                 formData.maxApplicants !== null &&
                 !(typeof formData.maxApplicants === "string" && formData.maxApplicants === "")
             ) {
-                // If it's a string, try to parse as number
                 if (typeof formData.maxApplicants === "string") {
                     const parsed = Number(formData.maxApplicants);
                     maxApplicantsToInsert = isNaN(parsed) ? null : parsed;

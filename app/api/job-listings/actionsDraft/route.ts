@@ -22,6 +22,8 @@ export async function DELETE(request: Request) {
 
         const { searchParams } = new URL(request.url);
         const id = searchParams.get("id");
+        console.log("DELETE /api/job-listings/actionsDraft called with id:", id, "employerId:", employerId);
+
         if (!id) {
             return NextResponse.json({ error: "Missing draft id" }, { status: 400 });
         }
@@ -33,6 +35,7 @@ export async function DELETE(request: Request) {
             .eq("employer_id", employerId);
 
         if (error) {
+            console.log("Supabase error:", error);
             return NextResponse.json({ error: "Database error", details: error.message }, { status: 500 });
         }
 

@@ -8,7 +8,6 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     console.log('Update jobId:', jobId)
     console.log('Update payload:', body)
 
-    // Update job_postings table
     const { data, error } = await supabase
       .from("job_postings")
       .update(body)

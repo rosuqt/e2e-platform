@@ -166,7 +166,6 @@ export async function PUT(req: Request) {
 			return NextResponse.json({ error: updateError.message }, { status: 400 })
 		}
 
-		// --- Application Questions ---
 		if (Array.isArray(body.applicationQuestions)) {
 			await supabase
 				.from("application_questions")

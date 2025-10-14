@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import {
   Search,
   MapPin,
@@ -8,6 +8,13 @@ import {
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import Drawer from "@mui/material/Drawer"
 import EmployerJobCard, { EmployerJobCardJob, sortJobsActiveFirst } from "./components/job-cards"
 import EmployerJobOverview from "./components/tabs/overview-tab"
@@ -17,6 +24,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Lottie from "lottie-react"
 import { FaFolderOpen } from "react-icons/fa6"
 import QuickEditModal from "./components/quick-edit-modal"
+import DraftsModal from "./components/drafts-modal"
+import DuplicateModal from "./components/duplicate-modal"
 
 export default function JobListingPage() {
   useEffect(() => {
@@ -36,6 +45,12 @@ export default function JobListingPage() {
   const [showProfileColumn, setShowProfileColumn] = useState(true)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editJobData, setEditJobData] = useState<Record<string, unknown> | null>(null)
+  const [draftsModalOpen, setDraftsModalOpen] = useState(false)
+  const [draftsModalData, setDraftsModalData] = useState<Record<string, unknown> | null>(null)
+  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false)
+  const [duplicateModalData, setDuplicateModalData] = useState<Record<string, unknown> | null>(null)
+
+  const refetchRef = useRef<(() => void) | null>(null)
 
   const rightSectionRef = useRef<HTMLDivElement | null>(null)
   const leftSectionRef = useRef<HTMLDivElement | null>(null)
@@ -185,6 +200,11 @@ export default function JobListingPage() {
                 setEditJobData(jobData)
                 setEditModalOpen(true)
               }}
+              setDraftsModalOpen={setDraftsModalOpen}
+              setDraftsModalData={setDraftsModalData}
+              setDuplicateModalOpen={setDuplicateModalOpen}
+              setDuplicateModalData={setDuplicateModalData}
+              refetchRef={refetchRef}
             />
           </div>
         </div>
@@ -221,6 +241,31 @@ export default function JobListingPage() {
         open={editModalOpen}
         onClose={() => setEditModalOpen(false)}
         draftData={editJobData}
+        onSuccess={() => {
+          if (refetchRef.current) {
+            refetchRef.current()
+          }
+        }}
+      />
+      <DraftsModal
+        open={draftsModalOpen}
+        onClose={() => setDraftsModalOpen(false)}
+        draftData={draftsModalData}
+        onSuccess={() => {
+          if (refetchRef.current) {
+            refetchRef.current()
+          }
+        }}
+      />
+      <DuplicateModal
+        open={duplicateModalOpen}
+        onClose={() => setDuplicateModalOpen(false)}
+        jobData={duplicateModalData}
+        onSuccess={() => {
+          if (refetchRef.current) {
+            refetchRef.current()
+          }
+        }}
       />
     </div>
   )
@@ -231,7 +276,6 @@ function MobileUserProfile() {
   return <UserProfile />
 }
 
-// User Profile Component - Redesigned
 function UserProfile() {
   return (
     <div className="p-4 mt-2 mb-16">
@@ -246,11 +290,31 @@ function UserProfile() {
 }
 
 // Job Listings Component
-function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id: string) => void; selectedJob: string | null; onEditJob: (jobData: Record<string, unknown>) => void }) {
+function JobListings({
+  onSelectJob,
+  selectedJob,
+  onEditJob,
+  setDraftsModalOpen,
+  setDraftsModalData,
+  setDuplicateModalOpen,
+  setDuplicateModalData,
+  refetchRef,
+}: {
+  onSelectJob: (id: string) => void
+  selectedJob: string | null
+  onEditJob: (jobData: Record<string, unknown>) => void
+  setDraftsModalOpen: React.Dispatch<React.SetStateAction<boolean>>
+  setDraftsModalData: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>
+  setDuplicateModalOpen: React.Dispatch<React.SetStateAction<boolean>>
+  setDuplicateModalData: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>
+  refetchRef: React.MutableRefObject<(() => void) | null>
+}) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("all")
   const [sortOption, setSortOption] = useState("Newest first")
   const [locationFilter, setLocationFilter] = useState("All job types")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
   const debounceRef = useRef<number | null>(null)
   const collapsedRef = useRef(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -275,7 +339,7 @@ function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id
         setJobs([]);
         setLoading(false)
       });
-    fetch("/api/job-listings/fetchDrafts")
+    fetch("/api/job-listings/drafts")
       .then(res => res.json())
       .then(data => {
         const mappedDrafts: EmployerJobCardJob[] = Array.isArray(data.data)
@@ -336,7 +400,6 @@ function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id
     return "active"
   }
 
-  // Fix: tabCounts should include drafts from the drafts state
   const tabCounts = jobs.concat(drafts).reduce(
     (acc, job) => {
       const status = getJobStatus(job)
@@ -350,20 +413,39 @@ function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id
     { all: 0, active: 0, paused: 0, closed: 0, draft: 0 }
   )
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   const filteredJobs = jobs.filter((job) => {
-    // Always include all jobs for "all" tab
     const status = getJobStatus(job)
     const matchesTab = activeTab === "all" || status === activeTab
+    
     let matchesLocation = true
-
     if (locationFilter !== "All job types") {
-      matchesLocation = job.type?.toLowerCase() === locationFilter.toLowerCase()
+      if (locationFilter.toLowerCase() === "internship") {
+        matchesLocation = job.type?.toLowerCase() === "internship" || job.type?.toLowerCase() === "ojt/internship"
+      } else {
+        matchesLocation = job.type?.toLowerCase() === locationFilter.toLowerCase()
+      }
     }
-    // For "all" tab, matchesTab is always true, so all jobs (including paused) are included
-    return matchesTab && matchesLocation
+
+    let matchesSearch = true
+    if (debouncedSearchTerm.trim()) {
+      const searchLower = debouncedSearchTerm.toLowerCase()
+      matchesSearch = 
+        (job.title?.toLowerCase().includes(searchLower) ?? false) ||
+        (job.type?.toLowerCase().includes(searchLower) ?? false) ||
+        (job.companyName?.toLowerCase().includes(searchLower) ?? false)
+    }
+
+    return matchesTab && matchesLocation && matchesSearch
   })
 
-  // Add: filteredDrafts for drafts tab
   const filteredDrafts = drafts
 
   function parsePostedToDate(posted: string): Date {
@@ -417,15 +499,73 @@ function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id
     { id: "draft", label: "Drafts", count: tabCounts.draft },
   ]
 
-  const handleJobStatusChange = (jobId: string, newPaused: boolean) => {
-    setJobs(prevJobs =>
-      prevJobs.map(job =>
-        String(job.id) === String(jobId) ? { ...job, paused: newPaused } : job
-      )
-    )
+  const handleViewDraftDetails = async (draft: EmployerJobCardJob) => {
+    setDraftsModalData(draft)
+    setDraftsModalOpen(true)
   }
 
-  const handleViewDraftDetails = async () => {
+  const handleEditJob = (jobData: Record<string, unknown>) => {
+    onEditJob(jobData)
+    if (jobData && jobData.id) {
+      moveJobToTop(String(jobData.id))
+    }
+  }
+
+  function moveJobToTop(jobId: string) {
+    setJobs(prevJobs => {
+      const idx = prevJobs.findIndex(j => String(j.id) === String(jobId));
+      if (idx === -1) return prevJobs;
+      const updatedJob = prevJobs[idx];
+      return [updatedJob, ...prevJobs.slice(0, idx), ...prevJobs.slice(idx + 1)];
+    });
+  }
+
+  const refetchData = React.useCallback(async () => {
+    setLoading(true)
+    try {
+      const [jobsRes, draftsRes] = await Promise.all([
+        fetch("/api/job-listings/job-cards"),
+        fetch("/api/job-listings/drafts")
+      ])
+      
+      const jobsData = await jobsRes.json()
+      setJobs(Array.isArray(jobsData) ? jobsData : jobsData.data || [])
+      
+      const draftsData = await draftsRes.json()
+      const mappedDrafts: EmployerJobCardJob[] = Array.isArray(draftsData.data)
+        ? draftsData.data.map((draft: Record<string, unknown>) => ({
+            id: String(draft.id),
+            title: String(draft.job_title ?? ""),
+            status: "Draft",
+            closing: "",
+            type: String(draft.work_type ?? ""),
+            salary: String(draft.pay_amount ?? ""),
+            posted: String(draft.created_at ?? ""),
+            recommended_course: typeof draft.recommended_course === "string" ? draft.recommended_course : undefined,
+            paused: false,
+            companyName: undefined,
+          }))
+        : []
+      setDrafts(mappedDrafts)
+    } catch (error) {
+      console.error("Error refetching data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    refetchRef.current = refetchData
+  }, [refetchData])
+
+  const handleSearch = () => {
+    setDebouncedSearchTerm(searchTerm)
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
   }
 
   return (
@@ -495,24 +635,26 @@ function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id
                   type="text"
                   placeholder="Search job title or keywords"
                   className="pl-10 border-blue-200 focus-visible:ring-blue-500 bg-white text-black"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={handleKeyPress}
                 />
               </div>
               <div className="flex gap-2">
-                <div className="relative">
-                  <select
-                    className="h-10 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none pr-8 text-black"
-                    value={locationFilter}
-                    onChange={e => setLocationFilter(e.target.value)}
-                  >
-                    <option>All job types</option>
-                    <option>Full-time</option>
-                    <option>Part-time</option>
-                    <option>Contract</option>
-                    <option>Internship</option>
-                  </select>
-                  <MapPin className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
-                </div>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Select value={locationFilter} onValueChange={setLocationFilter}>
+                  <SelectTrigger className="h-10 w-[180px] border-blue-200 bg-white text-black focus:ring-2 focus:ring-blue-500">
+                    <MapPin className="h-4 w-4 text-gray-400 mr-2" />
+                    <SelectValue placeholder="All job types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All job types">All job types</SelectItem>
+                    <SelectItem value="Full-time">Full-time</SelectItem>
+                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="Contract">Contract</SelectItem>
+                    <SelectItem value="Internship">Internship</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleSearch}>
                   <Search className="mr-2 h-4 w-4" />
                   Search
                 </Button>
@@ -553,16 +695,17 @@ function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">Sort by:</span>
-            <select
-              className="mr-3 text-sm border-none bg-transparent focus:ring-0 text-blue-600 font-medium cursor-pointer"
-              value={sortOption}
-              onChange={e => setSortOption(e.target.value)}
-            >
-              <option>Newest first</option>
-              <option>Oldest first</option>
-              <option>Most applications</option>
-              <option>Closing soon</option>
-            </select>
+            <Select value={sortOption} onValueChange={setSortOption}>
+              <SelectTrigger className="h-8 w-[140px] border-none bg-transparent text-blue-600 font-medium focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Newest first">Newest first</SelectItem>
+                <SelectItem value="Oldest first">Oldest first</SelectItem>
+                <SelectItem value="Most applications">Most applications</SelectItem>
+                <SelectItem value="Closing soon">Closing soon</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -590,9 +733,9 @@ function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id
                   key={draft.id}
                   job={draft}
                   isSelected={selectedJob === String(draft.id)}
-                  onSelect={() => handleViewDraftDetails()}
+                  onSelect={() => handleViewDraftDetails(draft)}
                   onEdit={() => onEditJob(draft)}
-                  onStatusChange={() => {}}
+                  onStatusChange={refetchData}
                 />
               ))
             )
@@ -611,8 +754,12 @@ function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id
                   job={job}
                   isSelected={selectedJob === String(job.id)}
                   onSelect={() => onSelectJob(String(job.id))}
-                  onEdit={() => onEditJob(job)}
-                  onStatusChange={() => handleJobStatusChange(job.id, !job.paused)}
+                  onEdit={() => handleEditJob(job)}
+                  onDuplicate={(jobData) => {
+                    setDuplicateModalData(jobData)
+                    setDuplicateModalOpen(true)
+                  }}
+                  onStatusChange={refetchData}
                 />
               ))
             )
@@ -622,4 +769,3 @@ function JobListings({ onSelectJob, selectedJob, onEditJob }: { onSelectJob: (id
     </div>
   )
 }
-

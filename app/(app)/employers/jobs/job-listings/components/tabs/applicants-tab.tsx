@@ -16,7 +16,6 @@ import { expertiseSuggestions } from "../../../../../students/profile/components
 export default function ApplicantsTab({ jobId }: { jobId?: string }) {
   const [skills, setSkills] = useState<{ name: string; color: string; textColor: string }[]>([])
   const [loadingSkills, setLoadingSkills] = useState(false)
-  // Inline add skill state
   const [showSkillInput, setShowSkillInput] = useState(false)
   const [skillInput, setSkillInput] = useState("")
   const [focusedSuggestion, setFocusedSuggestion] = useState(-1)

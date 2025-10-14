@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
-import {  Clock, Briefcase } from "lucide-react";
+import {  Clock, Briefcase, Calendar } from "lucide-react";
 import { RiListView } from "react-icons/ri";
 import { FaComputer, FaHotel } from "react-icons/fa6";
-import { MdBusinessCenter, MdOutlinePlayCircle } from "react-icons/md";
+import { MdBusinessCenter, MdOutlinePlayCircle, MdLoop } from "react-icons/md";
 import { BiSolidPlaneAlt } from "react-icons/bi";
 import { IoMdPlanet } from "react-icons/io";
 import { FaRegCirclePause , FaMoneyBill, FaTrash } from "react-icons/fa6";
@@ -20,6 +20,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MdWarningAmber } from "react-icons/md";
 import { TbBusinessplan } from "react-icons/tb";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Radio, RadioGroup, FormControlLabel, FormControl } from '@mui/material';
 
 export type EmployerJobCardJob = {
   id: string;
@@ -44,18 +47,25 @@ export default function EmployerJobCard({
   isSelected,
   onSelect,
   onEdit,
+  onDuplicate,
   onStatusChange,
 }: {
   job: EmployerJobCardJob | undefined;
   isSelected: boolean;
   onSelect: () => void;
   onEdit: () => void;
+  onDuplicate?: (jobData: Record<string, unknown>) => void;
   onStatusChange?: () => void;
 }) {
-  const [openPause, setOpenPause] = React.useState(false);
-  const [openResume, setOpenResume] = React.useState(false);
-  const [openDelete, setOpenDelete] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
+  const [openPause, setOpenPause] = useState(false);
+  const [openResume, setOpenResume] = useState(false);
+  const [openReopen, setOpenReopen] = useState(false);
+  const [reopenExpanded, setReopenExpanded] = useState(false);
+  const [newDeadlineDate, setNewDeadlineDate] = useState("");
+  const [newDeadlineTime, setNewDeadlineTime] = useState("");
+  const [removeDeadline, setRemoveDeadline] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const paused = job?.paused ?? false;
   const pausedStatus = job?.paused_status ?? (paused ? "paused" : "active");
@@ -279,11 +289,170 @@ export default function EmployerJobCard({
             >
               <FaTrash className="w-4 h-4" />
             </button>
+          ) : job.closing === "Closed" ? (
+            <AlertDialog open={openReopen} onOpenChange={(open) => {
+              setOpenReopen(open);
+              if (!open) {
+                setReopenExpanded(false);
+                setNewDeadlineDate("");
+                setNewDeadlineTime("");
+                setRemoveDeadline(false);
+              }
+            }}>
+              <AlertDialogTrigger asChild>
+                <button
+                  className="text-green-500 hover:text-green-600 transition-colors p-1.5 rounded-full hover:bg-green-50 flex items-center gap-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenReopen(true);
+                  }}
+                  disabled={loading}
+                >
+                  <MdLoop className="w-5 h-5" />
+                  <span className="text-xs font-medium">Reopen</span>
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-white max-w-md">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-green-600">Reopen Job Listing</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {!reopenExpanded ? (
+                      "Are you sure you want to reopen this job listing? It will become active and applicants will be able to apply again."
+                    ) : (
+                      "Choose how you want to reopen this job listing:"
+                    )}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                {reopenExpanded && (
+                  <div className="space-y-4 py-4">
+                    <FormControl component="fieldset">
+                      <RadioGroup
+                        value={removeDeadline ? 'remove' : 'set'}
+                        onChange={(e) => setRemoveDeadline(e.target.value === 'remove')}
+                      >
+                        <div className="space-y-3">
+                          <FormControlLabel
+                            value="set"
+                            control={<Radio sx={{ color: '#059669', '&.Mui-checked': { color: '#059669' } }} />}
+                            label={<Label className="text-sm font-medium">Set new deadline</Label>}
+                          />
+                          
+                          {!removeDeadline && (
+                            <div className="ml-6 space-y-3">
+                              <div>
+                                <Label className="text-xs text-gray-600 mb-2 block">
+                                  Deadline Date
+                                </Label>
+                                <Input
+                                  type="date"
+                                  value={newDeadlineDate}
+                                  onChange={(e) => setNewDeadlineDate(e.target.value)}
+                                  min={new Date().toISOString().split('T')[0]}
+                                  className="h-10"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs text-gray-600 mb-2 block">
+                                  Deadline Time
+                                </Label>
+                                <Input
+                                  type="time"
+                                  value={newDeadlineTime}
+                                  onChange={(e) => setNewDeadlineTime(e.target.value)}
+                                  className="h-10"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <FormControlLabel
+                            value="remove"
+                            control={<Radio sx={{ color: '#059669', '&.Mui-checked': { color: '#059669' } }} />}
+                            label={<Label className="text-sm font-medium">Remove deadline (keep open indefinitely)</Label>}
+                          />
+                        </div>
+                      </RadioGroup>
+                    </FormControl>
+                  </div>
+                )}
+
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  {!reopenExpanded ? (
+                    <>
+                      <button
+                        className="px-4 py-2 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-50 rounded-md transition-colors"
+                        onClick={() => setReopenExpanded(true)}
+                      >
+                        <Calendar className="w-4 h-4 mr-2 inline" />
+                        Set Deadline
+                      </button>
+                      <AlertDialogAction
+                        className="bg-green-500 hover:bg-green-600 text-white"
+                        onClick={async () => {
+                          setOpenReopen(false);
+                          setLoading(true);
+                          await fetch(`/api/job-listings/update-deadline`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ id: job?.id }),
+                          });
+                          setLoading(false);
+                          if (typeof onStatusChange === "function") onStatusChange();
+                        }}
+                      >
+                        Reopen Now
+                      </AlertDialogAction>
+                    </>
+                  ) : (
+                    <AlertDialogAction
+                      className="bg-green-500 hover:bg-green-600 text-white"
+                      onClick={async () => {
+                        setOpenReopen(false);
+                        setLoading(true);
+                        
+                        const payload: {
+                          id: string;
+                          deadline?: string;
+                          removeDeadline?: boolean;
+                        } = {
+                          id: job?.id || "",
+                        };
+                        
+                        if (!removeDeadline && newDeadlineDate) {
+                          let deadlineDateTime = newDeadlineDate;
+                          if (newDeadlineTime) {
+                            deadlineDateTime = `${newDeadlineDate}T${newDeadlineTime}:00`;
+                          } else {
+                            deadlineDateTime = `${newDeadlineDate}T23:59:00`;
+                          }
+                          payload.deadline = deadlineDateTime;
+                        } else if (removeDeadline) {
+                          payload.removeDeadline = true;
+                        }
+                        
+                        await fetch(`/api/job-listings/update-deadline`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(payload),
+                        });
+                        setLoading(false);
+                        if (typeof onStatusChange === "function") onStatusChange();
+                      }}
+                      disabled={!removeDeadline && !newDeadlineDate}
+                    >
+                      Reopen with Settings
+                    </AlertDialogAction>
+                  )}
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           ) : paused ? (
             <AlertDialog open={openResume} onOpenChange={setOpenResume}>
               <AlertDialogTrigger asChild>
                 <button
-                  className="text-green-500 hover:text-green-600 transition-colors p-1.5 rounded-full hover:bg-green-50"
+                  className="text-green-500 hover:text-green-600 transition-colors p-1.5 rounded-full hover:bg-green-50 flex items-center gap-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     setOpenResume(true);
@@ -291,6 +460,7 @@ export default function EmployerJobCard({
                   disabled={loading}
                 >
                   <MdOutlinePlayCircle className="w-5 h-5" />
+                  <span className="text-xs font-medium">Resume</span>
                 </button>
               </AlertDialogTrigger>
               <AlertDialogContent className="bg-white">
@@ -325,7 +495,7 @@ export default function EmployerJobCard({
             <AlertDialog open={openPause} onOpenChange={setOpenPause}>
               <AlertDialogTrigger asChild>
                 <button
-                  className="text-orange-400 hover:text-orange-500 transition-colors p-1.5 rounded-full hover:bg-orange-50"
+                  className="text-orange-400 hover:text-orange-500 transition-colors p-1.5 rounded-full hover:bg-orange-50 flex items-center gap-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     setOpenPause(true);
@@ -333,6 +503,7 @@ export default function EmployerJobCard({
                   disabled={loading}
                 >
                   <FaRegCirclePause className="w-4 h-4" />
+                  <span className="text-xs font-medium">Pause</span>
                 </button>
               </AlertDialogTrigger>
               <AlertDialogContent className="bg-white">
@@ -363,29 +534,6 @@ export default function EmployerJobCard({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          )}
-          {job.status !== "Draft" && (
-            <button
-              className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
-              onClick={(e) => e.stopPropagation()}
-              disabled={loading}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="1" />
-                <circle cx="19" cy="12" r="1" />
-                <circle cx="5" cy="12" r="1" />
-              </svg>
-            </button>
           )}
         </div>
       </div>
@@ -519,7 +667,12 @@ export default function EmployerJobCard({
               <span className="text-gray-300">|</span>
               <button
                 className="text-gray-500 hover:text-yellow-500 text-xs flex items-center gap-1 hover:underline"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onDuplicate && job) {
+                    onDuplicate(job);
+                  }
+                }}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -532,8 +685,8 @@ export default function EmployerJobCard({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
                 </svg>
                 Duplicate
               </button>
@@ -545,6 +698,7 @@ export default function EmployerJobCard({
   );
 }
 
+                 
 export function sortJobsActiveFirst(jobs: EmployerJobCardJob[]) {
   return [...jobs].sort((a, b) => {
     if (a.closing === "Closed" && b.closing !== "Closed") return 1;

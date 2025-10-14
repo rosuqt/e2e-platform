@@ -14,13 +14,12 @@ import { motion, AnimatePresence } from "framer-motion"
 import type { JobPostingData } from "../lib/types"
 import { Save } from "lucide-react"
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa"
-import { toast } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
 import Swal from "sweetalert2"
 import withReactContent from "sweetalert2-react-content"
 import { jwtDecode } from "jwt-decode"
 import { getSession } from "next-auth/react"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction } from "@/components/ui/alert-dialog"
+import { Toaster, toast } from "react-hot-toast"
 
 
 const MySwal = withReactContent(Swal)
@@ -215,64 +214,43 @@ export default function JobPostingForm() {
     }
 
     setIsSavingDraft(true)
-    const savingToastId: string | number = toast.info("Saving draft...", { autoClose: false })
 
-    try {
-      const sanitizedFormData = {
-        ...formData,
-        maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
+    await toast.promise(
+      (async () => {
+        const sanitizedFormData = {
+          ...formData,
+          maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
+        }
+
+        const response = await fetch("/api/employers/post-a-job", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            action: "saveDraft",
+            formData: sanitizedFormData,
+          }),
+        })
+
+        if (response.ok) {
+          localStorage.setItem("draftSaved", "true")
+          return
+        } else {
+          const error = await response.json()
+          console.error("Failed to save draft:", error)
+          throw new Error("Oops! Looks like there's nothing to save.")
+        }
+      })(),
+      {
+        loading: "Saving draft...",
+        success: <b>Draft saved successfully!</b>,
+        error: (err) => <b>{err.message || "An error occurred while saving the draft."}</b>,
       }
+    )
 
-      const response = await fetch("/api/employers/post-a-job", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          action: "saveDraft",
-          formData: sanitizedFormData,
-        }),
-      })
-
-      if (response.ok) {
-        localStorage.setItem("draftSaved", "true")
-        toast.dismiss(savingToastId) 
-        toast.success(
-          <div>
-            Draft saved successfully!
-            <button
-              style={{
-                marginLeft: 12,
-                color: "#2563eb",
-                textDecoration: "underline",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 500,
-                fontSize: "1em"
-              }}
-              onClick={() => {
-                window.location.href = "/employers/jobs/job-listings"
-              }}
-            >
-              View Job Drafts
-            </button>
-          </div>
-        )
-      } else {
-        const error = await response.json()
-        console.error("Failed to save draft:", error)
-        toast.dismiss(savingToastId)
-        toast.error("Oops! Looks like there's nothing to save.")
-      }
-    } catch (error) {
-      console.error("Error saving draft:", error)
-      toast.dismiss(savingToastId)
-      toast.error("An error occurred while saving the draft. Please try again.")
-    } finally {
-      setIsSavingDraft(false)
-    }
+    setIsSavingDraft(false)
   }
 
   const isFormEmpty = () => {
@@ -496,6 +474,7 @@ export default function JobPostingForm() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Toaster position="top-right" />
       <style jsx>{`
         .loader {
           border: 2px solid #f3f3f3;

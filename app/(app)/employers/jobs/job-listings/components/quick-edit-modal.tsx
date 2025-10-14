@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { CreateStep } from "../../post-a-job/components/steps/create-step"
@@ -11,24 +11,18 @@ import { PreviewStep } from "../../post-a-job/components/steps/preview-step"
 import { ProgressBar } from "../../post-a-job/components/progress-bar"
 import type { JobPostingData } from "../../post-a-job/lib/types"
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa"
-
-type DeadlineObj = { date: string; time: string };
-function isDeadlineObj(obj: unknown): obj is DeadlineObj {
-  return (
-    typeof obj === "object" && obj !== null &&
-    "date" in obj && typeof (obj as { date: unknown }).date === "string" &&
-    "time" in obj && typeof (obj as { time: unknown }).time === "string"
-  );
-}
+import { Save } from "lucide-react"
 
 export default function QuickEditModal({
   open,
   onClose,
   draftData,
+  onSuccess,
 }: {
   open: boolean
   onClose: () => void
   draftData: Partial<JobPostingData> | Record<string, unknown> | null
+  onSuccess?: () => void
 }) {
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<JobPostingData>({
@@ -55,9 +49,13 @@ export default function QuickEditModal({
   const [hasAttemptedNext, setHasAttemptedNext] = useState(false)
   const [isPosting, setIsPosting] = useState(false)
   const [postError, setPostError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchJobDetails(id: string) {
+      setIsLoading(true)
       try {
         const res = await fetch(`/api/job-listings/job-cards/${id}`)
         const job = await res.json()
@@ -65,7 +63,6 @@ export default function QuickEditModal({
         const questionsData = await questionsRes.json()
         const jobData = Array.isArray(job) ? job.find(j => String(j.id) === String(id)) : (job?.data ? job.data : job)
         if (jobData && !jobData.error) {
-          const courseVal = jobData.recommendedCourse ?? jobData.recommended_course ?? jobData.course ?? jobData.recommended_course_name ?? jobData.recommended_course_label ?? "";
           setFormData(prev => ({
             ...prev,
             jobTitle: jobData.jobTitle ?? jobData.job_title ?? jobData.title ?? "",
@@ -113,8 +110,8 @@ export default function QuickEditModal({
             jobSummary: jobData.jobSummary ?? jobData.job_summary ?? "",
             applicationDeadline: (() => {
               const rawDeadline = jobData.applicationDeadline ?? jobData.application_deadline;
-              if (isDeadlineObj(rawDeadline)) {
-                return rawDeadline;
+              if (typeof rawDeadline === "object" && rawDeadline !== null && "date" in rawDeadline && "time" in rawDeadline) {
+                return rawDeadline as { date: string; time: string };
               }
               if (typeof rawDeadline === "string" && rawDeadline.trim()) {
                 const [date, timeRaw] = rawDeadline.split(" ");
@@ -183,6 +180,7 @@ export default function QuickEditModal({
           })
         }
       } catch (err) {
+        console.error("Fetch job details error:", err)
         setFormData({
           jobTitle: "",
           location: "",
@@ -203,12 +201,16 @@ export default function QuickEditModal({
           perksAndBenefits: [],
           skills: [],
         })
+      } finally {
+        setIsLoading(false)
       }
     }
 
     if (draftData && typeof draftData === "object" && "id" in draftData && (draftData as { id?: string }).id) {
+      setIsLoading(true)
       fetchJobDetails(String((draftData as { id?: string }).id))
     } else if (draftData) {
+      setIsLoading(true)
       const d = draftData as Record<string, unknown>
       function parseStringOrArray(val: unknown): string[] {
         if (Array.isArray(val)) return val as string[]
@@ -290,8 +292,8 @@ export default function QuickEditModal({
         jobSummary: (d.job_summary as string) ?? (d.jobSummary as string) ?? "",
         applicationDeadline: (() => {
           const rawDeadline = d.application_deadline;
-          if (isDeadlineObj(rawDeadline)) {
-            return rawDeadline;
+          if (typeof rawDeadline === "object" && rawDeadline !== null && "date" in rawDeadline && "time" in rawDeadline) {
+            return rawDeadline as { date: string; time: string };
           }
           if (typeof rawDeadline === "string" && rawDeadline.trim()) {
             const [date, timeRaw] = rawDeadline.split(" ");
@@ -310,6 +312,7 @@ export default function QuickEditModal({
         perksAndBenefits: (d.perks_and_benefits as string[]) ?? (d.perksAndBenefits as string[]) ?? [],
         skills: (d.skills as string[]) ?? [],
       })
+      setIsLoading(false)
     }
   }, [draftData])
 
@@ -382,6 +385,17 @@ export default function QuickEditModal({
             processedAiSkills = (formData.skills as string).split(",").map((s: string) => s.trim());
           }
         }
+      
+        let application_deadline: string | null = null;
+        if (
+          formData.applicationDeadline &&
+          typeof formData.applicationDeadline === "object" &&
+          formData.applicationDeadline.date
+        ) {
+          const date = formData.applicationDeadline.date;
+          const time = formData.applicationDeadline.time || "00:00";
+          application_deadline = `${date} ${time}`;
+        }
         const payload: Record<string, unknown> = {
           job_title: formData.jobTitle,
           location: formData.location,
@@ -396,7 +410,7 @@ export default function QuickEditModal({
           must_have_qualifications: formData.mustHaveQualifications,
           nice_to_have_qualifications: formData.niceToHaveQualifications,
           job_summary: formData.jobSummary,
-          application_deadline: formData.applicationDeadline,
+          application_deadline,
           max_applicants: formData.maxApplicants,
           perks_and_benefits: formData.perksAndBenefits,
         };
@@ -427,7 +441,7 @@ export default function QuickEditModal({
         }
         setIsPosting(false)
         onClose()
-        window.location.reload()
+        if (onSuccess) onSuccess()
       } else {
         const response = await fetch("/api/employers/post-a-job", {
           method: "POST",
@@ -446,11 +460,93 @@ export default function QuickEditModal({
         }
         setIsPosting(false)
         onClose()
-        window.location.reload()
+        if (onSuccess) onSuccess()
       }
     } catch (err) {
+      console.error("Post job error:", err)
       setPostError("Failed to update job")
       setIsPosting(false)
+    }
+  }
+
+  const handleSaveJob = async () => {
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      if (draftData && "id" in draftData && draftData.id) {
+        let application_deadline: string | null = null;
+        if (
+          formData.applicationDeadline &&
+          typeof formData.applicationDeadline === "object" &&
+          formData.applicationDeadline.date
+        ) {
+          const date = formData.applicationDeadline.date;
+          const time = formData.applicationDeadline.time || "00:00";
+          application_deadline = `${date} ${time}`;
+        }
+        const payload: Record<string, unknown> = {
+          job_title: formData.jobTitle,
+          location: formData.location,
+          remote_options: formData.remoteOptions,
+          work_type: formData.workType,
+          pay_type: formData.payType,
+          pay_amount: formData.payAmount,
+          recommended_course: formData.recommendedCourse,
+          verification_tier: formData.verificationTier,
+          job_description: formData.jobDescription,
+          responsibilities: formData.responsibilities,
+          must_have_qualifications: formData.mustHaveQualifications,
+          nice_to_have_qualifications: formData.niceToHaveQualifications,
+          job_summary: formData.jobSummary,
+          application_deadline,
+          max_applicants: formData.maxApplicants,
+          perks_and_benefits: formData.perksAndBenefits,
+        }
+        const response = await fetch(`/api/job-listings/job-cards/${draftData.id}/update`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        })
+        if (!response.ok) {
+          const contentType = response.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            const error = await response.json()
+            setSaveError(error?.error || error?.message || "Failed to save job")
+          } else {
+            await response.text()
+            setSaveError("Failed to save job (non-JSON response)")
+          }
+          setIsSaving(false)
+          return
+        }
+        setIsSaving(false)
+        onClose()
+        if (onSuccess) onSuccess()
+      } else {
+        const response = await fetch("/api/employers/post-a-job", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            action: "saveDraft",
+            formData,
+          }),
+        })
+        if (!response.ok) {
+          const error = await response.json()
+          setSaveError(error?.error || "Failed to save job")
+          setIsSaving(false)
+          return
+        }
+        setIsSaving(false)
+        onClose()
+        if (onSuccess) onSuccess()
+      }
+    } catch (err) {
+      console.error("Save job error:", err)
+      setSaveError("Failed to save job")
+      setIsSaving(false)
     }
   }
 
@@ -490,74 +586,99 @@ export default function QuickEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <motion.div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto flex flex-col"
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      >
-        <div className="flex justify-between items-center px-8 pt-8 pb-2">
-          <h2 className="text-2xl font-bold text-gray-800">Edit Job Posting</h2>
-          <Button variant="ghost" onClick={onClose} className="text-gray-400 hover:text-red-500 text-lg px-2 py-1" disabled={isPosting}>
-            ×
-          </Button>
+      {isLoading ? (
+        <div className="flex items-center justify-center w-full h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500" />
         </div>
-        <div className="px-8">
-          <ProgressBar currentStep={currentStep} onStepClick={(step) => setCurrentStep(step)} />
-        </div>
-        <div className="flex-1 px-8 py-4 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-            >
-              {renderStep()}
-              {postError && (
-                <div className="text-red-500 text-sm font-semibold text-center mt-4">{postError}</div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-        <div className="flex justify-between items-center px-8 py-6 border-t border-gray-100 bg-gray-50">
-          {currentStep > 1 ? (
-            <Button
-              variant="outline"
-              onClick={prevStep}
-              className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-8 py-4 rounded-full flex items-center gap-2"
-              disabled={isPosting}
-            >
-              <FaChevronLeft />
-              Back
+      ) : (
+        <motion.div
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto flex flex-col"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <div className="flex justify-between items-center px-8 pt-8 pb-2">
+            <h2 className="text-2xl font-bold text-gray-800">Edit Job Posting</h2>
+            <Button variant="ghost" onClick={onClose} className="text-gray-400 hover:text-red-500 text-lg px-2 py-1" disabled={isPosting || isSaving}>
+              ×
             </Button>
-          ) : (
-            <div />
-          )}
-          <div className="flex gap-3">
-            {currentStep < 5 ? (
-              <Button
-                onClick={nextStep}
-                className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-full flex items-center gap-2"
-                disabled={isPosting}
+          </div>
+          <div className="px-8">
+            <ProgressBar currentStep={currentStep} onStepClick={(step) => setCurrentStep(step)} />
+          </div>
+          <div className="flex-1 px-8 py-4 overflow-y-auto">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentStep}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
               >
-                Continue
-                <FaChevronRight />
+                {renderStep()}
+                {postError && (
+                  <div className="text-red-500 text-sm font-semibold text-center mt-4">{postError}</div>
+                )}
+                {saveError && (
+                  <div className="text-red-500 text-sm font-semibold text-center mt-4">{saveError}</div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          <div className="flex justify-between items-center px-8 py-6 border-t border-gray-100 bg-gray-50">
+            {currentStep > 1 ? (
+              <Button
+                variant="outline"
+                onClick={prevStep}
+                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 px-8 py-4 rounded-full flex items-center gap-2"
+                disabled={isPosting || isSaving}
+              >
+                <FaChevronLeft />
+                Back
               </Button>
             ) : (
-              <Button
-                onClick={handlePostJob}
-                disabled={isPosting}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-9 py-4 rounded-full flex items-center gap-2"
-              >
-                {isPosting ? "Updating..." : "Update Job"}
-              </Button>
+              <div />
             )}
+            <div className="flex gap-3">
+              {currentStep < 5 ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={handleSaveJob}
+                    disabled={isSaving || isPosting}
+                    className="border-gray-200 text-gray-600 bg-white hover:bg-gray-50 flex items-center gap-2 px-8 py-4 rounded-full"
+                  >
+                    {isSaving ? (
+                      <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2" />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    <span>Save Job</span>
+                  </Button>
+                  <Button
+                    onClick={nextStep}
+                    className="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-full flex items-center gap-2"
+                    disabled={isPosting || isSaving}
+                  >
+                    Continue
+                    <FaChevronRight />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={handlePostJob}
+                  disabled={isPosting}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-9 py-4 rounded-full flex items-center gap-2"
+                >
+                  {isPosting ? "Updating..." : "Update Job"}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   )
 }
+              

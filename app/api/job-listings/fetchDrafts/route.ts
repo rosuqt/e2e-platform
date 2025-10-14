@@ -27,6 +27,10 @@ export async function GET() {
       .eq("employer_id", employerId)
       .order("updated_at", { ascending: false })
 
+    console.log("fetchDrafts API - employerId:", employerId)
+    console.log("fetchDrafts API - data:", data)
+    console.log("fetchDrafts API - error:", error)
+
     if (error) {
       console.error("Supabase error in fetchDrafts:", error)
       return NextResponse.json({ error: error.message, context: "supabase error", employerId }, { status: 500 })

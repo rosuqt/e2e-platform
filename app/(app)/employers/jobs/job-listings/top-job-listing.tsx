@@ -2,8 +2,63 @@
 
 import { motion } from "framer-motion"
 import { Trophy, Calendar, Eye, FileText, BarChart3 } from "lucide-react"
+import { useState, useEffect } from "react"
+
+interface TopPerformingJob {
+  title: string;
+  applicants: number;
+  views: number;
+  posted: string;
+  engagement: string;
+}
 
 export default function TopJobListing() {
+  const [topJob, setTopJob] = useState<TopPerformingJob | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/employers/analytics")
+      .then(res => res.json())
+      .then(data => {
+        if (data.topPerformingJob) {
+          setTopJob(data.topPerformingJob);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <motion.div
+        className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-lg mb-6 p-6 border-2 border-blue-200 relative overflow-hidden h-[300px] flex items-center justify-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+      >
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </motion.div>
+    );
+  }
+
+  if (!topJob || topJob.applicants === 0) {
+    return (
+      <motion.div
+        className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-lg mb-6 p-6 border-2 border-blue-200 relative overflow-hidden h-[300px] flex items-center justify-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+      >
+        <div className="text-center text-gray-500">
+          <Trophy className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+          <p className="text-sm">No top performing job yet</p>
+        </div>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-lg mb-6 p-6 border-2 border-blue-200 relative overflow-hidden h-[300px]"
@@ -47,7 +102,7 @@ export default function TopJobListing() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          Senior Frontend Developer
+          {topJob.title}
         </motion.p>
 
         {/* Metrics */}
@@ -63,7 +118,7 @@ export default function TopJobListing() {
           >
             <Calendar className="h-4 w-4 text-blue-600" />
             <p className="text-sm font-medium text-gray-700">
-              Posted: <span className="text-blue-700">Apr 25</span>
+              Posted: <span className="text-blue-700">{topJob.posted}</span>
             </p>
           </motion.div>
 
@@ -73,7 +128,7 @@ export default function TopJobListing() {
           >
             <Eye className="h-4 w-4 text-blue-600" />
             <p className="text-sm font-medium text-gray-700">
-              Views: <span className="text-blue-700">1,284</span>
+              Views: <span className="text-blue-700">{topJob.views.toLocaleString()}</span>
             </p>
           </motion.div>
 
@@ -83,7 +138,7 @@ export default function TopJobListing() {
           >
             <FileText className="h-4 w-4 text-blue-600" />
             <p className="text-sm font-medium text-gray-700">
-              Applications: <span className="text-blue-700">67</span>
+              Applications: <span className="text-blue-700">{topJob.applicants}</span>
             </p>
           </motion.div>
 
@@ -93,7 +148,7 @@ export default function TopJobListing() {
           >
             <BarChart3 className="h-4 w-4 text-blue-600" />
             <p className="text-sm font-medium text-gray-700">
-              Engagement: <span className="text-blue-700">92%</span>
+              Engagement: <span className="text-blue-700">{topJob.engagement}</span>
             </p>
           </motion.div>
         </motion.div>
