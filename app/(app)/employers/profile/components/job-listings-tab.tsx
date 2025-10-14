@@ -274,9 +274,9 @@ export default function JobListingsTab() {
           </div>
           <QuickEditModal
             open={quickEditOpen}
-            job={quickEditJob}
+            draftData={quickEditJob}
             onClose={() => setQuickEditOpen(false)}
-            onSave={() => setQuickEditOpen(false)}
+            onSuccess={() => setQuickEditOpen(false)}
           />
         </>
       ) : (
