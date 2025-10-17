@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next"
 import { NextResponse } from "next/server"
 import supabase from "@/lib/supabase"
 import { authOptions } from "../../../../lib/authOptions"
+import { getAdminSupabase } from "../../../../src/lib/supabase"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -108,7 +109,6 @@ export async function GET() {
     }
   })
 
-  // Determine application status badge
   let applicationStatus = "Exploring Opportunities"
   if (applicationsWithJobTitle.length === 0) {
     applicationStatus = "Exploring Opportunities"
@@ -137,6 +137,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   const body = await req.json()
+  
+  if (body.jobId && body.applicationData) {
+    const { jobId, applicationData } = body
+    
+    const { data: application, error: applicationError } = await supabase
+      .from("applications")
+      .insert({
+        student_id: studentId,
+        job_id: jobId,
+        ...applicationData
+      })
+      .select()
+      .single()
+
+    if (applicationError) {
+      return NextResponse.json({ error: "Failed to submit application" }, { status: 500 })
+    }
+
+    const adminSupabase = getAdminSupabase()
+    const { data: existingMetric } = await adminSupabase
+      .from("job_metrics")
+      .select("*")
+      .eq("job_id", jobId)
+      .single()
+
+    if (existingMetric) {
+      await adminSupabase
+        .from("job_metrics")
+        .update({ total_applicants: existingMetric.total_applicants + 1 })
+        .eq("job_id", jobId)
+    } else {
+      await adminSupabase
+        .from("job_metrics")
+        .insert({ job_id: jobId, total_applicants: 1 })
+    }
+
+    return NextResponse.json({ success: true, application })
+  }
+
   const { applicationId, note } = body
   if (!applicationId || !note) {
     return NextResponse.json({ error: "Missing applicationId or note" }, { status: 400 })

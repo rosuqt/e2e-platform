@@ -144,6 +144,25 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   const [saveLoading, setSaveLoading] = useState(false);
   const [jobSkills, setJobSkills] = useState<string[]>([]);
   const [studentSkills, setStudentSkills] = useState<string[]>([]);
+  const [viewTracked, setViewTracked] = useState(false)
+
+  const trackJobView = async (jobId: string) => {
+    if (viewTracked) return
+    
+    try {
+      const response = await fetch("/api/employers/job-metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId, action: "view" }),
+      })
+      
+      if (response.ok) {
+        setViewTracked(true)
+      }
+    } catch (error) {
+      console.error("Failed to track job view:", error)
+    }
+  }
 
   useEffect(() => {
     if (!jobId) return;
@@ -167,6 +186,9 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
       .then(res => res.json())
       .then(async data => {
         setJob(data && !data.error ? data : null);
+        if (data && !data.error && jobId) {
+          await trackJobView(jobId);
+        }
         const logoPath = getCompanyLogoPath(data);
         let logoUrlVal: string | null = null;
         if (logoPath) {

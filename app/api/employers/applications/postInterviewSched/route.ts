@@ -45,6 +45,31 @@ export async function POST(req: NextRequest) {
     .update({ status: "waitlisted" })
     .eq("application_id", application_id)
 
+  const { data: applicationData } = await supabase
+    .from("applications")
+    .select("job_id")
+    .eq("application_id", application_id)
+    .single()
+
+  if (applicationData?.job_id) {
+    const { data: existingMetric } = await supabase
+      .from("job_metrics")
+      .select("*")
+      .eq("job_id", applicationData.job_id)
+      .single()
+
+    if (existingMetric) {
+      await supabase
+        .from("job_metrics")
+        .update({ interviews: existingMetric.interviews + 1 })
+        .eq("job_id", applicationData.job_id)
+    } else {
+      await supabase
+        .from("job_metrics")
+        .insert({ job_id: applicationData.job_id, interviews: 1 })
+    }
+  }
+
   return NextResponse.json({ data }, { status: 201 })
 }
 

@@ -120,6 +120,7 @@ function JobCard({
   const [skills, setSkills] = useState<string[]>([]);
   const [logoLoading, setLogoLoading] = useState(true);
   const [studentSkills, setStudentSkills] = useState<string[]>([]);
+  const [viewTracked, setViewTracked] = useState(false);
 
   const logoPath =
     companyLogoImagePath ||
@@ -257,7 +258,23 @@ function JobCard({
     setLoading(false);
   }
 
-
+  const trackJobView = async () => {
+    if (viewTracked || job.id === "preview") return
+    
+    try {
+      const response = await fetch("/api/employers/job-metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id, action: "view" }),
+      })
+      
+      if (response.ok) {
+        setViewTracked(true)
+      }
+    } catch (error) {
+      console.error("Failed to track job view:", error)
+    }
+  }
 
   return (
     <motion.div
@@ -267,6 +284,7 @@ function JobCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
+      onMouseEnter={trackJobView}
       whileHover={{
         y: -2,
         boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
@@ -435,6 +453,7 @@ function JobCard({
               whileTap={{ scale: 0.97 }}
               onClick={(e) => {
                 e.stopPropagation();
+                trackJobView();
                 onSelect();
               }}
             >
@@ -458,8 +477,5 @@ function JobCard({
     </motion.div>
   );
 }
-
-
-
 
 export default JobCard;

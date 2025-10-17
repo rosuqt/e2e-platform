@@ -231,6 +231,22 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: "Database error", details: error.message }, { status: 500 });
             }
 
+            if (data?.id) {
+                const { error: metricsError } = await supabase
+                    .from("job_metrics")
+                    .insert({
+                        job_id: data.id,
+                        views: 0,
+                        total_applicants: 0,
+                        qualified_applicants: 0,
+                        interviews: 0
+                    });
+
+                if (metricsError) {
+                    console.error("Error creating job metrics:", metricsError.message);
+                }
+            }
+
             if (formData.applicationQuestions && formData.applicationQuestions.length > 0 && data?.id) {
                 for (const q of formData.applicationQuestions) {
                     let dbType = q.type;

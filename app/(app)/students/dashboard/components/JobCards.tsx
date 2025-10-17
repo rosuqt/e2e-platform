@@ -61,6 +61,7 @@ const JobCards: React.FC<JobCardsProps> = ({
   const [saving, setSaving] = useState<string | null>(null)
   const [studentSkills, setStudentSkills] = useState<string[]>([])
   const [jobSkillsMap, setJobSkillsMap] = useState<Record<string, string[]>>({})
+  const [viewedJobs, setViewedJobs] = useState<Set<string>>(new Set())
   const pageSize = 8
   const firstCardRef = useRef<HTMLDivElement | null>(null)
 
@@ -316,6 +317,24 @@ const JobCards: React.FC<JobCardsProps> = ({
     return <>{fallback}</>
   }
 
+  const trackJobView = async (jobId: string) => {
+    if (viewedJobs.has(jobId)) return
+    
+    try {
+      const response = await fetch("/api/employers/job-metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId, action: "view" }),
+      })
+      
+      if (response.ok) {
+        setViewedJobs(prev => new Set([...prev, jobId]))
+      }
+    } catch (error) {
+      console.error("Failed to track job view:", error)
+    }
+  }
+
   return (
     <motion.div className="space-y-6 z-0" variants={container} initial="hidden" animate="show">
       {paginatedJobs.map((job, idx) => {
@@ -346,7 +365,11 @@ const JobCards: React.FC<JobCardsProps> = ({
           className={`bg-white rounded-3xl border-2 ${
             selectedJob === job.id ? "border-blue-300 ring-4 ring-blue-100" : "border-blue-200 hover:border-blue-300"
           } p-6 relative shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer overflow-visible`}
-          onClick={() => onSelectJob && onSelectJob(job.id)}
+          onClick={() => {
+            trackJobView(job.id);
+            onSelectJob(job.id);
+          }}
+          onMouseEnter={() => trackJobView(job.id)}
           whileHover={{
             y: -4,
             boxShadow: "0 10px 15px -5px rgba(0, 0, 0, 0.1)",
