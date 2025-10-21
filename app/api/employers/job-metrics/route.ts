@@ -50,27 +50,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const { data: existingMetric } = await supabase
-        .from("job_metrics")
-        .select("*")
-        .eq("job_id", jobId)
-        .single()
-
-      if (existingMetric) {
-        const { error } = await supabase
-          .from("job_metrics")
-          .update({ views: existingMetric.views + 1 })
-          .eq("job_id", jobId)
-
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from("job_metrics")
-          .insert({ job_id: jobId, views: 1 })
-
-        if (error) throw error
-      }
-
       return NextResponse.json({ success: true })
     }
 

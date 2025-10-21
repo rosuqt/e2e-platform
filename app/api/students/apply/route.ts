@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
       console.error("Supabase insert error:", error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+    
     const application_id = insertData?.[0]?.application_id
     if (application_id) {
       await supabase.from('activity_log').insert([
@@ -111,9 +112,26 @@ export async function POST(req: NextRequest) {
           type: 'new',
           message: 'New application submitted!',
         },
-      
       ])
+
+      const { data: existingMetrics } = await supabase
+        .from('job_metrics')
+        .select('total_applicants')
+        .eq('job_id', job_id)
+        .single()
+
+      if (existingMetrics) {
+        await supabase
+          .from('job_metrics')
+          .update({ total_applicants: existingMetrics.total_applicants + 1 })
+          .eq('job_id', job_id)
+      } else {
+        await supabase
+          .from('job_metrics')
+          .insert({ job_id, total_applicants: 1 })
+      }
     }
+    
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: "Unexpected server error" }, { status: 500 })

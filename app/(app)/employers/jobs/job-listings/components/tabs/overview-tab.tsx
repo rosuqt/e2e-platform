@@ -93,24 +93,74 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
   const [questions, setQuestions] = React.useState<ApplicationQuestion[]>([])
   const [quickEditOpen, setQuickEditOpen] = React.useState(false);
   const [showAllQuestions, setShowAllQuestions] = React.useState(false);
+  const [jobMetrics, setJobMetrics] = React.useState<{
+    views: number;
+    total_applicants: number;
+    qualified_applicants: number;
+    interviews: number;
+  }>({
+    views: 0,
+    total_applicants: 0,
+    qualified_applicants: 0,
+    interviews: 0,
+  });
 
   React.useEffect(() => {
     if (selectedJob == null) return
     setLoading(true)
     setError(null)
+    
+    console.log("Fetching data for job ID:", selectedJob)
+    
     Promise.all([
       fetch(`/api/job-listings/job-cards/${selectedJob}`).then(r => r.json()),
-      fetch(`/api/job-listings/job-cards/${selectedJob}/questions`).then(r => r.json())
+      fetch(`/api/job-listings/job-cards/${selectedJob}/questions`).then(r => r.json()),
+      fetch(`/api/employers/job-metrics/${selectedJob}`)
+        .then(r => {
+          console.log("Job metrics response status:", r.status)
+          if (!r.ok) {
+            console.error("Job metrics response not ok:", r.status, r.statusText)
+          }
+          return r.json()
+        })
+        .then(data => {
+          console.log("Job metrics response data:", data)
+          return data
+        })
+        .catch(err => {
+          console.error("Job metrics API error:", err)
+          return { views: 0, total_applicants: 0, qualified_applicants: 0, interviews: 0 }
+        })
     ])
-      .then(([job, questions]) => {
+      .then(([job, questions, metrics]) => {
+        console.log("All fetched data:", { job, questions, metrics })
+        console.log("Metrics object keys:", Object.keys(metrics))
+        console.log("Metrics values:", {
+          views: metrics.views,
+          total_applicants: metrics.total_applicants,
+          qualified_applicants: metrics.qualified_applicants,
+          interviews: metrics.interviews
+        })
+        
         setJobData({
           ...job,
           jobTitle: job.jobTitle || job.title || "",
         })
         setQuestions(Array.isArray(questions) ? questions : [])
+        
+        const finalMetrics = {
+          views: Number(metrics.views) || 0,
+          total_applicants: Number(metrics.total_applicants) || 0,
+          qualified_applicants: Number(metrics.qualified_applicants) || 0,
+          interviews: Number(metrics.interviews) || 0,
+        }
+        
+        console.log("Setting job metrics to:", finalMetrics)
+        setJobMetrics(finalMetrics)
         setLoading(false)
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Error in overview tab:", err)
         setError("Failed to load job details")
         setLoading(false)
       })
@@ -133,6 +183,9 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
   if (!jobData) {
     return null
   }
+
+  console.log("Current job metrics state:", jobMetrics)
+  console.log("Current job data:", jobData)
 
   return (
     <div className="p-6 max-h-screen overflow-y-auto overflow-y-auto relative ">
@@ -234,28 +287,28 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                   <Card>
                     <CardContent className="p-4 flex flex-col items-center justify-center">
                       <Eye className="h-5 w-5 text-blue-500 mb-1" />
-                      <div className="text-2xl font-bold">{jobData.views ?? 0}</div>
+                      <div className="text-2xl font-bold">{jobMetrics.views}</div>
                       <div className="text-xs text-gray-500">Views</div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 flex flex-col items-center justify-center">
                       <Users className="h-5 w-5 text-indigo-500 mb-1" />
-                      <div className="text-2xl font-bold">{jobData.total_applicants ?? 0}</div>
+                      <div className="text-2xl font-bold">{jobMetrics.total_applicants}</div>
                       <div className="text-xs text-gray-500">Applicants</div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 flex flex-col items-center justify-center">
                       <UserCheck className="h-5 w-5 text-green-500 mb-1" />
-                      <div className="text-2xl font-bold">{jobData.qualified_applicants ?? 0}</div>
+                      <div className="text-2xl font-bold">{jobMetrics.qualified_applicants}</div>
                       <div className="text-xs text-gray-500">Qualified</div>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4 flex flex-col items-center justify-center">
                       <MessageSquare className="h-5 w-5 text-purple-500 mb-1" />
-                      <div className="text-2xl font-bold">{jobData.interviews ?? 0}</div>
+                      <div className="text-2xl font-bold">{jobMetrics.interviews}</div>
                       <div className="text-xs text-gray-500">Interviews</div>
                     </CardContent>
                   </Card>
@@ -482,20 +535,20 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Applied</span>
-                        <span className="font-medium">{jobData.total_applicants ?? 0}</span>
+                        <span className="font-medium">{jobMetrics.total_applicants}</span>
                       </div>
-                      <LinearProgress variant="determinate" value={0} className="h-2" />
+                      <LinearProgress variant="determinate" value={jobMetrics.total_applicants > 0 ? 100 : 0} className="h-2" />
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Qualified</span>
-                        <span className="font-medium">{jobData.qualified_applicants ?? 0}</span>
+                        <span className="font-medium">{jobMetrics.qualified_applicants}</span>
                       </div>
                       <LinearProgress
                         variant="determinate"
                         value={
-                          jobData.total_applicants && jobData.qualified_applicants
-                            ? (jobData.qualified_applicants / jobData.total_applicants) * 100
+                          jobMetrics.total_applicants > 0
+                            ? (jobMetrics.qualified_applicants / jobMetrics.total_applicants) * 100
                             : 0
                         }
                         className="h-2"
@@ -504,28 +557,13 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Interviewed</span>
-                        <span className="font-medium">{jobData.interviews ?? 0}</span>
+                        <span className="font-medium">{jobMetrics.interviews}</span>
                       </div>
                       <LinearProgress
                         variant="determinate"
                         value={
-                          jobData.total_applicants && jobData.interviews
-                            ? (jobData.interviews / jobData.total_applicants) * 100
-                            : 0
-                        }
-                        className="h-2"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Hired</span>
-                        <span className="font-medium">{jobData.hired ?? 0}</span>
-                      </div>
-                      <LinearProgress
-                        variant="determinate"
-                        value={
-                          jobData.total_applicants && jobData.hired
-                            ? (jobData.hired / jobData.total_applicants) * 100
+                          jobMetrics.total_applicants > 0
+                            ? (jobMetrics.interviews / jobMetrics.total_applicants) * 100
                             : 0
                         }
                         className="h-2"
@@ -610,7 +648,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    {(!jobData.total_applicants || jobData.total_applicants === 0) ? (
+                    {jobMetrics.total_applicants === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8">
                         <FaUsers className="w-14 h-14 text-gray-300 mb-2" />
                         <div className="text-gray-400 text-sm">No Applicants yet</div>
@@ -689,4 +727,4 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
     </div>
   )
 }
-
+        
