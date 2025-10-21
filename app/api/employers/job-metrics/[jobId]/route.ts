@@ -89,9 +89,9 @@ async function calculateRealTimeMetrics(jobId: string) {
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { jobId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   try {
-    const { jobId } = params
+    const { jobId } = await params
     
     console.log("Job metrics API called for jobId:", jobId)
     
@@ -153,7 +153,8 @@ export async function GET(request: NextRequest, { params }: { params: { jobId: s
     
     try {
       console.log("Attempting fallback real-time calculation")
-      const fallbackMetrics = await calculateRealTimeMetrics(params.jobId)
+      const { jobId } = await params
+      const fallbackMetrics = await calculateRealTimeMetrics(jobId)
       console.log("Fallback metrics calculated:", fallbackMetrics)
       return NextResponse.json(fallbackMetrics)
     } catch (fallbackError) {
@@ -167,4 +168,3 @@ export async function GET(request: NextRequest, { params }: { params: { jobId: s
     }
   }
 }
-     
