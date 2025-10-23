@@ -436,10 +436,13 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
 
             <div className="py-2 border-t border-gray-100">
               <button 
-                className="w-full flex items-center p-3 text-left hover:bg-red-50 transition-colors text-red-600" 
+                className={`w-full flex items-center p-3 text-left transition-colors ${
+                  loading 
+                    ? 'bg-gray-50 text-gray-400 cursor-not-allowed' 
+                    : 'hover:bg-red-50 text-red-600'
+                }`}
                 onClick={handleLogoutClick}
                 disabled={loading}
-                style={loading ? { opacity: 0.5, pointerEvents: "none" } : undefined}
               >
                 <div className="w-8 h-8 rounded-full flex items-center justify-center">
                   <LogOut size={18} />

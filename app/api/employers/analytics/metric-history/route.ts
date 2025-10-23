@@ -122,7 +122,6 @@ export async function GET(request: NextRequest) {
       return acc
     }, {})
 
-    // Ensure all action types have default values
     const summary = {
       view: actionCounts.view || 0,
       click: actionCounts.click || 0,
