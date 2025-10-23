@@ -62,6 +62,7 @@ type InterviewScheduleModalProps = {
     student_id?: string
     employer_id?: string
     company_name?: string
+    status?: string
   }
   editMode?: boolean
 }
@@ -87,6 +88,7 @@ function InterviewScheduleModal({
   const [summary, setSummary] = useState(initial?.summary || "")
   const [saving, setSaving] = useState(false)
   const [companyName, setCompanyName] = useState<string>(initial?.company_name || "")
+  const [status] = useState(initial?.status || "Pending")
 
   const [dateError, setDateError] = useState<string | null>(null)
   const [timeError, setTimeError] = useState<string | null>(null)
@@ -230,7 +232,8 @@ function InterviewScheduleModal({
       summary,
       application_id: initial?.application_id,
       student_id: initial?.student_id,
-      employer_id: initial?.employer_id
+      employer_id: initial?.employer_id,
+      status
     }
     if (editMode && initial?.application_id) {
       await fetch(`/api/employers/applications/postInterviewSched`, {

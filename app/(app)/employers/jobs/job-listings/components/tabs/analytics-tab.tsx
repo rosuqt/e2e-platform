@@ -18,7 +18,7 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, Users, Eye, MousePointerClick, FileText } from "lucide-react"
+import { Calendar, Clock, Users, Eye, MousePointerClick, FileText, Search, CalendarX } from "lucide-react"
 import Chip from "@mui/material/Chip"
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar"
 import "react-circular-progressbar/dist/styles.css"
@@ -33,37 +33,30 @@ const matchPercentageData = [
   { range: "Below 60%", count: 1, color: "#ea580c" },
 ]
 
-const applicationStatusData = [
-  { name: "Shortlisted", value: 7, color: "#4f46e5" },
-  { name: "Pending", value: 11, color: "#2563eb" },
-  { name: "Interview", value: 5, color: "#7c3aed" },
-]
+interface JobAnalyticsProps {
+  jobId?: string
+  employerId?: string
+}
 
+interface AgendaItem {
+  id: string
+  application_id?: string
+  mode: string
+  platform?: string
+  address?: string
+  team?: string[]
+  date: string
+  time: string
+  notes?: string
+  summary?: string
+  status?: string
+  student_name?: string
+}
 
-
-const upcomingInterviews = [
-  {
-    candidate: "Alex Johnson",
-    position: "UI/UX Designer",
-    date: "May 10, 2025",
-    time: "10:00 AM",
-    status: "Confirmed",
-  },
-  {
-    candidate: "Maria Garcia",
-    position: "UI/UX Designer",
-    date: "May 11, 2025",
-    time: "2:30 PM",
-    status: "Pending",
-  },
-  {
-    candidate: "David Kim",
-    position: "UI/UX Designer",
-    date: "May 12, 2025",
-    time: "11:15 AM",
-    status: "Confirmed",
-  },
-]
+interface AgendaResponse {
+  agenda: AgendaItem[]
+  interviewsScheduled: number
+}
 
 interface MetricHistory {
   summary: {
@@ -81,17 +74,58 @@ interface MetricHistory {
   usingFallback?: boolean
 }
 
-interface JobAnalyticsProps {
-  jobId?: string
+interface ApplicationStatus {
+  name: string
+  value: number
+  color: string
 }
 
-export default function JobAnalytics({ jobId }: JobAnalyticsProps) {
+interface TopApplicant {
+  id: string
+  first_name: string
+  last_name: string
+  match_score: number
+  applied_at: string
+  profile_image_url?: string
+  student_id?: string
+}
+
+interface ApplicantResponse {
+  id: string
+  first_name: string
+  last_name: string
+  match_score: number
+  applied_at: string
+  student_id?: string
+}
+
+interface StudentDetails {
+  profile_img?: string
+}
+
+interface SignedUrlResponse {
+  signedUrl?: string
+}
+
+export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
   const [timeRange, setTimeRange] = useState("all")
   const [metricHistory, setMetricHistory] = useState<MetricHistory>({
     summary: { view: 0, click: 0, apply: 0 },
     weeklyData: [],
     totalRecords: 0
   })
+  const [applicationStatusData, setApplicationStatusData] = useState<ApplicationStatus[]>([
+    { name: "New", value: 0, color: "#eab308" },
+    { name: "Shortlisted", value: 0, color: "#06b6d4" },
+    { name: "Interview", value: 0, color: "#8b5cf6" },
+    { name: "Waitlisted", value: 0, color: "#3b82f6" },
+    { name: "Hired", value: 0, color: "#059669" },
+    { name: "Rejected", value: 0, color: "#dc2626" },
+  ])
+  const [topApplicants, setTopApplicants] = useState<TopApplicant[]>([])
+  const [loadingTopApplicants, setLoadingTopApplicants] = useState(false)
+  const [upcomingInterviews, setUpcomingInterviews] = useState<AgendaItem[]>([])
+  const [loadingInterviews, setLoadingInterviews] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [previousMetrics, setPreviousMetrics] = useState<MetricHistory>({
@@ -99,6 +133,20 @@ export default function JobAnalytics({ jobId }: JobAnalyticsProps) {
     weeklyData: [],
     totalRecords: 0
   })
+
+  const fetchApplicationStatus = async () => {
+    if (!jobId) return
+    
+    try {
+      const response = await fetch(`/api/employers/fetch-applicants/${jobId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setApplicationStatusData(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch application status:', err)
+    }
+  }
 
   const fetchJobMetrics = async () => {
     if (!jobId) {
@@ -140,9 +188,92 @@ export default function JobAnalytics({ jobId }: JobAnalyticsProps) {
     }
   }
 
+  const fetchTopApplicants = async () => {
+    if (!jobId) return
+    
+    try {
+      setLoadingTopApplicants(true)
+      const response = await fetch(`/api/employers/fetch-applicants/${jobId}/recent-applicants`)
+      if (response.ok) {
+        const applicants: ApplicantResponse[] = await response.json()
+        
+        const sortedApplicants = applicants
+          .sort((a: ApplicantResponse, b: ApplicantResponse) => b.match_score - a.match_score)
+          .slice(0, 5)
+        
+        const applicantsWithImages = await Promise.all(
+          sortedApplicants.map(async (applicant: ApplicantResponse): Promise<TopApplicant> => {
+            if (!applicant.student_id) return { ...applicant, profile_image_url: "" }
+            
+            try {
+              const detailsRes = await fetch(`/api/employers/applications/getStudentDetails?student_id=${applicant.student_id}`)
+              const details: StudentDetails = await detailsRes.json()
+
+              let profile_image_url = ""
+              if (details && details.profile_img) {
+                const signedUrlRes = await fetch("/api/students/get-signed-url", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    bucket: "user.avatars",
+                    path: details.profile_img
+                  })
+                })
+                const signedUrlData: SignedUrlResponse = await signedUrlRes.json()
+                if (signedUrlData && signedUrlData.signedUrl) {
+                  profile_image_url = signedUrlData.signedUrl
+                }
+              }
+              return { ...applicant, profile_image_url }
+            } catch {
+              return { ...applicant, profile_image_url: "" }
+            }
+          })
+        )
+        
+        setTopApplicants(applicantsWithImages)
+      }
+    } catch (err) {
+      console.error('Failed to fetch top applicants:', err)
+      setTopApplicants([])
+    } finally {
+      setLoadingTopApplicants(false)
+    }
+  }
+
+  const fetchUpcomingInterviews = async () => {
+    if (!employerId) {
+      console.log("No employerId provided for interviews")
+      return
+    }
+    
+    try {
+      setLoadingInterviews(true)
+      const url = `/api/employers/applications/agenda?employer_id=${employerId}&range=week`
+      console.log("Fetching interviews from:", url)
+      
+      const response = await fetch(url)
+      if (response.ok) {
+        const data: AgendaResponse = await response.json()
+        console.log("Interview data received:", data)
+        setUpcomingInterviews(data.agenda || [])
+      } else {
+        console.error("Failed to fetch interviews:", response.status, response.statusText)
+      }
+    } catch (err) {
+      console.error('Failed to fetch upcoming interviews:', err)
+      setUpcomingInterviews([])
+    } finally {
+      setLoadingInterviews(false)
+    }
+  }
+
   useEffect(() => {
     fetchJobMetrics()
-  }, [jobId, timeRange])
+    fetchApplicationStatus()
+    fetchTopApplicants()
+    fetchUpcomingInterviews()
+  }, [jobId, timeRange, employerId])
 
   const calculatePercentageChange = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 100 : 0
@@ -157,9 +288,79 @@ export default function JobAnalytics({ jobId }: JobAnalyticsProps) {
   const viewsChange = calculatePercentageChange(metricHistory.summary.view, previousMetrics.summary.view)
   const clicksChange = calculatePercentageChange(metricHistory.summary.click, previousMetrics.summary.click)
 
+  const formatTimeAgo = (dateString: string) => {
+    const now = new Date()
+    const applied = new Date(dateString)
+    const diffMs = now.getTime() - applied.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) return "Applied today"
+    if (diffDays === 1) return "Applied 1 day ago"
+    if (diffDays < 7) return `Applied ${diffDays} days ago`
+    if (diffDays < 30) return `Applied ${Math.floor(diffDays / 7)} weeks ago`
+    return `Applied ${Math.floor(diffDays / 30)} months ago`
+  }
+
+  const getRankingBadgeColor = (index: number) => {
+    switch (index) {
+      case 0: return "bg-yellow-500 text-white"
+      case 1: return "bg-gray-400 text-white"
+      case 2: return "bg-amber-600 text-white"
+      case 3: return "bg-blue-500 text-white"
+      case 4: return "bg-purple-500 text-white"
+      default: return "bg-gray-500 text-white"
+    }
+  }
+
+  const hasHighMatchApplicants = topApplicants.some(applicant => applicant.match_score >= 70)
+
+  const formatInterviewTime = (timeString: string) => {
+    try {
+      const [hours, minutes] = timeString.split(':')
+      const date = new Date()
+      date.setHours(parseInt(hours), parseInt(minutes))
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      })
+    } catch {
+      return timeString
+    }
+  }
+
+  const formatInterviewDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric'
+      })
+    } catch {
+      return dateString
+    }
+  }
+
+  const getStatusColors = (status?: string) => {
+    switch (status?.toLowerCase()) {
+      case 'confirmed': 
+        return { backgroundColor: '#dbeafe', color: '#1d4ed8' }
+      case 'pending': 
+        return { backgroundColor: '#fef3c7', color: '#d97706' }
+      case 'cancelled': 
+        return { backgroundColor: '#fecaca', color: '#dc2626' }
+      case 'rescheduled': 
+        return { backgroundColor: '#fed7aa', color: '#ea580c' }
+      case 'completed': 
+        return { backgroundColor: '#dcfce7', color: '#16a34a' }
+      default: 
+        return { backgroundColor: '#f3f4f6', color: '#374151' }
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Show a message if no valid jobId */}
       {!jobId && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <p className="text-yellow-800 text-sm">
@@ -413,50 +614,71 @@ export default function JobAnalytics({ jobId }: JobAnalyticsProps) {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+     
         
-        {/* Upcoming Interviews */}
+        {/* Top Applicants */}
         <Card className="col-span-1 h-[460px] flex flex-col w-full">
           <CardHeader>
-            <CardTitle>Upcoming Interviews</CardTitle>
-            <CardDescription>Next 7 days</CardDescription>
+            <CardTitle>Top Applicants</CardTitle>
+            <CardDescription>Highest match scores for this position</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col justify-between">
-            <div className="space-y-4 overflow-y-auto">
-              {upcomingInterviews.map((interview, index) => (
-                <div key={index} className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="bg-blue-100 text-blue-700 rounded-full h-10 w-10 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium">{interview.candidate}</h4>
-                      <Chip
-                        label={interview.status}
-                        className={
-                          interview.status === "Confirmed" 
-                            ? "bg-green-100 text-green-700 border-green-200" 
-                            : "bg-amber-100 text-amber-700 border-amber-200"
-                        }
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground">{interview.position}</p>
-                    <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>{interview.date}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{interview.time}</span>
-                      </div>
-                    </div>
-                  </div>
+            {loadingTopApplicants ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
+              </div>
+            ) : topApplicants.length === 0 ? (
+              <div className="flex flex-col items-center py-8">
+                <Users className="w-10 h-10 text-gray-300 mb-2" />
+                <div className="text-gray-400 text-center text-sm max-w-xs">
+                  No applicants yet
                 </div>
-              ))}
-            </div>
-            <Button variant="outline" className="w-full mt-2">View All Interviews</Button>
+              </div>
+            ) : !hasHighMatchApplicants ? (
+              <div className="flex flex-col items-center py-8">
+                <Search className="w-10 h-10 text-gray-300 mb-2" />
+                <div className="text-gray-400 text-center text-sm max-w-xs">
+                  We haven&apos;t found any candidates who are a strong match for this position yet. Don&apos;t worry - great candidates might still be on their way!
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3 overflow-y-auto">
+                {topApplicants.map((applicant, index) => (
+                  <div key={applicant.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center">
+                          {applicant.profile_image_url ? (
+                            <img 
+                              src={applicant.profile_image_url} 
+                              alt={`${applicant.first_name} ${applicant.last_name}`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-blue-600 font-medium text-sm">
+                              {applicant.first_name[0]}{applicant.last_name[0]}
+                            </span>
+                          )}
+                        </div>
+                        <div className={`absolute -top-1 -right-1 text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold ${getRankingBadgeColor(index)}`}>
+                          {index + 1}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{applicant.first_name} {applicant.last_name}</p>
+                        <p className="text-xs text-gray-500">{formatTimeAgo(applicant.applied_at)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <span className="text-sm font-semibold text-green-600">{applicant.match_score}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
+        
         {/* Top Skills Cloud */}
         <Card className="col-span-1 h-[460px] flex flex-col w-full">
           <CardHeader>
@@ -477,39 +699,71 @@ export default function JobAnalytics({ jobId }: JobAnalyticsProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="col-span-1 md:col-span-1">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Time to Apply</CardTitle>
+            <CardTitle className="text-base">Upcoming Interviews</CardTitle>
+            <CardDescription>Next 7 days</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm\"> 1 minute</span>
-                </div>
-                <div className="text-sm font-medium">15%</div>
+            {loadingInterviews ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
               </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm">1-5 minutes</span>
+            ) : upcomingInterviews.length === 0 ? (
+              <div className="flex flex-col items-center py-8">
+                <CalendarX className="w-12 h-12 text-gray-300 mb-3" />
+                <div className="text-gray-500 text-center">
+                  <p className="font-medium mb-1">No interviews scheduled</p>
+                  <p className="text-sm text-gray-400">No interviews in the next 7 days</p>
                 </div>
-                <div className="text-sm font-medium">45%</div>
               </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <span className="text-sm">5-10 minutes</span>
-                </div>
-                <div className="text-sm font-medium">30%</div>
+            ) : (
+              <div className="space-y-3">
+                {upcomingInterviews.slice(0, 3).map((interview) => (
+                  <div key={interview.id} className="flex items-start gap-4 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="bg-blue-100 text-blue-700 rounded-full h-8 w-8 flex items-center justify-center flex-shrink-0">
+                      <Calendar className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-sm">{interview.student_name || 'Candidate'}</h4>
+                        <Chip
+                          label={interview.status || 'Pending'}
+                          size="small"
+                          sx={{
+                            fontSize: '11px',
+                            height: '20px',
+                            ...getStatusColors(interview.status),
+                            '& .MuiChip-label': {
+                              padding: '0 6px'
+                            }
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{interview.mode} Interview</p>
+                      <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>{formatInterviewDate(interview.date)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatInterviewTime(interview.time)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <span className="text-sm"> 10 minutes</span>
-                </div>
-                <div className="text-sm font-medium">10%</div>
-              </div>
-            </div>
+            )}
+            {upcomingInterviews.length > 3 && (
+              <Button variant="outline" className="w-full mt-3 border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700" size="sm">
+                View All {upcomingInterviews.length} Interviews
+              </Button>
+            )}
+            {upcomingInterviews.length > 0 && upcomingInterviews.length <= 3 && (
+              <Button variant="outline" className="w-full mt-3 border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700" size="sm">
+                View Interview Calendar
+              </Button>
+            )}
           </CardContent>
         </Card>
 

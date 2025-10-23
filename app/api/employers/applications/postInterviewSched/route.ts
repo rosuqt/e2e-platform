@@ -43,7 +43,8 @@ export async function POST(req: NextRequest) {
         notes,
         summary,
         student_id,
-        employer_id
+        employer_id,
+        status: "Pending"
       }])
       .select()
       .single()
@@ -105,7 +106,8 @@ export async function PATCH(req: NextRequest) {
     notes,
     summary,
     student_id,
-    employer_id
+    employer_id,
+    status
   } = body
 
   if (!id) {
@@ -125,7 +127,8 @@ export async function PATCH(req: NextRequest) {
       notes,
       summary,
       student_id,
-      employer_id
+      employer_id,
+      ...(status && { status })
     })
     .eq("id", id)
     .select()

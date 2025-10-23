@@ -31,6 +31,7 @@ import JobSettings from "./settings-tab"
 import { PiMoneyLight } from "react-icons/pi";
 import React from "react"
 import QuickEditModal from "../quick-edit-modal"
+import { useSession } from "next-auth/react"
 
 type JobData = {
   jobTitle: string
@@ -87,6 +88,7 @@ const PERKS_MAP = [
 ]
 
 export default function EmployerJobOverview({ selectedJob, onClose }: { selectedJob: string | null; onClose: () => void }) {
+  const { data: session } = useSession()
   const [jobData, setJobData] = React.useState<JobData | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -104,6 +106,19 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
     qualified_applicants: 0,
     interviews: 0,
   });
+  const [activeTab, setActiveTab] = React.useState("overview");
+  const analyticsRef = React.useRef<HTMLDivElement>(null);
+
+  const employerId = (session?.user as { employerId?: string })?.employerId
+
+  const handleViewAnalytics = () => {
+    setActiveTab("analytics");
+    setTimeout(() => {
+      if (analyticsRef.current) {
+        analyticsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
 
   React.useEffect(() => {
     if (selectedJob == null) return
@@ -135,6 +150,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
         })
     ])
       .then(([job, questions, metrics]) => {
+        console.log("Job data received:", job)
         setJobData({
           ...job,
           jobTitle: job.jobTitle || job.title || "",
@@ -261,11 +277,11 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           </div>
         </div>
 
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="applicants">Applicants</TabsTrigger>
-            <TabsTrigger value="analytics" disabled={selectedJob === null}>Analytics</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -634,7 +650,11 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                         <FileText className="h-4 w-4 mr-2" />
                         Download Applicant CSV
                       </Button>
-                      <Button className="w-full justify-start text-blue-600 hover:text-blue-900" variant="outline">
+                      <Button 
+                        className="w-full justify-start text-blue-600 hover:text-blue-900" 
+                        variant="outline"
+                        onClick={handleViewAnalytics}
+                      >
                         <BarChart3 className="h-4 w-4 mr-2" />
                         View Full Analytics
                       </Button>
@@ -652,9 +672,11 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           <TabsContent value="applicants" className="mt-6">
             <ApplicantsTab jobId={selectedJob ? String(selectedJob) : ""} />
           </TabsContent>
-
-          <TabsContent value="analytics" className="mt-6">
-            <JobAnalytics jobId={selectedJob ? String(selectedJob) : undefined} />
+          <TabsContent value="analytics" className="mt-6" ref={analyticsRef}>
+            <JobAnalytics 
+              jobId={selectedJob ? String(selectedJob) : undefined} 
+              employerId={employerId}
+            />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
@@ -695,4 +717,3 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
   )
 }
 
-      

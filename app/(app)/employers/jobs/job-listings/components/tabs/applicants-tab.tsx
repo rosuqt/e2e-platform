@@ -37,6 +37,7 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
   const [recentApplicants, setRecentApplicants] = useState<Applicant[]>([])
   const [loadingApplicants, setLoadingApplicants] = useState(false)
   const [profileImages, setProfileImages] = useState<Record<string, string>>({})
+  const [loadingView, setLoadingView] = useState<string | null>(null)
 
   useEffect(() => {
     if (!jobId) return
@@ -333,6 +334,7 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
   }
 
   const handleViewApplicant = (applicantId: string) => {
+    setLoadingView(applicantId)
     if (jobId) {
       router.push(`/employers/jobs/applications?jobId=${jobId}&applicantId=${applicantId}`)
     } else {
@@ -620,7 +622,21 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
                         <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
                           {applicant.match_score}% match
                         </Badge>
-                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700" onClick={() => handleViewApplicant(applicant.id)}>View</Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 px-2 text-xs border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700" 
+                          onClick={() => handleViewApplicant(applicant.id)}
+                          disabled={loadingView === applicant.id}
+                        >
+                          {loadingView === applicant.id ? (
+                            <div className="flex items-center">
+                              <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-blue-500 mr-1" />
+                            </div>
+                          ) : (
+                            "View"
+                          )}
+                        </Button>
                       </div>
                     </div>
                   ))}

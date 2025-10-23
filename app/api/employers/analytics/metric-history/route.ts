@@ -130,31 +130,78 @@ export async function GET(request: NextRequest) {
 
     console.log("Summary:", summary)
 
-    const weeklyData = []
-    const startDate = new Date(since)
-    
-    for (let i = 0; i < 4; i++) {
-      const weekStart = new Date(startDate)
-      weekStart.setDate(startDate.getDate() + (i * 7))
-      const weekEnd = new Date(weekStart)
-      weekEnd.setDate(weekStart.getDate() + 6)
+    const generateWeeklyData = () => {
+      const now = new Date()
+      const weeklyData = []
       
-      const weekData = data.filter(item => {
-        const itemDate = new Date(item.created_at)
-        return itemDate >= weekStart && itemDate <= weekEnd
-      })
+      if (range === "week") {
+        for (let i = 6; i >= 0; i--) {
+          const dayStart = new Date(now)
+          dayStart.setDate(now.getDate() - i)
+          dayStart.setHours(0, 0, 0, 0)
+          
+          const dayEnd = new Date(dayStart)
+          dayEnd.setHours(23, 59, 59, 999)
+          
+          const dayData = data.filter(item => {
+            const itemDate = new Date(item.created_at)
+            return itemDate >= dayStart && itemDate <= dayEnd
+          })
+          
+          weeklyData.push({
+            name: dayStart.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+            views: dayData.filter(item => item.action === "view").length,
+            clicks: dayData.filter(item => item.action === "click").length,
+            applicants: dayData.filter(item => item.action === "apply").length
+          })
+        }
+      } else if (range === "month") {
+        for (let i = 3; i >= 0; i--) {
+          const weekStart = new Date(now)
+          weekStart.setDate(now.getDate() - (i * 7) - 6)
+          weekStart.setHours(0, 0, 0, 0)
+          
+          const weekEnd = new Date(now)
+          weekEnd.setDate(now.getDate() - (i * 7))
+          weekEnd.setHours(23, 59, 59, 999)
+          
+          const weekData = data.filter(item => {
+            const itemDate = new Date(item.created_at)
+            return itemDate >= weekStart && itemDate <= weekEnd
+          })
+          
+          weeklyData.push({
+            name: `Week ${4-i}`,
+            views: weekData.filter(item => item.action === "view").length,
+            clicks: weekData.filter(item => item.action === "click").length,
+            applicants: weekData.filter(item => item.action === "apply").length
+          })
+        }
+      } else {
+        for (let i = 11; i >= 0; i--) {
+          const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1)
+          const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999)
+          
+          const monthData = data.filter(item => {
+            const itemDate = new Date(item.created_at)
+            return itemDate >= monthStart && itemDate <= monthEnd
+          })
+          
+          weeklyData.push({
+            name: monthStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            views: monthData.filter(item => item.action === "view").length,
+            clicks: monthData.filter(item => item.action === "click").length,
+            applicants: monthData.filter(item => item.action === "apply").length
+          })
+        }
+      }
       
-      weeklyData.push({
-        name: `Week ${i + 1}`,
-        views: weekData.filter(item => item.action === "view").length,
-        clicks: weekData.filter(item => item.action === "click").length,
-        applicants: weekData.filter(item => item.action === "apply").length
-      })
+      return weeklyData
     }
 
     return NextResponse.json({
       summary: summary,
-      weeklyData: weeklyData,
+      weeklyData: generateWeeklyData(),
       totalRecords: data.length
     })
   } catch (error) {
