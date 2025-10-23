@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   BarChart,
   Bar,
@@ -17,13 +17,13 @@ import {
   Legend,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, Users, Eye, MousePointerClick, FileText } from "lucide-react"
 import Chip from "@mui/material/Chip"
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar"
 import "react-circular-progressbar/dist/styles.css"
 import { IconCloudDemo } from "@/components/magicui/skill-cloud"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const matchPercentageData = [
   { range: "90-100%", count: 5, color: "#4f46e5" }, 
@@ -39,12 +39,7 @@ const applicationStatusData = [
   { name: "Interview", value: 5, color: "#7c3aed" },
 ]
 
-const jobPostingData = [
-  { name: "Week 1", views: 120, clicks: 45, applicants: 3 },
-  { name: "Week 2", views: 230, clicks: 80, applicants: 8 },
-  { name: "Week 3", views: 310, clicks: 110, applicants: 12 },
-  { name: "Week 4", views: 180, clicks: 70, applicants: 5 },
-]
+
 
 const upcomingInterviews = [
   {
@@ -70,11 +65,109 @@ const upcomingInterviews = [
   },
 ]
 
-export default function JobAnalytics() {
-  const [timeRange, setTimeRange] = useState("month");
+interface MetricHistory {
+  summary: {
+    view: number
+    click: number
+    apply: number
+  }
+  weeklyData: Array<{
+    name: string
+    views: number
+    clicks: number
+    applicants: number
+  }>
+  totalRecords: number
+  usingFallback?: boolean
+}
+
+interface JobAnalyticsProps {
+  jobId?: string
+}
+
+export default function JobAnalytics({ jobId }: JobAnalyticsProps) {
+  const [timeRange, setTimeRange] = useState("all")
+  const [metricHistory, setMetricHistory] = useState<MetricHistory>({
+    summary: { view: 0, click: 0, apply: 0 },
+    weeklyData: [],
+    totalRecords: 0
+  })
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [previousMetrics, setPreviousMetrics] = useState<MetricHistory>({
+    summary: { view: 0, click: 0, apply: 0 },
+    weeklyData: [],
+    totalRecords: 0
+  })
+
+  const fetchJobMetrics = async () => {
+    if (!jobId) {
+      setError("Job ID not provided")
+      setIsLoading(false)
+      return
+    }
+    
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(jobId)) {
+      setError(`Invalid Job ID format: ${jobId}. Expected UUID format.`)
+      setIsLoading(false)
+      return
+    }
+    
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      const [historyResponse, previousResponse] = await Promise.all([
+        fetch(`/api/employers/analytics/metric-history?jobId=${jobId}&range=${timeRange}`),
+        fetch(`/api/employers/analytics/metric-history?jobId=${jobId}&range=previous-${timeRange}`)
+      ])
+      
+      if (!historyResponse.ok) {
+        throw new Error("Failed to fetch data")
+      }
+      
+      const historyData = await historyResponse.json()
+      const previousData = previousResponse.ok ? await previousResponse.json() : { summary: { view: 0, click: 0, apply: 0 } }
+      
+      setMetricHistory(historyData)
+      setPreviousMetrics(previousData)
+      setError(null)
+    } catch (err) {
+      setError(`Failed to load metrics: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchJobMetrics()
+  }, [jobId, timeRange])
+
+  const calculatePercentageChange = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0
+    return Number(((current - previous) / previous * 100).toFixed(1))
+  }
+
+  const conversionRate = metricHistory.summary.view > 0 
+    ? ((metricHistory.summary.apply / metricHistory.summary.view) * 100).toFixed(1) 
+    : "0.0"
+
+  const applicantsChange = calculatePercentageChange(metricHistory.summary.apply, previousMetrics.summary.apply)
+  const viewsChange = calculatePercentageChange(metricHistory.summary.view, previousMetrics.summary.view)
+  const clicksChange = calculatePercentageChange(metricHistory.summary.click, previousMetrics.summary.click)
 
   return (
     <div className="space-y-6">
+      {/* Show a message if no valid jobId */}
+      {!jobId && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-yellow-800 text-sm">
+            <strong>No Job Selected:</strong> Please select a specific job to view analytics.
+          </p>
+        </div>
+      )}
+
       {/* Header with time range selector */}
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">Job Analytics</h2>
@@ -82,9 +175,9 @@ export default function JobAnalytics() {
           <span className="text-sm text-muted-foreground">Time Range:</span>
           <Tabs defaultValue={timeRange} onValueChange={setTimeRange} className="w-[300px]">
             <TabsList className="grid grid-cols-3">
-              <TabsTrigger value="week">Week</TabsTrigger>
-              <TabsTrigger value="month">Month</TabsTrigger>
               <TabsTrigger value="all">All Time</TabsTrigger>
+              <TabsTrigger value="month">Month</TabsTrigger>
+              <TabsTrigger value="week">Week</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -97,13 +190,15 @@ export default function JobAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Applicants</p>
-                <h3 className="text-3xl font-bold mt-1">23</h3>
+                <h3 className="text-3xl font-bold mt-1">
+                  {isLoading ? "..." : metricHistory.summary.apply || 0}
+                </h3>
               </div>
               <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
             </div>
-            <div className="mt-2 text-xs text-green-600 flex items-center">
+            <div className={`mt-2 text-xs flex items-center ${Number(applicantsChange) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
@@ -116,9 +211,9 @@ export default function JobAnalytics() {
                 strokeLinejoin="round"
                 className="mr-1"
               >
-                <path d="m6 9 6 6 6-6" />
+                <path d={Number(applicantsChange) >= 0 ? "m6 9 6 6 6-6" : "m18 15-6-6-6 6"} />
               </svg>
-              <span>+15% from last week</span>
+              <span>{applicantsChange >= 0 ? '+' : ''}{applicantsChange}% from last month</span>
             </div>
           </CardContent>
         </Card>
@@ -128,13 +223,15 @@ export default function JobAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Views</p>
-                <h3 className="text-3xl font-bold mt-1">423</h3>
+                <h3 className="text-3xl font-bold mt-1">
+                  {isLoading ? "..." : metricHistory.summary.view || 0}
+                </h3>
               </div>
               <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
                 <Eye className="h-6 w-6 text-purple-600" />
               </div>
             </div>
-            <div className="mt-2 text-xs text-green-600 flex items-center">
+            <div className={`mt-2 text-xs flex items-center ${Number(viewsChange) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
@@ -147,9 +244,9 @@ export default function JobAnalytics() {
                 strokeLinejoin="round"
                 className="mr-1"
               >
-                <path d="m6 9 6 6 6-6" />
+                <path d={Number(viewsChange) >= 0 ? "m6 9 6 6 6-6" : "m18 15-6-6-6 6"} />
               </svg>
-              <span>+32% from last week</span>
+              <span>{viewsChange >= 0 ? '+' : ''}{viewsChange}% from last month</span>
             </div>
           </CardContent>
         </Card>
@@ -159,13 +256,15 @@ export default function JobAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Clicks</p>
-                <h3 className="text-3xl font-bold mt-1">187</h3>
+                <h3 className="text-3xl font-bold mt-1">
+                  {isLoading ? "..." : metricHistory.summary.click || 0}
+                </h3>
               </div>
               <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
                 <MousePointerClick className="h-6 w-6 text-green-600" />
               </div>
             </div>
-            <div className="mt-2 text-xs text-green-600 flex items-center">
+            <div className={`mt-2 text-xs flex items-center ${Number(clicksChange) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
@@ -178,9 +277,9 @@ export default function JobAnalytics() {
                 strokeLinejoin="round"
                 className="mr-1"
               >
-                <path d="m6 9 6 6 6-6" />
+                <path d={Number(clicksChange) >= 0 ? "m6 9 6 6 6-6" : "m18 15-6-6-6 6"} />
               </svg>
-              <span>+24% from last week</span>
+              <span>{clicksChange >= 0 ? '+' : ''}{clicksChange}% from last month</span>
             </div>
           </CardContent>
         </Card>
@@ -190,32 +289,35 @@ export default function JobAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Conversion Rate</p>
-                <h3 className="text-3xl font-bold mt-1">5.4%</h3>
+                <h3 className="text-3xl font-bold mt-1">
+                  {isLoading ? "..." : `${conversionRate}%`}
+                </h3>
               </div>
               <div className="h-12 w-12 bg-amber-100 rounded-full flex items-center justify-center">
                 <FileText className="h-6 w-6 text-amber-600" />
               </div>
             </div>
-            <div className="mt-2 text-xs text-red-600 flex items-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="mr-1"
-              >
-                <path d="m18 15-6-6-6 6" />
-              </svg>
-              <span>-2.1% from last week</span>
+            <div className="mt-2 text-xs text-muted-foreground flex items-center">
+              <span>Views to applications ratio</span>
             </div>
           </CardContent>
         </Card>
       </div>
+      
+      {/* Error state */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-600 text-sm">{error}</p>
+          <Button 
+            onClick={fetchJobMetrics} 
+            variant="outline" 
+            size="sm" 
+            className="mt-2"
+          >
+            Retry
+          </Button>
+        </div>
+      )}
       
       {/* Main analytics grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -296,7 +398,7 @@ export default function JobAnalytics() {
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={jobPostingData}
+                data={metricHistory.weeklyData}
                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -304,9 +406,9 @@ export default function JobAnalytics() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="views" stroke="#2563eb" name="Views" /> {/* Vivid Blue */}
-                <Line type="monotone" dataKey="clicks" stroke="#7c3aed" name="Clicks" /> {/* Bright Purple */}
-                <Line type="monotone" dataKey="applicants" stroke="#eab308" name="Applicants" /> {/* Bright Yellow */}
+                <Line type="monotone" dataKey="views" stroke="#2563eb" name="Views" />
+                <Line type="monotone" dataKey="clicks" stroke="#7c3aed" name="Clicks" />
+                <Line type="monotone" dataKey="applicants" stroke="#eab308" name="Applicants" />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -355,7 +457,7 @@ export default function JobAnalytics() {
             <Button variant="outline" className="w-full mt-2">View All Interviews</Button>
           </CardContent>
         </Card>
-        {/* Top Skills Cloud as a separate section */}
+        {/* Top Skills Cloud */}
         <Card className="col-span-1 h-[460px] flex flex-col w-full">
           <CardHeader>
             <CardTitle>Top Skills</CardTitle>
@@ -439,3 +541,4 @@ export default function JobAnalytics() {
     </div>
   )
 }
+

@@ -130,6 +130,17 @@ export async function POST(req: NextRequest) {
           .from('job_metrics')
           .insert({ job_id, total_applicants: 1 })
       }
+
+      const { error: historyError } = await supabase
+        .from("job_metrics_history")
+        .insert({
+          job_id: job_id,
+          action: "apply"
+        })
+
+      if (historyError) {
+        console.error("Error inserting apply history:", historyError)
+      }
     }
     
     return NextResponse.json({ success: true })

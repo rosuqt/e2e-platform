@@ -110,56 +110,36 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
     setLoading(true)
     setError(null)
     
-    console.log("Fetching data for job ID:", selectedJob)
-    
     Promise.all([
       fetch(`/api/job-listings/job-cards/${selectedJob}`).then(r => r.json()),
       fetch(`/api/job-listings/job-cards/${selectedJob}/questions`).then(r => r.json()),
       fetch(`/api/employers/job-metrics/${selectedJob}`)
         .then(r => {
-          console.log("Job metrics response status:", r.status)
           if (!r.ok) {
-            console.error("Job metrics response not ok:", r.status, r.statusText)
+            return { views: 0, total_applicants: 0, qualified_applicants: 0, interviews: 0 }
           }
           return r.json()
         })
-        .then(data => {
-          console.log("Job metrics response data:", data)
-          return data
-        })
-        .catch(err => {
-          console.error("Job metrics API error:", err)
+        .catch(() => {
           return { views: 0, total_applicants: 0, qualified_applicants: 0, interviews: 0 }
         }),
       fetch(`/api/employers/fetch-applicants/${selectedJob}/recent-applicants?limit=3`)
         .then(r => {
           if (!r.ok) {
-            console.error("Recent applicants response not ok:", r.status, r.statusText)
             return []
           }
           return r.json()
         })
-        .catch(err => {
-          console.error("Recent applicants API error:", err)
+        .catch(() => {
           return []
         })
     ])
       .then(([job, questions, metrics]) => {
-        console.log("All fetched data:", { job, questions, metrics })
-        console.log("Metrics object keys:", Object.keys(metrics))
-        console.log("Metrics values:", {
-          views: metrics.views,
-          total_applicants: metrics.total_applicants,
-          qualified_applicants: metrics.qualified_applicants,
-          interviews: metrics.interviews
-        })
-        
         setJobData({
           ...job,
           jobTitle: job.jobTitle || job.title || "",
         })
         setQuestions(Array.isArray(questions) ? questions : [])
-   
         
         const finalMetrics = {
           views: Number(metrics.views) || 0,
@@ -168,12 +148,10 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           interviews: Number(metrics.interviews) || 0,
         }
         
-        console.log("Setting job metrics to:", finalMetrics)
         setJobMetrics(finalMetrics)
         setLoading(false)
       })
-      .catch((err) => {
-        console.error("Error in overview tab:", err)
+      .catch(() => {
         setError("Failed to load job details")
         setLoading(false)
       })
@@ -196,9 +174,6 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
   if (!jobData) {
     return null
   }
-
-  console.log("Current job metrics state:", jobMetrics)
-  console.log("Current job data:", jobData)
 
   
   return (
@@ -679,7 +654,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-6">
-            <JobAnalytics />
+            <JobAnalytics jobId={selectedJob ? String(selectedJob) : undefined} />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
@@ -719,3 +694,5 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
     </div>
   )
 }
+
+      

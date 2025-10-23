@@ -276,6 +276,20 @@ function JobCard({
     }
   }
 
+  const trackJobClick = async () => {
+    if (job.id === "preview") return
+    
+    try {
+      await fetch("/api/employers/job-metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id, action: "click" }),
+      })
+    } catch (error) {
+      console.error("Failed to track job click:", error)
+    }
+  }
+
   return (
     <motion.div
       className={`bg-white rounded-lg shadow-sm p-5 border-l-4 ${
@@ -454,6 +468,7 @@ function JobCard({
               onClick={(e) => {
                 e.stopPropagation();
                 trackJobView();
+                trackJobClick();
                 onSelect();
               }}
             >

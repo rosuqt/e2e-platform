@@ -246,8 +246,15 @@ const JobCards: React.FC<JobCardsProps> = ({
       if (safeLogoPath.length > 0 && typeof window !== "undefined") {
         const cached = sessionStorage.getItem(`companyLogoUrl:${safeLogoPath}`);
         if (cached) {
-          logoUrlCache[safeLogoPath] = cached;
-          return cached;
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed && typeof parsed === "object" && parsed.url && typeof parsed.url === "string") {
+              logoUrlCache[safeLogoPath] = parsed.url;
+              return parsed.url;
+            }
+          } catch {
+            sessionStorage.removeItem(`companyLogoUrl:${safeLogoPath}`);
+          }
         }
       }
       return null;
@@ -270,25 +277,37 @@ const JobCards: React.FC<JobCardsProps> = ({
           ? sessionStorage.getItem(cacheKey)
           : null;
       if (cached) {
-        logoUrlCache[safeLogoPath] = cached;
-        setLogoUrl(cached);
-        return;
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed === "object" && parsed.url && typeof parsed.url === "string") {
+            logoUrlCache[safeLogoPath] = parsed.url;
+            setLogoUrl(parsed.url);
+            return;
+          }
+        } catch {
+          sessionStorage.removeItem(cacheKey);
+        }
       }
       async function fetchLogoUrl() {
         try {
-          const res = await fetch(
-            `/api/employers/get-signed-url?bucket=company.logo&path=${encodeURIComponent(
-              safeLogoPath
-            )}`
-          );
+          const res = await fetch("/api/employers/get-signed-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bucket: "company.logo",
+              path: safeLogoPath,
+            }),
+          });
           const json = await res.json();
           if (!ignore) {
-            if (json.signedUrl) {
+            if (json.signedUrl && typeof json.signedUrl === "string") {
               logoUrlCache[safeLogoPath] = json.signedUrl;
               if (typeof window !== "undefined")
-                sessionStorage.setItem(cacheKey, json.signedUrl);
+                sessionStorage.setItem(cacheKey, JSON.stringify({ url: json.signedUrl }));
+              setLogoUrl(json.signedUrl);
+            } else {
+              setLogoUrl(null);
             }
-            setLogoUrl(json.signedUrl || null);
           }
         } catch {
           if (!ignore) setLogoUrl(null);
@@ -300,7 +319,7 @@ const JobCards: React.FC<JobCardsProps> = ({
       };
     }, [logoPath])
 
-    if (logoUrl) {
+    if (logoUrl && typeof logoUrl === "string") {
       return (
         <Image
           src={logoUrl}
@@ -332,6 +351,18 @@ const JobCards: React.FC<JobCardsProps> = ({
       }
     } catch (error) {
       console.error("Failed to track job view:", error)
+    }
+  }
+
+  const trackJobClick = async (jobId: string) => {
+    try {
+      await fetch("/api/employers/job-metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId, action: "click" }),
+      })
+    } catch (error) {
+      console.error("Failed to track job click:", error)
     }
   }
 
@@ -367,6 +398,7 @@ const JobCards: React.FC<JobCardsProps> = ({
           } p-6 relative shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer overflow-visible`}
           onClick={() => {
             trackJobView(job.id);
+            trackJobClick(job.id);
             onSelectJob(job.id);
           }}
           onMouseEnter={() => trackJobView(job.id)}

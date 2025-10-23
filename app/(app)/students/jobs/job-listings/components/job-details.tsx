@@ -164,6 +164,18 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
     }
   }
 
+  const trackJobClick = async (jobId: string) => {
+    try {
+      await fetch("/api/employers/job-metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId, action: "click" }),
+      })
+    } catch (error) {
+      console.error("Failed to track job click:", error)
+    }
+  }
+
   useEffect(() => {
     if (!jobId) return;
     setLoading(true);
@@ -180,6 +192,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
       setEmployerProfileImgUrl(parsed.employerProfileImgUrl);
       setCompanyEmployees(parsed.companyEmployees);
       setLoading(false);
+      trackJobClick(jobId);
       return;
     }
     fetch(`/api/students/job-listings/${jobId}`)
@@ -188,6 +201,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         setJob(data && !data.error ? data : null);
         if (data && !data.error && jobId) {
           await trackJobView(jobId);
+          await trackJobClick(jobId);
         }
         const logoPath = getCompanyLogoPath(data);
         let logoUrlVal: string | null = null;

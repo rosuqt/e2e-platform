@@ -11,6 +11,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing jobId or action" }, { status: 400 })
     }
 
+    const supabase = getAdminSupabase()
+
     if (action === "view") {
       const session = await getServerSession(authOptions)
       let userId: string | null = null
@@ -22,8 +24,6 @@ export async function POST(request: NextRequest) {
           userId = (session.user as Record<string, unknown>).id as string
         }
       }
-
-      const supabase = getAdminSupabase()
       
       if (userId) {
         const { data: existingView } = await supabase
@@ -48,6 +48,67 @@ export async function POST(request: NextRequest) {
         if (viewError) {
           console.error("Error inserting job view:", viewError)
         }
+      }
+
+      const { error: historyError } = await supabase
+        .from("job_metrics_history")
+        .insert({
+          job_id: jobId,
+          action: "view"
+        })
+
+      if (historyError) {
+        console.error("Error inserting view history:", historyError)
+      }
+
+      return NextResponse.json({ success: true })
+    }
+
+    if (action === "click") {
+      const { data: existingMetric, error: selectError } = await supabase
+        .from("job_metrics")
+        .select("total_clicks")
+        .eq("job_id", jobId)
+        .single()
+
+      if (selectError && selectError.code !== 'PGRST116') {
+        console.error("Error selecting job metrics:", selectError)
+        return NextResponse.json({ error: "Failed to track click" }, { status: 500 })
+      }
+
+      if (existingMetric) {
+        const { error: updateError } = await supabase
+          .from("job_metrics")
+          .update({ total_clicks: (existingMetric.total_clicks || 0) + 1 })
+          .eq("job_id", jobId)
+
+        if (updateError) {
+          console.error("Error updating job clicks:", updateError)
+          return NextResponse.json({ error: "Failed to track click" }, { status: 500 })
+        }
+      } else {
+        const { error: insertError } = await supabase
+          .from("job_metrics")
+          .insert({
+            job_id: jobId,
+            total_clicks: 1
+          })
+
+        if (insertError) {
+          console.error("Error inserting job metrics:", insertError)
+          return NextResponse.json({ error: "Failed to track click" }, { status: 500 })
+        }
+      }
+
+      const { error: historyError } = await supabase
+        .from("job_metrics_history")
+        .insert({
+          job_id: jobId,
+          action: "click"
+        })
+
+      if (historyError) {
+        console.error("Error inserting click history:", historyError)
       }
 
       return NextResponse.json({ success: true })

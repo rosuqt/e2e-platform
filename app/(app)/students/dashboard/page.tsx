@@ -890,7 +890,16 @@ export default function Home() {
                                       boxShadow: "0 15px 25px -5px rgba(59,130,246,0.08)",
                                     }}
                                     whileTap={{ scale: 0.97 }}
-                                    onClick={() => {
+                                    onClick={async () => {
+                                      try {
+                                        await fetch("/api/employers/job-metrics", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ jobId: jobDetails.id, action: "click" }),
+                                        })
+                                      } catch (error) {
+                                        console.error("Failed to track job click:", error)
+                                      }
                                       window.location.href = `/students/jobs/job-listings?jobId=${jobDetails.id}`;
                                     }}
                                   >
@@ -933,4 +942,3 @@ export default function Home() {
     </div>
   )
 }
-   

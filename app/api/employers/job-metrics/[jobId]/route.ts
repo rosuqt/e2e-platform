@@ -49,16 +49,27 @@ async function updatePastInterviews(jobId: string) {
 async function calculateRealTimeMetrics(jobId: string) {
   const supabase = getAdminSupabase()
   
-  console.log("Calculating real-time metrics for jobId:", jobId)
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(jobId)) {
+    throw new Error("Invalid job ID format")
+  }
   
-  const { data: applications, error: appError } = await supabase
+  const { data: jobExists, error: jobExistsError } = await supabase
+    .from("job_postings")
+    .select("id")
+    .eq("id", jobId)
+    .single()
+  
+  if (jobExistsError || !jobExists) {
+    throw new Error("Job not found")
+  }
+  
+  const { data: applications } = await supabase
     .from("applications")
     .select("application_id, status")
     .eq("job_id", jobId)
   
-  console.log("Applications query result:", { applications, appError })
-  
-  const { data: interviews, error: interviewError } = await supabase
+  const { data: interviews } = await supabase
     .from("interview_schedules")
     .select(`
       id,
@@ -66,77 +77,91 @@ async function calculateRealTimeMetrics(jobId: string) {
     `)
     .eq("applications.job_id", jobId)
   
-  console.log("Interviews query result:", { interviews, interviewError })
-  
   const totalApplicants = applications?.length || 0
   const qualifiedApplicants = applications?.filter(app => 
     app.status && !['rejected', 'withdrawn'].includes(app.status.toLowerCase())
   ).length || 0
   const interviewCount = interviews?.length || 0
   
-  console.log("Calculated metrics:", {
-    totalApplicants,
-    qualifiedApplicants,
-    interviewCount,
-    viewCount: 0
-  })
-  
-  return {
+  const metrics = {
     views: 0, 
     total_applicants: totalApplicants,
     qualified_applicants: qualifiedApplicants,
     interviews: interviewCount,
   }
+  
+  return metrics
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ jobId: string }> }) {
   try {
     const { jobId } = await params
     
-    console.log("Job metrics API called for jobId:", jobId)
-    
     if (!jobId) {
-      console.log("Missing jobId in request")
       return NextResponse.json({ error: "Missing jobId" }, { status: 400 })
+    }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(jobId)) {
+      return NextResponse.json({ 
+        error: `Invalid job ID format: ${jobId}. Expected UUID format.`,
+        received_id: jobId,
+        expected_format: "UUID (e.g., 123e4567-e89b-12d3-a456-426614174000)"
+      }, { status: 400 })
     }
 
     const supabase = getAdminSupabase()
     
-    console.log("Updating past interviews for jobId:", jobId)
     await updatePastInterviews(jobId)
     
-    console.log("Fetching job metrics from database for jobId:", jobId)
     const { data: metrics, error } = await supabase
       .from("job_metrics")
       .select("views, total_applicants, qualified_applicants, interviews")
       .eq("job_id", jobId)
       .single()
 
-    console.log("Database query result:", { metrics, error })
-
     let response;
     
     if (error && error.code === "PGRST116") {
-      console.log("No metrics found in database, calculating real-time metrics")
-      response = await calculateRealTimeMetrics(jobId)
-      
-      console.log("Inserting calculated metrics into database")
-      const { error: insertError } = await supabase
-        .from("job_metrics")
-        .insert({ 
-          job_id: jobId, 
-          views: response.views,
-          total_applicants: response.total_applicants,
-          qualified_applicants: response.qualified_applicants,
-          interviews: response.interviews
-        })
-      
-      if (insertError) {
-        console.error("Error inserting metrics:", insertError)
+      try {
+        response = await calculateRealTimeMetrics(jobId)
+        
+        await supabase
+          .from("job_metrics")
+          .insert({ 
+            job_id: jobId, 
+            views: response.views,
+            total_applicants: response.total_applicants,
+            qualified_applicants: response.qualified_applicants,
+            interviews: response.interviews
+          })
+      } catch (calcError) {
+        return NextResponse.json({ 
+          error: calcError instanceof Error ? calcError.message : "Failed to calculate metrics",
+          fallback_metrics: {
+            views: 0, 
+            total_applicants: 0, 
+            qualified_applicants: 0, 
+            interviews: 0
+          }
+        }, { status: 404 })
       }
     } else if (error) {
-      console.error("Database error:", error)
-      response = await calculateRealTimeMetrics(jobId)
+      try {
+        response = await calculateRealTimeMetrics(jobId)
+      } catch (calcError) {
+        return NextResponse.json({ 
+          error: "Job not found or metrics unavailable",
+          database_error: error.message,
+          calculation_error: calcError instanceof Error ? calcError.message : "Unknown error",
+          fallback_metrics: {
+            views: 0, 
+            total_applicants: 0, 
+            qualified_applicants: 0, 
+            interviews: 0
+          }
+        }, { status: 404 })
+      }
     } else {
       response = {
         views: metrics?.views || 0,
@@ -146,25 +171,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
     
-    console.log("Final response being sent:", response)
     return NextResponse.json(response)
-  } catch (error) {
-    console.error("Error fetching job metrics:", error)
     
-    try {
-      console.log("Attempting fallback real-time calculation")
-      const { jobId } = await params
-      const fallbackMetrics = await calculateRealTimeMetrics(jobId)
-      console.log("Fallback metrics calculated:", fallbackMetrics)
-      return NextResponse.json(fallbackMetrics)
-    } catch (fallbackError) {
-      console.error("Fallback calculation also failed:", fallbackError)
-      return NextResponse.json({ 
+  } catch (error) {
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : "Internal server error",
+      error_type: error instanceof Error ? error.name : "Unknown",
+      fallback_metrics: {
         views: 0, 
         total_applicants: 0, 
         qualified_applicants: 0, 
         interviews: 0
-      })
-    }
+      }
+    }, { status: 500 })
   }
 }
+
