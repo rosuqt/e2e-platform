@@ -55,12 +55,87 @@ export async function POST(req: NextRequest) {
     const fileExists = listData?.some(f => f.name === fileName);
 
     if (listError || !fileExists) {
-      console.error("File not found or list error", { filePath, bucket, directory, listError, listData });
-      console.log("RETURN: 404 File not found or list error");
-      return NextResponse.json({
-        error: `File not found: ${filePath}. Files in bucket directory "${directory}": ${listData?.map(f => f.name).join(", ")}`,
-        debug: { filePath, bucket, directory }
-      }, { status: 404 });
+
+      if (fileName.includes('RESUME') || fileName.toLowerCase().includes('resume')) {
+        const resumeFilePath = directory ? `${directory}/resume/${fileName}` : `resume/${fileName}`;
+        const resumeDirectory = directory ? `${directory}/resume` : 'resume';
+        
+        const { data: resumeListData, error: resumeListError } = await adminSupabase
+          .storage
+          .from(bucket)
+          .list(resumeDirectory, { limit: 100 });
+        
+        const resumeFileExists = resumeListData?.some(f => f.name === fileName);
+        
+        if (!resumeListError && resumeFileExists) {
+          filePath = resumeFilePath;
+        } else if (!resumeListError && resumeListData?.some(f => f.name === 'resume')) {
+          filePath = directory ? `${directory}/resume/resume` : 'resume/resume';
+        } else {
+          const tempFilePath = directory ? `${directory}/temporary.files/${fileName}` : `temporary.files/${fileName}`;
+          const tempDirectory = directory ? `${directory}/temporary.files` : 'temporary.files';
+          
+          const { data: tempListData, error: tempListError } = await adminSupabase
+            .storage
+            .from(bucket)
+            .list(tempDirectory, { limit: 100 });
+          
+          const tempFileExists = tempListData?.some(f => f.name === fileName);
+          
+          if (!tempListError && tempFileExists) {
+            filePath = tempFilePath;
+          } else {
+            console.error("File not found or list error", { filePath, bucket, directory, listError, listData });
+            console.log("RETURN: 404 File not found or list error");
+            return NextResponse.json({
+              error: `File not found: ${filePath}. Files in bucket directory "${directory}": ${listData?.map(f => f.name).join(", ")}`,
+              debug: { filePath, bucket, directory }
+            }, { status: 404 });
+          }
+        }
+      } else if (fileName.includes('COVER') || fileName.toLowerCase().includes('cover')) {
+        const coverFilePath = directory ? `${directory}/coverletter/${fileName}` : `coverletter/${fileName}`;
+        const coverDirectory = directory ? `${directory}/coverletter` : 'coverletter';
+        
+        const { data: coverListData, error: coverListError } = await adminSupabase
+          .storage
+          .from(bucket)
+          .list(coverDirectory, { limit: 100 });
+        
+        const coverFileExists = coverListData?.some(f => f.name === fileName);
+        
+        if (!coverListError && coverFileExists) {
+          filePath = coverFilePath;
+        } else {
+          const tempFilePath = directory ? `${directory}/temporary.files/${fileName}` : `temporary.files/${fileName}`;
+          const tempDirectory = directory ? `${directory}/temporary.files` : 'temporary.files';
+          
+          const { data: tempListData, error: tempListError } = await adminSupabase
+            .storage
+            .from(bucket)
+            .list(tempDirectory, { limit: 100 });
+          
+          const tempFileExists = tempListData?.some(f => f.name === fileName);
+          
+          if (!tempListError && tempFileExists) {
+            filePath = tempFilePath;
+          } else {
+            console.error("File not found or list error", { filePath, bucket, directory, listError, listData });
+            console.log("RETURN: 404 File not found or list error");
+            return NextResponse.json({
+              error: `File not found: ${filePath}. Files in bucket directory "${directory}": ${listData?.map(f => f.name).join(", ")}`,
+              debug: { filePath, bucket, directory }
+            }, { status: 404 });
+          }
+        }
+      } else {
+        console.error("File not found or list error", { filePath, bucket, directory, listError, listData });
+        console.log("RETURN: 404 File not found or list error");
+        return NextResponse.json({
+          error: `File not found: ${filePath}. Files in bucket directory "${directory}": ${listData?.map(f => f.name).join(", ")}`,
+          debug: { filePath, bucket, directory }
+        }, { status: 404 });
+      }
     }
 
     const { data, error } = await adminSupabase.storage

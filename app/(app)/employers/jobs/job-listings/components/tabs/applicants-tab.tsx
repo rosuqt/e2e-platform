@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import Chip from "@mui/material/Chip"
-//import LinearProgress from "@mui/material/LinearProgress"
 import { AiOutlinePlus } from "react-icons/ai"
 import { TiDelete } from "react-icons/ti"
 import { FaRankingStar } from "react-icons/fa6"
@@ -13,13 +14,29 @@ import { Tooltip } from "@mui/material"
 import { LiaUsersSolid } from "react-icons/lia"
 import { skillSuggestions } from "../../../../../students/profile/components/data/skill-suggestions"
 import { expertiseSuggestions } from "../../../../../students/profile/components/data/expertise-suggestions"
+
+interface Applicant {
+  id: string
+  first_name: string
+  last_name: string
+  applied_at: string
+  match_score: number
+  profile_picture: string | null
+  status: string
+  student_id?: string
+}
+
 export default function ApplicantsTab({ jobId }: { jobId?: string }) {
+  const router = useRouter()
   const [skills, setSkills] = useState<{ name: string; color: string; textColor: string }[]>([])
   const [loadingSkills, setLoadingSkills] = useState(false)
   const [showSkillInput, setShowSkillInput] = useState(false)
   const [skillInput, setSkillInput] = useState("")
   const [focusedSuggestion, setFocusedSuggestion] = useState(-1)
   const [errorMsg, setErrorMsg] = useState("")
+  const [recentApplicants, setRecentApplicants] = useState<Applicant[]>([])
+  const [loadingApplicants, setLoadingApplicants] = useState(false)
+  const [profileImages, setProfileImages] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!jobId) return
@@ -62,6 +79,63 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
       .catch(() => {
         setSkills([])
         setLoadingSkills(false)
+      })
+  }, [jobId])
+
+  useEffect(() => {
+    if (!jobId) return
+    setLoadingApplicants(true)
+    fetch(`/api/employers/fetch-applicants/${jobId}/recent-applicants`)
+      .then(res => res.json())
+      .then(async (data) => {
+        const applicants: Applicant[] = data || []
+        setRecentApplicants(applicants)
+        
+        const applicantsWithProfileImg = await Promise.all(
+          applicants.map(async (applicant) => {
+            if (!applicant.student_id) return { ...applicant, profile_image_url: "" }
+            try {
+              const res = await fetch(`/api/employers/applications/getStudentDetails?student_id=${applicant.student_id}`, {
+                method: "GET",
+                headers: { "Content-Type": "application/json" }
+              })
+              const details = await res.json()
+
+              let profile_image_url = ""
+              if (details && details.profile_img) {
+                const imgPath = details.profile_img
+                const signedUrlRes = await fetch("/api/students/get-signed-url", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    bucket: "user.avatars",
+                    path: imgPath
+                  })
+                })
+                const signedUrlData = await signedUrlRes.json()
+                if (signedUrlData && signedUrlData.signedUrl) {
+                  profile_image_url = signedUrlData.signedUrl
+                }
+              }
+              return { ...applicant, profile_image_url }
+            } catch {
+              return { ...applicant, profile_image_url: "" }
+            }
+          })
+        )
+
+        const imageMap: Record<string, string> = {}
+        applicantsWithProfileImg.forEach(applicant => {
+          if (applicant.profile_image_url) {
+            imageMap[applicant.id] = applicant.profile_image_url
+          }
+        })
+        setProfileImages(imageMap)
+        setLoadingApplicants(false)
+      })
+      .catch(() => {
+        setRecentApplicants([])
+        setLoadingApplicants(false)
       })
   }, [jobId])
 
@@ -182,6 +256,87 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
       setShowSkillInput(false)
       setSkillInput("")
       setFocusedSuggestion(-1)
+    }
+  }
+
+  const formatTimeAgo = (dateString: string) => {
+    const now = new Date()
+    const applied = new Date(dateString)
+    const diffMs = now.getTime() - applied.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) return "Applied today"
+    if (diffDays === 1) return "Applied 1 day ago"
+    if (diffDays < 7) return `Applied ${diffDays} days ago`
+    if (diffDays < 30) return `Applied ${Math.floor(diffDays / 7)} weeks ago`
+    return `Applied ${Math.floor(diffDays / 30)} months ago`
+  }
+
+  const getStatusBadgeColor = (status: string) => {
+    const statusLower = status?.toLowerCase() || ''
+    switch (statusLower) {
+      case 'new':
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'interview scheduled':
+      case 'interview':
+        return 'bg-purple-100 text-purple-800'
+      case 'shortlisted':
+        return 'bg-blue-100 text-blue-800'
+      case 'hired':
+        return 'bg-green-100 text-green-800'
+      case 'rejected':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusCounts = () => {
+    const counts = {
+      new: 0,
+      shortlisted: 0,
+      interview: 0,
+      waitlisted: 0,
+      hired: 0,
+      rejected: 0
+    }
+    
+    recentApplicants.forEach(applicant => {
+      const status = applicant.status?.toLowerCase() || 'new'
+      if (status === 'new' || status === 'pending') {
+        counts.new++
+      } else if (status === 'shortlisted') {
+        counts.shortlisted++
+      } else if (status === 'interview scheduled' || status === 'interview') {
+        counts.interview++
+      } else if (status === 'waitlisted') {
+        counts.waitlisted++
+      } else if (status === 'hired') {
+        counts.hired++
+      } else if (status === 'rejected') {
+        counts.rejected++
+      }
+    })
+    
+    return counts
+  }
+
+  const statusCounts = getStatusCounts()
+
+  const handleViewAllApplications = () => {
+    if (jobId) {
+      router.push(`/employers/jobs/applications?jobId=${jobId}`)
+    } else {
+      router.push('/employers/jobs/applications')
+    }
+  }
+
+  const handleViewApplicant = (applicantId: string) => {
+    if (jobId) {
+      router.push(`/employers/jobs/applications?jobId=${jobId}&applicantId=${applicantId}`)
+    } else {
+      router.push(`/employers/jobs/applications?applicantId=${applicantId}`)
     }
   }
 
@@ -393,44 +548,93 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {/* Stats Row */}
-            <div className="grid grid-cols-4 gap-4">
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-sm text-blue-600 font-medium">New</p>
-                <p className="text-2xl font-bold text-blue-700">0</p>
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
+                <p className="text-xs text-yellow-600 font-medium">New</p>
+                <p className="text-xl font-bold text-yellow-700">{statusCounts.new}</p>
               </div>
-              <div className="bg-yellow-50 rounded-lg p-4 text-center">
-                <p className="text-sm text-yellow-600 font-medium">In Review</p>
-                <p className="text-2xl font-bold text-yellow-700">0</p>
+              <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 text-center">
+                <p className="text-xs text-cyan-600 font-medium">Shortlisted</p>
+                <p className="text-xl font-bold text-cyan-700">{statusCounts.shortlisted}</p>
               </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center">
-                <p className="text-sm text-green-600 font-medium">Shortlisted</p>
-                <p className="text-2xl font-bold text-green-700">0</p>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
+                <p className="text-xs text-purple-600 font-medium">Interview</p>
+                <p className="text-xl font-bold text-purple-700">{statusCounts.interview}</p>
               </div>
-              <div className="bg-red-50 rounded-lg p-4 text-center">
-                <p className="text-sm text-red-600 font-medium">Rejected</p>
-                <p className="text-2xl font-bold text-red-700">0</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                <p className="text-xs text-blue-600 font-medium">Waitlisted</p>
+                <p className="text-xl font-bold text-blue-700">{statusCounts.waitlisted}</p>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                <p className="text-xs text-green-700 font-medium">Hired</p>
+                <p className="text-xl font-bold text-green-800">{statusCounts.hired}</p>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                <p className="text-xs text-red-600 font-medium">Rejected</p>
+                <p className="text-xl font-bold text-red-700">{statusCounts.rejected}</p>
               </div>
             </div>
 
-            {/* Recent Applicants */}
             <div>
               <h3 className="text-sm font-medium mb-3">Recent Applicants</h3>
-              <div className="flex flex-col items-center py-8">
-                <LiaUsersSolid className="w-14 h-14 text-gray-300 mb-2" />
-                <div className="text-gray-400 text-center text-sm max-w-xs mb-4">
-                  Looks like we’re still waiting to meet our first candidate!
+              {loadingApplicants ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
                 </div>
-              </div>
+              ) : recentApplicants.length === 0 ? (
+                <div className="flex flex-col items-center py-8">
+                  <LiaUsersSolid className="w-14 h-14 text-gray-300 mb-2" />
+                  <div className="text-gray-400 text-center text-sm max-w-xs mb-4">
+                    Looks like we&apos;re still waiting to meet our first candidate!
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentApplicants.map((applicant) => (
+                    <div key={applicant.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
+                          {profileImages[applicant.id] ? (
+                            <img 
+                              src={profileImages[applicant.id]} 
+                              alt={`${applicant.first_name} ${applicant.last_name}`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-blue-600 font-medium text-sm">
+                              {applicant.first_name[0]}{applicant.last_name[0]}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <p className="font-medium text-sm">{applicant.first_name} {applicant.last_name}</p>
+                            <Badge variant="outline" className={`text-xs ${getStatusBadgeColor(applicant.status)}`}>
+                              {applicant.status ? applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1) : 'Pending'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-500">{formatTimeAgo(applicant.applied_at)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
+                          {applicant.match_score}% match
+                        </Badge>
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700" onClick={() => handleViewApplicant(applicant.id)}>View</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* View All Button */}
             <div className="flex justify-center">
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-blue-500 text-[14px] hover:text-blue-700"
-                disabled
+                disabled={recentApplicants.length === 0}
+                onClick={handleViewAllApplications}
               >
                 View all applications
               </Button>

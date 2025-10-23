@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import {
   Search,
   Calendar,
@@ -13,12 +14,14 @@ import {
   ArrowUpRight,
   ChevronRight,
   ChevronLeft,
+  RefreshCw,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { RecruiterApplicationDetailsModal } from "./recruiter-application-details"
 import InterviewScheduleModal from "./modals/interview-schedule"
 import SendOfferModal from "./modals/send-offer"
@@ -179,6 +182,7 @@ function capitalize(str?: string) {
 }
 
 export default function RecruiterApplicationTracker() {
+  const searchParams = useSearchParams()
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -192,6 +196,7 @@ export default function RecruiterApplicationTracker() {
   const [page, setPage] = useState(1)
   const limit = 5
   const [loading, setLoading] = useState(true)
+  const [loadingJobSelection, setLoadingJobSelection] = useState(false)
   const [interviewModalOpen, setInterviewModalOpen] = useState(false)
   const [interviewApplicant, setInterviewApplicant] = useState<Applicant | null>(null)
   const [companyName, setCompanyName] = useState<string | undefined>(undefined)
@@ -218,9 +223,16 @@ export default function RecruiterApplicationTracker() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[] | null>(null)
   const [jobSkillsMap, setJobSkillsMap] = useState<Record<string, string[]>>({})
   const [search, setSearch] = useState("")
+  const [refreshingApplicants, setRefreshingApplicants] = useState(false)
 
   useEffect(() => {
     setLoading(true)
+    const preSelectedJobId = searchParams?.get('jobId')
+    const preSelectedApplicantId = searchParams?.get('applicantId')
+    if (preSelectedJobId) {
+      setLoadingJobSelection(true)
+    }
+    
     fetch("/api/employers/applications")
       .then(res => res.json())
       .then(async data => {
@@ -286,12 +298,42 @@ export default function RecruiterApplicationTracker() {
             ])
           ).values()
         )
-        setJobPostings([{ id: "all", title: "All Job Postings" }, ...jobs])
-        setSelectedJob({ id: "all", title: "All Job Postings" })
+        const allJobPostings = [{ id: "all", title: "All Job Postings" }, ...jobs]
+        setJobPostings(allJobPostings)
+        
+        if (preSelectedJobId) {
+          const preSelectedJob = allJobPostings.find(job => job.id === preSelectedJobId)
+          if (preSelectedJob) {
+            setSelectedJob(preSelectedJob)
+          } else {
+            setSelectedJob({ id: "all", title: "All Job Postings" })
+          }
+          setLoadingJobSelection(false)
+        } else {
+          setSelectedJob({ id: "all", title: "All Job Postings" })
+        }
+
+        if (preSelectedApplicantId) {
+          const preSelectedApplicant = applicantsWithProfileImg.find(app => app.application_id === preSelectedApplicantId)
+          if (preSelectedApplicant) {
+            let answers = undefined
+            if (preSelectedApplicant?.application_answers && Array.isArray(preSelectedApplicant.application_answers)) {
+              answers = {}
+            } else if (preSelectedApplicant?.application_answers && typeof preSelectedApplicant.application_answers === "object") {
+              answers = preSelectedApplicant.application_answers
+            }
+            setSelectedApplicant(preSelectedApplicant ? { ...preSelectedApplicant, application_answers: answers } : null)
+            setIsModalOpen(true)
+          }
+        }
+        
         setLoading(false)
       })
-      .catch(() => setLoading(false))
-  }, [])
+      .catch(() => {
+        setLoading(false)
+        setLoadingJobSelection(false)
+      })
+  }, [searchParams])
 
   useEffect(() => {
     if (selectedJob?.id === "all") {
@@ -421,7 +463,6 @@ export default function RecruiterApplicationTracker() {
 
   useEffect(() => {
     const fetchRecentActivity = () => {
-      setRecentActivity(null)
       fetch("/api/employers/applications/activity")
         .then(res => res.json())
         .then(data => {
@@ -475,6 +516,85 @@ export default function RecruiterApplicationTracker() {
     })
   }
 
+  const refreshApplicants = async () => {
+    setRefreshingApplicants(true)
+    try {
+      const res = await fetch("/api/employers/applications")
+      const data = await res.json()
+      
+      let employerIdFromSession: string | undefined
+      try {
+        const sessionRes = await fetch("/api/auth/session")
+        const sessionData = await sessionRes.json()
+        employerIdFromSession = sessionData?.user?.employerId
+        setEmployerId(employerIdFromSession)
+      } catch {}
+      if (employerIdFromSession) {
+        fetch(`/api/employers/colleagues/fetchCompanyName?employer_id=${employerIdFromSession}`)
+          .then(res => res.json())
+          .then(companyData => {
+            if (companyData.company_name) setCompanyName(companyData.company_name)
+          })
+      }
+
+      const applicants: Applicant[] = (data.applicants as Applicant[]) || []
+      const applicantsWithProfileImg = await Promise.all(
+        applicants.map(async (a) => {
+          if (!a.student_id) return a
+          try {
+            const res = await fetch(`/api/employers/applications/getStudentDetails?student_id=${a.student_id}`, {
+              method: "GET",
+              headers: { "Content-Type": "application/json" }
+            })
+            const details = await res.json()
+
+            let profile_image_url = ""
+            let course = a.course
+            let year = a.year
+            if (details && details.profile_img) {
+              const imgPath = details.profile_img
+              const signedUrlRes = await fetch("/api/students/get-signed-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  bucket: "user.avatars",
+                  path: imgPath
+                })
+              })
+              const signedUrlData = await signedUrlRes.json()
+              if (signedUrlData && signedUrlData.signedUrl) {
+                profile_image_url = signedUrlData.signedUrl
+              }
+            }
+            if (details && details.course) course = details.course
+            if (details && details.year) year = details.year
+            return { ...a, profile_image_url, course, year }
+          } catch {}
+          return a
+        })
+      )
+      setApplicants(applicantsWithProfileImg)
+      const jobs = Array.from(
+        new Map(
+          applicantsWithProfileImg.map((a) => [
+            a.job_id,
+            { id: a.job_id, title: a.job_title || "Job Posting" },
+          ])
+        ).values()
+      )
+      setJobPostings([{ id: "all", title: "All Job Postings" }, ...jobs])
+      if (!selectedJob) {
+        setSelectedJob({ id: "all", title: "All Job Postings" })
+      }
+      toast.success("Applicants refreshed successfully!")
+    } catch (error) {
+      console.log(error)
+      toast.error("Failed to refresh applicants")
+    } finally {
+      setRefreshingApplicants(false)
+    }
+  }
+
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
@@ -502,20 +622,28 @@ export default function RecruiterApplicationTracker() {
                     </p>
                   </div>
                   <div>
-                    <select
-                      className="bg-white/20 backdrop-blur-sm rounded-lg p-2 text-white border border-white/30"
+                    <Select
                       value={selectedJob?.id || ""}
-                      onChange={(e) => {
-                        const job = jobPostings.find((j) => j.id === e.target.value)
+                      onValueChange={(value) => {
+                        const job = jobPostings.find((j) => j.id === value)
                         if (job) setSelectedJob(job)
                       }}
                     >
-                      {jobPostings.map((job) => (
-                        <option key={job.id} value={job.id} className="text-gray-800">
-                          {job.title}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="w-[280px] bg-white/20 backdrop-blur-sm border-white/30 text-white placeholder:text-white/70 hover:bg-white/25 transition-all duration-200">
+                        <SelectValue placeholder="Select job posting" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                        {jobPostings.map((job) => (
+                          <SelectItem 
+                            key={job.id} 
+                            value={job.id}
+                            className="text-gray-800 hover:bg-blue-50 cursor-pointer"
+                          >
+                            {job.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -568,7 +696,26 @@ export default function RecruiterApplicationTracker() {
             <div className="w-full lg:w-2/3" ref={scrollContainerRef}>
               <Card className="shadow-sm border-blue-100">
                 <CardHeader className="pb-2">
-                  <CardTitle className="mb-2 text-blue-700 text-xl">Your Applicants</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="mb-2 text-blue-700 text-xl">Your Applicants</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                      onClick={refreshApplicants}
+                      disabled={refreshingApplicants}
+                    >
+                      <Tooltip title="Refresh Applicants" arrow>
+                        <span>
+                          {refreshingApplicants ? (
+                            <span className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
+                        </span>
+                      </Tooltip>
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {loading ? (
@@ -577,7 +724,7 @@ export default function RecruiterApplicationTracker() {
                         <span className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></span>
                       </div>
                       <span className="mt-2 text-blue-700 font-semibold text-base animate-pulse">
-                        Fetching applicants, please wait...
+                        {loadingJobSelection ? "Selecting your job posting..." : "Fetching applicants, please wait..."}
                       </span>
                     </div>
                   ) : (
@@ -1013,25 +1160,11 @@ export default function RecruiterApplicationTracker() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {recentActivity === null ? (
-                      <div className="space-y-3">
-                        {[1,2,3].map(i => (
-                          <div key={i} className="flex gap-3 animate-pulse">
-                            <div className="w-8 h-8 rounded-full bg-gray-200" />
-                            <div className="flex-1 space-y-2">
-                              <div className="h-4 bg-gray-200 rounded w-1/3" />
-                              <div className="h-3 bg-gray-200 rounded w-1/4" />
-                              <div className="h-3 bg-gray-100 rounded w-2/3" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : recentActivity.length === 0 ? (
+                    {recentActivity === null || recentActivity.length === 0 ? (
                       <div className="flex flex-col items-center justify-center mb-2">
                         <TbClockQuestion size={48} className="text-gray-300 mb-1" />
-                     
-                      <div className="text-gray-400 text-sm text-center">No recent activity</div>
-                       </div>
+                        <div className="text-gray-400 text-sm text-center">No recent activity</div>
+                      </div>
                     ) : (
                       recentActivity.slice(0, 6).map((update, index) => {
                         const iconInfo = iconMap[update.icon || 'new'] || { icon: <FileText className="h-4 w-4 text-white" />, iconBg: 'bg-blue-200' }
@@ -1572,7 +1705,6 @@ function ApplicantCard({
               <button
                 type="button"
                 className="flex items-center gap-1 text-red-600 text-xs font-medium px-2 py-1 rounded-none bg-transparent border-0 shadow-none hover:bg-red-50 hover:text-red-700 transition-colors"
-                style={{ minWidth: 0 }}
                 onClick={e => {
                   e.stopPropagation()
                   setRejectOpen(true)
@@ -1698,7 +1830,6 @@ function ApplicantCard({
                   <button
                     type="button"
                     className="flex items-center gap-1 text-red-600 text-xs font-medium px-2 py-1 rounded bg-transparent border-0 shadow-none hover:bg-red-50 hover:text-red-700 transition-colors ml-0"
-                    style={{ minWidth: 0 }}
                     onClick={e => { e.stopPropagation(); setCancelInterviewOpen(true); }}
                     disabled={loadingShortlist || loadingReject}
 >
@@ -1766,5 +1897,3 @@ function formatActivityDate(dateString?: string) {
   const year = date.getFullYear().toString()
   return `${month} ${day} ${year}`
 }
-
-

@@ -24,12 +24,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LinearProgress } from "@mui/material"
-import Chip from "@mui/material/Chip"
+
 import ApplicantsTab from "./applicants-tab"
 import JobAnalytics from "./analytics-tab"
 import JobSettings from "./settings-tab"
 import { PiMoneyLight } from "react-icons/pi";
-import { FaUser, FaUsers } from "react-icons/fa";
 import React from "react"
 import QuickEditModal from "../quick-edit-modal"
 
@@ -74,6 +73,7 @@ type ApplicationQuestion = {
   correct_answer?: string | string[] | null
   options?: string[] | ApplicationQuestionOption[]
 }
+
 
 type ApplicationQuestionOption = { id: string; question_id: string; option_value: string };
 
@@ -130,6 +130,18 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
         .catch(err => {
           console.error("Job metrics API error:", err)
           return { views: 0, total_applicants: 0, qualified_applicants: 0, interviews: 0 }
+        }),
+      fetch(`/api/employers/fetch-applicants/${selectedJob}/recent-applicants?limit=3`)
+        .then(r => {
+          if (!r.ok) {
+            console.error("Recent applicants response not ok:", r.status, r.statusText)
+            return []
+          }
+          return r.json()
+        })
+        .catch(err => {
+          console.error("Recent applicants API error:", err)
+          return []
         })
     ])
       .then(([job, questions, metrics]) => {
@@ -147,6 +159,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           jobTitle: job.jobTitle || job.title || "",
         })
         setQuestions(Array.isArray(questions) ? questions : [])
+   
         
         const finalMetrics = {
           views: Number(metrics.views) || 0,
@@ -187,6 +200,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
   console.log("Current job metrics state:", jobMetrics)
   console.log("Current job data:", jobData)
 
+  
   return (
     <div className="p-6 max-h-screen overflow-y-auto overflow-y-auto relative ">
       <button
@@ -273,7 +287,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid grid-cols-4 md:w-[600px]">
+          <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="applicants">Applicants</TabsTrigger>
             <TabsTrigger value="analytics" disabled={selectedJob === null}>Analytics</TabsTrigger>
@@ -281,8 +295,8 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           </TabsList>
 
           <TabsContent value="overview" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Card>
                     <CardContent className="p-4 flex flex-col items-center justify-center">
@@ -500,12 +514,29 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                                   {q.auto_reject && q.correct_answer && (
                                     <div className="flex flex-wrap gap-1 mt-2">
                                       <span className="text-xs text-red-500 font-semibold">Auto-reject criteria:</span>
-                                      {Array.isArray(q.correct_answer)
-                                        ? q.correct_answer.map((ans, i) => (
-                                            <span key={i} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{ans}</span>
-                                          ))
-                                        : <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{q.correct_answer}</span>
-                                      }
+                                      {(() => {
+                                        let answers: string[];
+    
+                                        if (typeof q.correct_answer === 'string') {
+                                          try {
+                                            const parsed = JSON.parse(q.correct_answer);
+                                            answers = Array.isArray(parsed) ? parsed : [parsed];
+                                          } catch {
+    
+                                            answers = [q.correct_answer];
+                                          }
+                                        } else if (Array.isArray(q.correct_answer)) {
+                                          answers = q.correct_answer;
+                                        } else {
+                                          answers = [];
+                                        }
+                                        
+                                        return answers.map((ans, i) => (
+                                          <span key={i} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                                            {String(ans)}
+                                          </span>
+                                        ));
+                                      })()}
                                     </div>
                                   )}
                                 </div>
@@ -515,7 +546,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                         </div>
                         {questions.length > 3 && (
                           <div className="mt-2 flex justify-center">
-                            <Button variant="ghost" size="sm" onClick={() => setShowAllQuestions(v => !v)}>
+                            <Button variant="ghost" size="sm" onClick={() => setShowAllQuestions(v => !v)} className="text-blue-600 hover:text-blue-900">
                               {showAllQuestions ? "Show Less" : `Show More (${questions.length - 3} more)`}
                             </Button>
                           </div>
@@ -524,160 +555,121 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                     )}
                   </CardContent>
                 </Card>
-              </div>
 
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Applicant Funnel</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Applied</span>
-                        <span className="font-medium">{jobMetrics.total_applicants}</span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Applicant Funnel</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Applied</span>
+                          <span className="font-medium">{jobMetrics.total_applicants}</span>
+                        </div>
+                        <LinearProgress variant="determinate" value={jobMetrics.total_applicants > 0 ? 100 : 0} className="h-2" />
                       </div>
-                      <LinearProgress variant="determinate" value={jobMetrics.total_applicants > 0 ? 100 : 0} className="h-2" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Qualified</span>
-                        <span className="font-medium">{jobMetrics.qualified_applicants}</span>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Qualified</span>
+                          <span className="font-medium">{jobMetrics.qualified_applicants}</span>
+                        </div>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            jobMetrics.total_applicants > 0
+                              ? (jobMetrics.qualified_applicants / jobMetrics.total_applicants) * 100
+                              : 0
+                          }
+                          className="h-2"
+                        />
                       </div>
-                      <LinearProgress
-                        variant="determinate"
-                        value={
-                          jobMetrics.total_applicants > 0
-                            ? (jobMetrics.qualified_applicants / jobMetrics.total_applicants) * 100
-                            : 0
-                        }
-                        className="h-2"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Interviewed</span>
-                        <span className="font-medium">{jobMetrics.interviews}</span>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Interviewed</span>
+                          <span className="font-medium">{jobMetrics.interviews}</span>
+                        </div>
+                        <LinearProgress
+                          variant="determinate"
+                          value={
+                            jobMetrics.total_applicants > 0
+                              ? (jobMetrics.interviews / jobMetrics.total_applicants) * 100
+                              : 0
+                          }
+                          className="h-2"
+                        />
                       </div>
-                      <LinearProgress
-                        variant="determinate"
-                        value={
-                          jobMetrics.total_applicants > 0
-                            ? (jobMetrics.interviews / jobMetrics.total_applicants) * 100
-                            : 0
-                        }
-                        className="h-2"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Match Quality</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                          Excellent (90%+)
-                        </span>
-                        <span className="font-medium">-</span>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Match Quality</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            Excellent (90%+)
+                          </span>
+                          <span className="font-medium">-</span>
+                        </div>
+                        <LinearProgress variant="determinate" value={0} className="h-2" />
                       </div>
-                      <LinearProgress variant="determinate" value={0} className="h-2" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                          Good (70-89%)
-                        </span>
-                        <span className="font-medium">-</span>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Good (70-89%)
+                          </span>
+                          <span className="font-medium">-</span>
+                        </div>
+                        <LinearProgress variant="determinate" value={0} className="h-2" />
                       </div>
-                      <LinearProgress variant="determinate" value={0} className="h-2" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                          Fair (50-69%)
-                        </span>
-                        <span className="font-medium">-</span>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                            Fair (50-69%)
+                          </span>
+                          <span className="font-medium">-</span>
+                        </div>
+                        <LinearProgress variant="determinate" value={0} className="h-2" />
                       </div>
-                      <LinearProgress variant="determinate" value={0} className="h-2" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                          Poor (Below 50%)
-                        </span>
-                        <span className="font-medium">-</span>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                            Poor (Below 50%)
+                          </span>
+                          <span className="font-medium">-</span>
+                        </div>
+                        <LinearProgress variant="determinate" value={0} className="h-2" />
                       </div>
-                      <LinearProgress variant="determinate" value={0} className="h-2" />
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Quick Actions</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <Button className="w-full justify-start" variant="outline">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Download Applicant CSV
-                    </Button>
-                    <Button className="w-full justify-start" variant="outline">
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      View Full Analytics
-                    </Button>
-                    <Button className="w-full justify-start" variant="outline">
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Message All Applicants
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg">Recent Applicants</CardTitle>
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-900 ">
-                      View More
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    {jobMetrics.total_applicants === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8">
-                        <FaUsers className="w-14 h-14 text-gray-300 mb-2" />
-                        <div className="text-gray-400 text-sm">No Applicants yet</div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {[1, 2, 3].map((applicant) => (
-                          <div key={applicant} className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
-                                <FaUser className="text-white w-4 h-4" />
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium">{`Applicant ${applicant}`}</div>
-                                <div className="text-xs text-gray-500">Applied 2 days ago</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Chip label="85% Match" className="bg-green-100 text-green-600 hover:bg-green-200" />
-                              <Button variant="outline" size="sm">
-                                View
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Quick Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <Button className="w-full justify-start text-blue-600 hover:text-blue-900" variant="outline">
+                        <FileText className="h-4 w-4 mr-2" />
+                        Download Applicant CSV
+                      </Button>
+                      <Button className="w-full justify-start text-blue-600 hover:text-blue-900" variant="outline">
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        View Full Analytics
+                      </Button>
+                      <Button className="w-full justify-start text-blue-600 hover:text-blue-900" variant="outline">
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Message All Applicants
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </div>
           </TabsContent>
@@ -727,4 +719,3 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
     </div>
   )
 }
-        

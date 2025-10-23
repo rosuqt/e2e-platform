@@ -33,9 +33,9 @@ export async function POST(req: NextRequest) {
     let filename = ""
 
     if (application_upload) {
-      bucket = "application.records"
+      bucket = "student.documents"
       filename = `${safeFirst}${safeLast}_${suffix}.${ext?.toUpperCase()}`
-      path = `${student_id}/${filename}`
+      path = `${student_id}/temporary.files/${filename}`
     } else {
       const { data: listData, error: listError } = await supabase
         .storage
