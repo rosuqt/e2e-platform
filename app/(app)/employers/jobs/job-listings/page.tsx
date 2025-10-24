@@ -5,6 +5,7 @@ import {
   Search,
   MapPin,
   Archive,
+  X,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -665,11 +666,21 @@ function JobListings({
                 <Input
                   type="text"
                   placeholder="Search job title or keywords"
-                  className="pl-10 border-blue-200 focus-visible:ring-blue-500 bg-white text-black"
+                  className="pl-10 border-blue-200 focus-visible:ring-blue-500 bg-white text-black pr-10"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyPress={handleKeyPress}
                 />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 hover:bg-gray-50 text-gray-400 rounded-full p-1 h-6 w-6 flex items-center justify-center"
+                    onClick={() => setSearchTerm("")}
+                    tabIndex={-1}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
               <div className="flex gap-2">
                 <Select value={locationFilter} onValueChange={setLocationFilter}>

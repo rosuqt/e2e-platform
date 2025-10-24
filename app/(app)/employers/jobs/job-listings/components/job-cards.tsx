@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import {  Clock, Briefcase, Calendar, RotateCcw } from "lucide-react";
+import {  Clock, Briefcase, Calendar, RotateCcw, Archive, Info } from "lucide-react";
 import { RiListView } from "react-icons/ri";
 import { FaComputer, FaHotel } from "react-icons/fa6";
 import { MdBusinessCenter, MdOutlinePlayCircle, MdLoop } from "react-icons/md";
@@ -23,6 +23,8 @@ import { TbBusinessplan } from "react-icons/tb";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Radio, RadioGroup, FormControlLabel, FormControl } from '@mui/material';
+import {  Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
+import { toast } from "react-hot-toast";
 
 export type EmployerJobCardJob = {
   id: string;
@@ -66,9 +68,11 @@ export default function EmployerJobCard({
   const [newDeadlineTime, setNewDeadlineTime] = useState("");
   const [removeDeadline, setRemoveDeadline] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openArchive, setOpenArchive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hasApplications, setHasApplications] = useState<boolean | null>(null)
   const [checkingApplications, setCheckingApplications] = useState(false)
+  const [archiving, setArchiving] = useState(false);
 
   const paused = job?.paused ?? false;
   const pausedStatus = job?.paused_status ?? (paused ? "paused" : "active");
@@ -651,10 +655,9 @@ export default function EmployerJobCard({
                   <button
                     className="text-gray-500 hover:text-red-500 text-xs flex items-center gap-1 hover:underline"
                     onClick={handleDeleteClick}
-                    disabled={loading}
                   >
                     {loading ? (
-                      <span className="w-4 h-4 border-2 border-red-200 border-t-red-500 rounded-full animate-spin inline-block" />
+                      <span className="w-4 h-4 border-2 border-red-200 border-t-red-200 rounded-full animate-spin inline-block" />
                     ) : (
                       <>
                         <svg
@@ -677,107 +680,188 @@ export default function EmployerJobCard({
                     )}
                   </button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className={`bg-white ${hasApplications ? 'border-red-300 border-2' : ''}`}>
-                  <AlertDialogHeader>
-                    <div className="flex items-center gap-2">
-                      {hasApplications ? (
-                        <MdBlock className="w-6 h-6 text-red-600" />
-                      ) : (
-                        <MdWarningAmber className="w-6 h-6 text-orange-500" />
-                      )}
-                      <AlertDialogTitle className={hasApplications ? "text-red-600 font-bold" : ""}>
-                        {hasApplications ? "Cannot Delete Job with Applications" : "Delete Job Listing"}
-                      </AlertDialogTitle>
-                    </div>
-                    <AlertDialogDescription className={hasApplications ? "text-red-800 font-medium" : ""}>
-                      {checkingApplications ? (
-                        <div className="flex items-center justify-center py-4">
-                          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-red-500" />
-                          <span className="ml-2">Checking for applications...</span>
+                <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
+                  {hasApplications ? (
+                    <>
+                      <DialogTitle className="text-red-600 font-bold">Deletion Blocked</DialogTitle>
+                      <DialogContent>
+                        <DialogContentText className="text-red-800 font-medium">
+                          This job listing has existing applications and cannot be deleted. You can archive it instead to preserve all data while hiding it from active listings.
+                        </DialogContentText>
+                        <div className="py-4">
+                          <div className="flex items-start gap-4 p-3 rounded-lg bg-red-100 border-2 border-red-300">
+                            <MdBlock className="h-6 w-6 mt-0.5 text-red-700" />
+                            <div className="text-sm text-red-700">
+                              <p className="font-bold text-base mb-2">Deletion Blocked!</p>
+                              <ul className="list-disc pl-5 mt-2 space-y-1 font-medium">
+                                <li>This job has active applications and cannot be deleted</li>
+                                <li>Archive this job to preserve all application data</li>
+                                <li>Applications will remain accessible for review</li>
+                                <li>Job will be hidden from public listings</li>
+                                <li>You can restore the job at any time</li>
+                              </ul>
+                            </div>
+                          </div>
                         </div>
-                      ) : hasApplications ? (
-                        "This job listing has existing applications and cannot be deleted. You can archive it instead to preserve all data while hiding it from active listings."
-                      ) : (
-                        "Are you sure you want to delete this job listing? This action cannot be undone."
-                      )}
-                    </AlertDialogDescription>
-                    {!checkingApplications && (
-                      <div className="py-4">
-                        <div className={`flex items-start gap-4 p-4 rounded-lg border-2 ${
-                          hasApplications 
-                            ? 'bg-red-100 border-red-300' 
-                            : 'bg-red-50 border border-red-200'
-                        }`}>
-                          {hasApplications ? (
-                            <MdBlock className="w-6 h-6 mt-0.5 text-red-700" />
-                          ) : (
-                            <MdWarningAmber className="w-6 h-6 mt-0.5 text-red-600" />
-                          )}
-                          <div className={`text-sm ${
-                            hasApplications ? 'text-red-800' : 'text-red-700'
-                          }`}>
-                            <p className="font-bold text-base mb-2">
-                              {hasApplications ? 'Deletion Blocked!' : 'Warning:'}
-                            </p>
-                            <ul className="list-disc pl-5 mt-2 space-y-1 font-medium">
-                              {hasApplications ? (
-                                <>
-                                  <li>This job has active applications and cannot be deleted</li>
-                                  <li>Archive this job to preserve all application data</li>
-                                  <li>Applications will remain accessible for review</li>
-                                  <li>Job will be hidden from public listings</li>
-                                  <li>You can restore the job at any time</li>
-                                </>
-                              ) : (
-                                <>
-                                  <li>All applicant data will be permanently deleted</li>
+                      </DialogContent>
+                      <DialogActions className="bg-red-50">
+                        <button
+                          className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+                          onClick={() => setOpenDelete(false)}
+                          type="button"
+                        >
+                          Close
+                        </button>
+                        <button
+                          className="bg-red-600 hover:bg-red-700 text-white font-bold flex items-center gap-2 px-4 py-2 rounded"
+                          onClick={() => {
+                            setOpenDelete(false)
+                            setOpenArchive(true)
+                          }}
+                          type="button"
+                        >
+                          <MdLock className="h-4 w-4" />
+                          Archive Instead
+                        </button>
+                      </DialogActions>
+                    </>
+                  ) : (
+                    <>
+                      <DialogTitle className="text-red-600 font-bold">Delete Job Listing</DialogTitle>
+                      <DialogContent>
+                        <DialogContentText>
+                          This action cannot be undone. This will permanently delete the job listing and all associated data including messages, and analytics.
+                        </DialogContentText>
+                        <div className="py-4">
+                          <div className="flex items-start gap-4 p-3 rounded-lg bg-red-50 border border-red-200">
+                            <MdWarningAmber className="h-6 w-6 mt-0.5 text-red-600" />
+                            <div className="text-sm text-red-700">
+                              <p className="font-bold text-base mb-2">Warning:</p>
+                              <ul className="list-disc pl-5 mt-2 space-y-1 font-medium">
+                                <li>All job data will be permanently deleted</li>
                                   <li>All messages and communication history will be lost</li>
                                   <li>All analytics and reporting data will be removed</li>
                                   <li>This action CANNOT be reversed</li>
-                                </>
-                              )}
-                            </ul>
+                              </ul>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </AlertDialogHeader>
-                  <AlertDialogFooter className={hasApplications ? "bg-red-50" : ""}>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    {hasApplications ? (
-                      <AlertDialogAction
-                        className="bg-red-600 hover:bg-red-700 text-white font-bold flex items-center gap-2"
-                        onClick={() => {
-                          setOpenDelete(false)
-                        }}
-                      >
-                        <MdLock className="h-4 w-4" />
-                        Understood
-                      </AlertDialogAction>
-                    ) : (
-                      <AlertDialogAction
-                        className="bg-red-500 hover:bg-red-600 text-white"
-                        onClick={async () => {
-                          setLoading(true);
-                          await fetch(`/api/job-listings/${job?.id}/delete`, {
-                            method: "PATCH",
-                          });
-                          setLoading(false);
-                          setOpenDelete(false);
-                          if (typeof onStatusChange === "function") onStatusChange();
-                        }}
-                        disabled={loading || checkingApplications}
-                      >
-                        {loading ? (
-                          <span className="w-4 h-4 border-2 border-white border-t-red-200 rounded-full animate-spin inline-block" />
-                        ) : (
-                          "Delete"
-                        )}
-                      </AlertDialogAction>
-                    )}
-                  </AlertDialogFooter>
-                </AlertDialogContent>
+                      </DialogContent>
+                      <DialogActions>
+                        <button
+                          className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+                          onClick={() => setOpenDelete(false)}
+                          type="button"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+                          onClick={async () => {
+                            setLoading(true);
+                            const res = await fetch(`/api/job-listings/${job?.id}/delete`, {
+                              method: "PATCH",
+                            });
+                            setLoading(false);
+                            setOpenDelete(false);
+                            if (res.ok) {
+                              toast.success("Job deleted", {
+                                duration: 6000,
+                                style: {
+                                  fontSize: "1.15rem",
+                                  minWidth: "260px",
+                                  padding: "18px 24px",
+                                },
+                              });
+                              if (typeof onStatusChange === "function") onStatusChange();
+                            } else {
+                              toast.error("Failed to delete job", {
+                                duration: 6000,
+                                style: {
+                                  fontSize: "1.15rem",
+                                  minWidth: "260px",
+                                  padding: "18px 24px",
+                                },
+                              });
+                            }
+                          }}
+                          disabled={loading || checkingApplications}
+                          type="button"
+                        >
+                          {loading ? (
+                            <span className="w-4 h-4 border-2 border-white border-t-red-200 rounded-full animate-spin inline-block" />
+                          ) : (
+                            "Delete Permanently"
+                          )}
+                        </button>
+                      </DialogActions>
+                    </>
+                  )}
+                </Dialog>
               </AlertDialog>
+              <span className="text-gray-300">|</span>
+              {/* Archive Button: only opens modal */}
+              <button
+                className="text-gray-500 hover:text-orange-500 text-xs flex items-center gap-1 hover:underline"
+                onClick={e => {
+                  e.stopPropagation();
+                  setOpenArchive(true);
+                }}
+                disabled={loading}
+                type="button"
+              >
+                <Archive className="inline-block mr-2 h-4 w-4 text-gray-400" />
+                Archive
+              </button>
+              {/* Archive Modal */}
+              <Dialog open={openArchive} onClose={() => setOpenArchive(false)}>
+                <DialogTitle>Archive Job Listing</DialogTitle>
+                <DialogContent>
+                  <DialogContentText>
+                    This job listing will be <strong>permanently closed</strong> and removed from active listings, but all related data will remain available for reporting and historical records.
+                  </DialogContentText>
+                  <div className="py-4">
+                    <div className="flex items-start gap-4 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                      <Info className="h-5 w-5 text-amber-600 mt-0.5" />
+                      <div className="text-sm text-amber-700">
+                        <p className="font-medium">What happens when you archive:</p>
+                        <ul className="list-disc pl-5 mt-2 space-y-1">
+                          <li>Job is removed from public listings</li>
+                          <li>All applications and data are preserved</li>
+                          <li>You can repost the job anytime, but it will start fresh.</li>
+                          <li>Team members can still access archived jobs</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </DialogContent>
+                <DialogActions>
+                  <button
+                    className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200 text-gray-700"
+                    onClick={() => setOpenArchive(false)}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-4 py-2 rounded bg-amber-600 hover:bg-amber-700 text-white"
+                    onClick={async () => {
+                      setArchiving(true);
+                      await fetch(`/api/job-listings/${job.id}/is-archived`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                      });
+                      setArchiving(false);
+                      setOpenArchive(false);
+                      if (typeof onStatusChange === "function") onStatusChange();
+                    }}
+                    disabled={archiving}
+                    type="button"
+                  >
+                    {archiving ? "Archiving..." : "Archive Job"}
+                  </button>
+                </DialogActions>
+              </Dialog>
 
               <span className="text-gray-300">|</span>
               <button
@@ -822,3 +906,6 @@ export function sortJobsActiveFirst(jobs: EmployerJobCardJob[]) {
     return 0;
   });
 }
+
+
+

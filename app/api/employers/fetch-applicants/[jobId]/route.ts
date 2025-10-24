@@ -3,10 +3,10 @@ import { getAdminSupabase } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jobId: string } }
+  context: { params: { jobId: string } }
 ) {
   try {
-    const { jobId } = await params
+    const { jobId } = context.params
     const supabase = getAdminSupabase()
 
     const { data, error } = await supabase

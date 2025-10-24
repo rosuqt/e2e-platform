@@ -319,14 +319,14 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                 </Button>
               </span>
             </MuiTooltip>
-            <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
+            <MuiTooltip title={isArchived ? "Disabled because this job is archived" : hasApplications ? "You can't delete jobs with existing applications data" : ""}>
               <span>
                 <Button
                   variant="outline"
                   size="sm"
                   className="gap-1 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-700"
-                  onClick={isArchived ? undefined : handleDeleteClick}
-                  disabled={isArchived}
+                  onClick={isArchived || hasApplications ? undefined : handleDeleteClick}
+                  disabled={isArchived || !!hasApplications}
                   tabIndex={isArchived ? -1 : 0}
                   aria-disabled={isArchived}
                 >
@@ -823,7 +823,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
         <DialogTitle className={hasApplications ? "text-red-600 font-bold" : ""}>
           {hasApplications ? "Cannot Delete Job with Applications" : "Are you absolutely sure?"}
         </DialogTitle>
-        <DialogContent className={hasApplications ? "bg-red-50" : ""}>
+        <DialogContent className={hasApplications ? "bg-white" : ""}>
           {checkingApplications ? (
             <div className="flex items-center justify-center py-4">
               <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-red-500" />
@@ -836,7 +836,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           ) : (
             <DialogContentText>
               This action cannot be undone. This will permanently delete the job listing and all associated
-              data including applications, messages, and analytics.
+              data including messages, and analytics.
             </DialogContentText>
           )}
           {!checkingApplications && (
@@ -864,14 +864,14 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                         <li>Archive this job to preserve all application data</li>
                         <li>Applications will remain accessible for review</li>
                         <li>Job will be hidden from public listings</li>
-                        <li>You can restore the job at any time</li>
+                        <li>You can repost the job anytime, but it will start fresh.</li>
                       </>
                     ) : (
                       <>
-                        <li>All applicant data will be permanently deleted</li>
-                        <li>All messages and communication history will be lost</li>
-                        <li>All analytics and reporting data will be removed</li>
-                        <li>This action CANNOT be reversed</li>
+                                  <li>All job data will be permanently deleted</li>
+                                  <li>All messages and communication history will be lost</li>
+                                  <li>All analytics and reporting data will be removed</li>
+                                  <li>This action CANNOT be reversed</li>
                       </>
                     )}
                   </ul>
@@ -885,14 +885,14 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           {hasApplications ? (
             <Button
               variant="default"
-              className="bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center gap-2"
+              className="bg-red-600 hover:bg-red-700 text-white  flex items-center gap-2"
               onClick={() => {
                 setIsDeleteDialogOpen(false)
                 setActiveTab("settings")
               }}
             >
               <MdLock className="h-4 w-4" />
-              Go to Archive Instead
+              Understood
             </Button>
           ) : (
             <Button
