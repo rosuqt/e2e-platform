@@ -24,6 +24,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LinearProgress } from "@mui/material"
+import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material"
+import { MdWarningAmber, MdBlock, MdLock } from "react-icons/md";
+import { Tooltip as MuiTooltip } from "@mui/material"
 
 import ApplicantsTab from "./applicants-tab"
 import JobAnalytics from "./analytics-tab"
@@ -64,6 +67,7 @@ type JobData = {
   companyName?: string 
   postingDate?: string
   tags?: { name: string; color: string }[]
+  is_archived?: boolean
 }
 
 type ApplicationQuestion = {
@@ -108,6 +112,9 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
   });
   const [activeTab, setActiveTab] = React.useState("overview");
   const analyticsRef = React.useRef<HTMLDivElement>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [hasApplications, setHasApplications] = React.useState<boolean | null>(null)
+  const [checkingApplications, setCheckingApplications] = React.useState(false)
 
   const employerId = (session?.user as { employerId?: string })?.employerId
 
@@ -119,6 +126,28 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
       }
     }, 100);
   };
+
+  const checkForApplications = async () => {
+    if (!selectedJob) return
+    setCheckingApplications(true)
+    try {
+      const response = await fetch(`/api/job-listings/check-applications?job_id=${selectedJob}`)
+      if (response.ok) {
+        const data = await response.json()
+        setHasApplications(data.hasApplications)
+      }
+    } catch (error) {
+      console.error("Error checking applications:", error)
+      setHasApplications(false)
+    } finally {
+      setCheckingApplications(false)
+    }
+  }
+
+  const handleDeleteClick = async () => {
+    await checkForApplications()
+    setIsDeleteDialogOpen(true)
+  }
 
   React.useEffect(() => {
     if (selectedJob == null) return
@@ -154,6 +183,8 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
         setJobData({
           ...job,
           jobTitle: job.jobTitle || job.title || "",
+          status: job.is_archived ? "Archived" : job.status,
+          is_archived: job.is_archived ?? false,
         })
         setQuestions(Array.isArray(questions) ? questions : [])
         
@@ -192,6 +223,10 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
   }
 
   
+  const isArchived =
+    jobData?.is_archived === true ||
+    jobData?.status?.toLowerCase() === "archived"
+
   return (
     <div className="p-6 max-h-screen overflow-y-auto overflow-y-auto relative ">
       <button
@@ -252,28 +287,70 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
             </div>
           </div>
           <div className="flex flex-row flex-nowrap gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1 text-blue-500 border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-              onClick={() => setQuickEditOpen(true)}
-            >
-              <Edit className="h-4 w-4" />
-              Edit
-            </Button>
-
-            <Button variant="outline" size="sm" className="gap-1 text-amber-500 border-amber-200 hover:bg-amber-50 hover:text-amber-700">
-              <Pause className="h-4 w-4" />
-              Pause
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-700">
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1 text-gray-700 hover:bg-purple-50 hover:text-purple-700">
-              <Share2 className="h-4 w-4" />
-              Share
-            </Button>
+            <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
+              <span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-blue-500 border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                  onClick={isArchived ? undefined : () => setQuickEditOpen(true)}
+                  disabled={isArchived}
+                  tabIndex={isArchived ? -1 : 0}
+                  aria-disabled={isArchived}
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </Button>
+              </span>
+            </MuiTooltip>
+            <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
+              <span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-amber-500 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                  onClick={undefined}
+                  disabled={isArchived}
+                  tabIndex={isArchived ? -1 : 0}
+                  aria-disabled={isArchived}
+                >
+                  <Pause className="h-4 w-4" />
+                  Pause
+                </Button>
+              </span>
+            </MuiTooltip>
+            <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
+              <span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-700"
+                  onClick={isArchived ? undefined : handleDeleteClick}
+                  disabled={isArchived}
+                  tabIndex={isArchived ? -1 : 0}
+                  aria-disabled={isArchived}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              </span>
+            </MuiTooltip>
+            <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
+              <span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-gray-700 hover:bg-purple-50 hover:text-purple-700"
+                  onClick={undefined}
+                  disabled={isArchived}
+                  tabIndex={isArchived ? -1 : 0}
+                  aria-disabled={isArchived}
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </Button>
+              </span>
+            </MuiTooltip>
           </div>
         </div>
 
@@ -646,22 +723,49 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                       <CardTitle className="text-lg">Quick Actions</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      <Button className="w-full justify-start text-blue-600 hover:text-blue-900" variant="outline">
-                        <FileText className="h-4 w-4 mr-2" />
-                        Download Applicant CSV
-                      </Button>
-                      <Button 
-                        className="w-full justify-start text-blue-600 hover:text-blue-900" 
-                        variant="outline"
-                        onClick={handleViewAnalytics}
-                      >
-                        <BarChart3 className="h-4 w-4 mr-2" />
-                        View Full Analytics
-                      </Button>
-                      <Button className="w-full justify-start text-blue-600 hover:text-blue-900" variant="outline">
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Message All Applicants
-                      </Button>
+                      <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
+                        <span>
+                          <Button
+                            className="w-full justify-start text-blue-600 hover:text-blue-900"
+                            variant="outline"
+                            disabled={isArchived}
+                            tabIndex={isArchived ? -1 : 0}
+                            aria-disabled={isArchived}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Download Applicant CSV
+                          </Button>
+                        </span>
+                      </MuiTooltip>
+                      <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
+                        <span>
+                          <Button
+                            className="w-full justify-start text-blue-600 hover:text-blue-900"
+                            variant="outline"
+                            onClick={isArchived ? undefined : handleViewAnalytics}
+                            disabled={isArchived}
+                            tabIndex={isArchived ? -1 : 0}
+                            aria-disabled={isArchived}
+                          >
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            View Full Analytics
+                          </Button>
+                        </span>
+                      </MuiTooltip>
+                      <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
+                        <span>
+                          <Button
+                            className="w-full justify-start text-blue-600 hover:text-blue-900"
+                            variant="outline"
+                            disabled={isArchived}
+                            tabIndex={isArchived ? -1 : 0}
+                            aria-disabled={isArchived}
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Message All Applicants
+                          </Button>
+                        </span>
+                      </MuiTooltip>
                     </CardContent>
                   </Card>
                 </div>
@@ -670,7 +774,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           </TabsContent>
 
           <TabsContent value="applicants" className="mt-6">
-            <ApplicantsTab jobId={selectedJob ? String(selectedJob) : ""} />
+            <ApplicantsTab jobId={selectedJob ? String(selectedJob) : ""} isArchived={isArchived} />
           </TabsContent>
           <TabsContent value="analytics" className="mt-6" ref={analyticsRef}>
             <JobAnalytics 
@@ -713,6 +817,102 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
         }}
         onClose={() => setQuickEditOpen(false)}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+        <DialogTitle className={hasApplications ? "text-red-600 font-bold" : ""}>
+          {hasApplications ? "Cannot Delete Job with Applications" : "Are you absolutely sure?"}
+        </DialogTitle>
+        <DialogContent className={hasApplications ? "bg-red-50" : ""}>
+          {checkingApplications ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-red-500" />
+              <span className="ml-2">Checking for applications...</span>
+            </div>
+          ) : hasApplications ? (
+            <DialogContentText className="text-red-800 font-medium">
+              This job listing has existing applications and cannot be deleted. You can archive it instead to preserve all data while hiding it from active listings.
+            </DialogContentText>
+          ) : (
+            <DialogContentText>
+              This action cannot be undone. This will permanently delete the job listing and all associated
+              data including applications, messages, and analytics.
+            </DialogContentText>
+          )}
+          {!checkingApplications && (
+            <div className="py-4">
+              <div className={`flex items-start gap-4 p-4 rounded-lg border-2 ${
+                hasApplications 
+                  ? 'bg-red-100 border-red-300' 
+                  : 'bg-red-50 border border-red-200'
+              }`}>
+                {hasApplications ? (
+                  <MdBlock className="h-6 w-6 mt-0.5 text-red-700" />
+                ) : (
+                  <MdWarningAmber className="h-6 w-6 mt-0.5 text-red-600" />
+                )}
+                <div className={`text-sm ${
+                  hasApplications ? 'text-red-800' : 'text-red-700'
+                }`}>
+                  <p className="font-bold text-base mb-2">
+                    {hasApplications ? 'Deletion Blocked!' : 'Warning:'}
+                  </p>
+                  <ul className="list-disc pl-5 mt-2 space-y-1 font-medium">
+                    {hasApplications ? (
+                      <>
+                        <li>This job has active applications and cannot be deleted</li>
+                        <li>Archive this job to preserve all application data</li>
+                        <li>Applications will remain accessible for review</li>
+                        <li>Job will be hidden from public listings</li>
+                        <li>You can restore the job at any time</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>All applicant data will be permanently deleted</li>
+                        <li>All messages and communication history will be lost</li>
+                        <li>All analytics and reporting data will be removed</li>
+                        <li>This action CANNOT be reversed</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions className={hasApplications ? "bg-red-50" : ""}>
+          <Button onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+          {hasApplications ? (
+            <Button
+              variant="default"
+              className="bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center gap-2"
+              onClick={() => {
+                setIsDeleteDialogOpen(false)
+                setActiveTab("settings")
+              }}
+            >
+              <MdLock className="h-4 w-4" />
+              Go to Archive Instead
+            </Button>
+          ) : (
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={async () => {
+                if (selectedJob) {
+                  await fetch(`/api/job-listings/${selectedJob}/delete`, {
+                    method: "PATCH",
+                  })
+                  onClose()
+                }
+                setIsDeleteDialogOpen(false)
+              }}
+              disabled={checkingApplications}
+            >
+              Delete Permanently
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </div>
   )
 }

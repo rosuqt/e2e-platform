@@ -26,7 +26,7 @@ interface Applicant {
   student_id?: string
 }
 
-export default function ApplicantsTab({ jobId }: { jobId?: string }) {
+export default function ApplicantsTab({ jobId, isArchived }: { jobId?: string; isArchived?: boolean }) {
   const router = useRouter()
   const [skills, setSkills] = useState<{ name: string; color: string; textColor: string }[]>([])
   const [loadingSkills, setLoadingSkills] = useState(false)
@@ -385,11 +385,12 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
                         }
                       }}
                       style={{ minHeight: 32 }}
+                      disabled={isArchived}
                     />
                     {errorMsg && (
                       <div className="text-xs text-red-500 mt-1">{errorMsg}</div>
                     )}
-                    {filteredSuggestions.length > 0 && (
+                    {filteredSuggestions.length > 0 && !isArchived && (
                       <div className="absolute left-0 z-10 mt-1 w-full bg-white border border-blue-200 rounded-lg shadow-lg max-h-56 overflow-auto">
                         {filteredSuggestions.map((group, groupIdx) => (
                           <div key={group.category}>
@@ -418,21 +419,40 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
                     )}
                   </div>
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full h-8 px-3 gap-1 border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700"
-                    onClick={() => {
-                      setShowSkillInput(true)
-                      setTimeout(() => {
-                        const input = document.querySelector<HTMLInputElement>('input[placeholder="Type then press Enter"]')
-                        input?.focus()
-                      }, 0)
-                    }}
-                  >
-                    <AiOutlinePlus className="mr-1" />
-                    Add Skill
-                  </Button>
+                  isArchived ? (
+                    <Tooltip title="Disabled because this job is archived" arrow>
+                      <span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full h-8 px-3 gap-1 border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700"
+                          onClick={() => {}}
+                          disabled
+                          tabIndex={-1}
+                          aria-disabled
+                        >
+                          <AiOutlinePlus className="mr-1" />
+                          Add Skill
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full h-8 px-3 gap-1 border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700"
+                      onClick={() => {
+                        setShowSkillInput(true)
+                        setTimeout(() => {
+                          const input = document.querySelector<HTMLInputElement>('input[placeholder="Type then press Enter"]')
+                          input?.focus()
+                        }, 0)
+                      }}
+                    >
+                      <AiOutlinePlus className="mr-1" />
+                      Add Skill
+                    </Button>
+                  )
                 )}
               </div>
             </div>
@@ -460,6 +480,9 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
                         className="absolute top-0 right-0 -mt-2 -mr-2 text-red-500 rounded-full w-5 h-5 flex items-center justify-center"
                         onClick={() => handleRemoveSkill(skill.name)}
                         style={{ pointerEvents: "auto" }}
+                        disabled={isArchived}
+                        tabIndex={isArchived ? -1 : 0}
+                        aria-disabled={isArchived}
                       >
                         <TiDelete size={16} />
                       </button>
@@ -488,11 +511,12 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
                         }
                       }}
                       style={{ minHeight: 32 }}
+                      disabled={isArchived}
                     />
                     {errorMsg && (
                       <div className="text-xs text-red-500 mt-1">{errorMsg}</div>
                     )}
-                    {filteredSuggestions.length > 0 && (
+                    {filteredSuggestions.length > 0 && !isArchived && (
                       <div className="absolute left-0 z-10 mt-1 w-full bg-white border border-blue-200 rounded-lg shadow-lg max-h-56 overflow-auto">
                         {filteredSuggestions.map((group, groupIdx) => (
                           <div key={group.category}>
@@ -521,21 +545,40 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
                     )}
                   </div>
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full h-8 px-3 gap-1 border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700"
-                    onClick={() => {
-                      setShowSkillInput(true)
-                      setTimeout(() => {
-                        const input = document.querySelector<HTMLInputElement>('input[placeholder="Type then press Enter"]')
-                        input?.focus()
-                      }, 0)
-                    }}
-                  >
-                    <AiOutlinePlus className="mr-1" />
-                    Add Skill
-                  </Button>
+                  isArchived ? (
+                    <Tooltip title="Disabled because this job is archived" arrow>
+                      <span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full h-8 px-3 gap-1 border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700"
+                          onClick={() => {}}
+                          disabled
+                          tabIndex={-1}
+                          aria-disabled
+                        >
+                          <AiOutlinePlus className="mr-1" />
+                          Add Skill
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full h-8 px-3 gap-1 border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-700"
+                      onClick={() => {
+                        setShowSkillInput(true)
+                        setTimeout(() => {
+                          const input = document.querySelector<HTMLInputElement>('input[placeholder="Type then press Enter"]')
+                          input?.focus()
+                        }, 0)
+                      }}
+                    >
+                      <AiOutlinePlus className="mr-1" />
+                      Add Skill
+                    </Button>
+                  )
                 )}
               </div>
             </div>
@@ -645,15 +688,32 @@ export default function ApplicantsTab({ jobId }: { jobId?: string }) {
             </div>
 
             <div className="flex justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-blue-500 text-[14px] hover:text-blue-700"
-                disabled={recentApplicants.length === 0}
-                onClick={handleViewAllApplications}
-              >
-                View all applications
-              </Button>
+              {isArchived ? (
+                <Tooltip title="Disabled because this job is archived" arrow>
+                  <span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-500 text-[14px] hover:text-blue-700"
+                      disabled
+                      tabIndex={-1}
+                      aria-disabled
+                    >
+                      View all applications
+                    </Button>
+                  </span>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-500 text-[14px] hover:text-blue-700"
+                  disabled={recentApplicants.length === 0}
+                  onClick={handleViewAllApplications}
+                >
+                  View all applications
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>

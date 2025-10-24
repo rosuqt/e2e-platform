@@ -93,6 +93,7 @@ export async function GET(req: Request) {
 			companyName,
 			postingDate: data.created_at ?? "",
 			tags: data.tags ?? [],
+			is_archived: data.is_archived ?? false,
 		}
 
 		return NextResponse.json(job)

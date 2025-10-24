@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import {  Clock, Briefcase, Calendar } from "lucide-react";
+import {  Clock, Briefcase, Calendar, RotateCcw } from "lucide-react";
 import { RiListView } from "react-icons/ri";
 import { FaComputer, FaHotel } from "react-icons/fa6";
 import { MdBusinessCenter, MdOutlinePlayCircle, MdLoop } from "react-icons/md";
@@ -18,7 +18,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { MdWarningAmber } from "react-icons/md";
+import { MdWarningAmber, MdBlock, MdLock } from "react-icons/md";
 import { TbBusinessplan } from "react-icons/tb";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ export type EmployerJobCardJob = {
   qualified_applicants?: number;
   interviews?: number;
   companyName?: string;
+  is_archived?: boolean;
 };
 
 export default function EmployerJobCard({
@@ -66,6 +67,8 @@ export default function EmployerJobCard({
   const [removeDeadline, setRemoveDeadline] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasApplications, setHasApplications] = useState<boolean | null>(null)
+  const [checkingApplications, setCheckingApplications] = useState(false)
 
   const paused = job?.paused ?? false;
   const pausedStatus = job?.paused_status ?? (paused ? "paused" : "active");
@@ -190,6 +193,29 @@ export default function EmployerJobCard({
     return `Posted ${postedDate.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}`;
   }
 
+  const checkForApplications = async () => {
+    if (!job?.id) return
+    setCheckingApplications(true)
+    try {
+      const response = await fetch(`/api/job-listings/check-applications?job_id=${job.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setHasApplications(data.hasApplications)
+      }
+    } catch (error) {
+      console.error("Error checking applications:", error)
+      setHasApplications(false)
+    } finally {
+      setCheckingApplications(false)
+    }
+  }
+
+  const handleDeleteClick = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    await checkForApplications()
+    setOpenDelete(true)
+  }
+
   return (
     <motion.div
       className={`bg-white rounded-lg shadow-sm p-5 border-l-4 border-l-gray-200 relative overflow-hidden`}
@@ -227,6 +253,10 @@ export default function EmployerJobCard({
               {job.closing === "Closed" ? (
                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-600">
                   Closed
+                </span>
+              ) : job.status === "Archived" ? (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                  Archived
                 </span>
               ) : (
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -491,7 +521,7 @@ export default function EmployerJobCard({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          ) : (
+          ) : job.status === "Archived" ? null : (
             <AlertDialog open={openPause} onOpenChange={setOpenPause}>
               <AlertDialogTrigger asChild>
                 <button
@@ -567,7 +597,7 @@ export default function EmployerJobCard({
             <RiListView />
             View Details
           </button>
-          {job.status !== "Draft" && (
+          {job.status !== "Draft" && job.status !== "Archived" && (
             <button
               className="border border-blue-500 text-blue-500 hover:bg-blue-50 px-4 py-1.5 rounded-md text-sm flex items-center gap-1.5 transition-colors"
               onClick={(e) => {
@@ -592,18 +622,35 @@ export default function EmployerJobCard({
               Edit
             </button>
           )}
+          {job.status === "Archived" && (
+            <button
+              className="border border-blue-500 text-blue-500 hover:bg-blue-50 px-4 py-1.5 rounded-md text-sm flex items-center gap-1.5 transition-colors"
+              onClick={async (e) => {
+                e.stopPropagation();
+                setLoading(true);
+                await fetch(`/api/job-listings/${job.id}/is-archived`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ is_archived: false }),
+                });
+                setLoading(false);
+                if (typeof onStatusChange === "function") onStatusChange();
+              }}
+              disabled={loading}
+            >
+              <RotateCcw className="w-4 h-4" />
+              Repost Job
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {job.status !== "Draft" && (
+          {job.status !== "Draft" && job.status !== "Archived" && (
             <>
               <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
                 <AlertDialogTrigger asChild>
                   <button
                     className="text-gray-500 hover:text-red-500 text-xs flex items-center gap-1 hover:underline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenDelete(true);
-                    }}
+                    onClick={handleDeleteClick}
                     disabled={loading}
                   >
                     {loading ? (
@@ -630,40 +677,108 @@ export default function EmployerJobCard({
                     )}
                   </button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="bg-white">
+                <AlertDialogContent className={`bg-white ${hasApplications ? 'border-red-300 border-2' : ''}`}>
                   <AlertDialogHeader>
                     <div className="flex items-center gap-2">
-                      <MdWarningAmber className="w-6 h-6 text-orange-500" />
-                      <AlertDialogTitle>Delete Job Listing</AlertDialogTitle>
-                    </div>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete this job listing? This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-red-500 hover:bg-red-600 text-white"
-                      onClick={async () => {
-                        setLoading(true);
-                        await fetch(`/api/job-listings/${job?.id}/delete`, {
-                          method: "PATCH",
-                        });
-                        setLoading(false);
-                        setOpenDelete(false);
-                        if (typeof onStatusChange === "function") onStatusChange();
-                      }}
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <span className="w-4 h-4 border-2 border-white border-t-red-200 rounded-full animate-spin inline-block" />
+                      {hasApplications ? (
+                        <MdBlock className="w-6 h-6 text-red-600" />
                       ) : (
-                        "Delete"
+                        <MdWarningAmber className="w-6 h-6 text-orange-500" />
                       )}
-                    </AlertDialogAction>
+                      <AlertDialogTitle className={hasApplications ? "text-red-600 font-bold" : ""}>
+                        {hasApplications ? "Cannot Delete Job with Applications" : "Delete Job Listing"}
+                      </AlertDialogTitle>
+                    </div>
+                    <AlertDialogDescription className={hasApplications ? "text-red-800 font-medium" : ""}>
+                      {checkingApplications ? (
+                        <div className="flex items-center justify-center py-4">
+                          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-red-500" />
+                          <span className="ml-2">Checking for applications...</span>
+                        </div>
+                      ) : hasApplications ? (
+                        "This job listing has existing applications and cannot be deleted. You can archive it instead to preserve all data while hiding it from active listings."
+                      ) : (
+                        "Are you sure you want to delete this job listing? This action cannot be undone."
+                      )}
+                    </AlertDialogDescription>
+                    {!checkingApplications && (
+                      <div className="py-4">
+                        <div className={`flex items-start gap-4 p-4 rounded-lg border-2 ${
+                          hasApplications 
+                            ? 'bg-red-100 border-red-300' 
+                            : 'bg-red-50 border border-red-200'
+                        }`}>
+                          {hasApplications ? (
+                            <MdBlock className="w-6 h-6 mt-0.5 text-red-700" />
+                          ) : (
+                            <MdWarningAmber className="w-6 h-6 mt-0.5 text-red-600" />
+                          )}
+                          <div className={`text-sm ${
+                            hasApplications ? 'text-red-800' : 'text-red-700'
+                          }`}>
+                            <p className="font-bold text-base mb-2">
+                              {hasApplications ? 'Deletion Blocked!' : 'Warning:'}
+                            </p>
+                            <ul className="list-disc pl-5 mt-2 space-y-1 font-medium">
+                              {hasApplications ? (
+                                <>
+                                  <li>This job has active applications and cannot be deleted</li>
+                                  <li>Archive this job to preserve all application data</li>
+                                  <li>Applications will remain accessible for review</li>
+                                  <li>Job will be hidden from public listings</li>
+                                  <li>You can restore the job at any time</li>
+                                </>
+                              ) : (
+                                <>
+                                  <li>All applicant data will be permanently deleted</li>
+                                  <li>All messages and communication history will be lost</li>
+                                  <li>All analytics and reporting data will be removed</li>
+                                  <li>This action CANNOT be reversed</li>
+                                </>
+                              )}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className={hasApplications ? "bg-red-50" : ""}>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    {hasApplications ? (
+                      <AlertDialogAction
+                        className="bg-red-600 hover:bg-red-700 text-white font-bold flex items-center gap-2"
+                        onClick={() => {
+                          setOpenDelete(false)
+                        }}
+                      >
+                        <MdLock className="h-4 w-4" />
+                        Understood
+                      </AlertDialogAction>
+                    ) : (
+                      <AlertDialogAction
+                        className="bg-red-500 hover:bg-red-600 text-white"
+                        onClick={async () => {
+                          setLoading(true);
+                          await fetch(`/api/job-listings/${job?.id}/delete`, {
+                            method: "PATCH",
+                          });
+                          setLoading(false);
+                          setOpenDelete(false);
+                          if (typeof onStatusChange === "function") onStatusChange();
+                        }}
+                        disabled={loading || checkingApplications}
+                      >
+                        {loading ? (
+                          <span className="w-4 h-4 border-2 border-white border-t-red-200 rounded-full animate-spin inline-block" />
+                        ) : (
+                          "Delete"
+                        )}
+                      </AlertDialogAction>
+                    )}
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+
               <span className="text-gray-300">|</span>
               <button
                 className="text-gray-500 hover:text-yellow-500 text-xs flex items-center gap-1 hover:underline"

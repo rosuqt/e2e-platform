@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react"
 import {
   Search,
   MapPin,
+  Archive,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -320,6 +321,7 @@ function JobListings({
   const [collapsed, setCollapsed] = useState(false)
   const [jobs, setJobs] = useState<EmployerJobCardJob[]>([])
   const [drafts, setDrafts] = useState<EmployerJobCardJob[]>([])
+  const [archivedJobs, setArchivedJobs] = useState<EmployerJobCardJob[]>([])
   const [loading, setLoading] = useState(true)
   const [listLoadAnimation, setListLoadAnimation] = useState<object | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -329,36 +331,38 @@ function JobListings({
     fetch("/animations/list-load.json")
       .then(res => res.json())
       .then(data => setListLoadAnimation(data))
-    fetch("/api/job-listings/job-cards")
-      .then((res) => res.json())
-      .then((data) => {
-        setJobs(Array.isArray(data) ? data : data.data || []);
-        setLoading(false)
-      })
-      .catch(() => {
-        setJobs([]);
-        setLoading(false)
-      });
-    fetch("/api/job-listings/drafts")
-      .then(res => res.json())
-      .then(data => {
-        const mappedDrafts: EmployerJobCardJob[] = Array.isArray(data.data)
-          ? data.data.map((draft: Record<string, unknown>) => ({
-              id: String(draft.id),
-              title: String(draft.job_title ?? ""),
-              status: "Draft",
-              closing: "",
-              type: String(draft.work_type ?? ""),
-              salary: String(draft.pay_amount ?? ""),
-              posted: String(draft.created_at ?? ""),
-              recommended_course: typeof draft.recommended_course === "string" ? draft.recommended_course : undefined,
-              paused: false,
-              companyName: undefined,
-            }))
-          : []
-        setDrafts(mappedDrafts)
-      })
-      .catch(() => setDrafts([]))
+    
+    Promise.all([
+      fetch("/api/job-listings/job-cards").then(res => res.json()),
+      fetch("/api/job-listings/drafts").then(res => res.json()),
+      fetch("/api/job-listings/archived").then(res => res.json())
+    ]).then(([jobsData, draftsData, archivedData]) => {
+      setJobs(Array.isArray(jobsData) ? jobsData : jobsData.data || [])
+      
+      const mappedDrafts: EmployerJobCardJob[] = Array.isArray(draftsData.data)
+        ? draftsData.data.map((draft: Record<string, unknown>) => ({
+            id: String(draft.id),
+            title: String(draft.job_title ?? ""),
+            status: "Draft",
+            closing: "",
+            type: String(draft.work_type ?? ""),
+            salary: String(draft.pay_amount ?? ""),
+            posted: String(draft.created_at ?? ""),
+            recommended_course: typeof draft.recommended_course === "string" ? draft.recommended_course : undefined,
+            paused: false,
+            companyName: undefined,
+          }))
+        : []
+      setDrafts(mappedDrafts)
+      
+      setArchivedJobs(Array.isArray(archivedData.data) ? archivedData.data : [])
+      setLoading(false)
+    }).catch(() => {
+      setJobs([])
+      setDrafts([])
+      setArchivedJobs([])
+      setLoading(false)
+    })
   }, []);
 
   useEffect(() => {
@@ -397,10 +401,11 @@ function JobListings({
     if (job.status === "Draft") return "draft"
     if (job.closing === "Closed") return "closed"
     if (job.paused) return "paused"
+    if (job.is_archived) return "archived"
     return "active"
   }
 
-  const tabCounts = jobs.concat(drafts).reduce(
+  const tabCounts = jobs.concat(drafts).concat(archivedJobs).reduce(
     (acc, job) => {
       const status = getJobStatus(job)
       acc.all++
@@ -408,9 +413,10 @@ function JobListings({
       if (status === "paused") acc.paused++
       if (status === "closed") acc.closed++
       if (status === "draft") acc.draft++
+      if (status === "archived") acc.archived++
       return acc
     },
-    { all: 0, active: 0, paused: 0, closed: 0, draft: 0 }
+    { all: 0, active: 0, paused: 0, closed: 0, draft: 0, archived: 0 }
   )
 
   useEffect(() => {
@@ -447,6 +453,26 @@ function JobListings({
   })
 
   const filteredDrafts = drafts
+  const filteredArchivedJobs = archivedJobs.filter((job) => {
+    let matchesLocation = true
+    if (locationFilter !== "All job types") {
+      if (locationFilter.toLowerCase() === "internship") {
+        matchesLocation = job.type?.toLowerCase() === "internship" || job.type?.toLowerCase() === "ojt/internship"
+      } else {
+        matchesLocation = job.type?.toLowerCase() === locationFilter.toLowerCase()
+      }
+    }
+
+    let matchesSearch = true
+    if (debouncedSearchTerm.trim()) {
+      const searchLower = debouncedSearchTerm.toLowerCase()
+      matchesSearch = 
+        (job.title?.toLowerCase().includes(searchLower) ?? false) ||
+        (job.type?.toLowerCase().includes(searchLower) ?? false)
+    }
+
+    return matchesLocation && matchesSearch
+  })
 
   function parsePostedToDate(posted: string): Date {
     if (!posted) return new Date(0)
@@ -497,6 +523,7 @@ function JobListings({
     { id: "paused", label: "Paused", count: tabCounts.paused },
     { id: "closed", label: "Closed", count: tabCounts.closed },
     { id: "draft", label: "Drafts", count: tabCounts.draft },
+    { id: "archived", label: "Archived", count: tabCounts.archived, icon: Archive },
   ]
 
   const handleViewDraftDetails = async (draft: EmployerJobCardJob) => {
@@ -523,9 +550,10 @@ function JobListings({
   const refetchData = React.useCallback(async () => {
     setLoading(true)
     try {
-      const [jobsRes, draftsRes] = await Promise.all([
+      const [jobsRes, draftsRes, archivedRes] = await Promise.all([
         fetch("/api/job-listings/job-cards"),
-        fetch("/api/job-listings/drafts")
+        fetch("/api/job-listings/drafts"),
+        fetch("/api/job-listings/archived")
       ])
       
       const jobsData = await jobsRes.json()
@@ -547,6 +575,9 @@ function JobListings({
           }))
         : []
       setDrafts(mappedDrafts)
+      
+      const archivedData = await archivedRes.json()
+      setArchivedJobs(Array.isArray(archivedData.data) ? archivedData.data : [])
     } catch (error) {
       console.error("Error refetching data:", error)
     } finally {
@@ -678,6 +709,7 @@ function JobListings({
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.95 }}
               >
+                {tab.icon && <tab.icon className="h-4 w-4" />}
                 <span>{tab.label}</span>
                 <span
                   className={`text-xs rounded-full px-1.5 ${activeTab === tab.id ? "bg-white text-blue-600" : "bg-blue-100"}`}
@@ -691,7 +723,9 @@ function JobListings({
 
         <div className="flex justify-between items-center mb-5 mt-5">
           <div className="text-sm text-gray-500">
-            Showing <span className="font-medium text-blue-600">{filteredJobs.length}</span> {activeTab === "all" ? "job listings" : `${activeTab} job listings`}
+            Showing <span className="font-medium text-blue-600">
+              {activeTab === "archived" ? filteredArchivedJobs.length : filteredJobs.length}
+            </span> {activeTab === "all" ? "job listings" : `${activeTab} job listings`}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">Sort by:</span>
@@ -709,7 +743,6 @@ function JobListings({
           </div>
         </div>
 
-        {/* Job Listings */}
         <div className="space-y-4 mr-2 mb-24 pb-40">
           {loading && listLoadAnimation && (
             <div className="flex flex-col items-center justify-center">
@@ -735,6 +768,30 @@ function JobListings({
                   isSelected={selectedJob === String(draft.id)}
                   onSelect={() => handleViewDraftDetails(draft)}
                   onEdit={() => onEditJob(draft)}
+                  onStatusChange={refetchData}
+                />
+              ))
+            )
+          ) : activeTab === "archived" ? (
+            filteredArchivedJobs.length === 0 && !loading ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <span className="flex justify-center items-center mb-2">
+                  <FaFolderOpen className="text-gray-400 h-40 w-40" />
+                </span>
+                <div className="text-gray-500 text-center">No archived jobs found.</div>
+              </div>
+            ) : (
+              !loading && filteredArchivedJobs.map((job) => (
+                <EmployerJobCard
+                  key={job.id}
+                  job={job}
+                  isSelected={selectedJob === String(job.id)}
+                  onSelect={() => onSelectJob(String(job.id))}
+                  onEdit={() => handleEditJob(job)}
+                  onDuplicate={(jobData) => {
+                    setDuplicateModalData(jobData)
+                    setDuplicateModalOpen(true)
+                  }}
                   onStatusChange={refetchData}
                 />
               ))

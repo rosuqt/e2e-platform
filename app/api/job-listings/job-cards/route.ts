@@ -22,9 +22,38 @@ export async function GET() {
     }
 
     const { data, error } = await supabase
-      .from("job_postings")
-      .select("id, job_title, work_type, pay_amount, created_at, application_deadline, recommended_course, paused")
-      .eq("employer_id", employerId);
+      .from('job_postings')
+      .select(`
+        id,
+        job_title,
+        location,
+        remote_options,
+        work_type,
+        pay_type,
+        pay_amount,
+        recommended_course,
+        job_description,
+        job_summary,
+        must_have_qualifications,
+        nice_to_have_qualifications,
+        application_deadline,
+        max_applicants,
+        perks_and_benefits,
+        verification_tier,
+        created_at,
+        responsibilities,
+        paused,
+        company_id,
+        tags,
+        ai_skills,
+        is_archived,
+        registered_companies (
+          company_name
+        )
+      `)
+      .eq('employer_id', employerId)
+      .eq('is_archived', false)
+      .order('created_at', { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: error.message, details: error }, { status: 500 });
