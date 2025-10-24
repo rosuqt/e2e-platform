@@ -985,14 +985,39 @@ export default function JobSettings({ jobId, companyName }: { jobId: string, com
                           <Button
                             className="bg-red-600 hover:bg-red-700 text-white"
                             onClick={async () => {
-                              await fetch(`/api/job-listings/${jobId}/delete`, {
-                                method: "PATCH",
-                              })
-                              setIsDeleteDialogOpen(false)
+                              setCheckingApplications(true)
+                              try {
+                                const res = await fetch(`/api/job-listings/${jobId}/delete`, { method: "PATCH" })
+                                if (res.ok) {
+                                  toast.success("Job deleted", {
+                                    duration: 6000,
+                                    style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
+                                  })
+                                  setIsDeleteDialogOpen(false)
+                                  router.refresh()
+                                } else {
+                                  toast.error("Failed to delete job", {
+                                    duration: 6000,
+                                    style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
+                                  })
+                                }
+                              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                              } catch (err) {
+                                toast.error("Error deleting job", {
+                                  duration: 6000,
+                                  style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
+                                })
+                              } finally {
+                                setCheckingApplications(false)
+                              }
                             }}
                             disabled={checkingApplications}
                           >
-                            Delete Permanently
+                            {checkingApplications ? (
+                              <span className="w-4 h-4 border-2 border-white border-t-red-200 rounded-full animate-spin inline-block" />
+                            ) : (
+                              "Delete Permanently"
+                            )}
                           </Button>
                         </DialogActions>
                       </>
@@ -1129,7 +1154,7 @@ export default function JobSettings({ jobId, companyName }: { jobId: string, com
                               <MdWarningAmber className="h-6 w-6 mt-0.5 text-red-600" />
                               <div className="text-sm text-red-700">
                                 <p className="font-bold text-base mb-2">Warning:</p>
-                                <ul className="list-disc pl-5 mt-2 space-y-1 font-base">
+                                <ul className="list-disc pl-5 mt-2 space-y-1 font-medium">
                                   <li>All job data will be permanently deleted</li>
                                   <li>All messages and communication history will be lost</li>
                                   <li>All analytics and reporting data will be removed</li>
@@ -1144,14 +1169,39 @@ export default function JobSettings({ jobId, companyName }: { jobId: string, com
                           <Button
                             className="bg-red-600 hover:bg-red-700 text-white"
                             onClick={async () => {
-                              await fetch(`/api/job-listings/${jobId}/delete`, {
-                                method: "PATCH",
-                              })
-                              setIsDeleteDialogOpen(false)
+                              setCheckingApplications(true)
+                              try {
+                                const res = await fetch(`/api/job-listings/${jobId}/delete`, { method: "PATCH" })
+                                if (res.ok) {
+                                  toast.success("Job deleted", {
+                                    duration: 6000,
+                                    style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
+                                  })
+                                  setIsDeleteDialogOpen(false)
+                                  router.refresh()
+                                } else {
+                                  toast.error("Failed to delete job", {
+                                    duration: 6000,
+                                    style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
+                                  })
+                                }
+                              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                              } catch (err) {
+                                toast.error("Error deleting job", {
+                                  duration: 6000,
+                                  style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
+                                })
+                              } finally {
+                                setCheckingApplications(false)
+                              }
                             }}
                             disabled={checkingApplications}
                           >
-                            Delete Permanently
+                            {checkingApplications ? (
+                              <span className="w-4 h-4 border-2 border-white border-t-red-200 rounded-full animate-spin inline-block" />
+                            ) : (
+                              "Delete Permanently"
+                            )}
                           </Button>
                         </DialogActions>
                       </>

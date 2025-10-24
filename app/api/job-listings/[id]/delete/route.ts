@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import supabase from '@/lib/supabase'
 
-export async function PATCH(req: NextRequest, params: Promise<{ params: { id: string } }>) {
-  const { params: { id } } = await params
+export async function PATCH(
+  req: NextRequest,
+  context: { params: { id: string } }
+) {
+  const { id } = context.params
   if (!id) {
     return NextResponse.json({ error: 'Missing job id' }, { status: 400 })
   }
@@ -15,6 +18,6 @@ export async function PATCH(req: NextRequest, params: Promise<{ params: { id: st
   }
   return NextResponse.json({ success: true })
 }
-   
- 
+
+
 

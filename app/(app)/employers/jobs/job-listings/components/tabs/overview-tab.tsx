@@ -27,6 +27,7 @@ import { LinearProgress } from "@mui/material"
 import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material"
 import { MdWarningAmber, MdBlock, MdLock } from "react-icons/md";
 import { Tooltip as MuiTooltip } from "@mui/material"
+import { toast } from "react-hot-toast"
 
 import ApplicantsTab from "./applicants-tab"
 import JobAnalytics from "./analytics-tab"
@@ -899,16 +900,38 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
               className="bg-red-600 hover:bg-red-700"
               onClick={async () => {
                 if (selectedJob) {
-                  await fetch(`/api/job-listings/${selectedJob}/delete`, {
-                    method: "PATCH",
-                  })
-                  onClose()
+                  try {
+                    const res = await fetch(`/api/job-listings/${selectedJob}/delete`, {
+                      method: "PATCH",
+                    })
+                    if (res.ok) {
+                      toast.success("Job deleted", {
+                        duration: 6000,
+                        style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
+                      })
+                      setIsDeleteDialogOpen(false)
+                      onClose()
+                    } else {
+                      toast.error("Failed to delete job", {
+                        duration: 6000,
+                        style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
+                      })
+                    }
+                  } catch {
+                    toast.error("Error deleting job", {
+                      duration: 6000,
+                      style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
+                    })
+                  }
                 }
-                setIsDeleteDialogOpen(false)
               }}
               disabled={checkingApplications}
             >
-              Delete Permanently
+              {checkingApplications ? (
+                <span className="w-4 h-4 border-2 border-white border-t-red-200 rounded-full animate-spin inline-block" />
+              ) : (
+                "Delete Permanently"
+              )}
             </Button>
           )}
         </DialogActions>
