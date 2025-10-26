@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getAdminSupabase } from '@/lib/supabase'
 
 export async function GET(
-  request: NextRequest,
-  context: { params: Record<string, string> }
+  request: Request,
+  { params }: { params: { jobId: string } }
 ) {
   try {
-    const jobId = context.params.jobId
+    const jobId = params.jobId
     const supabase = getAdminSupabase()
 
     const { data, error } = await supabase
