@@ -55,7 +55,7 @@ type JobTeamAccess = {
   can_view?: boolean;
 }
 
-export default function JobSettings({ jobId, companyName }: { jobId: string, companyName?: string }) {
+export default function JobSettings({ jobId, companyName, onSuccess }: { jobId: string, companyName?: string, onSuccess?: () => void }) {
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [hasApplications, setHasApplications] = useState<boolean | null>(null)
@@ -994,7 +994,7 @@ export default function JobSettings({ jobId, companyName }: { jobId: string, com
                                     style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
                                   })
                                   setIsDeleteDialogOpen(false)
-                                  router.refresh()
+                                  if (onSuccess) onSuccess()
                                 } else {
                                   toast.error("Failed to delete job", {
                                     duration: 6000,
@@ -1178,7 +1178,7 @@ export default function JobSettings({ jobId, companyName }: { jobId: string, com
                                     style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
                                   })
                                   setIsDeleteDialogOpen(false)
-                                  router.refresh()
+                                  if (onSuccess) onSuccess()
                                 } else {
                                   toast.error("Failed to delete job", {
                                     duration: 6000,

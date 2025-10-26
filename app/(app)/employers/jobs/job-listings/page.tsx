@@ -51,6 +51,7 @@ export default function JobListingPage() {
   const [draftsModalData, setDraftsModalData] = useState<Record<string, unknown> | null>(null)
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false)
   const [duplicateModalData, setDuplicateModalData] = useState<Record<string, unknown> | null>(null)
+  const [modalVisible, setModalVisible] = useState(false)
 
   const refetchRef = useRef<(() => void) | null>(null)
 
@@ -103,6 +104,19 @@ export default function JobListingPage() {
       setIsModalOpen(false)
     }
   }, [searchParams])
+
+  useEffect(() => {
+    if (isModalOpen) {
+      setModalVisible(true)
+    }
+  }, [isModalOpen])
+
+  const handleModalClose = () => {
+    setModalVisible(false)
+    setTimeout(() => {
+      closeModal()
+    }, 300)
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
@@ -213,28 +227,32 @@ export default function JobListingPage() {
       </div>
 
       {/* Employer Job Overview Modal */}
-      {isModalOpen && selectedJob && (
+      {isModalOpen && selectedJob && modalVisible && (
         <motion.div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
-          onClick={closeModal}
+          onClick={handleModalClose}
         >
           <motion.div
             className="bg-white mt-36 mb-20 rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden max-h-screen "
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.8, opacity: 0, y: 0 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.8, opacity: 0, y: 120 }}
             transition={{
               type: "spring",
-              stiffness: 300, 
-              damping: 20,  
+              stiffness: 300,
+              damping: 20,
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={e => e.stopPropagation()}
+            key={selectedJob}
           >
-            <EmployerJobOverview selectedJob={selectedJob} onClose={closeModal} />
+            <EmployerJobOverview selectedJob={selectedJob} onClose={handleModalClose} onSuccess={() => {
+              if (refetchRef.current) refetchRef.current()
+              handleModalClose()
+            }} />
           </motion.div>
         </motion.div>
       )}

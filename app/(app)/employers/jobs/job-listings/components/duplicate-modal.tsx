@@ -228,6 +228,14 @@ export default function DuplicateModal({
   const checkSimilarity = () => {
     if (!originalJobData) return true
 
+    if (
+      formData.jobTitle.trim().toLowerCase() !== (originalJobData.jobTitle || "").trim().toLowerCase()
+    ) {
+      setSimilarityWarning(null)
+      setShowSimilarityWarning(false)
+      return true
+    }
+
     const similarity = calculateSimilarity(originalJobData, formData)
     
     if (similarity >= 90) {
@@ -251,6 +259,14 @@ export default function DuplicateModal({
     
     const keyFields = ['jobTitle', 'jobDescription', 'responsibilities', 'mustHaveQualifications']
     if (keyFields.includes(field as string) && originalJobData) {
+      if (
+        field === "jobTitle" &&
+        updatedData.jobTitle.trim().toLowerCase() !== (originalJobData.jobTitle || "").trim().toLowerCase()
+      ) {
+        setSimilarityWarning(null)
+        setShowSimilarityWarning(false)
+        return
+      }
       const similarity = calculateSimilarity(originalJobData, updatedData)
       
       if (similarity >= 90) {
@@ -271,6 +287,13 @@ export default function DuplicateModal({
     setFormData(updatedData)
     
     if (originalJobData) {
+      if (
+        updatedData.jobTitle.trim().toLowerCase() !== (originalJobData.jobTitle || "").trim().toLowerCase()
+      ) {
+        setSimilarityWarning(null)
+        setShowSimilarityWarning(false)
+        return
+      }
       const similarity = calculateSimilarity(originalJobData, updatedData)
       
       if (similarity >= 90) {

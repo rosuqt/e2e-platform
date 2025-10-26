@@ -3,9 +3,10 @@ import supabase from '@/lib/supabase'
 
 export async function PATCH(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: Promise<{ params: { id: string } }>
 ) {
-  const { id } = context.params
+  const { params } = await context
+  const id = params.id
   if (!id) {
     return NextResponse.json({ error: 'Missing job id' }, { status: 400 })
   }

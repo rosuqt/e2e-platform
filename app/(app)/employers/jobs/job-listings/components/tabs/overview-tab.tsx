@@ -92,7 +92,7 @@ const PERKS_MAP = [
   { id: "flexible", label: "Flexible Hours - Adjusted schedules for students", icon: <ClockIcon className="h-5 w-5 text-pink-500" /> },
 ]
 
-export default function EmployerJobOverview({ selectedJob, onClose }: { selectedJob: string | null; onClose: () => void }) {
+export default function EmployerJobOverview({ selectedJob, onClose, onSuccess }: { selectedJob: string | null; onClose: () => void; onSuccess?: () => void }) {
   const { data: session } = useSession()
   const [jobData, setJobData] = React.useState<JobData | null>(null)
   const [loading, setLoading] = React.useState(false)
@@ -785,7 +785,10 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
-            <JobSettings jobId={selectedJob ? String(selectedJob) : ""} companyName={jobData.companyName} />
+            <JobSettings jobId={selectedJob ? String(selectedJob) : ""} companyName={jobData.companyName} onSuccess={() => {
+              if (onSuccess) onSuccess()
+              onClose()
+            }} />
           </TabsContent>
         </Tabs>
       </div>
@@ -910,6 +913,7 @@ export default function EmployerJobOverview({ selectedJob, onClose }: { selected
                         style: { fontSize: "1.15rem", minWidth: "260px", padding: "18px 24px" },
                       })
                       setIsDeleteDialogOpen(false)
+                      if (typeof onSuccess === "function") onSuccess()
                       onClose()
                     } else {
                       toast.error("Failed to delete job", {
