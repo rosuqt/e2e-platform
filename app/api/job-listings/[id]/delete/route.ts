@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import supabase from '@/lib/supabase'
 
 export async function PATCH(
-  req: NextRequest,
-  context: Promise<{ params: { id: string } }>
+  req: NextRequest
 ) {
-  const { params } = await context
-  const id = params.id
+  const url = new URL(req.url)
+  const parts = url.pathname.split('/')
+  const id = parts[parts.length - 2]
   if (!id) {
     return NextResponse.json({ error: 'Missing job id' }, { status: 400 })
   }

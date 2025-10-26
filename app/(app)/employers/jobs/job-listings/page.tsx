@@ -448,7 +448,10 @@ function JobListings({
 
   const filteredJobs = jobs.filter((job) => {
     const status = getJobStatus(job)
-    const matchesTab = activeTab === "all" || status === activeTab
+    const matchesTab =
+      activeTab === "all"
+        ? status === "active" || status === "paused" || status === "closed"
+        : status === activeTab
     
     let matchesLocation = true
     if (locationFilter !== "All job types") {

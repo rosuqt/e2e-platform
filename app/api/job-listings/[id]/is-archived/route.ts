@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminSupabase } from '@/lib/supabase';
 
-export async function PATCH(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest) {
   try {
-    const { params } = context;
     const supabase = getAdminSupabase();
     let isArchived = true;
     try {
@@ -17,10 +13,13 @@ export async function PATCH(
       isArchived = true;
     }
 
+    const urlParts = request.nextUrl.pathname.split('/');
+    const id = urlParts[urlParts.length - 3];
+
     const { data, error } = await supabase
       .from('job_postings')
       .update({ is_archived: isArchived })
-      .eq('id', params.id)
+      .eq('id', id)
       .select();
 
     if (error) {
