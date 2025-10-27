@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import type React from "react"
@@ -8,13 +9,16 @@ import {
   Calendar,
   MapPin,
   FileText,
-  Bookmark,
   Filter,
   MoreHorizontal,
   ArrowUpRight,
   ChevronRight,
   ChevronLeft,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  BarChart2,
+  CalendarDays
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RecruiterApplicationDetailsModal } from "./recruiter-application-details"
 import InterviewScheduleModal from "./modals/interview-schedule"
 import SendOfferModal from "./modals/send-offer"
+import FilterModal from "./modals/filter-modal"
 import { toast } from "react-toastify"
 import Avatar from "@mui/material/Avatar"
 import { motion } from "framer-motion"
@@ -42,8 +47,9 @@ import { Dialog,  DialogContent, DialogHeader, DialogTitle, DialogDescription, D
 import { RiCalendarScheduleLine, RiEmotionSadLine } from "react-icons/ri"
 import { LuCalendarCog } from "react-icons/lu"
 import { FaHandHoldingUsd, FaRegCalendarTimes, FaUserCheck } from "react-icons/fa"
-import { FaHandHoldingDollar } from "react-icons/fa6"
+import { FaHandHoldingDollar, FaRegFolderOpen } from "react-icons/fa6"
 import { calculateSkillsMatch } from "../../../../../../lib/match-utils"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 type JobPosting = {
   job_title?: string
@@ -58,7 +64,7 @@ type JobPosting = {
 type AnswersMap = Record<string, string | string[]>;
 
 type Applicant = {
-  skills: never[]
+  skills: string[]
   contactInfo: { email: string; phone: string; socials: never[]; countryCode: string }
   application_id: string
   job_id: string
@@ -121,6 +127,7 @@ function Pagination({
   const visiblePages = getVisiblePages()
 
   return (
+    
     <div className="flex flex-col items-center gap-2  min-h-[130px]">
       <div className="flex items-center gap-1 relative">
         <button
@@ -182,6 +189,7 @@ function capitalize(str?: string) {
 }
 
 export default function RecruiterApplicationTracker() {
+  
   const searchParams = useSearchParams()
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -224,6 +232,27 @@ export default function RecruiterApplicationTracker() {
   const [jobSkillsMap, setJobSkillsMap] = useState<Record<string, string[]>>({})
   const [search, setSearch] = useState("")
   const [refreshingApplicants, setRefreshingApplicants] = useState(false)
+  const [sortBy, setSortBy] = useState<"match" | "date">("date")
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc")
+  const [filterModalOpen, setFilterModalOpen] = useState(false)
+  const [filters, setFilters] = useState<any>({})
+  const allSkills = Array.from(new Set(applicants.flatMap(a => a.skills || []))) as string[]
+const allLocations = Array.from(
+  new Set(
+    applicants
+      .map(a => a.address?.split(",")[0].trim())
+      .filter((loc): loc is string => Boolean(loc))
+  )
+)
+const allCourses = Array.from(
+  new Set(applicants.map(a => a.course).filter((c): c is string => Boolean(c)))
+)
+const allYears = Array.from(
+  new Set(applicants.map(a => a.year).filter((y): y is string => Boolean(y)))
+)
+const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
+
+
 
   useEffect(() => {
     setLoading(true)
@@ -361,8 +390,48 @@ export default function RecruiterApplicationTracker() {
         )
       })
     }
+    // Apply filters
+    if (filters.status && filters.status.length > 0) {
+      filtered = filtered.filter(a => filters.status.includes(capitalize(a.status)))
+    }
+    if (filters.experience && filters.experience.length > 0) {
+      filtered = filtered.filter(a =>
+        filters.experience.some((exp: string) => {
+          if (exp === "No experience") return (a.experience_years || "").toLowerCase().includes("no experience")
+          if (exp === "0-1 years") return /^0-1/.test(a.experience_years || "")
+          if (exp === "2-3 years") return /^2-3/.test(a.experience_years || "")
+          if (exp === "4-5 years") return /^4-5/.test(a.experience_years || "")
+          if (exp === "6+ years") return /^6/.test(a.experience_years || "") || (a.experience_years && parseInt(a.experience_years) >= 6)
+          return false
+        })
+      )
+    }
+    if (filters.skills && filters.skills.length > 0) {
+      filtered = filtered.filter(a =>
+        Array.isArray(a.skills) && filters.skills.every((s: string) => a.skills.includes(s))
+      )
+    }
+    if (filters.location && filters.location.length > 0) {
+      filtered = filtered.filter(a =>
+        filters.location.includes(a.address ? a.address.split(",")[0].trim() : "")
+      )
+    }
+    if (filters.course && filters.course.length > 0) {
+      filtered = filtered.filter(a => filters.course.includes(a.course))
+    }
+    if (filters.year && filters.year.length > 0) {
+      filtered = filtered.filter(a => filters.year.includes(a.year))
+    }
+    if (filters.degree && filters.degree.length > 0) {
+    }
+    if (filters.dateFrom) {
+      filtered = filtered.filter(a => a.applied_at && new Date(a.applied_at) >= new Date(filters.dateFrom))
+    }
+    if (filters.dateTo) {
+      filtered = filtered.filter(a => a.applied_at && new Date(a.applied_at) <= new Date(filters.dateTo))
+    }
     setFilteredApplicants(filtered)
-  }, [search, applicants, selectedJob])
+  }, [search, applicants, selectedJob, filters])
 
   function getTabStatus(applicantStatus: string | undefined) {
     if (!applicantStatus) return ""
@@ -515,6 +584,19 @@ export default function RecruiterApplicationTracker() {
       return bDate - aDate
     })
   }
+  function sortApplicants(applicants: Applicant[]) {
+    if (sortBy === "match") {
+      const sorted = [...applicants].sort((a, b) =>
+        (calculateSkillsMatch(b.skills || [], jobSkillsMap[b.job_id] || []) -
+         calculateSkillsMatch(a.skills || [], jobSkillsMap[a.job_id] || []))
+      )
+      if (sortDir === "asc") sorted.reverse()
+      return sorted
+    }
+    const sorted = sortByAppliedAtDesc(applicants)
+    if (sortDir === "asc") sorted.reverse()
+    return sorted
+  }
 
   const refreshApplicants = async () => {
     setRefreshingApplicants(true)
@@ -595,6 +677,17 @@ export default function RecruiterApplicationTracker() {
     }
   }
 
+  const activeFilterCount =
+    (filters.status?.length || 0) +
+    (filters.experience?.length || 0) +
+    (filters.skills?.length || 0) +
+    (filters.location?.length || 0) +
+    (filters.course?.length || 0) +
+    (filters.year?.length || 0) +
+    (filters.degree?.length || 0) +
+    (filters.dateFrom ? 1 : 0) +
+    (filters.dateTo ? 1 : 0)
+
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
@@ -653,7 +746,7 @@ export default function RecruiterApplicationTracker() {
                     <p className="text-xl font-bold text-white">{totalApplicants}</p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
-                    <p className="text-xs text-white/80">New Today</p>
+                    <p className="text-xs text-white/80">New Applicants</p>
                     <p className="text-xl font-bold text-white">{newApplicants}</p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
@@ -708,7 +801,7 @@ export default function RecruiterApplicationTracker() {
                       <Tooltip title="Refresh Applicants" arrow>
                         <span>
                           {refreshingApplicants ? (
-                            <span className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin inline-block" />
+                            <span className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                           ) : (
                             <RefreshCw className="h-4 w-4" />
                           )}
@@ -730,27 +823,47 @@ export default function RecruiterApplicationTracker() {
                   ) : (
                     <Tabs value={tab} onValueChange={v => { setTab(v); setPage(1); }} className="w-full">
                     <TabsList className="flex w-full border-b border-gray-200">
-                      <TabsTrigger value="all" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
+                      <TabsTrigger value="all" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600 group">
                         All
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-700 group-data-[state=active]:bg-blue-100 group-data-[state=active]:text-blue-700 transition-colors">
+                          {filteredApplicants.length}
+                        </span>
                       </TabsTrigger>
-                      <TabsTrigger value="new" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-yellow-600 hover:border-yellow-300 data-[state=active]:text-yellow-600 data-[state=active]:border-yellow-600">
+                      <TabsTrigger value="new" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-yellow-600 hover:border-yellow-300 data-[state=active]:text-yellow-600 data-[state=active]:border-yellow-600 group">
                         New
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-400 group-hover:bg-yellow-100 group-hover:text-yellow-700 group-data-[state=active]:bg-yellow-100 group-data-[state=active]:text-yellow-700 transition-colors">
+                          {filteredApplicants.filter(a => capitalize(a.status) === "New").length}
+                        </span>
                       </TabsTrigger>
-                      <TabsTrigger value="shortlisted" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-cyan-600 hover:border-cyan-300 data-[state=active]:text-cyan-600 data-[state=active]:border-cyan-600">
+                      <TabsTrigger value="shortlisted" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-cyan-600 hover:border-cyan-300 data-[state=active]:text-cyan-600 data-[state=active]:border-cyan-600 group">
                         Shortlisted
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-400 group-hover:bg-cyan-100 group-hover:text-cyan-700 group-data-[state=active]:bg-cyan-100 group-data-[state=active]:text-cyan-700 transition-colors">
+                          {filteredApplicants.filter(a => capitalize(a.status) === "Shortlisted").length}
+                        </span>
                       </TabsTrigger>
-                      <TabsTrigger value="interview" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-purple-600 hover:border-purple-300 data-[state=active]:text-purple-600 data-[state=active]:border-purple-600">
+                      <TabsTrigger value="interview" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-purple-600 hover:border-purple-300 data-[state=active]:text-purple-600 data-[state=active]:border-purple-600 group">
                         Interview
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-400 group-hover:bg-purple-100 group-hover:text-purple-700 group-data-[state=active]:bg-purple-100 group-data-[state=active]:text-purple-700 transition-colors">
+                          {filteredApplicants.filter(a => getTabStatus(a.status) === "Interview").length}
+                        </span>
                       </TabsTrigger>
-                      <TabsTrigger value="waitlisted" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-blue-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">
+                      <TabsTrigger value="waitlisted" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-blue-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600 group">
                         Waitlisted
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-700 group-data-[state=active]:bg-blue-100 group-data-[state=active]:text-blue-700 transition-colors">
+                          {filteredApplicants.filter(a => capitalize(a.status) === "Waitlisted").length}
+                        </span>
                       </TabsTrigger>
-                    
-                      <TabsTrigger value="hired" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-green-700 hover:border-green-200 data-[state=active]:text-green-700 data-[state=active]:border-green-700">
+                      <TabsTrigger value="hired" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-green-700 hover:border-green-200 data-[state=active]:text-green-700 data-[state=active]:border-green-700 group">
                         Hired
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-400 group-hover:bg-green-100 group-hover:text-green-700 group-data-[state=active]:bg-green-100 group-data-[state=active]:text-green-700 transition-colors">
+                          {filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "hired").length}
+                        </span>
                       </TabsTrigger>
-                        <TabsTrigger value="rejected" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-red-600 hover:border-red-300 data-[state=active]:text-red-600 data-[state=active]:border-red-600">
+                      <TabsTrigger value="rejected" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-red-600 hover:border-red-300 data-[state=active]:text-red-600 data-[state=active]:border-red-600 group">
                         Rejected
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-400 group-hover:bg-red-100 group-hover:text-red-700 group-data-[state=active]:bg-red-100 group-data-[state=active]:text-red-700 transition-colors">
+                          {filteredApplicants.filter(a => capitalize(a.status) === "Rejected").length}
+                        </span>
                       </TabsTrigger>
                     </TabsList>
 
@@ -773,24 +886,98 @@ export default function RecruiterApplicationTracker() {
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-blue-600">Sort by</span>
-                          <button className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 flex items-center gap-1">
-                            Match Score
-                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border hover:text-blue-700 border-blue-200 hover:bg-blue-50 flex items-center gap-1" variant="outline">
+                                {sortBy === "match" ? (
+                                  <>
+                                    <BarChart2 className="w-4 h-4 mr-1" />
+                                    Match Score
+                                  </>
+                                ) : (
+                                  <>
+                                    <CalendarDays className="w-4 h-4 mr-1" />
+                                    Date Applied
+                                  </>
+                                )}
+                                {sortDir === "desc" ? (
+                                  <ChevronDown className="w-4 h-4 ml-1" />
+                                ) : (
+                                  <ChevronUp className="w-4 h-4 ml-1" />
+                                )}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (sortBy === "date") {
+                                    setSortDir(sortDir === "desc" ? "asc" : "desc")
+                                  } else {
+                                    setSortBy("date")
+                                    setSortDir("desc")
+                                  }
+                                }}
+                              >
+                                <CalendarDays className="w-4 h-4 mr-2" />
+                                Date Applied
+                                {sortBy === "date" && (
+                                  sortDir === "desc"
+                                    ? <ChevronDown className="w-4 h-4 ml-auto" />
+                                    : <ChevronUp className="w-4 h-4 ml-auto" />
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (sortBy === "match") {
+                                    setSortDir(sortDir === "desc" ? "asc" : "desc")
+                                  } else {
+                                    setSortBy("match")
+                                    setSortDir("desc")
+                                  }
+                                }}
+                              >
+                                <BarChart2 className="w-4 h-4 mr-2" />
+                                Match Score
+                                {sortBy === "match" && (
+                                  sortDir === "desc"
+                                    ? <ChevronDown className="w-4 h-4 ml-auto" />
+                                    : <ChevronUp className="w-4 h-4 ml-auto" />
+                                )}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                      >
-                        <Filter className="w-4 h-4 mr-1" />
-                        Filters
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 relative"
+                          onClick={() => setFilterModalOpen(true)}
+                          type="button"
+                        >
+                          <Filter className="w-4 h-4 mr-1" />
+                          Filters
+                          {activeFilterCount > 0 && (
+                            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
+                              {activeFilterCount}
+                            </span>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                          type="button"
+                        >
+                          <FaRegFolderOpen className="w-4 h-4 mr-1" />
+                          Archived Applications
+                        </Button>
+                      </div>
                     </div>
 
                     <TabsContent value="all" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = sortByAppliedAtDesc(filteredApplicants)
+                          const filtered = sortApplicants(filteredApplicants)
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -835,7 +1022,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="new" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => capitalize(a.status) === "New"))
+                          const filtered = sortApplicants(filteredApplicants.filter(a => capitalize(a.status) === "New"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -880,7 +1067,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="shortlisted" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => capitalize(a.status) === "Shortlisted"))
+                          const filtered = sortApplicants(filteredApplicants.filter(a => capitalize(a.status) === "Shortlisted"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -925,7 +1112,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="interview" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => getTabStatus(a.status) === "Interview"))
+                          const filtered = sortApplicants(filteredApplicants.filter(a => getTabStatus(a.status) === "Interview"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -970,7 +1157,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="invited" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => capitalize(a.status) === "Invited"))
+                          const filtered = sortApplicants(filteredApplicants.filter(a => capitalize(a.status) === "Invited"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -1015,7 +1202,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="rejected" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => capitalize(a.status) === "Rejected"))
+                          const filtered = sortApplicants(filteredApplicants.filter(a => capitalize(a.status) === "Rejected"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -1060,7 +1247,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="waitlisted" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => capitalize(a.status) === "Waitlisted"))
+                          const filtered = sortApplicants(filteredApplicants.filter(a => capitalize(a.status) === "Waitlisted"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -1105,7 +1292,7 @@ export default function RecruiterApplicationTracker() {
                     <TabsContent value="hired" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = sortByAppliedAtDesc(filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "hired"))
+                          const filtered = sortApplicants(filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "hired"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -1343,6 +1530,19 @@ export default function RecruiterApplicationTracker() {
           onOfferSent={(application_id) => {
             setApplicants(prev => prev.map(app => app.application_id === application_id ? { ...app, status: "hired" } : app))
           }}
+        />
+
+        
+        <FilterModal
+          open={filterModalOpen}
+          onClose={() => setFilterModalOpen(false)}
+          onApply={setFilters}
+          skills={allSkills}
+          locations={allLocations}
+          courses={allCourses}
+          years={allYears}
+          degrees={allDegrees}
+          initial={filters}
         />
       </div>
     </>
@@ -1601,9 +1801,6 @@ function ApplicantCard({
               </motion.div>
             </span>
           </Tooltip>
-          <button className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50" onClick={e => e.stopPropagation()}>
-            <Bookmark className="h-4 w-4" />
-          </button>
           <div>
             <button
               className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
