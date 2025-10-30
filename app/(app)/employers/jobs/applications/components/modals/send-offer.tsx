@@ -13,12 +13,14 @@ import {
   Checkbox,
   ListItemText,
   Avatar,
-  CircularProgress
+  CircularProgress,
+  Autocomplete,
 } from "@mui/material"
 import type { SlideProps } from "@mui/material"
 import Lottie from "lottie-react"
 import offerAnim from "../../../../../../../public/animations/offer-sent.json"
 import { Confetti } from "@/components/magicui/confetti"
+import { createClient } from '@supabase/supabase-js'
 
 const SlideUp = forwardRef(function Transition(
   props: SlideProps,
@@ -62,10 +64,16 @@ export type SendOfferModalProps = {
     offer_expiry?: string
     offer_date?: string
     custom_message?: string
+    contract_file_url?: string
+    id?: string
   }
   editMode?: boolean
   onOfferSent?: (application_id: string) => void
 }
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 function SendOfferModal({
   open,
@@ -75,7 +83,14 @@ function SendOfferModal({
   onOfferSent
 }: SendOfferModalProps & { onOfferSent?: (application_id: string) => void }) {
   const jobPost = initial?.job_postings
-  const [salary, setSalary] = useState(initial?.salary ?? jobPost?.pay_amount ?? "")
+  const [salary, setSalary] = useState(() => {
+    if (initial?.salary) return initial.salary;
+    if (
+      jobPost?.pay_amount === "" ||
+      (jobPost?.pay_amount && jobPost.pay_amount.trim().toLowerCase() === "no pay")
+    ) return "No pay";
+    return jobPost?.pay_amount ?? "";
+  })
   const [startDate, setStartDate] = useState(initial?.start_date ?? "")
   const [notes] = useState(initial?.notes ?? "")
   const [saving, setSaving] = useState(false)
@@ -83,8 +98,16 @@ function SendOfferModal({
   const [workSetup, setWorkSetup] = useState(initial?.work_setup ?? jobPost?.remote_options ?? "Onsite")
   const [workSchedule, setWorkSchedule] = useState(initial?.work_schedule ?? "")
   const [salaryType, setSalaryType] = useState(initial?.salary_type ?? jobPost?.pay_type ?? "Monthly")
-  const [bonuses, setBonuses] = useState(initial?.bonuses ?? "")
-  const [allowances, setAllowances] = useState(initial?.allowances ?? "")
+  const [bonuses, setBonuses] = useState<string[]>(
+    initial?.bonuses
+      ? initial.bonuses.split(",").map(s => s.trim()).filter(Boolean)
+      : []
+  );
+  const [allowances, setAllowances] = useState<string[]>(
+    initial?.allowances
+      ? initial.allowances.split(",").map(s => s.trim()).filter(Boolean)
+      : []
+  );
   const [benefits, setBenefits] = useState(initial?.benefits ?? jobPost?.perks_and_benefits ?? [])
   const [offerExpiry, setOfferExpiry] = useState(initial?.offer_expiry ?? "")
   const [customMessage, setCustomMessage] = useState(initial?.custom_message ?? "")
@@ -92,6 +115,7 @@ function SendOfferModal({
   const [salaryError, setSalaryError] = useState<string | null>(null)
   const [showBenefits, setShowBenefits] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [checkingMode, setCheckingMode] = useState(true)
 
   const daysOfWeek = [
     "Monday",
@@ -116,6 +140,17 @@ function SendOfferModal({
   ]
   const [selectedBenefitIds, setSelectedBenefitIds] = useState<string[]>([])
 
+  const typicalDayOptions = [
+    { label: "Mon–Fri", days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] },
+    { label: "Mon–Sat", days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] },
+    { label: "All Week", days: daysOfWeek }
+  ]
+  const typicalTimeOptions = [
+    { label: "9:00 AM–5:00 PM", start: "09:00", end: "17:00" },
+    { label: "8:00 AM–6:00 PM", start: "08:00", end: "18:00" },
+    { label: "10:00 AM–7:00 PM", start: "10:00", end: "19:00" }
+  ]
+
   const validate = () => {
     let valid = true
     if (!salary) {
@@ -136,49 +171,103 @@ function SendOfferModal({
   const handleSave = async () => {
     if (!validate()) return
     setSaving(true)
-    const selectedLabels = benefitOptions.filter(opt => selectedBenefitIds.includes(opt.id)).map(opt => opt.label)
-    const allBenefits = [...selectedLabels, ...benefits]
-    const payload = {
-      salary,
-      start_date: startDate,
-      notes,
-      application_id: initial?.application_id,
-      student_id: initial?.student_id,
-      employer_id: initial?.employer_id,
-      company_name: initial?.company_name,
-      applicant_name: initial?.applicant_name,
-      job_title: initial?.job_title,
-      salary_type: salaryType,
-      work_setup: workSetup,
-      employment_type: employmentType,
-      work_schedule: workSchedule,
-      bonuses,
-      allowances,
-      benefits: allBenefits,
-      offer_expiry: offerExpiry,
-      offer_date: initial?.offer_date,
-      custom_message: customMessage,
-      contract_file_url: null
-    }
-    await fetch("/api/employers/applications/postJobOffer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-    if (initial?.application_id) {
-      await fetch("/api/employers/applications/actions", {
+    let contract_file_url = null
+    try {
+      if (contractFile && initial?.application_id) {
+        const fileExt = contractFile.name.split('.').pop()
+        const jobTitle = (initial?.job_title || "Job").replace(/[^a-zA-Z0-9]/g, "_")
+        const applicantName = (initial?.applicant_name || "Applicant").replace(/[^a-zA-Z0-9]/g, "_")
+        const folderName = initial.application_id
+        const fileName = `${jobTitle}_WORK_CONTRACT_FOR_${applicantName}.${fileExt}`
+        const filePath = `${folderName}/${fileName}`
+        const uploadResult = await supabase.storage
+          .from('work.contracts')
+          .upload(filePath, contractFile as Blob, { cacheControl: '3600', upsert: true })
+        if (uploadResult.error) {
+          setSalaryError("Failed to upload contract file")
+          setSaving(false)
+          alert("Failed to upload contract file: " + uploadResult.error.message)
+          return
+        }
+        const urlResult = supabase.storage
+          .from('work.contracts')
+          .getPublicUrl(filePath)
+        contract_file_url = urlResult.data.publicUrl
+      }
+      const selectedLabels = benefitOptions.filter(opt => selectedBenefitIds.includes(opt.id)).map(opt => opt.label)
+      const allBenefits = [...selectedLabels, ...benefits]
+      const payload: Record<string, unknown> = {
+        salary,
+        start_date: startDate,
+        notes,
+        application_id: initial?.application_id,
+        student_id: initial?.student_id,
+        employer_id: initial?.employer_id,
+        company_name: initial?.company_name,
+        applicant_name: initial?.applicant_name,
+        job_title: initial?.job_title,
+        salary_type: salaryType,
+        work_setup: workSetup,
+        employment_type: employmentType,
+        work_schedule: workSchedule,
+        bonuses: bonuses.join(", "),
+        allowances: allowances.join(", "),
+        benefits: allBenefits,
+        offer_expiry: offerExpiry,
+        offer_date: initial?.offer_date,
+        custom_message: customMessage,
+        contract_file_url
+      }
+      if (initial && (initial as { id?: string }).id) {
+        payload.id = (initial as { id?: string }).id
+      }
+      const res = await fetch("/api/employers/applications/postJobOffer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          application_id: initial.application_id,
-          action: "hired"
-        })
+        body: JSON.stringify(payload)
       })
-      onOfferSent?.(initial.application_id)
+      if (!res.ok) {
+        const err = await res.json()
+        setSalaryError(err.error || "Failed to send offer")
+        setSaving(false)
+        alert("Failed to send offer: " + (err.error || res.statusText))
+        return
+      }
+      if (initial?.application_id) {
+        if (editMode) {
+          await fetch("/api/employers/applications/actions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              application_id: initial.application_id,
+              action: "offer_updated",
+              message: `Your job offer for   has been updated`
+            })
+          })
+        } else {
+          await fetch("/api/employers/applications/actions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              application_id: initial.application_id,
+              action: "offer_sent"
+            })
+          })
+        }
+        // Always call onOfferSent so parent can refetch applicants
+        onOfferSent?.(initial.application_id)
+      }
+      setSaving(false)
+      setSuccess(true)
+    } catch (e: unknown) {
+      let message = "Unknown error"
+      if (e instanceof Error) {
+        message = e.message
+      }
+      setSalaryError(message)
+      setSaving(false)
+      alert("Error: " + message)
     }
-    setSaving(false)
-    setSuccess(true)
-
   }
 
   const handleClose = () => {
@@ -187,18 +276,40 @@ function SendOfferModal({
   }
 
   useEffect(() => {
-    setSalary(initial?.salary ?? jobPost?.pay_amount ?? "")
+    if (initial?.salary) {
+      setSalary(initial.salary);
+    } else if (
+      jobPost?.pay_amount === "" ||
+      (jobPost?.pay_amount && jobPost.pay_amount.trim().toLowerCase() === "no pay")
+    ) {
+      setSalary("No pay");
+    } else {
+      setSalary(jobPost?.pay_amount ?? "");
+    }
     setEmploymentType(initial?.employment_type ?? jobPost?.work_type ?? "Full-time")
     setWorkSetup(initial?.work_setup ?? jobPost?.remote_options ?? "Onsite")
     setSalaryType(initial?.salary_type ?? jobPost?.pay_type ?? "Monthly")
+    setOfferExpiry(initial?.offer_expiry ?? "")
+    setCustomMessage(initial?.custom_message ?? "")
+    setStartDate(initial?.start_date ?? "")
+    setWorkSchedule(initial?.work_schedule ?? "")
     const incomingBenefits = initial?.benefits ?? jobPost?.perks_and_benefits ?? []
     const mappedIds = benefitOptions
       .filter(opt => incomingBenefits.includes(opt.label) || incomingBenefits.includes(opt.id))
       .map(opt => opt.id)
     setSelectedBenefitIds(mappedIds)
     setBenefits(incomingBenefits.filter(b => !benefitOptions.some(opt => opt.label === b || opt.id === b)))
+    setBonuses(
+      initial?.bonuses
+        ? initial.bonuses.split(",").map(s => s.trim()).filter(Boolean)
+        : []
+    );
+    setAllowances(
+      initial?.allowances
+        ? initial.allowances.split(",").map(s => s.trim()).filter(Boolean)
+        : []
+    );
     if (initial?.work_schedule) {
-
       const [days, times] = initial.work_schedule.split(",")
       if (days) {
         if (days.includes("–")) {
@@ -230,13 +341,43 @@ function SendOfferModal({
     }
   }, [selectedDays, startTime, endTime])
 
+  useEffect(() => {
+    setCheckingMode(true)
+    setTimeout(() => setCheckingMode(false), 400)
+  }, [initial, editMode])
+
+  if (checkingMode) {
+    return (
+      <Dialog open={open} onClose={onClose} TransitionComponent={SlideUp}>
+        <DialogContent className="flex flex-col items-center justify-center min-h-[320px] w-[400px]">
+          <div className="w-full flex flex-col gap-6">
+            <div className="flex items-center gap-4">
+              <div className="rounded-full bg-gray-200 animate-pulse w-16 h-16" />
+              <div className="flex-1">
+                <div className="h-5 bg-gray-200 rounded w-32 mb-2 animate-pulse" />
+                <div className="h-4 bg-gray-100 rounded w-24 animate-pulse" />
+              </div>
+            </div>
+            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 animate-pulse" />
+            <div className="h-4 bg-gray-100 rounded w-2/3 mb-2 animate-pulse" />
+            <div className="h-4 bg-gray-100 rounded w-1/2 animate-pulse" />
+            <div className="flex gap-2 mt-6">
+              <div className="h-10 bg-gray-200 rounded w-1/2 animate-pulse" />
+              <div className="h-10 bg-gray-200 rounded w-1/2 animate-pulse" />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   if (success) {
     return (
       <Dialog open={true} onClose={onClose} TransitionComponent={SlideUp} PaperProps={{
         sx: {
           p: 0,
-          minWidth: 500,
-          maxWidth: 600,
+          minWidth: 700,
+          maxWidth: 700,
           boxShadow: 8,
           background: "#fff",
           borderRadius: 3,
@@ -258,14 +399,22 @@ function SendOfferModal({
           <Box sx={{ border: "1.5px solid #bbf7d0", background: "#fff", boxShadow: 1, borderRadius: 3, mb: 2.5, width: "100%", maxWidth: 340, p: 2.5, display: "flex", alignItems: "center", gap: 2, mx: "auto" }}>
             <Avatar sx={{ width: 54, height: 54, fontWeight: 600, fontSize: 24, bgcolor: "#16a34a", mr: 2 }} src={undefined}>{initial?.applicant_name?.[0] || "?"}</Avatar>
             <Box>
-              <Typography fontWeight={700} fontSize={18} color="#166534" sx={{ lineHeight: 1.2 }}>{initial?.applicant_name}</Typography>
-              <Typography variant="body2" color="#6ee7b7" sx={{ fontSize: 13, fontWeight: 500 }}>{initial?.job_title}</Typography>
+              <Typography fontWeight={700} fontSize={18} color="#166534" sx={{ lineHeight: 1.2 }}>
+                {initial?.applicant_name}
+              </Typography>
+              <Typography variant="body2" color="#6ee7b7" sx={{ fontSize: 13, fontWeight: 500 }}>
+                {initial?.job_title}
+              </Typography>
             </Box>
           </Box>
-          <Typography sx={{ color: "#16a34a", fontWeight: 800, fontSize: 26, mb: 0.5, letterSpacing: 0.2, textAlign: "center" }}>Offer Sent!</Typography>
-          
+          <Typography sx={{ color: "#16a34a", fontWeight: 700, fontSize: 26, mb: 0.5, letterSpacing: 0.2, textAlign: "center" }}>
+            {editMode ? "Offer Updated!" : "Offer Sent!"}
+          </Typography>
           <Typography sx={{ fontSize: 14, color: "#166534", textAlign: "center", mt: 1.5, fontWeight: 500, maxWidth: 340, mx: "auto" }}>
-            🎉 Congratulations! Your offer is on its way. We hope this is the start of something amazing for both of you.
+            {editMode
+              ? "Your changes have been saved and the applicant has been notified of the updated offer details."
+              : "Congratulations! Your offer is on its way. We hope this is the start of something amazing for both of you."
+            }
           </Typography>
         </DialogContent>
         <Box sx={{ px: 3, pb: 3, pt: 0, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 2 }}>
@@ -275,6 +424,21 @@ function SendOfferModal({
     )
   }
 
+  const bonusSuggestions = [
+    "Performance Bonus",
+    "Completion Bonus",
+    "Referral Bonus",
+    "Sales Commission",
+    "Attendance Bonus"
+  ];
+  const allowanceSuggestions = [
+    "Meal Allowance",
+    "Transportation Allowance",
+    "Internet Allowance",
+    "Uniform Allowance",
+    "Housing Allowance"
+  ];
+
   return (
     <Dialog
       open={open}
@@ -283,9 +447,9 @@ function SendOfferModal({
       PaperProps={{
         sx: {
           p: 0,
-          minWidth: 600,
-          maxWidth: 600,
-          width: 600,
+          minWidth: 700,
+          maxWidth: 700,
+          width: 700,
           boxShadow: 8,
           background: "#fff",
           borderRadius: 3,
@@ -342,12 +506,14 @@ function SendOfferModal({
               <Typography sx={{ fontWeight: 600, fontSize: 24, color: "#fff" }}>
                 {editMode ? "Edit Offer" : "Send Offer"}
               </Typography>
-              <Typography sx={{ color: "#dcfce7", fontSize: 14, mt: 1 }}>You’re about to send your offer to {initial?.applicant_name}. Fill out or update the fields below before sending.
+              <Typography sx={{ color: "#dcfce7", fontSize: 14, mt: 1 }}>
+                {editMode
+                  ? `You’re about to edit your offer to ${initial?.applicant_name}. Update the fields below and save your changes.`
+                  : `You’re about to send a new offer to ${initial?.applicant_name}. Fill out the fields below before sending.`}
               </Typography>
             </Box>
           </Box>
         </Box>
-       
         <Box sx={{ px: 4, pt: 3, pb: 1, background: '#f0fdf4', borderBottom: '1px solid #dcfce7' }}>
           <Typography sx={{ fontWeight: 700, fontSize: 20, color: '#16a34a' }}>
             {initial?.applicant_name || initial?.company_name || 'Applicant Name'}
@@ -419,6 +585,36 @@ function SendOfferModal({
                 sx={{ background: '#fff', borderRadius: 2, minWidth: 120 }}
               />
             </Box>
+              <Typography sx={{ fontSize: 13, color: '#16a34a', fontWeight: 500, mb: 0.5, mt: 1 }}>
+               Suggestions
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+              {typicalDayOptions.map(opt => (
+                <Button
+                  key={opt.label}
+                  variant="outlined"
+                  size="small"
+                  sx={{ color: '#22c55e', borderColor: '#22c55e', fontWeight: 500, fontSize: 13, background: '#fff', '&:hover': { borderColor: '#16a34a', background: '#dcfce7' } }}
+                  onClick={() => setSelectedDays(opt.days)}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </Box>
+          
+            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+              {typicalTimeOptions.map(opt => (
+                <Button
+                  key={opt.label}
+                  variant="outlined"
+                  size="small"
+                  sx={{ color: '#22c55e', borderColor: '#22c55e', fontWeight: 500, fontSize: 13, background: '#fff', '&:hover': { borderColor: '#16a34a', background: '#dcfce7' } }}
+                  onClick={() => { setStartTime(opt.start); setEndTime(opt.end); }}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </Box>
           </Box>
           <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#16a34a', mb: 2 }}>
             Compensation
@@ -428,16 +624,47 @@ function SendOfferModal({
               <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#22c55e" }}>
                 Salary Offer <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
               </Typography>
-              <TextField
+              <Select
                 fullWidth
                 value={salary}
                 onChange={e => setSalary(e.target.value)}
-                error={!!salaryError}
-                helperText={salaryError}
+                displayEmpty
                 variant="outlined"
-                placeholder="Enter salary offer"
-                sx={{ background: "#fff", borderRadius: 2, mb: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
-              />
+                sx={{ background: "#fff", borderRadius: 2, mb: 1, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
+                renderValue={selected => selected ? selected : "Enter or select salary offer"}
+                MenuProps={{ PaperProps: { style: { maxHeight: 200 } } }}
+              >
+                {jobPost?.pay_amount &&
+                  jobPost.pay_amount.trim().toLowerCase() !== "no pay" &&
+                  jobPost.pay_amount !== "" && (
+                    <MenuItem value={jobPost.pay_amount}>
+                      {jobPost.pay_amount}
+                    </MenuItem>
+                )}
+                <MenuItem value="">
+                  Custom...
+                </MenuItem>
+                {(jobPost?.pay_amount === "" ||
+                  (jobPost?.pay_amount && jobPost.pay_amount.trim().toLowerCase() === "no pay")) && (
+                  <MenuItem value="No pay">
+                    No pay
+                  </MenuItem>
+                )}
+              </Select>
+
+              {salary === "" && (
+                <TextField
+                  fullWidth
+                  value={salary}
+                  onChange={e => setSalary(e.target.value)}
+                  error={!!salaryError}
+                  helperText={salaryError}
+                  variant="outlined"
+                  placeholder="Enter salary offer"
+                  sx={{ background: "#fff", borderRadius: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
+                  style={{ marginTop: 8 }}
+                />
+              )}
             </Box>
             <Box sx={{ width: 180 }}>
               <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#22c55e" }}>
@@ -452,7 +679,7 @@ function SendOfferModal({
               >
                 <MenuItem value="Monthly">Monthly</MenuItem>
                 <MenuItem value="Annual">Annual</MenuItem>
-                <MenuItem value="Weekly">Weekly</MenuItem>
+                <MenuItem value="Weekly"></MenuItem>           
                 <MenuItem value="Daily">Daily</MenuItem>
                 <MenuItem value="Hourly">Hourly</MenuItem>
               </Select>
@@ -462,26 +689,42 @@ function SendOfferModal({
             <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#22c55e" }}>
               Bonuses / Commissions
             </Typography>
-            <TextField
-              fullWidth
+            <Autocomplete
+              multiple
+              freeSolo
+              options={bonusSuggestions}
               value={bonuses}
-              onChange={e => setBonuses(e.target.value)}
-              variant="outlined"
-              placeholder="Add bonuses or commissions (optional)"
-              sx={{ background: "#fff", borderRadius: 2, mb: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
+              onChange={(_, value) => setBonuses(value)}
+              renderInput={params => (
+                <TextField
+                  {...params}
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Add bonuses or commissions (optional)"
+                  sx={{ background: "#fff", borderRadius: 2, mb: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
+                />
+              )}
             />
           </Box>
           <Box sx={{ mb: 3 }}>
             <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#22c55e" }}>
               Other Allowances
             </Typography>
-            <TextField
-              fullWidth
+            <Autocomplete
+              multiple
+              freeSolo
+              options={allowanceSuggestions}
               value={allowances}
-              onChange={e => setAllowances(e.target.value)}
-              variant="outlined"
-              placeholder="Add other allowances (optional)"
-              sx={{ background: "#fff", borderRadius: 2, mb: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
+              onChange={(_, value) => setAllowances(value)}
+              renderInput={params => (
+                <TextField
+                  {...params}
+                  fullWidth
+                  variant="outlined"
+                  placeholder="Add other allowances (optional)"
+                  sx={{ background: "#fff", borderRadius: 2, mb: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
+                />
+              )}
             />
           </Box>
           <Box sx={{ mb: 3 }}>
@@ -610,10 +853,10 @@ function SendOfferModal({
             >
               {saving ? (
                 <>
-                  <CircularProgress size={22} sx={{ color: '#fff', mr: 1 }} /> Sending...
+                  <CircularProgress size={22} sx={{ color: '#fff', mr: 1 }} /> {editMode ? "Updating..." : "Sending..."}
                 </>
               ) : (
-                editMode ? "Update Job Offer" : "Send Job Offer"
+                editMode ? "Edit Offer" : "Send Offer"
               )}
             </Button>
           </Box>

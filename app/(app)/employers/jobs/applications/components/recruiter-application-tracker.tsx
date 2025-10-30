@@ -50,6 +50,8 @@ import { FaHandHoldingUsd, FaRegCalendarTimes, FaUserCheck } from "react-icons/f
 import { FaHandHoldingDollar, FaRegFolderOpen } from "react-icons/fa6"
 import { calculateSkillsMatch } from "../../../../../../lib/match-utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { BsMailbox2Flag } from "react-icons/bs"
+import { LuSquarePen } from "react-icons/lu"
 
 type JobPosting = {
   job_title?: string
@@ -81,6 +83,12 @@ type Applicant = {
   course?: string
   year?: string
   application_answers?: AnswersMap
+  pay_amount?: string
+  pay_type?: string
+  work_type?: string
+  remote_options?: string
+  perks_and_benefits?: string[]
+  location?: string
 }
 
 function Pagination({
@@ -183,8 +191,9 @@ function Pagination({
   )
 }
 
-function capitalize(str?: string) {
+const capitalize = (str?: string) => {
   if (!str) return ""
+  if (str.toLowerCase() === "offer_sent") return "Offer Sent"
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
@@ -219,6 +228,7 @@ export default function RecruiterApplicationTracker() {
   const [editInterviewData, setEditInterviewData] = useState<InterviewData | null>(null)
   const [sendOfferModalOpen, setSendOfferModalOpen] = useState(false)
   const [offerApplicant, setOfferApplicant] = useState<Applicant | null>(null)
+  const [offerInitialData, setOfferInitialData] = useState<any>(null)
   type RecentActivity = {
     name: string
     position: string
@@ -390,7 +400,6 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
         )
       })
     }
-    // Apply filters
     if (filters.status && filters.status.length > 0) {
       filtered = filtered.filter(a => filters.status.includes(capitalize(a.status)))
     }
@@ -480,7 +489,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
     e.stopPropagation()
     setInterviewApplicant(applicant)
     setEditInterviewMode(true)
-    let interviewData = null
+    let interviewData = null  
     try {
       const res = await fetch(`/api/employers/applications/postInterviewSched?application_id=${applicant.application_id}`)
       if (res.ok) {
@@ -546,10 +555,12 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
   }, [])
 
   const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
-    new: { icon: <FileText className="h-4 w-4 text-white" />, iconBg: "bg-green-500" },
+    new: { icon: <FileText className="h-4 w-4 text-white" />, iconBg: "bg-yellow-500" },
     shortlisted: { icon: <MdStars className="h-4 w-4 text-white" />, iconBg: "bg-cyan-500" },
     interview: { icon: <RiCalendarScheduleLine  className="h-4 w-4 text-white" />, iconBg: "bg-purple-500" },
     offer: { icon: <FaHandHoldingUsd  className="h-4 w-4 text-white" />, iconBg: "bg-yellow-500" },
+    offer_sent: { icon: <BsMailbox2Flag  className="h-4 w-4 text-white" />, iconBg: "bg-lime-400" },
+    offer_updated: { icon: <LuSquarePen className="h-4 w-4 text-white" />, iconBg: "bg-amber-600" },
     waitlisted: { icon: <TbClockQuestion className="h-4 w-4 text-white" />, iconBg: "bg-blue-500" },
     rejected: { icon: <IoIosCloseCircleOutline className="h-4 w-4 text-white" />, iconBg: "bg-red-500" },
     hired: { icon: <FaUserCheck  className="h-4 w-4 text-white" />, iconBg: "bg-green-700" },
@@ -687,6 +698,37 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
     (filters.degree?.length || 0) +
     (filters.dateFrom ? 1 : 0) +
     (filters.dateTo ? 1 : 0)
+
+  const handleViewOffer = async (applicant: Applicant) => {
+    setOfferApplicant(applicant)
+    setSendOfferModalOpen(true)
+    setOfferInitialData(null)
+    if (!applicant?.application_id) return
+    try {
+      const res = await fetch(`/api/employers/applications/postJobOffer/getJobOffer?application_id=${applicant.application_id}`)
+      const data = await res.json()
+      if (data && data.offer) {
+        setOfferInitialData({
+          ...data.offer,
+          job_postings: applicant.job_postings,
+          applicant_name: `${applicant.first_name || ''} ${applicant.last_name || ''}`.trim(),
+          job_title: applicant.job_title || '',
+          company_name: companyName,
+          employer_id: employerId,
+          student_id: applicant.student_id,
+          application_id: applicant.application_id,
+        })
+      }
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleOfferSent = async (application_id: string) => {
+    await refreshApplicants()
+ 
+  }
 
   return (
     <>
@@ -850,7 +892,10 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                       <TabsTrigger value="waitlisted" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-blue-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600 group">
                         Waitlisted
                         <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-700 group-data-[state=active]:bg-blue-100 group-data-[state=active]:text-blue-700 transition-colors">
-                          {filteredApplicants.filter(a => capitalize(a.status) === "Waitlisted").length}
+                          {filteredApplicants.filter(a => {
+                            const status = a.status ? a.status.toLowerCase() : ""
+                            return status === "waitlisted" || status === "offer_sent"
+                          }).length}
                         </span>
                       </TabsTrigger>
                       <TabsTrigger value="hired" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-green-700 hover:border-green-200 data-[state=active]:text-green-700 data-[state=active]:border-green-700 group">
@@ -1005,6 +1050,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  handleViewOffer={handleViewOffer}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1050,6 +1096,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  handleViewOffer={handleViewOffer}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1095,6 +1142,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  handleViewOffer={handleViewOffer}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1140,6 +1188,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  handleViewOffer={handleViewOffer}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1185,6 +1234,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  handleViewOffer={handleViewOffer}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1230,6 +1280,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  handleViewOffer={handleViewOffer}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1247,7 +1298,10 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                     <TabsContent value="waitlisted" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = sortApplicants(filteredApplicants.filter(a => capitalize(a.status) === "Waitlisted"))
+                          const filtered = sortApplicants(filteredApplicants.filter(a => {
+                            const status = a.status ? a.status.toLowerCase() : ""
+                            return status === "waitlisted" || status === "offer_sent"
+                          }))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
@@ -1275,6 +1329,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  handleViewOffer={handleViewOffer}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1320,6 +1375,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  handleViewOffer={handleViewOffer}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1354,7 +1410,9 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                       </div>
                     ) : (
                       recentActivity.slice(0, 6).map((update, index) => {
-                        const iconInfo = iconMap[update.icon || 'new'] || { icon: <FileText className="h-4 w-4 text-white" />, iconBg: 'bg-blue-200' }
+                        let iconKey = (update.icon || '').toLowerCase()
+                        if (iconKey === "offer sent" || iconKey === "offer_sent") iconKey = "offer_sent"
+                        const iconInfo = iconMap[iconKey] || { icon: <FileText className="h-4 w-4 text-white" />, iconBg: 'bg-blue-200' }
                         return (
                           <div
                             key={index}
@@ -1478,6 +1536,12 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
           applicant={
             selectedApplicant
               ? {
+                  pay_amount: selectedApplicant.pay_amount,
+                  pay_type: selectedApplicant.pay_type,
+                  work_type: selectedApplicant.work_type,
+                  remote_options: selectedApplicant.remote_options,
+                  perks_and_benefits: selectedApplicant.perks_and_benefits,
+                  location: selectedApplicant.location,
                   ...selectedApplicant,
                   application_answers:
                     Array.isArray(selectedApplicant.application_answers)
@@ -1517,8 +1581,8 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
         />
         <SendOfferModal
           open={sendOfferModalOpen}
-          onClose={() => { setSendOfferModalOpen(false); setOfferApplicant(null); }}
-          initial={offerApplicant ? {
+          onClose={() => { setSendOfferModalOpen(false); setOfferApplicant(null); setOfferInitialData(null); }}
+          initial={offerInitialData || (offerApplicant ? {
             application_id: offerApplicant.application_id,
             student_id: offerApplicant.student_id,
             employer_id: employerId,
@@ -1526,10 +1590,9 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
             applicant_name: `${offerApplicant.first_name || ''} ${offerApplicant.last_name || ''}`.trim(),
             job_title: offerApplicant.job_title || '',
             job_postings: offerApplicant.job_postings
-          } : undefined}
-          onOfferSent={(application_id) => {
-            setApplicants(prev => prev.map(app => app.application_id === application_id ? { ...app, status: "hired" } : app))
-          }}
+          } : undefined)}
+          editMode={!!(offerInitialData && offerInitialData.id)}
+          onOfferSent={handleOfferSent}
         />
 
         
@@ -1559,7 +1622,8 @@ function ApplicantCard({
   onReject,
   setOfferApplicant,
   setSendOfferModalOpen,
-  matchScore
+  matchScore,
+  handleViewOffer
 }: {
   applicant: Applicant
   selected: boolean 
@@ -1572,6 +1636,7 @@ function ApplicantCard({
   setOfferApplicant: (a: Applicant) => void
   setSendOfferModalOpen: (open: boolean) => void
   matchScore: number
+  handleViewOffer?: (a: Applicant) => Promise<void>
 }) {
 
   const formattedLocation = applicant.address
@@ -1656,6 +1721,7 @@ function ApplicantCard({
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setRejectOpen(false)} className="flex-1">
+             
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleReject} className="flex-1" disabled={loadingReject}>
@@ -1699,7 +1765,6 @@ function ApplicantCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       <motion.div
       className={`bg-white rounded-lg shadow-md shadow-blue-50 p-5 border-l-4 transition-colors duration-200
         ${
@@ -1711,8 +1776,8 @@ function ApplicantCard({
             ? "border-l-red-500"
             : (capitalize(applicant.status) === "Interview" || capitalize(applicant.status) === "Interview scheduled")
             ? "border-l-purple-500"
-            : capitalize(applicant.status) === "Invited"
-            ? "border-l-yellow-500"
+            : capitalize(applicant.status) === "Offer Sent"
+            ? "border-l-lime-400"
             : capitalize(applicant.status) === "Waitlisted"
             ? "border-l-blue-500"
             : capitalize(applicant.status) === "Hired"
@@ -1738,14 +1803,15 @@ function ApplicantCard({
               </h3>
               <motion.div whileHover={{ scale: 1.15 }}>
                 <Badge className={
+                  capitalize(applicant.status) === "Interview scheduled" ? "bg-purple-100 text-purple-700 hover:bg-purple-300 hover:text-purple-800 pointer-events-none" : 
                   capitalize(applicant.status) === "New"
                     ? "bg-amber-100 text-amber-700 hover:bg-amber-300 hover:text-amber-800 pointer-events-none"
                     : capitalize(applicant.status) === "Shortlisted"
                     ? "bg-cyan-100 text-cyan-700 hover:bg-cyan-300 hover:text-cyan-800 pointer-events-none"
                     : capitalize(applicant.status) === "Rejected"
                     ? "bg-red-100 text-red-700 hover:bg-red-300 hover:text-red-800 pointer-events-none"
-                    : (capitalize(applicant.status) === "Interview" || capitalize(applicant.status) === "Interview scheduled")
-                    ? "bg-purple-100 text-purple-700 hover:bg-purple-300 hover:text-purple-800 pointer-events-none"
+                    : capitalize(applicant.status) === "Offer Sent"
+                    ? "bg-lime-100 text-lime-700 hover:bg-lime-200 hover:text-lime-800 pointer-events-none"
                     : capitalize(applicant.status) === "Waitlisted"
                     ? "bg-blue-100 text-blue-700 hover:bg-blue-300 hover:text-blue-800 pointer-events-none"
                     : capitalize(applicant.status) === "Hired"
@@ -1854,6 +1920,22 @@ function ApplicantCard({
                     <MenuItem key="reject" onClick={() => { setAnchorEl(null); setRejectOpen(true); }}>
                       <IoIosCloseCircleOutline className="w-4 h-4 mr-2 text-red-500" />
                       Reject
+                    </MenuItem>
+                  ]
+                }
+                if (status === "Offer Sent") {
+                  return [
+                    <MenuItem key="view-offer" onClick={async () => {
+                      setAnchorEl(null)
+                      if (handleViewOffer) {
+                        await handleViewOffer(applicant)
+                      } else {
+                        setOfferApplicant({ ...applicant, job_postings: applicant.job_postings })
+                        setSendOfferModalOpen(true)
+                      }
+                    }}>
+                      <ArrowUpRight className="w-4 h-4 mr-2 text-yellow-500" />
+                      View Offer
                     </MenuItem>
                   ]
                 }
@@ -2029,7 +2111,7 @@ function ApplicantCard({
                     className="flex items-center gap-1 text-red-600 text-xs font-medium px-2 py-1 rounded bg-transparent border-0 shadow-none hover:bg-red-50 hover:text-red-700 transition-colors ml-0"
                     onClick={e => { e.stopPropagation(); setCancelInterviewOpen(true); }}
                     disabled={loadingShortlist || loadingReject}
->
+                  >
                     <FaRegCalendarTimes className="w-4 h-4" />
                     Cancel Interview
                   </button>
@@ -2052,6 +2134,36 @@ function ApplicantCard({
               )}
             </>
           )}
+          {capitalize(applicant.status) === "Offer Sent" && (
+            <>
+              <Button
+                size="sm"
+                className="bg-lime-100 text-lime-700 hover:bg-lime-200 flex items-center gap-1 text-xs font-medium shadow-none border-0"
+                style={{ boxShadow: 'none', border: 'none' }}
+                onClick={async e => {
+                  e.stopPropagation()
+                  if (handleViewOffer) {
+                    await handleViewOffer(applicant)
+                  }
+                }}
+              >
+                <ArrowUpRight className="w-4 h-4 mr-1" />
+                View Offer
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 text-xs"
+                onClick={e => {
+                  e.stopPropagation()
+                  setSelected()
+                  handleViewDetails(applicant.application_id, e)
+                }}
+              >
+                View Details
+              </Button>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <span className="text-xs text-gray-500">
@@ -2067,6 +2179,8 @@ function ApplicantCard({
               ? "Shortlisted"
               : capitalize(applicant.status) === "Waitlisted"
               ? "Waitlisted"
+              : capitalize(applicant.status) === "Offer Sent"
+              ? "Offer Sent"
               : capitalize(applicant.status) === "Hired"
               ? "Hired"
               : "Rejected"}

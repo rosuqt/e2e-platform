@@ -27,11 +27,13 @@ export async function POST(req: Request) {
       offer_expiry,
       offer_date,
       custom_message,
-      contract_file_url
+      contract_file_url,
+      id
     } = body;
 
-    const { data, error } = await supabase.from('job_offers').insert([
+    const { error } = await supabase.from('job_offers').upsert([
       {
+        id,
         salary,
         start_date,
         notes,
@@ -54,12 +56,12 @@ export async function POST(req: Request) {
         custom_message,
         contract_file_url
       }
-    ]).select();
+    ], { onConflict: 'id' }).select();
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    return NextResponse.json({ data }, { status: 201 });
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {
     const error = err as Error;
     return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 });

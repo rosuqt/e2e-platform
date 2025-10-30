@@ -5,10 +5,10 @@ import { authOptions } from "../../../../../lib/authOptions"
 
 export async function POST(req: Request) {
   await new Promise((res) => setTimeout(res, 2000))
-  const { application_id, action } = await req.json()
+  const { application_id, action, message } = await req.json()
   if (
     !application_id ||
-    !["shortlist", "reject", "interview_scheduled", "hired"].includes(action)
+    !["shortlist", "reject", "interview_scheduled", "offer_sent", "hired", "offer_updated"].includes(action)
   ) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 })
   }
@@ -27,17 +27,27 @@ export async function POST(req: Request) {
     status = "Interview Scheduled"
     logType = "interview"
     logMessage = "Interview scheduled"
+  } else if (action === "offer_sent") {
+    status = "offer_sent"
+    logType = "offer sent"
+    logMessage = "Your job offer has been sent to the applicant!"
   } else if (action === "hired") {
     status = "hired"
     logType = "hired"
-    logMessage = "Applicant was hired"
+    logMessage = "You have successfully hired the applicant!"
+  } else if (action === "offer_updated") {
+    // Do not update status, just log activity
+    logType = "offer_updated"
+    logMessage = message || "Job offer has been updated"
   }
-  const { error } = await supabase
-    .from("applications")
-    .update({ status })
-    .eq("application_id", application_id)
-  if (error) {
-    return NextResponse.json({ error: "Failed to update status" }, { status: 500 })
+  if (status) {
+    const { error } = await supabase
+      .from("applications")
+      .update({ status })
+      .eq("application_id", application_id)
+    if (error) {
+      return NextResponse.json({ error: "Failed to update status" }, { status: 500 })
+    }
   }
   const { data: appRow } = await supabase
     .from("applications")

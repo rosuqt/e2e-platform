@@ -42,6 +42,12 @@ import { calculateSkillsMatch } from "../../../../../../lib/match-utils"
 type AnswersMap = Record<string, string | string[]>;
 
 interface Applicant {
+  pay_amount: string | undefined
+  pay_type: string | undefined
+  work_type: string | undefined
+  remote_options: string | undefined
+  perks_and_benefits: string[] | undefined
+  location: string | undefined
   contactInfo: {
     email?: string
     phone?: string
@@ -430,6 +436,15 @@ export function RecruiterApplicationDetailsModal({
                 employer_id: applicant.job_id,
                 applicant_name: `${applicant.first_name || "Applicant"} ${applicant.last_name || ""}`.trim(),
                 job_title: applicant.job_title || "",
+                job_postings: {
+                  pay_amount: applicant.pay_amount,
+                  pay_type: applicant.pay_type,
+                  work_type: applicant.work_type,
+                  remote_options: applicant.remote_options,
+                  perks_and_benefits: applicant.perks_and_benefits,
+                  job_title: applicant.job_title,
+                  location: applicant.location,
+                }
               }
             : undefined
         }
