@@ -1,6 +1,5 @@
 "use client"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Search,
   Plus,
@@ -15,6 +14,8 @@ import {
   Archive,
   Moon,
   Settings,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,176 +29,143 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 
 interface Message {
   id: string
   sender: string
   content: string
   time: string
-  isRead: boolean
   avatar: string
 }
+
+type Contacts = {
+  id: number;
+  first_name: string;
+  last_name: string;
+};
 
 interface Conversation {
   id: string
   name: string
-  avatar: string
-  messages: Message[]
-  isTyping?: boolean
-  lastMessage: {
+  avatar?: string
+  role: string
+  messages?: Message[]
+  lastMessage?: {
     content: string
     time: string
-    isRead: boolean
   }
+  userID: string
 }
 
-export default function MessageInterface() {
-  const [activeConversation, setActiveConversation] = useState<string>("1")
+export default function MessageInterface({conversationId, messages}: any) {
+
   const [messageInput, setMessageInput] = useState("")
+  const [active, setActive] = useState<"contacts" | "messages">("messages");
+  const [students, setStudents] = useState<Contacts[]>([]);
+  const [employers, setEmployers] = useState<Contacts[]>([]);
+  const [admins, setAdmins] = useState<Contacts[]>([]);
+  const [studentsC, setStudentsC] = useState<Conversation[]>([]);
+  const [employersC, setEmployersC] = useState<Conversation[]>([]);
+  const [adminsC, setAdminsC] = useState<Conversation[]>([]);
+  const [isOpenS, setIsOpenS] = useState(false);
+  const [isOpenE, setIsOpenE] = useState(false);
+  const [isOpenA, setIsOpenA] = useState(false);
 
-  const conversations: Conversation[] = [
-    {
-      id: "1",
-      name: "Kemelerina Valentines",
-      avatar: "/placeholder.svg?height=40&width=40",
-      isTyping: true,
-      lastMessage: {
-        content: "Hello! Good morning, we'd like to interview...",
-        time: "8:09 pm",
-        isRead: false,
-      },
-      messages: [
-        {
-          id: "1-1",
-          sender: "Kemelerina Valentines",
-          content:
-            "Hello [Your Name], I'm [Employer Name], the HR Manager at ABC Tech Solutions. Thank you for applying for our IT Internship Program. We've reviewed your application and would love to schedule an interview with you.",
-          time: "6:09",
-          isRead: true,
-          avatar: "/placeholder.svg?height=40&width=40",
-        },
-        {
-          id: "1-2",
-          sender: "Kemelerina Valentines",
-          content:
-            "Are you available for a virtual interview on March 5 at 10:00 AM? Let me know if this works for you or if you need to reschedule.",
-          time: "6:09",
-          isRead: true,
-          avatar: "/placeholder.svg?height=40&width=40",
-        },
-        {
-          id: "1-3",
-          sender: "Kemelerina Valentines",
-          content: "Looking forward to speaking with you!\n\nBest,\n[Employer Name]",
-          time: "6:09",
-          isRead: true,
-          avatar: "/placeholder.svg?height=40&width=40",
-        },
-        {
-          id: "1-4",
-          sender: "me",
-          content: "Really, that's amazing thank you",
-          time: "6:10",
-          isRead: true,
-          avatar: "/placeholder.svg?height=40&width=40",
-        },
-        {
-          id: "1-5",
-          sender: "Kemelerina Valentines",
-          content: "Yes, please make sure to send your resume and lorem ipsum nyenyeneye",
-          time: "6:12",
-          isRead: true,
-          avatar: "/placeholder.svg?height=40&width=40",
-        },
-        {
-          id: "1-6",
-          sender: "me",
-          content:
-            "I appreciate the job offer! I just wanted to ask—does the role come with any additional perks or benefits? Looking forward to your response. Thanks!",
-          time: "6:12",
-          isRead: true,
-          avatar: "/placeholder.svg?height=40&width=40",
-        },
-      ],
-    },
-    {
-      id: "2",
-      name: "MJ Despi",
-      avatar: "/placeholder.svg?height=40&width=40",
-      lastMessage: {
-        content: "Hello! Good morning, we'd like to interview...",
-        time: "8:09 pm",
-        isRead: false,
-      },
-      messages: [],
-    },
-    {
-      id: "3",
-      name: "Kemly Wemly",
-      avatar: "/placeholder.svg?height=40&width=40",
-      lastMessage: {
-        content: "Hello! Good morning, we'd like to interview...",
-        time: "8:09 pm",
-        isRead: false,
-      },
-      messages: [],
-    },
-    {
-      id: "4",
-      name: "Markjecil Bausa",
-      avatar: "/placeholder.svg?height=40&width=40",
-      lastMessage: {
-        content: "Hello! Good morning, we'd like to interview...",
-        time: "8:09 pm",
-        isRead: false,
-      },
-      messages: [],
-    },
-    {
-      id: "5",
-      name: "Zeyn Malik",
-      avatar: "/placeholder.svg?height=40&width=40",
-      lastMessage: {
-        content: "Hello! Good morning, we'd like to interview...",
-        time: "8:09 pm",
-        isRead: false,
-      },
-      messages: [],
-    },
-    {
-      id: "6",
-      name: "Rose Cayer",
-      avatar: "/placeholder.svg?height=40&width=40",
-      lastMessage: {
-        content: "Hello! Good morning, we'd like to interview...",
-        time: "8:09 pm",
-        isRead: false,
-      },
-      messages: [],
-    },
-    {
-      id: "7",
-      name: "Adrian Seva",
-      avatar: "/placeholder.svg?height=40&width=40",
-      lastMessage: {
-        content: "Hello! Good morning, we'd like to interview...",
-        time: "8:09 pm",
-        isRead: false,
-      },
-      messages: [],
-    },
-  ]
-
-  const activeConvo = conversations.find((c) => c.id === activeConversation)
-
-  const handleSendMessage = () => {
-    if (messageInput.trim()) {
-      // In a real app, you would add the message to the conversation
-      // and potentially send it to a backend
-      setMessageInput("")
+  //FETCHING CONTACTS 4 EMPLOYERS
+  useEffect(() => {
+    async function loadStudents() {
+      try {
+        const res = await fetch("/api/employers/messages-events");
+        const data = await res.json();
+        setStudents(data.students);
+        setEmployers(data.employers);
+        setAdmins(data.admins);
+      } catch (err) {
+        console.error("Error fetching students:", err);
+      }
     }
-  }
+
+    loadStudents();
+  }, []);
+
+  //STARTING CONVO
+  const [loading, setLoading] = useState(false)
+  const handleClick = async (chosenUserId: any) => {
+      setLoading(true)
+
+      const res = await fetch('/api/employers/messages-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user2_id: chosenUserId }),
+      })
+
+      const result = await res.json()
+
+      if (result.error) {
+        alert('Error: ' + result.error)
+      } else if (result.message === 'Conversation already exists') {
+        alert('You already have a chat with this user.')
+        console.log(result.data)
+      } else {
+        alert('Conversation created!')
+        console.log(result.data)
+      }
+
+      setLoading(false)
+    }
+
+  //FETCH CONVERSATIONS
+  const [conversations, setConversations] = useState<Conversation[]>([]); 
+
+  useEffect(() => {
+    async function fetchConversations() {
+      try {
+        const res = await fetch("/api/employers/messages-events/get-contacts", { method: "GET" });
+        const data = await res.json();
+        if (data.conversations) {
+          setConversations(data.conversations);
+        }
+        console.log(data);
+      } catch (err) {
+        console.error("❌ Error fetching conversations:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchConversations();
+  }, []);
+  const [activeConversation, setActiveConversation] = useState<any>(null);
+  const activeConvo = conversations.find((c) => c.id === activeConversation);
+  
+  //SENDING MESSAGE
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [chatMessages, setChatMessages] = useState(messages || []);
+  const handleSendMessage = async (conversationId: string) => {
+    if (!message.trim()) return;
+    setSending(true);
+
+    try {
+      const res = await fetch("/api/employers/messages-events/get-contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId, content: message }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setChatMessages((prev: any) => [...prev, data.message]);
+        setMessage("");
+      } else {
+        console.error("❌ API Error:", data.error);
+      }
+    } catch (err) {
+      console.error("❌ Network error:", err);
+    } finally {
+      setSending(false);
+    }
+  };
+
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -217,11 +185,28 @@ export default function MessageInterface() {
         </div>
         <div className="px-3 py-2 border-b">
           <div className="grid w-full grid-cols-2 rounded-full overflow-hidden border">
-            <button className="py-2 px-4 text-center bg-white hover:bg-slate-50 text-slate-700">Inbox</button>
-            <button className="py-2 px-4 text-center bg-blue-600 text-white">Unread</button>
+            {/* Contacts Button */}
+            <button
+              onClick={() => setActive("contacts")}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                ${active === "contacts" ? "bg-blue-600 text-white shadow" : "text-gray-500"}`}
+            >
+              Contacts
+            </button>
+            {/* Messages Button */}
+            <button
+              onClick={() => setActive("messages")}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                ${active === "messages" ? "bg-blue-600 text-white shadow" : "text-gray-500"}`}
+            >
+              Messages
+            </button>
           </div>
-        </div>
-        <div className="overflow-y-auto flex-1">
+        </div> 
+
+        {/* MESSAGING MODE */}
+        {active !== "contacts" &&(
+        <div className="overflow-y-auto flex-1">         
           {conversations.map((conversation) => (
             <div
               key={conversation.id}
@@ -238,41 +223,134 @@ export default function MessageInterface() {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center">
-                  <p className="font-medium truncate">{conversation.name}</p>
-                  <span className="text-xs text-slate-500">{conversation.lastMessage.time}</span>
+                  <p className="font-medium truncate">{conversation.name}</p> 
+                  <span className="text-xs text-slate-500">
+                    {conversation.lastMessage?.time
+                      ? new Date(conversation.lastMessage.time).toLocaleString("en-PH", {
+                          timeZone: "Asia/Manila",
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        }).replace(',', '')
+                      : ""}
+                  </span>
                 </div>
+                <p className="text-xs text-slate-500">{conversation.role}</p>        
                 <p className="text-sm text-slate-600 truncate">
-                  {conversation.isTyping ? (
-                    <span className="text-blue-600 font-medium">is typing...</span>
-                  ) : (
-                    conversation.lastMessage.content
-                  )}
+                  {conversation.lastMessage?.content}
                 </p>
               </div>
-              {!conversation.lastMessage.isRead && (
-                <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 h-2 w-2 rounded-full p-0" />
+            </div>
+          ))}          
+        </div>)}
+          
+        {/* CONTACTS MODE */}   
+        {active === "contacts" &&(
+        <div className="overflow-y-auto flex-1">
+          {/* STUDENTS */}
+          <div className="w-full text-sm">
+            {/* Header / Toggle */}
+            <div
+              onClick={() => setIsOpenS(!isOpenS)}
+              className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-blue-100 rounded-md transition-colors"
+            >
+              <h2 className="font-semibold text-gray-800">Students</h2>
+              {isOpenS ? (
+                <ChevronDown className="w-4 h-4 text-gray-600" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-gray-600" />
               )}
             </div>
+            {/* Collapsible Content */}
+            {isOpenS && (
+              <div className="mt-1 space-y-1">
+              {students.map((s: any) => (
+            <div
+              key={s.id}
+              className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}
+              onClick={() => handleClick(s.id)}
+            >
+              <Avatar className="h-10 w-10 border border-slate-200">
+                <AvatarImage src={"/placeholder.svg"} alt={s.first_name + " " + s.last_name} />
+                <AvatarFallback className="bg-blue-100 text-blue-700">
+                  {s.last_name.substring(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-center">
+                  <p className="font-medium truncate">{s.first_name}</p>
+                </div>
+                <div className="flex justify-between items-center">
+                  <p className="font-medium truncate text-xs">Student</p>
+                </div>
+              </div>
+            </div>
           ))}
-        </div>
-      </div>
+
+          </div>
+            )}
+          </div>
+
+          {/* ADMINS */}
+          <div className="w-full text-sm">
+            {/* Header / Toggle */}
+            <div
+              onClick={() => setIsOpenA(!isOpenA)}
+              className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-blue-100 rounded-md transition-colors"
+            >
+              <h2 className="font-semibold text-gray-800">OJT Coordinator</h2>
+              {isOpenA ? (
+                <ChevronDown className="w-4 h-4 text-gray-600" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-gray-600" />
+              )}
+            </div>
+            {/* Collapsible Content */}
+            {isOpenA && (
+              <div className="mt-1 space-y-1">
+              {admins.map((a: any) => (
+            <div
+              key={a.id}
+              className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}
+              onClick={() => handleClick(a.id)}
+            >
+              <Avatar className="h-10 w-10 border border-slate-200">
+                <AvatarImage src={"/placeholder.svg"} alt={a.first_name + " " + a.last_name} />
+                <AvatarFallback className="bg-blue-100 text-blue-700">
+                  {a.last_name.substring(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-center">
+                  <p className="font-medium truncate">{a.first_name}</p>
+                </div>
+                <div className="flex justify-between items-center">
+                  <p className="font-medium truncate text-xs">Admin</p>
+                </div>
+              </div>
+            </div>
+          ))}
+          </div>
+            )}
+          </div>
+                    
+        </div>)}
+      </div> 
 
       {/* Right side - active conversation */}
-      <div className="flex-1 flex flex-col h-full">
-        {activeConvo && (
+      <div className="flex-1 flex flex-col h-full relative">
+        {activeConvo&&(
           <>
             {/* Header */}
-            <div className="flex items-center gap-3 p-4 border-b bg-white shadow-sm">
+            <div className="flex items-center gap-3 p-4 border-b bg-white shadow-sm relative">
               <Avatar className="h-10 w-10 border border-slate-200">
                 <AvatarImage src={activeConvo.avatar || "/placeholder.svg"} alt={activeConvo.name} />
                 <AvatarFallback className="bg-blue-100 text-blue-700">
                   {activeConvo.name.substring(0, 2)}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1">
-                <p className="font-medium">{activeConvo.name}</p>
-                {activeConvo.isTyping && <p className="text-xs text-blue-600">is typing...</p>}
-              </div>
               <div className="flex gap-2">
                 {/* removed Phone and Video buttons */}
                 <Button
@@ -294,21 +372,6 @@ export default function MessageInterface() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>Messaging Settings</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                      <DropdownMenuItem>
-                        <Bell className="mr-2 h-4 w-4" />
-                        <span>Notification Preferences</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <UserCog className="mr-2 h-4 w-4" />
-                        <span>Privacy Settings</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Shield className="mr-2 h-4 w-4" />
-                        <span>Blocked Contacts</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuGroup>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
                       <DropdownMenuItem>
@@ -337,10 +400,10 @@ export default function MessageInterface() {
             </div>
 
             {/* Messages area - only this should scroll */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-              {activeConvo.messages.map((message) => (
-                <div key={message.id} className={`flex ${message.sender === "me" ? "justify-end" : "justify-start"}`}>
-                  {message.sender !== "me" && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 ">
+              {activeConvo.messages?.map((message) => (
+                <div key={message.id} className={`flex ${message.sender === activeConvo.userID ? "justify-end" : "justify-start"}`}>
+                  {message.sender !== activeConvo.userID && (
                     <Avatar className="h-8 w-8 mr-2 mt-1 border border-slate-200">
                       <AvatarImage src={activeConvo.avatar || "/placeholder.svg"} alt={activeConvo.name} />
                       <AvatarFallback className="bg-blue-100 text-blue-700">
@@ -349,65 +412,64 @@ export default function MessageInterface() {
                     </Avatar>
                   )}
                   <div className="space-y-1 max-w-[70%]">
-                    {message.sender !== "me" && (
+                    {message.sender !== activeConvo.userID && (
                       <p className="text-sm font-medium text-slate-700">{activeConvo.name}</p>
                     )}
                     <div
                       className={`p-3 rounded-lg whitespace-pre-wrap ${
-                        message.sender === "me"
+                        message.sender === activeConvo.userID
                           ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md"
                           : "bg-white border border-slate-200 text-slate-800 shadow-sm"
                       }`}
                     >
                       {message.content}
                     </div>
-                    <p className="text-xs text-slate-500 text-right">{message.time}</p>
+                    
+                    <p className="text-xs text-slate-500 text-right">{new Date(message.time).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}</p>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Input area - fixed at the bottom of the chat area */}
-            <div className="p-3 border-t bg-white shadow-md">
+            <div className="bottom-0 relative">
+            <div className="p-3 border-t bg-white shadow-md  bottom-0 right-0 flex-1 ">
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full text-slate-600 hover:text-blue-600 hover:bg-blue-50"
-                >
-                  <ImageIcon className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full text-slate-600 hover:text-blue-600 hover:bg-blue-50"
-                >
-                  <Paperclip className="h-5 w-5" />
-                </Button>
                 <Input
                   placeholder="Type your message"
                   className="flex-1 border-slate-200 focus-visible:ring-blue-500"
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault()
-                      handleSendMessage()
+                      handleSendMessage(activeConvo.id)
                     }
                   }}
+                  
                 />
                 <Button
                   size="icon"
-                  className="rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-900 shadow-md"
-                  onClick={handleSendMessage}
+                  className="rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-900 shadow-md flex"
+                  onClick={() => handleSendMessage(activeConvo.id)}
+                  disabled={sending}
                 >
                   <Send className="h-5 w-5" />
                 </Button>
               </div>
             </div>
+            </div>
           </>
         )}
       </div>
+      
     </div>
   )
 }

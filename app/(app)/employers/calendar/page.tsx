@@ -13,8 +13,6 @@ import {
   eachDayOfInterval,
   isSameMonth,
 } from "date-fns"
-import { fetchData } from "next-auth/client/_utils"
-
 
 type CalendarEvent = {
   id: number
@@ -44,7 +42,7 @@ async function handleSubmit(e: React.FormEvent) {
   e.preventDefault();
   setLoading(true);
   setMessage(null);
-
+  if(eventStart <= eventEnd){
   try {
     const isEditing = Boolean(initialEvent?.id); 
     const method = isEditing ? "PUT" : "POST";
@@ -64,20 +62,17 @@ async function handleSubmit(e: React.FormEvent) {
         eventEnd,
       }),
     });
-
     const data = await res.json();
-
     if (!res.ok) {
       throw new Error(data.error || "Failed to save event");
     }
-
     setMessage(
       isEditing
         ? "✏️ Event updated successfully!"
         : "✅ Event created successfully!"
     );
 
-    // clear form only on new event (not when editing)
+    // clear form only on new event 
     if (!isEditing) {
       setEventTitle("");
       setEventLocation("");
@@ -87,6 +82,10 @@ async function handleSubmit(e: React.FormEvent) {
   } catch (err: any) {
     setMessage(`❌ Error saving event: ${err.message}`);
   } finally {
+    setLoading(false);
+  }
+  } else{
+    setMessage(`❌ Start time must be before end time`)
     setLoading(false);
   }
 }
@@ -189,18 +188,20 @@ async function handleSubmit(e: React.FormEvent) {
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [time, setTime] = useState(new Date());
   // Fetch events from API
   useEffect(() => {
   const fetchEvents = async () => {
+  const interval = setInterval(async () => {
     try {
       const res = await fetch("/api/employers/calendar-set-event");
       if (!res.ok) throw new Error("Failed to fetch events");
       const { events } = await res.json();
       setEvents(events);
-
     } catch (err) {
       console.error("Error fetching events:", err);
     }
+  }, 5000);
   }; fetchEvents();
   }, []);
 
@@ -225,35 +226,13 @@ export default function CalendarPage() {
 }
 
 const [events, setEvents] = useState<CalendarEvent[]>(() => {
-    let sampleTitles = [
-      "Team Meeting",
-      "Project Deadline",
-      "Client Presentation",
-      "Code Review",
-      "Lunch with Team",
-    ];
-    let sampleLocations = [
-      "Office",
-      "Zoom",
-      "Google Meet",
-      "Client's Office",
-      "Cafeteria",
-    ];
+    let sampleTitles: string | any[] = [];
+    let sampleLocations: string | any[] = [];
     const monthStart = startOfMonth(new Date());
     const monthEnd = endOfMonth(new Date());
     const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
     const arr: CalendarEvent[] = [];
     daysInMonth.forEach((day, index) => {
-      if (index % 3 === 0) {
-        arr.push({
-          id: index + 1,
-          event_title: sampleTitles[index % sampleTitles.length],
-          event_date: day,
-          event_location: sampleLocations[index % sampleLocations.length],
-          event_start: "10:00 AM",
-          event_end: "11:00 AM",
-        });
-      }
     });
     return arr;
   })

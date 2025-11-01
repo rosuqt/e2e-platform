@@ -48,8 +48,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const employerId =
-      (session.user as any).employerId ?? (session.user as any).id;
+    const employerId = (session.user as any).employerId ?? (session.user as any).id;
 
     const { data, error } = await supabase
       .from("employer_calendar")

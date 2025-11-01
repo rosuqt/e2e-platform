@@ -101,35 +101,14 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>(() => {
     const sampleTitles = [
-      "Team Meeting",
-      "Project Deadline",
-      "Client Presentation",
-      "Code Review",
-      "Lunch with Team",
     ];
     const sampleLocations = [
-      "Office",
-      "Zoom",
-      "Google Meet",
-      "Client's Office",
-      "Cafeteria",
     ];
     const monthStart = startOfMonth(new Date());
     const monthEnd = endOfMonth(new Date());
     const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
     const arr: CalendarEvent[] = [];
-    daysInMonth.forEach((day, index) => {
-      if (index % 3 === 0) {
-        arr.push({
-          id: index + 1,
-          title: sampleTitles[index % sampleTitles.length],
-          date: day,
-          location: sampleLocations[index % sampleLocations.length],
-          timeStart: "10:00 AM",
-          timeEnd: "11:00 AM",
-        });
-      }
-    });
+    
     return arr;
   })
   const [modalOpen, setModalOpen] = useState(false)
