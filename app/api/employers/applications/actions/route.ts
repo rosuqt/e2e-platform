@@ -36,7 +36,6 @@ export async function POST(req: Request) {
     logType = "hired"
     logMessage = "You have successfully hired the applicant!"
   } else if (action === "offer_updated") {
-    // Do not update status, just log activity
     logType = "offer_updated"
     logMessage = message || "Job offer has been updated"
   }

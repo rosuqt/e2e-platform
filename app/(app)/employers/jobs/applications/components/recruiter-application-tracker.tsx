@@ -52,6 +52,8 @@ import { calculateSkillsMatch } from "../../../../../../lib/match-utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { BsMailbox2Flag } from "react-icons/bs"
 import { LuSquarePen } from "react-icons/lu"
+import { TbMailStar } from "react-icons/tb"
+import { useRouter } from "next/navigation"
 
 type JobPosting = {
   job_title?: string
@@ -89,6 +91,7 @@ type Applicant = {
   remote_options?: string
   perks_and_benefits?: string[]
   location?: string
+  is_invited?: boolean
 }
 
 function Pagination({
@@ -367,6 +370,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
         }
         
         setLoading(false)
+        setLoadingJobSelection(false)
       })
       .catch(() => {
         setLoading(false)
@@ -438,6 +442,9 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
     }
     if (filters.dateTo) {
       filtered = filtered.filter(a => a.applied_at && new Date(a.applied_at) <= new Date(filters.dateTo))
+    }
+    if (filters.showInvitedOnly) {
+      filtered = filtered.filter(a => a.is_invited)
     }
     setFilteredApplicants(filtered)
   }, [search, applicants, selectedJob, filters])
@@ -697,7 +704,8 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
     (filters.year?.length || 0) +
     (filters.degree?.length || 0) +
     (filters.dateFrom ? 1 : 0) +
-    (filters.dateTo ? 1 : 0)
+    (filters.dateTo ? 1 : 0) +
+    (filters.showInvitedOnly ? 1 : 0)
 
   const handleViewOffer = async (applicant: Applicant) => {
     setOfferApplicant(applicant)
@@ -830,40 +838,39 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
           <div className="flex flex-col lg:flex-row gap-6">
             <div className="w-full lg:w-2/3" ref={scrollContainerRef}>
               <Card className="shadow-sm border-blue-100">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="mb-2 text-blue-700 text-xl">Your Applicants</CardTitle>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                      onClick={refreshApplicants}
-                      disabled={refreshingApplicants}
-                    >
-                      <Tooltip title="Refresh Applicants" arrow>
-                        <span>
-                          {refreshingApplicants ? (
-                            <span className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-4 w-4" />
-                          )}
-                        </span>
-                      </Tooltip>
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <div className="flex flex-col items-center justify-center min-h-[200px] py-12">
-                      <div className="flex items-center justify-center mb-4">
-                        <span className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></span>
-                      </div>
-                      <span className="mt-2 text-blue-700 font-semibold text-base animate-pulse">
-                        {loadingJobSelection ? "Selecting your job posting..." : "Fetching applicants, please wait..."}
+                <div className="flex items-center justify-between px-6 pt-6 pb-2">
+                  <CardTitle className="mb-2 text-blue-700 text-xl">Your Applicants</CardTitle>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                    onClick={refreshApplicants}
+                    disabled={refreshingApplicants}
+                  >
+                    <Tooltip title="Refresh Applicants" arrow>
+                      <span>
+                        {(refreshingApplicants || loading) ? (
+                          <span className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin block" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
                       </span>
-                    </div>
-                  ) : (
-                    <Tabs value={tab} onValueChange={v => { setTab(v); setPage(1); }} className="w-full">
+                    </Tooltip>
+                  </Button>
+                </div>
+                <CardHeader className="pb-2" style={{ display: "none" }} />
+                <CardContent>
+                  {(loading || refreshingApplicants) ? (
+    <div className="flex flex-col items-center justify-center min-h-[200px] py-12">
+      <div className="flex items-center justify-center mb-4">
+        <span className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></span>
+      </div>
+      <span className="mt-2 text-blue-700 font-semibold text-base animate-pulse">
+        {loadingJobSelection ? "Selecting your job posting..." : "Fetching applicants, please wait..."}
+      </span>
+    </div>
+  ) : (
+    <Tabs value={tab} onValueChange={v => { setTab(v); setPage(1); }} className="w-full">
                     <TabsList className="flex w-full border-b border-gray-200">
                       <TabsTrigger value="all" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600 group">
                         All
@@ -1025,15 +1032,37 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                           const filtered = sortApplicants(filteredApplicants)
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
-                          if (filtered.length === 0) {
-                            return (
-                              <div className="flex flex-col items-center justify-center min-h-[220px]">
-                                <TbUserSearch size={64} className="text-gray-300 mb-2"  />
-                                <div className="text-lg font-semibold text-gray-500">No applicants yet</div>
-                                <div className="text-sm text-blue-500 mt-1">You&apos;ll see applicants here once they apply</div>
-                              </div>
-                            )
-                          }
+                          if (
+        filters.showInvitedOnly &&
+        activeFilterCount === 1 &&
+        filtered.length === 0
+      ) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[220px]">
+            <TbMailStar size={64} className="text-blue-300 mb-2" />
+            <div className="text-lg font-semibold text-blue-500">No invited applicants</div>
+            <div className="text-sm text-blue-400 mt-1">No applicants came from your invitation link or email.</div>
+          </div>
+        )
+      }
+      if (activeFilterCount > 0 && filtered.length === 0) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[220px]">
+            <TbUserSearch size={64} className="text-gray-300 mb-2" />
+            <div className="text-lg font-semibold text-blue-500">No candidates match your filters</div>
+            <div className="text-sm text-blue-400 mt-1">Try adjusting your filters to see more applicants.</div>
+          </div>
+        )
+      }
+      if (filtered.length === 0) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[220px]">
+            <TbUserSearch size={64} className="text-gray-300 mb-2"  />
+            <div className="text-lg font-semibold text-gray-500">No applicants yet</div>
+            <div className="text-sm text-blue-500 mt-1">You&apos;ll see applicants here once they apply</div>
+          </div>
+        )
+      }
                           return (
                             <>
                               {paginated.map(app =>
@@ -1661,7 +1690,7 @@ function ApplicantCard({
 
     if (diffMins < 1) return "just now"
     if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? "" : "s"} ago`
-    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`
+    if ( diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`
     if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`
     if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks === 1 ? "" : "s"} ago`
     const month = (date.getMonth() + 1).toString().padStart(2, '0')
@@ -1680,10 +1709,12 @@ function ApplicantCard({
   const [loadingReject, setLoadingReject] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [cancelInterviewOpen, setCancelInterviewOpen] = useState(false)
+  const router = useRouter()
 
   const handleReject = async () => {
     setLoadingReject(true)
     await onReject()
+
     setLoadingReject(false)
     setRejectOpen(false)
   }
@@ -1801,6 +1832,16 @@ function ApplicantCard({
               <h3 className="font-semibold text-lg text-gray-800">
                 {applicant.first_name} {applicant.last_name}
               </h3>
+              {applicant.is_invited && (
+                <Tooltip title="This applicant came from your invitation link or email" arrow>
+                  <span>
+                    <Badge className="bg-blue-100 text-blue-700 flex items-center gap-1">
+                      <TbMailStar className="w-4 h-4 mr-1" />
+                      Invited
+                    </Badge>
+                  </span>
+                </Tooltip>
+              )}
               <motion.div whileHover={{ scale: 1.15 }}>
                 <Badge className={
                   capitalize(applicant.status) === "Interview scheduled" ? "bg-purple-100 text-purple-700 hover:bg-purple-300 hover:text-purple-800 pointer-events-none" : 
@@ -1889,7 +1930,10 @@ function ApplicantCard({
                 }
               }}
             >
-              <MenuItem onClick={() => setAnchorEl(null)}>
+              <MenuItem onClick={() => {
+                setAnchorEl(null)
+                router.push(`/employers/jobs/job-listings?job=${applicant.job_id}&tab=overview`)
+              }}>
                 <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
                 View Job Listing
               </MenuItem>
@@ -1901,7 +1945,13 @@ function ApplicantCard({
                 const status = capitalize(applicant.status)
                 if (status === "New" || status === "Shortlisted") {
                   return [
-                    <MenuItem key="set-interview" onClick={() => setAnchorEl(null)}>
+                    <MenuItem
+                      key="set-interview"
+                      onClick={e => {
+                        setAnchorEl(null)
+                        handleInviteToInterview(applicant.application_id, e)
+                      }}
+                    >
                       <CalendarIcon className="w-4 h-4 mr-2 text-green-500" />
                       Set Interview
                     </MenuItem>,
@@ -2121,7 +2171,6 @@ function ApplicantCard({
                 <button
                   type="button"
                   className="flex items-center gap-1 text-red-600 text-xs font-medium px-2 py-1 rounded bg-transparent border-0 shadow-none hover:bg-red-50 hover:text-red-700 transition-colors"
-                  style={{ minWidth: 0 }}
                   onClick={e => {
                     e.stopPropagation()
                     setRejectOpen(true)
@@ -2171,7 +2220,9 @@ function ApplicantCard({
               ? "New application"
               : capitalize(applicant.status) === "Review"
               ? "In review"
-              : capitalize(applicant.status) === "Interview"
+              : capitalize(applicant.status) === "Interview Scheduled"
+              ? "Interview phase"
+              : capitalize(applicant.status) === "Interview scheduled" || capitalize(applicant.status) === "Interview Scheduled"
               ? "Interview phase"
               : capitalize(applicant.status) === "Invited"
               ? "Invitation sent"

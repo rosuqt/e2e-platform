@@ -92,7 +92,7 @@ const PERKS_MAP = [
   { id: "flexible", label: "Flexible Hours - Adjusted schedules for students", icon: <ClockIcon className="h-5 w-5 text-pink-500" /> },
 ]
 
-export default function EmployerJobOverview({ selectedJob, onClose, onSuccess }: { selectedJob: string | null; onClose: () => void; onSuccess?: () => void }) {
+export default function EmployerJobOverview({ selectedJob, onClose, onSuccess, initialTab }: { selectedJob: string | null; onClose: () => void; onSuccess?: () => void; initialTab?: string }) {
   const { data: session } = useSession()
   const [jobData, setJobData] = React.useState<JobData | null>(null)
   const [loading, setLoading] = React.useState(false)
@@ -111,7 +111,7 @@ export default function EmployerJobOverview({ selectedJob, onClose, onSuccess }:
     qualified_applicants: 0,
     interviews: 0,
   });
-  const [activeTab, setActiveTab] = React.useState("overview");
+  const [activeTab, setActiveTab] = React.useState(initialTab || "overview");
   const analyticsRef = React.useRef<HTMLDivElement>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [hasApplications, setHasApplications] = React.useState<boolean | null>(null)
@@ -204,6 +204,10 @@ export default function EmployerJobOverview({ selectedJob, onClose, onSuccess }:
         setLoading(false)
       })
   }, [selectedJob])
+
+  React.useEffect(() => {
+    if (initialTab) setActiveTab(initialTab)
+  }, [initialTab])
 
   if (loading) {
     return (

@@ -52,6 +52,7 @@ export default function JobListingPage() {
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false)
   const [duplicateModalData, setDuplicateModalData] = useState<Record<string, unknown> | null>(null)
   const [modalVisible, setModalVisible] = useState(false)
+  const [selectedTab, setSelectedTab] = useState<string | undefined>(undefined)
 
   const refetchRef = useRef<(() => void) | null>(null)
 
@@ -96,12 +97,15 @@ export default function JobListingPage() {
 
   useEffect(() => {
     const jobParam = searchParams?.get("job")
+    const tabParam = searchParams?.get("tab")
     if (jobParam) {
       setSelectedJob(jobParam)
       setIsModalOpen(true)
+      setSelectedTab(tabParam || undefined)
     } else {
       setSelectedJob(null)
       setIsModalOpen(false)
+      setSelectedTab(undefined)
     }
   }, [searchParams])
 
@@ -252,7 +256,7 @@ export default function JobListingPage() {
             <EmployerJobOverview selectedJob={selectedJob} onClose={handleModalClose} onSuccess={() => {
               if (refetchRef.current) refetchRef.current()
               handleModalClose()
-            }} />
+            }} initialTab={selectedTab} />
           </motion.div>
         </motion.div>
       )}

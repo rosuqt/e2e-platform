@@ -254,7 +254,6 @@ function SendOfferModal({
             })
           })
         }
-        // Always call onOfferSent so parent can refetch applicants
         onOfferSent?.(initial.application_id)
       }
       setSaving(false)
@@ -273,6 +272,24 @@ function SendOfferModal({
   const handleClose = () => {
     setSuccess(false)
     onClose?.()
+  }
+
+  const isUnchanged = () => {
+    if (!editMode) return false
+    if (
+      salary !== (initial?.salary ?? "") ||
+      startDate !== (initial?.start_date ?? "") ||
+      employmentType !== (initial?.employment_type ?? jobPost?.work_type ?? "Full-time") ||
+      workSetup !== (initial?.work_setup ?? jobPost?.remote_options ?? "Onsite") ||
+      workSchedule !== (initial?.work_schedule ?? "") ||
+      salaryType !== (initial?.salary_type ?? jobPost?.pay_type ?? "Monthly") ||
+      offerExpiry !== (initial?.offer_expiry ?? "") ||
+      customMessage !== (initial?.custom_message ?? "") ||
+      bonuses.join(", ") !== (initial?.bonuses ?? "") ||
+      allowances.join(", ") !== (initial?.allowances ?? "") ||
+      JSON.stringify([...benefitOptions.filter(opt => selectedBenefitIds.includes(opt.id)).map(opt => opt.label), ...benefits]) !== JSON.stringify(initial?.benefits ?? jobPost?.perks_and_benefits ?? [])
+    ) return false
+    return true
   }
 
   useEffect(() => {
@@ -838,7 +855,7 @@ function SendOfferModal({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={saving || !salary || !startDate}
+              disabled={saving || !salary || !startDate || isUnchanged()}
               sx={{
                 flex: 1,
                 background: "#22c55e",

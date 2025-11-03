@@ -13,7 +13,6 @@ export async function GET(req: NextRequest) {
     console.error("Failed to get admin supabase client:", e)
     return NextResponse.json({ error: "Supabase admin client error" }, { status: 500 })
   }
-  // Use application_id directly in the query, no need to reference it elsewhere
   const { data, error } = await adminSupabase
     .from("job_offers")
     .select("*")

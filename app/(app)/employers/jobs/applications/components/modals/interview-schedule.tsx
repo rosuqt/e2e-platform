@@ -117,8 +117,15 @@ function InterviewScheduleModal({
       .then(res => res.json())
       .then(async json => {
         const colleagues: Colleague[] = Array.isArray(json.data) ? json.data : json.data ? [json.data] : []
+        let currentUserEmail = undefined
+        try {
+          const sessionRes = await fetch("/api/auth/session")
+          const sessionData = await sessionRes.json()
+          currentUserEmail = sessionData?.user?.email
+        } catch {}
+        const filteredColleagues = colleagues.filter(u => u.email && u.email !== currentUserEmail)
         const withAvatars = await Promise.all(
-          colleagues.map(async (u) => {
+          filteredColleagues.map(async (u) => {
             let profile_img = u.profile_img
             if (!profile_img && u.id) {
               try {
@@ -186,6 +193,7 @@ function InterviewScheduleModal({
   }, [teamInput, allColleagues])
 
   useEffect(() => {
+    if (!open) return
     setMode(initial?.mode || "Online")
     setPlatform(initial?.platform || "")
     setAddress(initial?.address || "")
@@ -194,7 +202,7 @@ function InterviewScheduleModal({
     setTime(initial?.time || "")
     setNotes(initial?.notes || "")
     setSummary(initial?.summary || "")
-  }, [initial])
+  }, [open])
 
   const validateDateTime = (d: string, t: string) => {
     if (!d) {

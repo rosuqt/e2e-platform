@@ -2,6 +2,7 @@
 "use client"
 import { useState } from "react"
 import { X, ChevronDown } from "lucide-react"
+import { TbMailStar } from "react-icons/tb"
 
 const statusOptions = [
   "New", "Shortlisted", "Interview", "Hired", "Rejected", "Waitlisted", "Invited"
@@ -38,6 +39,7 @@ export default function FilterModal({
   const [selectedYear, setSelectedYear] = useState<string[]>(initial.year || [])
   const [dateFrom, setDateFrom] = useState(initial.dateFrom || "")
   const [dateTo, setDateTo] = useState(initial.dateTo || "")
+  const [showInvitedOnly, setShowInvitedOnly] = useState(initial.showInvitedOnly || false)
 
 
   const [expandedSections, setExpandedSections] = useState({
@@ -64,6 +66,7 @@ export default function FilterModal({
       year: selectedYear,
       dateFrom,
       dateTo,
+      showInvitedOnly,
     })
     onClose()
   }
@@ -77,6 +80,7 @@ export default function FilterModal({
     setSelectedYear([])
     setDateFrom("")
     setDateTo("")
+    setShowInvitedOnly(false)
   }
 
   const activeFilterCount =
@@ -87,7 +91,8 @@ export default function FilterModal({
     selectedCourse.length +
     selectedYear.length +
     (dateFrom ? 1 : 0) +
-    (dateTo ? 1 : 0)
+    (dateTo ? 1 : 0) +
+    (showInvitedOnly ? 1 : 0)
 
   if (!open) return null
 
@@ -112,6 +117,34 @@ export default function FilterModal({
           </button>
         </div>
         <div className="overflow-y-auto flex-1 p-6 space-y-6">
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setShowInvitedOnly((v: boolean) => !v)}
+              className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <TbMailStar className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold text-slate-900">Show Invited Candidates Only</h3>
+                {showInvitedOnly && (
+                  <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-blue-600 rounded-full">
+                    1
+                  </span>
+                )}
+              </div>
+              <input
+                type="checkbox"
+                checked={showInvitedOnly}
+                onChange={() => setShowInvitedOnly((v: boolean) => !v)}
+                className="w-5 h-5 accent-blue-600"
+              />
+            </button>
+            {showInvitedOnly && (
+              <div className="px-4 pb-4 pt-2 border-t border-slate-200 bg-white flex items-center gap-2 text-blue-700 text-sm">
+                <TbMailStar className="w-4 h-4" />
+                Only applicants who came from your invitation link or email will be shown.
+              </div>
+            )}
+          </div>
           <FilterSection
             title="Status"
             isExpanded={expandedSections.status}
