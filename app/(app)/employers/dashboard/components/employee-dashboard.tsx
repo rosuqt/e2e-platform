@@ -71,6 +71,11 @@ type Applicant = {
     socials?: { key: string; url: string }[]
     countryCode?: string
   }
+  pay_amount?: string
+  pay_type?: string
+  work_type?: string
+  remote_options?: string
+  perks_and_benefits?: string[]
 }
 
 type InterviewSchedule = {
@@ -255,6 +260,11 @@ export default function EmployeeDashboard() {
               course: course,
               year: year ? String(year) : undefined,
               contactInfo,
+              pay_amount: app.pay_amount as string | undefined,
+              pay_type: app.pay_type as string | undefined,
+              work_type: app.work_type as string | undefined,
+              remote_options: app.remote_options as string | undefined,
+              perks_and_benefits: Array.isArray(app.perks_and_benefits) ? app.perks_and_benefits : undefined,
             }
           })
         )
@@ -1023,7 +1033,8 @@ export default function EmployeeDashboard() {
         </DashboardMain>
       </DashboardLayout>
       <RecruiterApplicationDetailsModal
-        applicant={selectedApplicantObj}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        applicant={selectedApplicantObj as any}
         isModalOpen={detailsModalOpen}
         setIsModalOpen={setDetailsModalOpen}
       />
