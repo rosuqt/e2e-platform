@@ -18,7 +18,8 @@ import {
   ChevronDown,
   ChevronUp,
   BarChart2,
-  CalendarDays
+  CalendarDays,
+  CheckCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -47,7 +48,7 @@ import { Dialog,  DialogContent, DialogHeader, DialogTitle, DialogDescription, D
 import { RiCalendarScheduleLine, RiEmotionSadLine } from "react-icons/ri"
 import { LuCalendarCog } from "react-icons/lu"
 import { FaHandHoldingUsd, FaRegCalendarTimes, FaUserCheck } from "react-icons/fa"
-import { FaHandHoldingDollar, FaRegFolderOpen } from "react-icons/fa6"
+import { FaCalendarCheck, FaHandHoldingDollar, FaRegFolderOpen } from "react-icons/fa6"
 import { calculateSkillsMatch } from "../../../../../../lib/match-utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { BsMailbox2Flag } from "react-icons/bs"
@@ -1080,6 +1081,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
+                                  setApplicants={setApplicants}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1126,6 +1128,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
+                                  setApplicants={setApplicants}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1172,6 +1175,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
+                                  setApplicants={setApplicants}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1218,6 +1222,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
+                                  setApplicants={setApplicants}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1264,6 +1269,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
+                                  setApplicants={setApplicants}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1310,6 +1316,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
+                                  setApplicants={setApplicants}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1359,6 +1366,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
+                                  setApplicants={setApplicants}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1405,6 +1413,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   setSendOfferModalOpen={setSendOfferModalOpen}
                                   matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
+                                  setApplicants={setApplicants}
                                 />
                               )}
                               {totalPages > 1 && (
@@ -1587,6 +1596,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
           }
           isModalOpen={isModalOpen}
           setIsModalOpen={setIsModalOpen}
+          refreshApplicants={refreshApplicants}
         />
         <InterviewScheduleModal
           open={interviewModalOpen}
@@ -1652,7 +1662,8 @@ function ApplicantCard({
   setOfferApplicant,
   setSendOfferModalOpen,
   matchScore,
-  handleViewOffer
+  handleViewOffer,
+  setApplicants
 }: {
   applicant: Applicant
   selected: boolean 
@@ -1666,6 +1677,7 @@ function ApplicantCard({
   setSendOfferModalOpen: (open: boolean) => void
   matchScore: number
   handleViewOffer?: (a: Applicant) => Promise<void>
+  setApplicants: React.Dispatch<React.SetStateAction<Applicant[]>>
 }) {
 
   const formattedLocation = applicant.address
@@ -1685,6 +1697,9 @@ function ApplicantCard({
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
     const diffHours = Math.floor(diffMs / 3600000)
+
+
+
     const diffDays = Math.floor(diffMs / 86400000)
     const diffWeeks = Math.floor(diffDays / 7)
 
@@ -1709,6 +1724,8 @@ function ApplicantCard({
   const [loadingReject, setLoadingReject] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [cancelInterviewOpen, setCancelInterviewOpen] = useState(false)
+  const [markDoneOpen, setMarkDoneOpen] = useState(false)
+  const [markDoneLoading, setMarkDoneLoading] = useState(false)
   const router = useRouter()
 
   const handleReject = async () => {
@@ -1724,6 +1741,32 @@ function ApplicantCard({
     await onShortlist()
     setLoadingShortlist(false)
     setCancelInterviewOpen(false)
+  }
+
+  async function handleMarkAsDone() {
+    setMarkDoneLoading(true)
+    try {
+      const res = await fetch("/api/employers/applications/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: applicant.application_id, action: "waitlist" }),
+      })
+      const data = await res.json()
+      if (res.ok && data.status) {
+        applicant.status = "Waitlisted"
+        setApplicants(prev =>
+          prev.map(app =>
+            app.application_id === applicant.application_id
+              ? { ...app, status: "Waitlisted" }
+              : app
+          )
+        )
+      }
+      setMarkDoneOpen(false)
+      setMarkDoneLoading(false)
+    } finally {
+
+    }
   }
 
   function getMatchTooltip(score: number) {
@@ -1796,6 +1839,51 @@ function ApplicantCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Mark as Done Dialog */}
+      <Dialog open={markDoneOpen} onOpenChange={setMarkDoneOpen}>
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+          <div className="flex flex-col items-center justify-center py-8 px-6 bg-white">
+            <div className="flex flex-col items-center">
+              <div className="mb-4 w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center shadow">
+                <FaCalendarCheck className="w-7 h-7 text-blue-600" />
+              </div>
+              <DialogTitle className="text-lg text-center font-semibold mb-2">
+                Mark Interview as Finished?
+              </DialogTitle>
+              <DialogDescription className="text-center text-gray-600 mb-4">
+                This will move <span className="font-semibold text-blue-700">{applicant.first_name}</span>&apos;s application to <span className="font-semibold text-blue-700">Waitlisted</span> status.<br />
+                <span className="text-xs text-muted-foreground block mt-2">
+                  Are you sure you want to mark this interview as finished?
+                </span>
+              </DialogDescription>
+            </div>
+            <div className="flex gap-3 w-full mt-2">
+              <Button
+                variant="outline"
+                onClick={() => setMarkDoneOpen(false)}
+                className="flex-1 border-gray-300"
+                disabled={markDoneLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleMarkAsDone}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={markDoneLoading}
+              >
+                {markDoneLoading ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                ) : (
+                  "Yes, Mark as Finished"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <motion.div
       className={`bg-white rounded-lg shadow-md shadow-blue-50 p-5 border-l-4 transition-colors duration-200
         ${
@@ -1963,6 +2051,10 @@ function ApplicantCard({
                 }
                 if (status === "Interview" || status === "Interview scheduled") {
                   return [
+                    <MenuItem key="mark-done" onClick={() => { setAnchorEl(null); setMarkDoneOpen(true); }}>
+                      <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                      Mark as Done
+                    </MenuItem>,
                     <MenuItem key="send-offer" onClick={() => { setAnchorEl(null); setOfferApplicant({ ...applicant, job_postings: applicant.job_postings }); setSendOfferModalOpen(true); }}>
                       <ArrowUpRight className="w-4 h-4 mr-2 text-yellow-500" />
                       Send Offer

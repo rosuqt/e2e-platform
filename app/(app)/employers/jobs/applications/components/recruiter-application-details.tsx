@@ -138,7 +138,8 @@ export function RecruiterApplicationDetailsModal({
   applicant,
   isModalOpen,
   setIsModalOpen,
-}: RecruiterApplicationDetailsProps) {
+  refreshApplicants,
+}: RecruiterApplicationDetailsProps & { refreshApplicants?: () => void }) {
   const [resumeUrl, setResumeUrl] = useState<string | null>(null)
   const [timeline, setTimeline] = useState<TimelineEvent[]>([])
   const [showInterviewModal, setShowInterviewModal] = useState(false)
@@ -148,6 +149,8 @@ export function RecruiterApplicationDetailsModal({
   const [cancelLoading, setCancelLoading] = useState(false)
   const [showSendOfferModal, setShowSendOfferModal] = useState(false)
   const [jobSkills, setJobSkills] = useState<string[]>([])
+  const [showMarkDoneModal, setShowMarkDoneModal] = useState(false)
+  const [markDoneLoading, setMarkDoneLoading] = useState(false)
   useEffect(() => {
     setResumeUrl(null)
     setTimeline([])
@@ -287,6 +290,25 @@ export function RecruiterApplicationDetailsModal({
     }
   }
 
+  async function handleMarkAsDone() {
+    if (!applicant?.application_id) return
+    setMarkDoneLoading(true)
+    try {
+      await fetch("/api/employers/applications/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: applicant.application_id, action: "waitlist" }),
+      })
+      setIsModalOpen(false)
+     if (typeof refreshApplicants === "function") {
+       setTimeout(() => refreshApplicants(), 100)
+     }
+    } finally {
+      setMarkDoneLoading(false)
+      setShowMarkDoneModal(false)
+    }
+  }
+
   return (
     <>
       <Dialog open={isModalOpen} onOpenChange={open => {
@@ -350,6 +372,7 @@ export function RecruiterApplicationDetailsModal({
               application={application}
               resumeUrl={resumeUrl}
               jobSkills={jobSkills}
+              onOpenMarkDoneModal={() => setShowMarkDoneModal(true)}
               onOpenInterviewModal={() => {
                 setIsModalOpen(false)
                 setEditInterviewMode(false)
@@ -449,6 +472,49 @@ export function RecruiterApplicationDetailsModal({
             : undefined
         }
       />
+      {/* Mark as Done Modal */}
+      <UIDialog open={showMarkDoneModal} onOpenChange={setShowMarkDoneModal}>
+        <UIDialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+          <div className="flex flex-col items-center justify-center py-8 px-6 bg-white">
+            <div className="flex flex-col items-center">
+              <div className="mb-4 w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center shadow">
+                <CheckCircle className="w-7 h-7 text-blue-600" />
+              </div>
+              <UIDialogTitle className="text-lg text-center font-semibold mb-2">
+                Mark Interview as Finished?
+              </UIDialogTitle>
+              <DialogDescription className="text-center text-gray-600 mb-4">
+                This will move <span className="font-semibold text-blue-700">{applicant?.first_name}</span>&apos;s application to <span className="font-semibold text-blue-700">Waitlisted</span> status.<br />
+                <span className="text-xs text-muted-foreground block mt-2">
+                  Are you sure you want to mark this interview as finished?
+                </span>
+              </DialogDescription>
+            </div>
+            <div className="flex gap-3 w-full mt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowMarkDoneModal(false)}
+                className="flex-1 border-gray-300"
+                disabled={markDoneLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleMarkAsDone}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={markDoneLoading}
+              >
+                {markDoneLoading ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                ) : (
+                  "Yes, Mark as Finished"
+                )}
+              </Button>
+            </div>
+          </div>
+        </UIDialogContent>
+      </UIDialog>
     </>
   )
 }
@@ -523,6 +589,7 @@ function RecruiterApplicationDetailsContent({
   onOpenInterviewModal,
   onOpenEditInterviewModal,
   onOpenCancelInterviewModal,
+  onOpenMarkDoneModal,
   setIsModalOpen,
   setShowSendOfferModal
 }: {
@@ -532,6 +599,7 @@ function RecruiterApplicationDetailsContent({
   onOpenInterviewModal?: () => void,
   onOpenEditInterviewModal?: () => void,
   onOpenCancelInterviewModal?: () => void,
+  onOpenMarkDoneModal?: () => void,
   setIsModalOpen?: (open: boolean) => void,
   setShowSendOfferModal?: (open: boolean) => void
 }) {
@@ -1135,16 +1203,20 @@ function RecruiterApplicationDetailsContent({
                         <User className="w-4 h-4 mr-2 text-gray-500" />
                         View Profile
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => {
-                        window.location.href = `/employers/jobs/job-listings?job=${application.job_id}`;
-                      }}>
-                        <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
-                        View Job Listing
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => {}}>
-                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-                        Mark as Done
-                      </DropdownMenuItem>
+<DropdownMenuItem onSelect={() => {
+  window.location.href = `/employers/jobs/job-listings?job=${application.job_id}`;
+}}>
+  <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
+  View Job Listing
+</DropdownMenuItem>
+<DropdownMenuItem onSelect={e => {
+  e.preventDefault();
+  if (setIsModalOpen) setIsModalOpen(false);
+  setTimeout(() => { if (onOpenMarkDoneModal) onOpenMarkDoneModal(); }, 200);
+}}>
+  <CheckCircle className="w-4 h-4 mr-2 hover:text-green-600 text-green-500" />
+  Mark as Done
+</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button
@@ -1231,10 +1303,14 @@ function RecruiterApplicationDetailsContent({
                 <>
                   <Button
                     variant="outline"
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                    className="text-green-700 border-green-200 hover:bg-green-50 flex items-center gap-2"
+                    onClick={() => {
+                      setIsModalOpen?.(false)
+                      setTimeout(() => onOpenMarkDoneModal?.(), 200)
+                    }}
                   >
-                    <TbMessage className="h-4 w-4 mr-2 text-blue-500" />
-                    Message Applicant
+                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                    Mark as Done
                   </Button>
                   <Button
                     className="bg-cyan-600 hover:bg-cyan-700 text-white flex items-center gap-2"
@@ -1258,10 +1334,14 @@ function RecruiterApplicationDetailsContent({
                 <>
                   <Button
                     variant="outline"
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                    className="text-green-700 border-green-200 hover:bg-green-50 flex items-center gap-2"
+                    onClick={() => {
+                      setIsModalOpen?.(false)
+                      setTimeout(() => onOpenMarkDoneModal?.(), 200)
+                    }}
                   >
-                    <TbMessage className="h-4 w-4 mr-2 text-blue-500" />
-                    Message Applicant
+                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                    Mark as Done
                   </Button>
                   <Button
                     className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
@@ -1278,13 +1358,16 @@ function RecruiterApplicationDetailsContent({
             if (status === "interview" || status === "interview scheduled") {
               return (
                 <>
-        
                   <Button
                     variant="outline"
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                    className="text-green-700 border-green-200 hover:bg-green-50 flex items-center gap-2"
+                    onClick={() => {
+                      setIsModalOpen?.(false)
+                      setTimeout(() => onOpenMarkDoneModal?.(), 200)
+                    }}
                   >
-                    <TbMessage className="h-4 w-4 mr-2 text-blue-500" />
-                    Message Applicant
+                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                    Mark as Done
                   </Button>
                   <Button
                     variant="outline"

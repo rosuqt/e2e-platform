@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const { application_id, action, message } = await req.json()
   if (
     !application_id ||
-    !["shortlist", "reject", "interview_scheduled", "offer_sent", "hired", "offer_updated"].includes(action)
+    !["shortlist", "reject", "interview_scheduled", "offer_sent", "hired", "offer_updated", "waitlist"].includes(action)
   ) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 })
   }
@@ -38,6 +38,10 @@ export async function POST(req: Request) {
   } else if (action === "offer_updated") {
     logType = "offer_updated"
     logMessage = message || "Job offer has been updated"
+  } else if (action === "waitlist") {
+    status = "waitlisted"
+    logType = "waitlisted"
+    logMessage = "Applicant was waitlisted after interview"
   }
   if (status) {
     const { error } = await supabase
