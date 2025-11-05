@@ -31,7 +31,11 @@ import { RiProgress6Fill } from "react-icons/ri";
 import { FaMagnifyingGlass } from "react-icons/fa6";
 import { IoTelescope } from "react-icons/io5";
 
-export default function ProfileLayout() {
+interface ProfileLayoutProps {  
+  username: string;
+}
+
+export default function ProfileLayout({username}: ProfileLayoutProps) {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -147,6 +151,9 @@ export default function ProfileLayout() {
   }, [coverImage]);
 
   useEffect(() => {
+
+    if(!username) return;
+
     if (pathname === "/profile") {
       setActiveTab(0);
     } else if (pathname === "/profile/skills") {
@@ -156,7 +163,7 @@ export default function ProfileLayout() {
     } else if (pathname === "/profile/activity") {
       setActiveTab(3);
     }
-  }, [pathname]);
+  }, [pathname, username]);
 
   useEffect(() => {
     if (tabParam === "skills-tab") setActiveTab(1);
@@ -197,7 +204,7 @@ export default function ProfileLayout() {
         setApplicationStatus(data.applicationStatus || "");
       }
     })();
-  }, []);
+  }, [username]);
 
   const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -280,7 +287,7 @@ export default function ProfileLayout() {
     else if (v === 2) tab = "ratings-tab";
     else if (v === 3) tab = "activity-tab";
     else tab = "about-tab";
-    router.push(`/students/profile?tab=${tab}`);
+    router.push(`/profile/${username}?tab=${tab}`);
   };
 
   const renderContent = () => {
