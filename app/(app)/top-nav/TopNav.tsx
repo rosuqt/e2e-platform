@@ -53,8 +53,12 @@ const TopNav: React.FC<TopNavProps> = ({
     const handleProfileClick = () => setProfileModalOpen((prev) => !prev);
     const handleNotificationsClick = () => setNotificationsModalOpen((prev) => !prev);
     const handleMessagesClick = () => setMessagesModalOpen((prev) => !prev);
-
-    // Role-based navigation: employer vs student :P
+  
+    // Build username from session name
+    const username = session?.user?.name
+      ? session.user.name.split(" ").join("")
+      : "profile";
+  
     if (session?.user?.role === "employer") {
       return [
         { path: '/employers/dashboard', label: 'Home', icon: Home },
@@ -66,6 +70,7 @@ const TopNav: React.FC<TopNavProps> = ({
         { path: '/employers/profile', label: 'Me', icon: User, onClick: handleProfileClick },
       ];
     }
+  
     return [
       { path: '/students/dashboard', label: 'Home', icon: Home },
       { path: '/students/people/suggestions', label: 'People', icon: Users },
@@ -73,9 +78,11 @@ const TopNav: React.FC<TopNavProps> = ({
       { path: '/students/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
       ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
       { path: '/students/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
-      { path: '/students/profile', label: 'Me', icon: User, onClick: handleProfileClick },
+      { path: `/students/profile/${username}`, label: 'Me', icon: User, onClick: handleProfileClick },
     ];
   }, [session, showFeedback]);
+  
+  
 
   useEffect(() => {
     Promise.all(navItems.map((item) => router.prefetch(item.path)));
