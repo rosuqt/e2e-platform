@@ -9,6 +9,7 @@ import { AiFillSmile, AiOutlineMeh } from "react-icons/ai"
 import { TbMoodConfuzed } from "react-icons/tb"
 import { SiStarship } from "react-icons/si"
 import { calculateSkillsMatch } from "../../../../../lib/match-utils"
+import { Tooltip } from "@mui/material"
 
 const logoUrlCache: Record<string, string> = {}
 
@@ -163,7 +164,21 @@ const JobCards: React.FC<JobCardsProps> = ({
       !filters.remoteOption ||
       (job.location && job.location.toLowerCase().includes(filters.remoteOption.toLowerCase())) ||
       (job.remote_options && job.remote_options.toLowerCase().includes(filters.remoteOption.toLowerCase()))
-    return matchesTitle && matchesLocation && matchesWorkType && matchesRemoteOption
+
+    let matchesListedAnytime = true
+    if (filters.listedAnytime && job.created_at) {
+      const now = Date.now()
+      const created = new Date(job.created_at).getTime()
+      if (filters.listedAnytime === "24h") {
+        matchesListedAnytime = created >= now - 24 * 60 * 60 * 1000
+      } else if (filters.listedAnytime === "7d") {
+        matchesListedAnytime = created >= now - 7 * 24 * 60 * 60 * 1000
+      } else if (filters.listedAnytime === "30d") {
+        matchesListedAnytime = created >= now - 30 * 24 * 60 * 60 * 1000
+      }
+    }
+
+    return matchesTitle && matchesLocation && matchesWorkType && matchesRemoteOption && matchesListedAnytime
   })
 
   useEffect(() => {
@@ -419,7 +434,11 @@ const JobCards: React.FC<JobCardsProps> = ({
               handleToggleSave(job.id, isSaved)
             }}
           >
-            {isSaved ? <BookmarkFilled size={28} fill="currentColor" /> : <Bookmark size={28} />}
+            <Tooltip title={isSaved ? "Unsave this job" : "Save this job"} placement="top" arrow>
+              <span aria-label={isSaved ? "Unsave this job" : "Save this job"}>
+                {isSaved ? <BookmarkFilled size={28} fill="currentColor" /> : <Bookmark size={28} />}
+              </span>
+            </Tooltip>
           </motion.button>
 
           <div className="flex gap-4 relative z-10">
@@ -434,7 +453,12 @@ const JobCards: React.FC<JobCardsProps> = ({
               />
             </motion.div>
             <div>
-              <h3 className="font-bold text-xl text-blue-800">{job.job_title}</h3>
+              <h3
+                className="font-bold text-xl text-blue-800 truncate max-w-[36rem]"
+                title={job.job_title}
+              >
+                {job.job_title}
+              </h3>
               <p className="text-sm text-blue-600">
                 {job.employers
                   ? `${job.employers.first_name} ${job.employers.last_name}`

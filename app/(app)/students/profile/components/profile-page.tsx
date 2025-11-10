@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { MdWorkOutline, MdStarOutline, MdContactMail, MdOutlineEmojiObjects } from "react-icons/md"
 import { FaFacebook, FaLinkedin, FaRegBookmark, FaTwitter, FaBookmark, FaGithub, FaGlobe, FaInstagram, FaYoutube } from "react-icons/fa6";
 import { LuTrophy } from "react-icons/lu";
-import { Mail, Phone, Trash2 } from "lucide-react"
+import { Mail, Pencil, Phone, Trash2 } from "lucide-react"
 import AddEducationalModal from "./modals/add-education";
 import AddExpertiseModal from "./modals/add-expertise";
 import UploadFileModal from "./modals/upload-file";
@@ -22,10 +22,11 @@ import { useSession } from "next-auth/react";
 import { ExpertiseIcon } from "./data/expertise-icons"
 import { useRouter } from "next/navigation";
 import { FaGraduationCap } from "react-icons/fa";
-import { Tooltip } from "@mui/material";
-import { Pencil } from "lucide-react"
-import { TbFileSmile } from "react-icons/tb";
+import { Tooltip as MuiTooltip, Tooltip } from "@mui/material"
+import toast from "react-hot-toast"
 import { PiFiles } from "react-icons/pi";
+import { TbFileSmile } from "react-icons/tb";
+import { AiSuggestionsModal } from "./modals/ai-suggestions-modal";
 
 const colorMap: Record<string, { color: string; textColor: string }> = {
   "#2563eb": { color: "bg-blue-600", textColor: "text-white" },
@@ -37,6 +38,7 @@ const colorMap: Record<string, { color: string; textColor: string }> = {
   "#64748b": { color: "bg-slate-500", textColor: "text-white" }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function AboutPage() {
   const [openAddEducation, setOpenAddEducation] = useState(false);
   const [openAddExpertise, setOpenAddExpertise] = useState(false);
@@ -123,6 +125,15 @@ export default function AboutPage() {
   const [editingExpertiseIdx, setEditingExpertiseIdx] = useState<number | null>(null);
   const [editingExpertise, setEditingExpertise] = useState<{ skill: string; mastery: number } | null>(null);
   const [editingCertIdx, setEditingCertIdx] = useState<number | null>(null);
+const [aiSuggestions, setAiSuggestions] = useState<{
+  skills: string[];
+  experience: string[];
+  certificates: string[];
+  bio: string;
+} | null>(null);
+const [showAiSuggestionsModal, setShowAiSuggestionsModal] = useState(false);
+
+
   type Portfolio = {
     title: string;
     description?: string;
@@ -135,6 +146,9 @@ export default function AboutPage() {
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
   const [editingPortfolioIdx, setEditingPortfolioIdx] = useState<number | null>(null);
   const [deletingPortfolioIdx, setDeletingPortfolioIdx] = useState<number | null>(null);
+  const [showDeleteResumeModal, setShowDeleteResumeModal] = useState(false)
+  const [dontShowDeleteResumeModal, setDontShowDeleteResumeModal] = useState(false)
+  const [pendingDeleteResumeIdx, setPendingDeleteResumeIdx] = useState<number | null>(null)
 
   const MAX_RESUMES = 3;
   const MAX_COVERS = 3;
@@ -203,9 +217,10 @@ export default function AboutPage() {
   };
 
   const handleDeleteResume = async (idx: number) => {
-    const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
-    const fileToDelete = uploadedResume[idx];
-    if (!fileToDelete) return;
+    setPendingDeleteResumeIdx(idx)
+    const student_id = (session?.user as { studentId?: string })?.studentId || "student_001"
+    const fileToDelete = uploadedResume[idx]
+    if (!fileToDelete) return
     await fetch("/api/students/student-profile/userActions", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -215,9 +230,11 @@ export default function AboutPage() {
         fileName: fileToDelete.name,
         fileUrl: fileToDelete.url,
       }),
-    });
-    fetchUploads();
-  };
+    })
+    setPendingDeleteResumeIdx(null)
+    fetchUploads()
+    toast.success("Resume deleted")
+  }
   const handleDeleteCover = async (idx: number) => {
     const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
     const fileToDelete = uploadedCover[idx];
@@ -278,6 +295,8 @@ export default function AboutPage() {
           }))
         : []
     );
+
+
   };
 
   useEffect(() => {
@@ -747,6 +766,114 @@ export default function AboutPage() {
     setDeletingPortfolioIdx(null);
   };
 
+  const handleResumeUpload = async (fileOrFiles: File | File[]) => {
+    const files = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
+    for (const file of files) {
+      const ocrForm = new FormData();
+      ocrForm.append("file", file, file.name);
+      let parsedText = "";
+      try {
+        const ocrRes = await fetch("/api/ai-matches/pdf-ocr", {
+          method: "POST",
+          body: ocrForm
+        });
+        const ocrData = await ocrRes.json();
+        if (ocrRes.ok && ocrData.text) {
+          parsedText = ocrData.text;
+          console.log("[PDF OCR] Parsed resume text:", ocrData.text);
+        } else {
+          console.warn("[PDF OCR] Error parsing resume:", ocrData.error || ocrData);
+        }
+      } catch (err) {
+        console.error("[PDF OCR] Exception during OCR:", err);
+      }
+
+      const uploadForm = new FormData();
+      uploadForm.append("file", file, file.name);
+      const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
+      uploadForm.append("student_id", student_id);
+
+      let uploadedFileUrl = "";
+      try {
+        const uploadRes = await fetch("/api/students/student-profile/userActions", {
+          method: "POST",
+          body: uploadForm
+        });
+        const uploadData = await uploadRes.json().catch(() => ({}));
+        if (uploadRes.ok) {
+          if (uploadData.uploaded_resume_url) {
+            const p = Array.isArray(uploadData.uploaded_resume_url) ? uploadData.uploaded_resume_url[0] : uploadData.uploaded_resume_url;
+            uploadedFileUrl = p.startsWith("/storage/") ? p : `/storage/${p}`;
+          } else if (uploadData.file_url) {
+            uploadedFileUrl = uploadData.file_url.startsWith("/storage/") ? uploadData.file_url : `/storage/${uploadData.file_url}`;
+          } else if (uploadData.path) {
+            uploadedFileUrl = `/storage/${uploadData.path}`;
+          } else if (uploadData.url) {
+            uploadedFileUrl = uploadData.url;
+          } else {
+            uploadedFileUrl = `/storage/${student_id}/resume/${file.name}`;
+            console.warn("[UPLOAD] upload response did not include path; using constructed url:", uploadedFileUrl);
+          }
+        } else {
+          console.error("[UPLOAD] Upload failed", uploadRes.status, uploadData);
+        }
+      } catch (err) {
+        console.error("[UPLOAD] Exception during upload:", err);
+      }
+
+      try {
+        const aiPayload = {
+          student_id,
+          file_url: uploadedFileUrl,
+          file_name: file.name,
+          file_size: file.size,
+          file_type: file.type || "application/pdf",
+          parsed_text: parsedText
+        };
+        const aiRes = await fetch("/api/ai-matches/ai-resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(aiPayload)
+        });
+        if (!aiRes.ok) {
+          const errBody = await aiRes.text().catch(() => "");
+          console.error("[AI-RESUME] Server error:", aiRes.status, errBody);
+        } else {
+          console.log("[AI-RESUME] Sent parsed resume to ai-resume");
+        }
+      } catch (err) {
+        console.error("[AI-RESUME] Exception sending parsed text:", err);
+      }
+    }
+
+await fetchUploads();
+
+await new Promise(resolve => setTimeout(resolve, 500)); 
+
+try {
+  const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
+  const res = await fetch(`/api/students/student-profile/suggestions?student_id=${student_id}`);
+  if (res.ok) {
+    const data = await res.json();
+    const suggestions = data.suggestions;
+    if (
+      suggestions &&
+      (
+        (Array.isArray(suggestions.skills) && suggestions.skills.length > 0) ||
+        (Array.isArray(suggestions.experience) && suggestions.experience.length > 0) ||
+        (Array.isArray(suggestions.certificates) && suggestions.certificates.length > 0) ||
+        (typeof suggestions.bio === "string" && suggestions.bio.length > 0)
+      )
+    ) {
+      setAiSuggestions(suggestions);
+      setShowAiSuggestionsModal(true);
+    }
+  }
+} catch (err) {
+  console.error("[AI SUGGESTIONS] Error fetching suggestions:", err);
+}
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
@@ -1208,9 +1335,29 @@ export default function AboutPage() {
                       <button
                         className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
                         title="Remove Resume"
-                        onClick={() => handleDeleteResume(idx)}
+                        onClick={() => {
+                          if (dontShowDeleteResumeModal) {
+                            handleDeleteResume(idx)
+                          } else {
+                            setPendingDeleteResumeIdx(idx)
+                            setShowDeleteResumeModal(true)
+                          }
+                        }}
+                        disabled={pendingDeleteResumeIdx === idx}
+                        style={{ position: "relative" }}
                       >
-                        <Trash2 size={18} />
+                        <MuiTooltip title="Delete" arrow>
+                          <span>
+                            {pendingDeleteResumeIdx === idx ? (
+                              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                              </svg>
+                            ) : (
+                              <Trash2 size={18} />
+                            )}
+                          </span>
+                        </MuiTooltip>
                       </button>
                     </div>
                   ))
@@ -1753,6 +1900,7 @@ export default function AboutPage() {
                         </a>
                       );
                     })}
+
                   </div>
                 </div>
               ) : (
@@ -1890,7 +2038,10 @@ export default function AboutPage() {
             ? "Select your cover letter file to upload."
             : ""
         }
-        onUpload={fetchUploads}
+        onUpload={openUploadModal === "resume"
+          ? handleResumeUpload
+          : fetchUploads
+        }
         uploadedFiles={
           openUploadModal === "resume"
             ? uploadedResume.map(f => f.url)
@@ -1905,6 +2056,62 @@ export default function AboutPage() {
         onSave={handleSaveContact}
         initial={contactInfo}
       />
+      {showDeleteResumeModal && pendingDeleteResumeIdx !== null && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-10">
+    <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+      <div className="mb-4 text-center">
+        <div className="text-lg font-semibold mb-2">Are you sure you want to delete this resume?</div>
+        <div className="text-sm text-gray-500 mb-2">This action cannot be undone.</div>
+      </div>
+      <div className="flex items-center mb-4">
+        <input
+          type="checkbox"
+          id="dontShowDeleteResumeModal"
+          checked={dontShowDeleteResumeModal}
+          onChange={e => setDontShowDeleteResumeModal(e.target.checked)}
+          className="mr-2"
+        />
+        <label htmlFor="dontShowDeleteResumeModal" className="text-xs text-gray-600">Don&apos;t show again</label>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          className="flex-1 bg-red-600 text-white hover:bg-red-700"
+          onClick={() => {
+            setShowDeleteResumeModal(false)
+            handleDeleteResume(pendingDeleteResumeIdx)
+          }}
+        >
+          Delete
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-100"
+          onClick={() => {
+            setShowDeleteResumeModal(false)
+            setPendingDeleteResumeIdx(null)
+          }}
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  </div>
+  
+)}
+
+{showAiSuggestionsModal && aiSuggestions && (
+  <AiSuggestionsModal
+    open={showAiSuggestionsModal}
+    onClose={() => setShowAiSuggestionsModal(false)}
+    skills={aiSuggestions.skills}
+    experience={aiSuggestions.experience}
+    certificates={aiSuggestions.certificates.map(c => ({ title: c }))}
+    bio={aiSuggestions.bio}
+  />
+)}
+
     </div>
   )
 }
