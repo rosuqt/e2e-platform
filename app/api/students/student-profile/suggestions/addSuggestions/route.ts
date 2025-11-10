@@ -5,7 +5,7 @@ import { authOptions } from "../../../../../../lib/authOptions";
 import { getServerSession } from "next-auth/next";
 
 export async function POST(req: NextRequest) {
-  const { skills, experience, certificates, bio } = await req.json();
+  const { skills, experience, certificates, bio, educations } = await req.json();
 
   const session = await getServerSession(authOptions);
   const student_id = session?.user?.studentId;
@@ -86,6 +86,52 @@ export async function POST(req: NextRequest) {
       .map((exp: string) => ({ skill: exp, mastery: 100 }))
   ];
 
+  let existingExperiences: any[] = [];
+  if (profile.experiences) {
+    if (typeof profile.experiences === "string") {
+      try {
+        existingExperiences = JSON.parse(profile.experiences);
+      } catch {
+        existingExperiences = [];
+      }
+    } else if (Array.isArray(profile.experiences)) {
+      existingExperiences = profile.experiences;
+    }
+  }
+  const newExperiences = [
+    ...existingExperiences,
+    ...(experience ?? []).filter((exp: any) =>
+      !existingExperiences.some((e: any) =>
+        e.jobTitle === exp.jobTitle &&
+        e.company === exp.company &&
+        e.years === exp.years
+      )
+    )
+  ];
+
+  let existingEducations: any[] = [];
+  if (profile.educations) {
+    if (typeof profile.educations === "string") {
+      try {
+        existingEducations = JSON.parse(profile.educations);
+      } catch {
+        existingEducations = [];
+      }
+    } else if (Array.isArray(profile.educations)) {
+      existingEducations = profile.educations;
+    }
+  }
+  const newEducations = [
+    ...existingEducations,
+    ...(educations ?? []).filter((edu: any) =>
+      !existingEducations.some((e: any) =>
+        e.school === edu.school &&
+        e.degree === edu.degree &&
+        e.level === edu.level
+      )
+    )
+  ];
+
   const newCareerGoals = bio ?? profile.career_goals;
 
   const { error: updateError } = await supabase
@@ -95,6 +141,8 @@ export async function POST(req: NextRequest) {
       certs: newCerts, 
       expertise: newExpertise,
       career_goals: newCareerGoals,
+      experiences: newExperiences,
+      educations: newEducations,
       updated_at: new Date().toISOString(),
     })
     .eq("student_id", student_id);

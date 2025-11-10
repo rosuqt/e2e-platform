@@ -529,5 +529,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
+  if (type === "experience") {
+    const { jobTitle, company, jobType, years, iconColor } = data;
+    const experiences = effectiveProfile?.experiences || [];
+    experiences.push({ jobTitle, company, jobType, years, iconColor });
+
+    const { error: updateError } = await supabase
+      .from("student_profile")
+      .update({ experiences, updated_at: new Date().toISOString() })
+      .eq("student_id", student_id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  }
+
+  if (type === "experience_update") {
+    const experiences = Array.isArray(data) ? data : [];
+    const { error: updateError } = await supabase
+      .from("student_profile")
+      .update({ experiences, updated_at: new Date().toISOString() })
+      .eq("student_id", student_id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  }
+
   return NextResponse.json({ error: "Invalid type" }, { status: 400 });
 }

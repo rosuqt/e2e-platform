@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -14,6 +15,8 @@ import ViewCertModal from "./modals/view-cert";
 import AddEditContactModal from "./modals/add-edit-contact";
 import AddPortfolioModal from "./modals/add-portfolio";
 import ViewPortfolioModal from "./modals/view-portfolio";
+import ExperienceSection from "./modals/experience-section";
+import AddExpModal from "./modals/add-exp";
 import { useState, useEffect } from "react";
 import { TiDelete } from "react-icons/ti"
 import { skillSuggestions } from "./data/skill-suggestions"
@@ -49,6 +52,7 @@ export default function AboutPage() {
   const [openEditContact, setOpenEditContact] = useState(false);
   const [openAddPortfolio, setOpenAddPortfolio] = useState(false);
   const [openViewPortfolio, setOpenViewPortfolio] = useState(false);
+  const [openAddExp, setOpenAddExp] = useState(false);
   const [contactInfo, setContactInfo] = useState<{
     email: string;
     countryCode: string;
@@ -125,6 +129,15 @@ export default function AboutPage() {
   const [editingExpertiseIdx, setEditingExpertiseIdx] = useState<number | null>(null);
   const [editingExpertise, setEditingExpertise] = useState<{ skill: string; mastery: number } | null>(null);
   const [editingCertIdx, setEditingCertIdx] = useState<number | null>(null);
+  const [experiences, setExperiences] = useState<{
+    jobTitle: string;
+    company: string;
+    jobType: string;
+    years: string;
+    iconColor: string;
+  }[]>([]);
+  const [deletingExpIdx, setDeletingExpIdx] = useState<number | null>(null);
+  const [editingExpIdx, setEditingExpIdx] = useState<number | null>(null);
 const [aiSuggestions, setAiSuggestions] = useState<{
   skills: string[];
   experience: string[];
@@ -335,6 +348,9 @@ const [showAiSuggestionsModal, setShowAiSuggestionsModal] = useState(false);
         });
       }
       if (data.portfolio && Array.isArray(data.portfolio)) setPortfolio(data.portfolio);
+      if (data.experiences && Array.isArray(data.experiences)) {
+        setExperiences(data.experiences);
+      }
     };
     fetchProfile();
   }, []);
@@ -442,6 +458,14 @@ const [showAiSuggestionsModal, setShowAiSuggestionsModal] = useState(false);
     await saveProfileField("educations", newEducations);
     setDeletingEducationIdx(null);
   };
+
+const handleDeleteExp = async (idx: number) => {
+  setDeletingExpIdx(idx);
+  const newExperiences = experiences.filter((_, i) => i !== idx);
+  setExperiences(newExperiences);
+  await saveProfileField("experiences", newExperiences);
+  setDeletingExpIdx(null);
+};
 
   const handleAddExpertise = async (data: { skill: string; mastery: number }) => {
     if (
@@ -999,6 +1023,28 @@ try {
             </div>
           </div>
           <hr className="border-gray-200" />
+
+          {/* Experience Section */}
+        <div className="mt-8">
+          <ExperienceSection
+            experiences={experiences}
+            onEdit={idx => setEditingExpIdx(idx)}
+            onDelete={idx => handleDeleteExp(idx)}
+            deletingExpIdx={deletingExpIdx}
+            onAdd={() => setOpenAddExp(true)}
+          />
+        </div>
+        <AddExpModal
+          open={openAddExp}
+          onClose={() => setOpenAddExp(false)}
+          onSave={data => {
+            setExperiences([data, ...experiences]);
+            saveProfileField("experiences", [data, ...experiences]);
+            setOpenAddExp(false);
+          }}
+          editMode={editingExpIdx !== null}
+          initial={editingExpIdx !== null ? experiences[editingExpIdx] : null}
+        />
 
           {/* Career Goals */}
           <div>
@@ -1767,6 +1813,7 @@ try {
             <div className="border-dashed border-2 border-gray-300 bg-gray-50 rounded-lg p-6 flex flex-col items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer min-h-[232px] w-full"
               style={{ gridColumn: "span 1 / span 1" }}
               onClick={() => setOpenAddPortfolio(true)}
+
             >
               <div className="flex flex-col items-center">
                 <div className="w-12 h-12 bg-blue-600 text-white flex items-center justify-center rounded-full">

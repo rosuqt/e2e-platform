@@ -42,7 +42,7 @@ export async function GET(req: Request) {
 
   const { data: profile, error } = await supabase
     .from("student_profile")
-    .select("student_id, skills, expertise, educations, certs, portfolio, introduction, career_goals, contact_info, short_bio, uploaded_resume_url")
+    .select("student_id, skills, expertise, educations, certs, portfolio, introduction, career_goals, contact_info, short_bio, uploaded_resume_url, experiences")
     .eq("student_id", studentId)
     .single();
 
@@ -64,6 +64,7 @@ export async function GET(req: Request) {
     achievements: profile.certs,
     uploaded_resume_url,
     student_id: profile.student_id,
+    experiences: profile.experiences,
   };
 
   return NextResponse.json(profileWithAchievements);
