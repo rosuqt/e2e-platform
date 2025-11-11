@@ -1,8 +1,10 @@
-"use client"
-import { motion } from "framer-motion"
-import Link from "next/link"
-import Image from "next/image"
-import { ArrowRight, Heart, Lightbulb, Shield, Globe } from "lucide-react"
+"use client";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import Image from "next/image";
+import { ArrowRight, Heart, Lightbulb, Shield, Globe } from "lucide-react";
+import LandingFooter from "../../landing/components/landing-footer";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 60 },
@@ -11,7 +13,7 @@ const fadeInUp = {
     y: 0,
     transition: { duration: 0.6, ease: "easeOut" },
   },
-}
+};
 
 const teamMembers = [
   {
@@ -24,25 +26,25 @@ const teamMembers = [
   {
     name: "Suzanne Alyanna Esplana",
     role: "Tester & Quality Assurance",
-    bio: "Please write your bio here.",
-    image: "/placeholder.svg?height=300&width=300",
+    bio: "As the Tester and Quality Assurance member of Seekr, I ensure that every feature works as intended and that the system delivers a smooth, reliable experience for its users.",
+    image: "/images/about-us/zeyn.png",
     expertise: "Quality Assurance & Testing",
   },
   {
     name: "Adrian Sevilla",
     role: "Database Administrator & Full-Stack Developer",
-    bio: "Please write your bio here.",
+    bio: "As the co-developer I make sure to prioritize optimization and simplicity within the technical aspects of the system as to avoid technical debt whilst creating a streamlined and convinient user interface.",
     image: "/placeholder.svg?height=300&width=300",
     expertise: "Support & Development",
   },
   {
     name: "Mark Toniel Seva",
-    role: "Documentation",
-    bio: "Please write your bio here.",
-    image: "/placeholder.svg?height=300&width=300",
+    role: "Documentation & Full-Stack Developer",
+    bio: "At Seekr, I juggle code and documentation, writing the features that make things work and the words that make them make sense. Basically, if it runs smoothly and reads clearly, there’s a good chance I had something to do with it.",
+    image: "/images/about-us/mark.png",
     expertise: "Documentation & Support",
   },
-]
+];
 
 const advisor = {
   name: "Jerryfel Laraga",
@@ -50,39 +52,48 @@ const advisor = {
   bio: "Bio here",
   image: "/placeholder.svg?height=300&width=300",
   expertise: "Education, Full-Stack Developer & Leadership",
-}
+};
 
 const values = [
   {
     icon: <Heart className="w-8 h-8 text-white" />,
     title: "Student-First",
-    description: "Every decision we make prioritizes student success and career growth.",
+    description:
+      "Every decision we make prioritizes student success and career growth.",
   },
   {
     icon: <Shield className="w-8 h-8 text-white" />,
     title: "Trust & Transparency",
-    description: "We build trust through honest communication and transparent processes.",
+    description:
+      "We build trust through honest communication and transparent processes.",
   },
   {
     icon: <Lightbulb className="w-8 h-8 text-white" />,
     title: "Innovation",
-    description: "We continuously innovate to solve real problems in education and employment.",
+    description:
+      "We continuously innovate to solve real problems in education and employment.",
   },
   {
     icon: <Globe className="w-8 h-8 text-white" />,
     title: "Accessibility",
-    description: "We believe opportunities should be accessible to everyone, everywhere.",
+    description:
+      "We believe opportunities should be accessible to everyone, everywhere.",
   },
-]
+];
 
 const stats = [
-  { number: "2019", label: "Founded" },
+  { number: "2025", label: "Founded" },
   { number: "10,000+", label: "Students Helped" },
   { number: "500+", label: "Partner Companies" },
   { number: "95%", label: "Success Rate" },
-]
+];
 
 export default function AboutUsPage() {
+  const [isContactOpen, setIsContactOpen] = useState(false);
+
+  const openContact = () => setIsContactOpen(true);
+  const closeContact = () => setIsContactOpen(false);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
@@ -98,8 +109,9 @@ export default function AboutUsPage() {
               About <span className="text-yellow-400">Our Mission</span>
             </h1>
             <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
-              We&apos;re on a mission to bridge the gap between education and employment, creating meaningful connections
-              that launch careers and build futures.
+              We&apos;re on a mission to bridge the gap between education and
+              employment, creating meaningful connections that launch careers
+              and build futures.
             </p>
           </motion.div>
         </div>
@@ -131,17 +143,27 @@ export default function AboutUsPage() {
               </h2>
               <div className="space-y-6 text-gray-700">
                 <p className="text-lg">
-                  Founded in 2019, our platform was born from a simple observation: talented students were struggling to
-                  find meaningful opportunities, while companies were having difficulty finding the right talent.
+                  Founded in 2025, Seekr was developed as part of our
+                  undergraduate thesis project with the vision of bridging
+                  education to employment through a dedicated platform for STI
+                  College Alabang students. Our goal was to create a meaningful
+                  impact by connecting OJT students, fresh graduates, and
+                  employers in one unified space that promotes career growth and
+                  professional networking.
                 </p>
                 <p className="text-lg">
-                  As former educators and industry professionals, we experienced this disconnect firsthand. We saw
-                  brilliant students with incredible potential who just needed the right opportunity to shine, and we
-                  met employers who were eager to find fresh talent but didn&apos;t know where to look.
+                  Through Seekr, we aim to empower students to confidently
+                  transition from the classroom to the workplace, while helping
+                  partner employers discover skilled and job-ready candidates.
+                  What began as a thesis project has become a step toward
+                  shaping a future where opportunities are more accessible to
+                  every STI student.
                 </p>
                 <p className="text-lg">
-                  That&apos;s when we decided to build something different—a platform that doesn&apos;t just match resumes to job
-                  descriptions, but creates meaningful connections between people who can help each other grow.
+                  That&apos;s when we decided to build something different—a
+                  platform that doesn&apos;t just match resumes to job
+                  descriptions, but creates meaningful connections between
+                  people who can help each other grow.
                 </p>
               </div>
             </motion.div>
@@ -164,7 +186,9 @@ export default function AboutUsPage() {
 
                 {/* Floating stats */}
                 <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-sm p-4 rounded-xl">
-                  <div className="text-2xl font-bold text-blue-700">10,000+</div>
+                  <div className="text-2xl font-bold text-blue-700">
+                    10,000+
+                  </div>
                   <div className="text-sm text-gray-600">Students Helped</div>
                 </div>
 
@@ -192,7 +216,8 @@ export default function AboutUsPage() {
               Our <span className="text-yellow-500">Values</span>
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              These core values guide everything we do and shape how we build our platform and serve our community.
+              These core values guide everything we do and shape how we build
+              our platform and serve our community.
             </p>
           </motion.div>
 
@@ -233,8 +258,8 @@ export default function AboutUsPage() {
               Meet Our <span className="text-blue-700">Team</span>
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              We&apos;re a diverse team of educators, technologists, and career experts united by our passion for student
-              success.
+              We&apos;re a diverse team of educators, technologists, and career
+              experts united by our passion for student success.
             </p>
           </motion.div>
 
@@ -279,7 +304,9 @@ export default function AboutUsPage() {
           >
             <div className="text-center mb-8">
               <h3 className="text-2xl font-bold mb-2">Our Strategic Advisor</h3>
-              <p className="text-blue-100">Guiding our vision with decades of educational leadership</p>
+              <p className="text-blue-100">
+                Guiding our vision with decades of educational leadership
+              </p>
             </div>
 
             <div className="flex flex-col md:flex-row items-center gap-8">
@@ -294,7 +321,9 @@ export default function AboutUsPage() {
 
               <div className="text-center md:text-left">
                 <h4 className="text-2xl font-bold mb-2">{advisor.name}</h4>
-                <p className="text-yellow-400 font-medium mb-4">{advisor.role}</p>
+                <p className="text-yellow-400 font-medium mb-4">
+                  {advisor.role}
+                </p>
                 <p className="text-blue-100 mb-4">{advisor.bio}</p>
                 <div className="bg-white/20 px-4 py-2 rounded-full text-white text-sm font-medium inline-block">
                   {advisor.expertise}
@@ -319,7 +348,8 @@ export default function AboutUsPage() {
               Our <span className="text-yellow-500">Impact</span>
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Numbers that reflect our commitment to connecting talent with opportunity.
+              Numbers that reflect our commitment to connecting talent with
+              opportunity.
             </p>
           </motion.div>
 
@@ -334,7 +364,9 @@ export default function AboutUsPage() {
                 variants={fadeInUp}
                 transition={{ delay: index * 0.1 }}
               >
-                <div className="text-4xl md:text-5xl font-bold text-blue-700 mb-2">{stat.number}</div>
+                <div className="text-4xl md:text-5xl font-bold text-blue-700 mb-2">
+                  {stat.number}
+                </div>
                 <div className="text-gray-600 font-medium">{stat.label}</div>
               </motion.div>
             ))}
@@ -356,8 +388,8 @@ export default function AboutUsPage() {
               Join Our <span className="text-yellow-400">Mission</span>
             </h2>
             <p className="text-xl text-blue-100 mb-8">
-              Whether you&apos;re a student looking for opportunities or an employer seeking talent, we&apos;re here to help you
-              succeed.
+              Whether you&apos;re a student looking for opportunities or an
+              employer seeking talent, we&apos;re here to help you succeed.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -371,19 +403,127 @@ export default function AboutUsPage() {
                 </motion.button>
               </Link>
 
-              <Link href="/contact">
-                <motion.button
-                  className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-8 py-4 rounded-lg font-medium text-lg"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Contact Us
-                </motion.button>
-              </Link>
+              {/* open modal instead of navigating */}
+              <motion.button
+                onClick={openContact}
+                className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-8 py-4 rounded-lg font-medium text-lg"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                aria-haspopup="dialog"
+                aria-expanded={isContactOpen}
+              >
+                Contact Us
+              </motion.button>
             </div>
           </motion.div>
         </div>
       </section>
+
+      {/* Contact Modal */}
+      {isContactOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* overlay */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={closeContact}
+            aria-hidden="true"
+          />
+
+          {/* modal card */}
+          <div className="relative max-w-xl w-full mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-white text-2xl font-bold">Contact Us</h3>
+                  <p className="text-blue-100 text-sm">
+                    We&apos;d love to hear from you — send us a message and we&apos;ll get
+                    back shortly.
+                  </p>
+                </div>
+                <button
+                  onClick={closeContact}
+                  className="text-white bg-white/10 hover:bg-white/20 rounded-full p-2"
+                  aria-label="Close contact modal"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  // simple non-blocking example: gather values and close
+                  const form = e.currentTarget as HTMLFormElement;
+                  const formData = new FormData(form);
+                  // eslint-disable-next-line no-console
+                  console.log("Contact form", Object.fromEntries(formData));
+                  closeContact();
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Name
+                  </label>
+                  <input
+                    name="name"
+                    className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Message
+                  </label>
+                  <textarea
+                    name="message"
+                    rows={4}
+                    className="mt-1 block w-full rounded-md border-gray-200 shadow-sm px-3 py-2"
+                    required
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={closeContact}
+                    className="px-4 py-2 rounded-md bg-gray-100 text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-md bg-blue-700 text-white"
+                  >
+                    Send Message
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Footer */}
+      <LandingFooter />
     </div>
-  )
+  );
 }
