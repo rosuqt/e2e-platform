@@ -1,14 +1,23 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import { motion } from "framer-motion"
-import { CheckCircle, Search, Briefcase, GraduationCap, Users, Building, MapPin, ChevronUp } from "lucide-react"
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import {
+  CheckCircle,
+  Search,
+  Briefcase,
+  GraduationCap,
+  Users,
+  Building,
+  MapPin,
+  ChevronUp,
+} from "lucide-react";
 import { IoGlobeOutline } from "react-icons/io5";
-import LandingFooter from "../../landing/components/landing-footer"
-import JobCard from "../components/job-card"
-import JobModal from "../components/job-modal"
-import { Button } from "@/components/ui/button"
+import LandingFooter from "../../landing/components/landing-footer";
+import JobCard from "../components/job-card";
+import JobModal from "../components/job-modal";
+import { Button } from "@/components/ui/button";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 60 },
@@ -17,35 +26,35 @@ const fadeInUp = {
     y: 0,
     transition: { duration: 0.6, ease: "easeOut" },
   },
-}
+};
 
 export default function STIHiringPage() {
   type JobType = {
-    id: number
-    title: string
-    department: string
-    location: string
-    type: string
-    salary: string
-    posted: string
-    description: string
-    responsibilities: string[]
-    requirements: string[]
-    benefits: string[]
-    status?: string
-    raw: { id: string } & Record<string, unknown>
-  }
+    id: number;
+    title: string;
+    department: string;
+    location: string;
+    type: string;
+    salary: string;
+    posted: string;
+    description: string;
+    responsibilities: string[];
+    requirements: string[];
+    benefits: string[];
+    status?: string;
+    raw: { id: string } & Record<string, unknown>;
+  };
 
-  const [jobs, setJobs] = useState<JobType[]>([])
-  const [selectedJob, setSelectedJob] = useState<JobType | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [filterDepartment, setFilterDepartment] = useState<string>("")
-  const [searchQuery, setSearchQuery] = useState<string>("")
-  const [showScrollTop, setShowScrollTop] = useState(false)
+  const [jobs, setJobs] = useState<JobType[]>([]);
+  const [selectedJob, setSelectedJob] = useState<JobType | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filterDepartment, setFilterDepartment] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
     fetch("/api/superadmin/careers/fetch")
-      .then(res => res.json())
+      .then((res) => res.json())
       .then(({ data }) => {
         if (Array.isArray(data)) {
           setJobs(
@@ -57,85 +66,116 @@ export default function STIHiringPage() {
               type: item.employment_type || "",
               salary: item.salary_range || "",
               posted: item.posted_date
-                ? new Date(item.posted_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                ? new Date(item.posted_date).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
                 : "",
               description: item.job_description || "",
               responsibilities: Array.isArray(item.responsibilities)
                 ? item.responsibilities
-                : typeof item.responsibilities === "string" && item.responsibilities.length > 0
-                  ? item.responsibilities.split(",").map((s: string) => s.trim()).filter(Boolean)
-                  : [],
+                : typeof item.responsibilities === "string" &&
+                  item.responsibilities.length > 0
+                ? item.responsibilities
+                    .split(",")
+                    .map((s: string) => s.trim())
+                    .filter(Boolean)
+                : [],
               requirements: Array.isArray(item.requirements)
                 ? item.requirements
-                : typeof item.requirements === "string" && item.requirements.length > 0
-                  ? item.requirements.split(",").map((s: string) => s.trim()).filter(Boolean)
-                  : [],
+                : typeof item.requirements === "string" &&
+                  item.requirements.length > 0
+                ? item.requirements
+                    .split(",")
+                    .map((s: string) => s.trim())
+                    .filter(Boolean)
+                : [],
               benefits: Array.isArray(item.benefits)
                 ? item.benefits
                 : typeof item.benefits === "string" && item.benefits.length > 0
-                  ? item.benefits.split(",").map((s: string) => s.trim()).filter(Boolean)
-                  : [],
+                ? item.benefits
+                    .split(",")
+                    .map((s: string) => s.trim())
+                    .filter(Boolean)
+                : [],
               status: item.status || "",
               raw: { id: String(item.id ?? idx + 1), ...item },
             }))
-          )
+          );
         }
-      })
-  }, [])
+      });
+  }, []);
 
   const openJobModal = (job: JobType) => {
-    setSelectedJob(job)
-    setIsModalOpen(true)
-  }
+    setSelectedJob(job);
+    setIsModalOpen(true);
+  };
 
   const closeJobModal = () => {
-    setIsModalOpen(false)
-  }
+    setIsModalOpen(false);
+  };
 
   const filteredJobs = jobs.filter((job) => {
-    const matchesDepartment = filterDepartment === "" || job.department === filterDepartment
+    const matchesDepartment =
+      filterDepartment === "" || job.department === filterDepartment;
     const matchesSearch =
       searchQuery === "" ||
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.description.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesDepartment && matchesSearch
-  })
+      job.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesDepartment && matchesSearch;
+  });
 
-  const departments = Array.from(new Set(jobs.map((job) => job.department).filter(Boolean)))
+  const departments = Array.from(
+    new Set(jobs.map((job) => job.department).filter(Boolean))
+  );
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   useEffect(() => {
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300)
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+      setShowScrollTop(window.scrollY > 300);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section with Navbar */}
       <div className="relative bg-gradient-to-r from-blue-700 to-indigo-800">
-
         <div className="container mx-auto px-4 py-16 md:py-24 lg:py-32">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
-            <motion.div className="lg:w-1/2 text-white" initial="hidden" animate="visible" variants={fadeInUp}>
+            <motion.div
+              className="lg:w-1/2 text-white"
+              initial="hidden"
+              animate="visible"
+              variants={fadeInUp}
+            >
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-                Grow your career with <span className="text-yellow-400">STI College</span>
+                Grow your career with{" "}
+                <span className="text-yellow-400">STI College</span>
               </h1>
-              <h2 className="mt-4 text-2xl font-bold text-yellow-400 md:text-3xl">We&apos;re Hiring</h2>
+              <h2 className="mt-4 text-2xl font-bold text-yellow-400 md:text-3xl">
+                We&apos;re Hiring
+              </h2>
               <p className="mt-6 text-medium text-blue-100 max-w-xl">
-                Join a forward-thinking institution that values innovation and career growth. If you&apos;re talented,
-                passionate, and excited about making a difference, there&apos;s a place for you at STI College.
+                Join a forward-thinking institution that values innovation and
+                career growth. If you&apos;re talented, passionate, and excited
+                about making a difference, there&apos;s a place for you at STI
+                College.
               </p>
 
               <div className="mt-8">
                 <Button
                   className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-medium rounded-lg p-6 text-[15px] flex items-center justify-center gap-2 mt-auto"
-                  onClick={() => document.getElementById("job-listings")?.scrollIntoView({ behavior: "smooth" })}
+                  onClick={() =>
+                    document
+                      .getElementById("job-listings")
+                      ?.scrollIntoView({ behavior: "smooth" })
+                  }
                 >
                   View Open Positions <IoGlobeOutline className="w-4 h-4" />
                 </Button>
@@ -182,17 +222,22 @@ export default function STIHiringPage() {
             viewport={{ once: true, amount: 0.3 }}
             variants={fadeInUp}
           >
-            <h2 className="text-3xl font-bold mb-4">Innovation and Excellence</h2>
+            <h2 className="text-3xl font-bold mb-4">
+              Innovation and Excellence
+            </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Since 1983, STI College has been shaping future-ready professionals through innovative and industry-driven
-              education
+              Since 1983, STI College has been shaping future-ready
+              professionals through innovative and industry-driven education
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <motion.div
               className="overflow-hidden rounded-lg bg-white p-6 shadow-sm border border-gray-100"
-              whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              whileHover={{
+                y: -5,
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+              }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -207,30 +252,41 @@ export default function STIHiringPage() {
                   className="h-full w-full object-cover"
                 />
               </div>
-              <h4 className="mb-2 text-lg font-bold text-blue-700">Modern Campuses</h4>
+              <h4 className="mb-2 text-lg font-bold text-blue-700">
+                Modern Campuses
+              </h4>
               <p className="text-gray-600">
-                Our state-of-the-art facilities are designed to enhance the learning experience.
+                Our state-of-the-art facilities are designed to enhance the
+                learning experience.
               </p>
             </motion.div>
 
             <motion.div
               className="overflow-hidden rounded-lg bg-blue-50 p-6 shadow-sm"
-              whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              whileHover={{
+                y: -5,
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+              }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <h4 className="mb-2 text-lg font-bold text-blue-700">Legacy of Excellence</h4>
+              <h4 className="mb-2 text-lg font-bold text-blue-700">
+                Legacy of Excellence
+              </h4>
               <p className="text-gray-600">
-                With decades of experience in providing quality education, STI has established itself as a leader in the
-                industry.
+                With decades of experience in providing quality education, STI
+                has established itself as a leader in the industry.
               </p>
             </motion.div>
 
             <motion.div
               className="overflow-hidden rounded-lg bg-white p-6 shadow-sm border border-gray-100"
-              whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              whileHover={{
+                y: -5,
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+              }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -245,23 +301,32 @@ export default function STIHiringPage() {
                   className="h-full w-full object-cover"
                 />
               </div>
-              <h4 className="mb-2 text-lg font-bold text-blue-700">Industry-Driven Curriculum</h4>
+              <h4 className="mb-2 text-lg font-bold text-blue-700">
+                Industry-Driven Curriculum
+              </h4>
               <p className="text-gray-600">
-                Our programs are designed in collaboration with industry leaders to ensure relevant skills development.
+                Our programs are designed in collaboration with industry leaders
+                to ensure relevant skills development.
               </p>
             </motion.div>
 
             <motion.div
               className="overflow-hidden rounded-lg bg-blue-50 p-6 shadow-sm"
-              whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              whileHover={{
+                y: -5,
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+              }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.3 }}
             >
-              <h4 className="mb-2 text-lg font-bold text-blue-700">Nationwide Network</h4>
+              <h4 className="mb-2 text-lg font-bold text-blue-700">
+                Nationwide Network
+              </h4>
               <p className="text-gray-600">
-                With campuses across the country, STI offers accessibility and consistent quality education nationwide.
+                With campuses across the country, STI offers accessibility and
+                consistent quality education nationwide.
               </p>
             </motion.div>
           </div>
@@ -278,9 +343,12 @@ export default function STIHiringPage() {
             viewport={{ once: true, amount: 0.3 }}
             variants={fadeInUp}
           >
-            <h2 className="text-3xl font-bold mb-4">Ideal Candidates for Our Team</h2>
+            <h2 className="text-3xl font-bold mb-4">
+              Ideal Candidates for Our Team
+            </h2>
             <p className="mx-auto max-w-2xl text-gray-600">
-              Below are the qualities and characteristics we look for in our ideal candidates
+              Below are the qualities and characteristics we look for in our
+              ideal candidates
             </p>
           </motion.div>
 
@@ -288,30 +356,38 @@ export default function STIHiringPage() {
             {[
               {
                 title: "Dedication",
-                description: "Committed to delivering quality education and fostering student growth",
+                description:
+                  "Committed to delivering quality education and fostering student growth",
                 icon: <GraduationCap className="h-6 w-6 text-blue-700" />,
               },
               {
                 title: "Integrity",
-                description: "Upholding high standards, responsibility and ethical conduct in all interactions",
+                description:
+                  "Upholding high standards, responsibility and ethical conduct in all interactions",
                 icon: <CheckCircle className="h-6 w-6 text-blue-700" />,
               },
               {
                 title: "Commitment to Excellence",
-                description: "Striving for continuous improvement and maintaining high standards in education",
+                description:
+                  "Striving for continuous improvement and maintaining high standards in education",
                 icon: <Briefcase className="h-6 w-6 text-blue-700" />,
               },
             ].map((quality, index) => (
               <motion.div
                 key={index}
                 className="flex flex-col items-center rounded-lg border border-gray-200 bg-white p-8 text-center shadow-sm"
-                whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+                whileHover={{
+                  y: -5,
+                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                }}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <div className="mb-4 rounded-full bg-blue-100 p-4">{quality.icon}</div>
+                <div className="mb-4 rounded-full bg-blue-100 p-4">
+                  {quality.icon}
+                </div>
                 <h3 className="mb-3 text-xl font-bold">{quality.title}</h3>
                 <p className="text-gray-600">{quality.description}</p>
               </motion.div>
@@ -336,8 +412,9 @@ export default function STIHiringPage() {
                 </span>
                 <h2 className="text-3xl font-bold mb-4">Software Developer</h2>
                 <p className="text-blue-100 mb-6">
-                  Join our IT team to develop and maintain software applications for academic and administrative use.
-                  Contribute to creating innovative solutions that enhance the educational experience.
+                  Join our IT team to develop and maintain software applications
+                  for academic and administrative use. Contribute to creating
+                  innovative solutions that enhance the educational experience.
                 </p>
                 <div className="flex flex-wrap gap-4 mb-6">
                   <div className="flex items-center text-blue-100">
@@ -352,9 +429,11 @@ export default function STIHiringPage() {
                 <Button
                   className="bg-white text-blue-700 hover:bg-blue-50"
                   onClick={() => {
-                    const job = jobs.find((j) => j.title === "Software Developer")
+                    const job = jobs.find(
+                      (j) => j.title === "Software Developer"
+                    );
                     if (job) {
-                      openJobModal(job)
+                      openJobModal(job);
                     }
                   }}
                 >
@@ -394,10 +473,12 @@ export default function STIHiringPage() {
             variants={fadeInUp}
           >
             <h2 className="text-3xl font-bold mb-4">
-              <span className="text-blue-700">Career</span> <span className="text-yellow-500">Opportunities</span>
+              <span className="text-blue-700">Career</span>{" "}
+              <span className="text-yellow-500">Opportunities</span>
             </h2>
             <p className="mx-auto max-w-2xl text-gray-600">
-              Discover rewarding positions that align with your skills and passion
+              Discover rewarding positions that align with your skills and
+              passion
             </p>
           </motion.div>
 
@@ -408,9 +489,13 @@ export default function STIHiringPage() {
                 <motion.button
                   key={index}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    filterDepartment === dept ? "bg-blue-700 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    filterDepartment === dept
+                      ? "bg-blue-700 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
-                  onClick={() => setFilterDepartment(dept === filterDepartment ? "" : dept)}
+                  onClick={() =>
+                    setFilterDepartment(dept === filterDepartment ? "" : dept)
+                  }
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.97 }}
                   initial={{ opacity: 0, y: 10 }}
@@ -454,16 +539,24 @@ export default function STIHiringPage() {
           {/* Job Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredJobs.length > 0 ? (
-              filteredJobs.map((job) => <JobCard key={job.id} job={job} onClick={() => openJobModal(job)} />)
+              filteredJobs.map((job) => (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  onClick={() => openJobModal(job)}
+                />
+              ))
             ) : (
               <div className="col-span-3 py-16 text-center bg-white rounded-lg shadow-sm">
                 <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-xl">No job listings match your search criteria.</p>
+                <p className="text-gray-500 text-xl">
+                  No job listings match your search criteria.
+                </p>
                 <button
                   className="mt-4 text-blue-700 hover:underline font-medium"
                   onClick={() => {
-                    setSearchQuery("")
-                    setFilterDepartment("")
+                    setSearchQuery("");
+                    setFilterDepartment("");
                   }}
                 >
                   Clear filters
@@ -486,7 +579,8 @@ export default function STIHiringPage() {
           >
             <h2 className="text-3xl font-bold mb-4">What Our Employees Say</h2>
             <p className="mx-auto max-w-2xl text-gray-600">
-              Hear from our team members about their experience working at STI College
+              Hear from our team members about their experience working at STI
+              College
             </p>
           </motion.div>
 
@@ -521,7 +615,10 @@ export default function STIHiringPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+                whileHover={{
+                  y: -5,
+                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                }}
               >
                 <div className="flex items-center mb-4">
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
@@ -553,20 +650,26 @@ export default function STIHiringPage() {
           >
             <h2 className="text-3xl font-bold mb-4">Benefits & Perks</h2>
             <p className="mx-auto max-w-2xl text-gray-600">
-              We offer competitive benefits to support your professional and personal growth
+              We offer competitive benefits to support your professional and
+              personal growth
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <motion.div
               className="rounded-lg border border-gray-200 bg-white p-6"
-              whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              whileHover={{
+                y: -5,
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+              }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              <h3 className="mb-4 text-xl font-bold text-blue-700">Work-Life Balance</h3>
+              <h3 className="mb-4 text-xl font-bold text-blue-700">
+                Work-Life Balance
+              </h3>
               <ul className="space-y-3">
                 <li className="flex items-start">
                   <CheckCircle className="mr-2 h-5 w-5 text-blue-700 flex-shrink-0 mt-0.5" />
@@ -585,7 +688,10 @@ export default function STIHiringPage() {
 
             <motion.div
               className="rounded-lg bg-blue-700 p-6 text-white"
-              whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              whileHover={{
+                y: -5,
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+              }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -595,11 +701,15 @@ export default function STIHiringPage() {
               <ul className="space-y-3">
                 <li className="flex items-start">
                   <CheckCircle className="mr-2 h-5 w-5 text-blue-300 flex-shrink-0 mt-0.5" />
-                  <span>Access to training programs, workshops, and certifications</span>
+                  <span>
+                    Access to training programs, workshops, and certifications
+                  </span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="mr-2 h-5 w-5 text-blue-300 flex-shrink-0 mt-0.5" />
-                  <span>Career advancement opportunities within the organization</span>
+                  <span>
+                    Career advancement opportunities within the organization
+                  </span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="mr-2 h-5 w-5 text-blue-300 flex-shrink-0 mt-0.5" />
@@ -610,25 +720,36 @@ export default function STIHiringPage() {
 
             <motion.div
               className="rounded-lg border border-gray-200 bg-white p-6"
-              whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              whileHover={{
+                y: -5,
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+              }}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <h3 className="mb-4 text-xl font-bold text-blue-700">Competitive Benefits</h3>
+              <h3 className="mb-4 text-xl font-bold text-blue-700">
+                Competitive Benefits
+              </h3>
               <ul className="space-y-3">
                 <li className="flex items-start">
                   <CheckCircle className="mr-2 h-5 w-5 text-blue-700 flex-shrink-0 mt-0.5" />
-                  <span>Competitive salary with performance-based incentives</span>
+                  <span>
+                    Competitive salary with performance-based incentives
+                  </span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="mr-2 h-5 w-5 text-blue-700 flex-shrink-0 mt-0.5" />
-                  <span>Comprehensive health coverage, and wellness programs</span>
+                  <span>
+                    Comprehensive health coverage, and wellness programs
+                  </span>
                 </li>
                 <li className="flex items-start">
                   <CheckCircle className="mr-2 h-5 w-5 text-blue-700 flex-shrink-0 mt-0.5" />
-                  <span>Employee recognition programs and rewards for achievements</span>
+                  <span>
+                    Employee recognition programs and rewards for achievements
+                  </span>
                 </li>
               </ul>
             </motion.div>
@@ -687,7 +808,7 @@ export default function STIHiringPage() {
                   repeatType: "reverse",
                 }}
               >
-               Journey
+                Journey
               </motion.span>
               <span className="text-white">With Us</span>
             </motion.h2>
@@ -698,8 +819,10 @@ export default function STIHiringPage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              Join our team of dedicated professionals and be part of a community that values innovation, collaboration, and
-              excellence. At STI College, we believe in empowering our employees to reach their full potential.
+              Join our team of dedicated professionals and be part of a
+              community that values innovation, collaboration, and excellence.
+              At STI College, we believe in empowering our employees to reach
+              their full potential.
             </motion.p>
 
             <motion.div
@@ -710,14 +833,22 @@ export default function STIHiringPage() {
             >
               <Button
                 className="bg-white text-blue-700 hover:bg-blue-50 px-10 py-4 rounded-lg font-medium text-lg shadow-glow"
-                onClick={() => document.getElementById("job-listings")?.scrollIntoView({ behavior: "smooth" })}
+                onClick={() =>
+                  document
+                    .getElementById("job-listings")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
               >
                 Apply Now
               </Button>
 
               <Button
                 className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-10 py-4 rounded-lg font-medium text-lg"
-                onClick={() => document.getElementById("job-listings")?.scrollIntoView({ behavior: "smooth" })}
+                onClick={() =>
+                  document
+                    .getElementById("job-listings")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
               >
                 View all positions
               </Button>
@@ -734,11 +865,12 @@ export default function STIHiringPage() {
         >
           <p className="text-sm text-blue-100 flex items-center gap-2">
             <IoGlobeOutline className="w-5 h-5 text-yellow-400" />
-            Got any questions? Message us at <span className="font-bold">email@example.com</span>
+            Got any questions? Message us at{" "}
+            <span className="font-bold">seekr.support@gmail.com</span>
           </p>
           <p className="text-sm text-blue-100 flex items-center gap-2 mt-2">
             <MapPin className="w-5 h-5 text-yellow-400" />
-            Contact us at <span className="font-bold">+123-456-7890</span>
+            Contact us at <span className="font-bold">+63 928 391 9443</span>
           </p>
         </motion.div>
       </section>
@@ -758,9 +890,15 @@ export default function STIHiringPage() {
       )}
 
       {/* Job Modal */}
-      {selectedJob && <JobModal job={selectedJob} isOpen={isModalOpen} onClose={closeJobModal} />}
+      {selectedJob && (
+        <JobModal
+          job={selectedJob}
+          isOpen={isModalOpen}
+          onClose={closeJobModal}
+        />
+      )}
 
       <LandingFooter />
     </div>
-  )
+  );
 }
