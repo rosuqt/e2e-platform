@@ -7,27 +7,52 @@ import Tooltip from "@mui/material/Tooltip";
 type AiSuggestionsModalProps = {
   open: boolean;
   onClose: () => void;
+  onSuggestionsAdded?: () => void;
   skills: string[];
-  experience: string[];
-  certificates: { title: string; issuer?: string; description?: string }[]; 
+  expertise?: string[];
+  // Change experience to array of objects
+  experience: {
+    jobTitle: string;
+    company: string;
+    years: string;
+    iconColor?: string;
+  }[];
+  certificates: { title: string; issuer?: string; description?: string }[];
   bio: string;
+  educations?: {
+    level: string;
+    years: string;
+    degree: string;
+    school: string;
+    acronym: string;
+  }[];
 };
 
 export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
   open,
   onClose,
+  onSuggestionsAdded,
   skills,
+  expertise = [],
   experience,
   certificates,
   bio,
+  educations = [],
 }) => {
+  console.log("Expertise prop:", expertise);
   const [checkedSkills, setCheckedSkills] = useState<boolean[]>(skills.map(() => false));
+  const [checkedExpertise, setCheckedExpertise] = useState<boolean[]>(expertise.map(() => false));
   const [checkedExperience, setCheckedExperience] = useState<boolean[]>(experience.map(() => false));
   const [checkedCertificates, setCheckedCertificates] = useState<boolean[]>(certificates.map(() => false));
   const [checkedBio, setCheckedBio] = useState(false);
+  const [checkedEducations, setCheckedEducations] = useState<boolean[]>(educations.map(() => false));
+  const [loading, setLoading] = useState(false);
 
   const handleSkillCheck = (idx: number) => {
     setCheckedSkills(arr => arr.map((v, i) => i === idx ? !v : v));
+  };
+  const handleExpertiseCheck = (idx: number) => {
+    setCheckedExpertise(arr => arr.map((v, i) => i === idx ? !v : v));
   };
   const handleExperienceCheck = (idx: number) => {
     setCheckedExperience(arr => arr.map((v, i) => i === idx ? !v : v));
@@ -36,24 +61,33 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
     setCheckedCertificates(arr => arr.map((v, i) => i === idx ? !v : v));
   };
   const handleBioCheck = () => setCheckedBio(v => !v);
+  const handleEducationCheck = (idx: number) => {
+    setCheckedEducations(arr => arr.map((v, i) => i === idx ? !v : v));
+  };
 
   const allSelected =
     checkedSkills.every(Boolean) &&
+    checkedExpertise.every(Boolean) &&
     checkedExperience.every(Boolean) &&
     checkedCertificates.every(Boolean) &&
-    checkedBio;
+    checkedBio &&
+    checkedEducations.every(Boolean);
 
   const handleSelectAllToggle = () => {
     if (allSelected) {
       setCheckedSkills(skills.map(() => false));
+      setCheckedExpertise(expertise.map(() => false));
       setCheckedExperience(experience.map(() => false));
       setCheckedCertificates(certificates.map(() => false));
       setCheckedBio(false);
+      setCheckedEducations(educations.map(() => false));
     } else {
       setCheckedSkills(skills.map(() => true));
+      setCheckedExpertise(expertise.map(() => true));
       setCheckedExperience(experience.map(() => true));
       setCheckedCertificates(certificates.map(() => true));
       setCheckedBio(true);
+      setCheckedEducations(educations.map(() => true));
     }
   };
 
@@ -63,22 +97,32 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
     str.length ? str.charAt(0).toUpperCase() + str.slice(1) : str;
 
   const handleAddSuggestions = async () => {
+    setLoading(true); 
     const selectedSkills = skills.filter((_, idx) => checkedSkills[idx]);
+    const selectedExpertise = expertise
+      .filter((_, idx) => checkedExpertise[idx])
+      .map(skill => ({ skill, mastery: 100 }));
+    // Change selectedExperience to filter objects
     const selectedExperience = experience.filter((_, idx) => checkedExperience[idx]);
     const selectedCertificates = certificates.filter((_, idx) => checkedCertificates[idx]);
     const selectedBio = checkedBio ? bio : null;
+    const selectedEducations = educations.filter((_, idx) => checkedEducations[idx]);
 
     await fetch("/api/students/student-profile/suggestions/addSuggestions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         skills: selectedSkills,
+        expertise: selectedExpertise,
         experience: selectedExperience,
         certificates: selectedCertificates,
         bio: selectedBio,
+        educations: selectedEducations,
       }),
     });
 
+    setLoading(false);
+    if (onSuggestionsAdded) onSuggestionsAdded();
     onClose();
   };
 
@@ -286,6 +330,73 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
               </div>
             </div>
           )}
+          {/* Expertise Section */}
+          {expertise.length > 0 && (
+            <div style={{ marginBottom: "1.2rem" }}>
+              <div style={{ fontWeight: 600, fontSize: "1.1rem", marginBottom: 6 }}>
+                Expertise found <span style={{
+                  background: "#1976d2",
+                  color: "#fff",
+                  borderRadius: 12,
+                  padding: "2px 10px",
+                  fontSize: "0.95rem",
+                  marginLeft: 6,
+                }}>{expertise.length}</span>
+              </div>
+              <div style={{
+                display: "flex",
+                gap: "2.5rem", 
+                maxWidth: "100%",
+                width: "100%",
+              }}>
+                {Array.from({ length: 3 }).map((_, colIdx) => {
+                  const start = colIdx * 7;
+                  const end = start + 7;
+                  const colExpertise = expertise.slice(start, end);
+                  return (
+                    <ul
+                      key={colIdx}
+                      style={{
+                        margin: 0,
+                        paddingLeft: 0,
+                        color: "#1976d2",
+                        listStyle: "none",
+                        wordBreak: "break-word",
+                        overflowWrap: "anywhere",
+                        maxWidth: "100%",
+                        minWidth: 180,
+                        flex: 1,
+                      }}
+                    >
+                      {colExpertise.map((skill, idx) => (
+                        <li key={start + idx} style={{
+                          marginBottom: 10,
+                          display: "flex",
+                          alignItems: "center",
+                          cursor: "pointer",
+                          minWidth: 0,
+                          width: "100%",
+                          paddingRight: 10,
+                        }}
+                          onClick={() => handleExpertiseCheck(start + idx)}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checkedExpertise[start + idx]}
+                            onChange={() => handleExpertiseCheck(start + idx)}
+                            style={{ marginRight: 8, pointerEvents: "none" }}
+                          />
+                          <span style={{ userSelect: "none", fontSize: "1rem", minWidth: 0 }}>
+                            {skill}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {/* Experience Section */}
           {experience.length > 0 && (
             <div style={{ marginBottom: "1.2rem" }}>
@@ -299,19 +410,35 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
                 overflowWrap: "anywhere",
                 maxWidth: "100%",
               }}>
-                {experience.map((exp, idx) => (
-                  <li key={idx} style={{ marginBottom: 6, display: "flex", alignItems: "center", cursor: "pointer" }}
-                    onClick={() => handleExperienceCheck(idx)}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checkedExperience[idx]}
-                      onChange={() => handleExperienceCheck(idx)}
-                      style={{ marginRight: 8, pointerEvents: "none" }}
-                    />
-                    <span style={{ userSelect: "none" }}>{capitalizeFirstLetter(exp)}</span>
-                  </li>
-                ))}
+                {experience.map((exp, idx) => {
+                  let expText = "";
+                  if (exp.jobTitle && exp.company && exp.years) {
+                    expText = `${exp.jobTitle} at ${exp.company} (${exp.years})`;
+                  } else if (exp.jobTitle && exp.company) {
+                    expText = `${exp.jobTitle} at ${exp.company}`;
+                  } else if (exp.jobTitle) {
+                    expText = exp.jobTitle;
+                  } else if (exp.company) {
+                    expText = exp.company;
+                  } else {
+                    expText = JSON.stringify(exp);
+                  }
+                  return (
+                    <li key={idx} style={{ marginBottom: 6, display: "flex", alignItems: "center", cursor: "pointer" }}
+                      onClick={() => handleExperienceCheck(idx)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checkedExperience[idx]}
+                        onChange={() => handleExperienceCheck(idx)}
+                        style={{ marginRight: 8, pointerEvents: "none" }}
+                      />
+                      <span style={{ userSelect: "none" }}>
+                        {expText}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -328,18 +455,56 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
                 overflowWrap: "anywhere",
                 maxWidth: "100%",
               }}>
-                {certificates.map((cert, idx) => (
+                {certificates.map((cert, idx) => {
+                  const certText = [
+                    cert.title ? capitalizeFirstLetter(cert.title) : "",
+                    cert.issuer ? `by ${cert.issuer}` : "",
+                    cert.description ? `(${cert.description})` : ""
+                  ].filter(Boolean).join(" ");
+                  return (
+                    <li key={idx} style={{ marginBottom: 6, display: "flex", alignItems: "center", cursor: "pointer" }}
+                      onClick={() => handleCertificateCheck(idx)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checkedCertificates[idx]}
+                        onChange={() => handleCertificateCheck(idx)}
+                        style={{ marginRight: 8, pointerEvents: "none" }}
+                      />
+                      <span style={{ userSelect: "none" }}>
+                        {certText}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+          {/* Educations Section */}
+          {educations.length > 0 && (
+            <div style={{ marginBottom: "1.2rem" }}>
+              <div style={{ fontWeight: 600, fontSize: "1.1rem", marginBottom: 6 }}>Education</div>
+              <ul style={{
+                margin: 0,
+                paddingLeft: 0,
+                color: "#1976d2",
+                listStyle: "none",
+                wordBreak: "break-word",
+                overflowWrap: "anywhere",
+                maxWidth: "100%",
+              }}>
+                {educations.map((edu, idx) => (
                   <li key={idx} style={{ marginBottom: 6, display: "flex", alignItems: "center", cursor: "pointer" }}
-                    onClick={() => handleCertificateCheck(idx)}
+                    onClick={() => handleEducationCheck(idx)}
                   >
                     <input
                       type="checkbox"
-                      checked={checkedCertificates[idx]}
-                      onChange={() => handleCertificateCheck(idx)}
+                      checked={checkedEducations[idx]}
+                      onChange={() => handleEducationCheck(idx)}
                       style={{ marginRight: 8, pointerEvents: "none" }}
                     />
                     <span style={{ userSelect: "none" }}>
-                      {cert.title ? capitalizeFirstLetter(cert.title) : ""}
+                      {`${edu.degree} at ${edu.school} (${edu.level}, ${edu.years})`}
                     </span>
                   </li>
                 ))}
@@ -404,7 +569,8 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
                     checkedSkills.some(Boolean) ||
                     checkedExperience.some(Boolean) ||
                     checkedCertificates.some(Boolean) ||
-                    checkedBio
+                    checkedBio ||
+                    checkedEducations.some(Boolean)
                   )
                     ? "Select at least one suggestion to enable"
                     : ""
@@ -415,17 +581,19 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
                   checkedSkills.some(Boolean) ||
                   checkedExperience.some(Boolean) ||
                   checkedCertificates.some(Boolean) ||
-                  checkedBio
+                  checkedBio ||
+                  checkedEducations.some(Boolean)
                 }
               >
                 <span>
                   <button
                     disabled={
-                      !(
+                      loading || !(
                         checkedSkills.some(Boolean) ||
                         checkedExperience.some(Boolean) ||
                         checkedCertificates.some(Boolean) ||
-                        checkedBio
+                        checkedBio ||
+                        checkedEducations.some(Boolean)
                       )
                     }
                     style={{
@@ -436,27 +604,45 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
                       fontSize: "1rem",
                       borderRadius: 8,
                       padding: "0.6rem 1.8rem",
-                      cursor: !(
-                        checkedSkills.some(Boolean) ||
-                        checkedExperience.some(Boolean) ||
-                        checkedCertificates.some(Boolean) ||
-                        checkedBio
-                      )
+                      cursor: loading
+                        ? "not-allowed"
+                        : !(
+                            checkedSkills.some(Boolean) ||
+                            checkedExperience.some(Boolean) ||
+                            checkedCertificates.some(Boolean) ||
+                            checkedBio ||
+                            checkedEducations.some(Boolean)
+                          )
                         ? "not-allowed"
                         : "pointer",
-                      opacity: !(
-                        checkedSkills.some(Boolean) ||
-                        checkedExperience.some(Boolean) ||
-                        checkedCertificates.some(Boolean) ||
-                        checkedBio
-                      )
+                      opacity: loading
+                        ? 0.6
+                        : !(
+                            checkedSkills.some(Boolean) ||
+                            checkedExperience.some(Boolean) ||
+                            checkedCertificates.some(Boolean) ||
+                            checkedBio ||
+                            checkedEducations.some(Boolean)
+                          )
                         ? 0.6
                         : 1,
                       boxShadow: "0 2px 8px rgba(25, 118, 210, 0.08)",
+                      position: "relative",
                     }}
                     onClick={handleAddSuggestions}
                   >
-                    Add Suggestions
+                    {loading ? (
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <Lottie
+                          animationData={robotLoader}
+                          loop={true}
+                          style={{ width: 28, height: 28, marginRight: 6 }}
+                        />
+                        Adding...
+                      </span>
+                    ) : (
+                      "Add Suggestions"
+                    )}
                   </button>
                 </span>
               </Tooltip>
@@ -467,3 +653,4 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
     </div>
   );
 };
+// NOTE: 'expertise' is sent as [{ skill, mastery }] objects, 'experience' as objects with jobTitle/company/years.

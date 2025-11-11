@@ -39,6 +39,33 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Missing student_id" }, { status: 400 });
     }
 
+    // Experience deletion
+    if (body.type === "experience_delete" && typeof body.experienceIdx === "number") {
+      const { data: profile, error: fetchError } = await supabase
+        .from("student_profile")
+        .select("experiences")
+        .eq("student_id", student_id)
+        .single();
+
+      if (fetchError || !profile) {
+        return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const experiencesArr: any[] = profile.experiences || [];
+      const newExperiences = experiencesArr.filter((_, i) => i !== body.experienceIdx);
+
+      const { error: updateError } = await supabase
+        .from("student_profile")
+        .update({ experiences: newExperiences, updated_at: new Date().toISOString() })
+        .eq("student_id", student_id);
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+      return NextResponse.json({ success: true });
+    }
+
     if (body.type === "education_delete" && typeof educationIdx === "number") {
       const { data: profile, error: fetchError } = await supabase
         .from("student_profile")
@@ -94,7 +121,6 @@ export async function DELETE(req: NextRequest) {
 
     // Resume/Cover Letter file deletion
     if (body.fileType === "resume" || body.fileType === "cover_letter") {
-      // Use a type assertion to allow dynamic field access
       const field = body.fileType === "resume" ? "uploaded_resume_url" : "uploaded_cover_letter_url";
       const { data: profile, error: fetchError } = await supabase
         .from("student_profile")
@@ -106,7 +132,6 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ error: "Profile not found" }, { status: 404 });
       }
 
-      // Use Record<string, unknown> for type-safe dynamic access
       const profileObj = profile as Record<string, unknown>;
       let arr: string[] = [];
       if (Array.isArray(profileObj[field] as string[])) {
@@ -115,13 +140,11 @@ export async function DELETE(req: NextRequest) {
         arr = [profileObj[field] as string];
       }
 
-      // Remove by matching file name (last segment of path)
       arr = arr.filter((path: string) => {
         const last = path.split("/").pop();
         return last !== body.fileName;
       });
 
-      // Remove file from storage
       if (body.fileUrl) {
         let storagePath = body.fileUrl.replace(/^\/storage\//, "");
         if (storagePath.includes("?")) storagePath = storagePath.split("?")[0];

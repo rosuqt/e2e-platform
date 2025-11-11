@@ -435,7 +435,7 @@ export default function SkillsPage() {
               <div>
                 <h3 className="text-lg font-medium mb-4">Achievements</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-                  {certs.slice(0, 4).map((cert, idx) => (
+                  {certs.map((cert, idx) => (
                     <div key={idx} className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow min-h-[232px] flex flex-col">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">

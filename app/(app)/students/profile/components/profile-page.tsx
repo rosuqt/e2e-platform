@@ -138,12 +138,20 @@ export default function AboutPage() {
   }[]>([]);
   const [deletingExpIdx, setDeletingExpIdx] = useState<number | null>(null);
   const [editingExpIdx, setEditingExpIdx] = useState<number | null>(null);
-const [aiSuggestions, setAiSuggestions] = useState<{
-  skills: string[];
-  experience: string[];
-  certificates: string[];
-  bio: string;
-} | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<{
+    expertise: (string | { name: string; confidence?: number })[] | undefined;
+    skills: string[];
+    experience: string[];
+    certificates: (string | { title: string; issuer?: string; description?: string })[];
+    bio: string;
+    educations?: {
+      level: string;
+      years: string;
+      degree: string;
+      school: string;
+      acronym: string;
+    }[];
+  } | null>(null);
 const [showAiSuggestionsModal, setShowAiSuggestionsModal] = useState(false);
 
 
@@ -312,48 +320,47 @@ const [showAiSuggestionsModal, setShowAiSuggestionsModal] = useState(false);
 
   };
 
-  useEffect(() => {
-    fetchUploads();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  const fetchProfile = async () => {
+  const res = await fetch("/api/students/student-profile/getHandlers");
+  if (!res.ok) return;
+  const data = await res.json();
+  if (data.skills && Array.isArray(data.skills)) setSkills(data.skills);
+  if (data.expertise && Array.isArray(data.expertise)) setExpertise(data.expertise);
+  if (data.educations && Array.isArray(data.educations)) {
+    setEducations(
+      data.educations.map((edu: Record<string, unknown>) => {
+        const colorInfo = colorMap[String(edu.iconColor)] || colorMap["#2563eb"];
+        return {
+          ...edu,
+          color: colorInfo.color,
+          textColor: "text-white"
+        };
+      })
+    );
+  }
+  if (data.certs && Array.isArray(data.certs)) setCerts(data.certs);
+  if (typeof data.introduction === "string") setIntroduction(data.introduction);
+  if (typeof data.career_goals === "string") setCareerGoals(data.career_goals);
+  if (data.contact_info && typeof data.contact_info === "object") {
+    setContactInfo({
+      email: data.contact_info.email || "",
+      countryCode: data.contact_info.countryCode || "",
+      phone: data.contact_info.phone || "",
+      socials: Array.isArray(data.contact_info.socials) ? data.contact_info.socials : []
+    });
+  }
+  if (data.portfolio && Array.isArray(data.portfolio)) setPortfolio(data.portfolio);
+  if (data.experiences && Array.isArray(data.experiences)) {
+    setExperiences(data.experiences);
+  }
+};
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      const res = await fetch("/api/students/student-profile/getHandlers");
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.skills && Array.isArray(data.skills)) setSkills(data.skills);
-      if (data.expertise && Array.isArray(data.expertise)) setExpertise(data.expertise);
-      if (data.educations && Array.isArray(data.educations)) {
-        setEducations(
-          data.educations.map((edu: Record<string, unknown>) => {
-            const colorInfo = colorMap[String(edu.iconColor)] || colorMap["#2563eb"];
-            return {
-              ...edu,
-              color: colorInfo.color,
-              textColor: "text-white"
-            };
-          })
-        );
-      }
-      if (data.certs && Array.isArray(data.certs)) setCerts(data.certs);
-      if (typeof data.introduction === "string") setIntroduction(data.introduction);
-      if (typeof data.career_goals === "string") setCareerGoals(data.career_goals);
-      if (data.contact_info && typeof data.contact_info === "object") {
-        setContactInfo({
-          email: data.contact_info.email || "",
-          countryCode: data.contact_info.countryCode || "",
-          phone: data.contact_info.phone || "",
-          socials: Array.isArray(data.contact_info.socials) ? data.contact_info.socials : []
-        });
-      }
-      if (data.portfolio && Array.isArray(data.portfolio)) setPortfolio(data.portfolio);
-      if (data.experiences && Array.isArray(data.experiences)) {
-        setExperiences(data.experiences);
-      }
-    };
-    fetchProfile();
-  }, []);
+useEffect(() => {
+  fetchProfile();
+  fetchUploads();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [session]);
+ 
 
   const saveProfileField = async (field: string, value: unknown) => {
     if (field === "introduction") setLoadingIntro(true);
@@ -451,20 +458,46 @@ const [showAiSuggestionsModal, setShowAiSuggestionsModal] = useState(false);
     setOpenAddEducation(true);
   };
 
-  const handleDeleteEducation = async (idx: number) => {
-    setDeletingEducationIdx(idx);
-    const newEducations = educations.filter((_, i) => i !== idx);
-    setEducations(newEducations);
-    await saveProfileField("educations", newEducations);
+const handleDeleteEducation = async (idx: number) => {
+  setDeletingEducationIdx(idx);
+  const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
+  try {
+    const res = await fetch("/api/students/student-profile/userActions", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "education_delete",
+        educationIdx: idx,
+        student_id
+      }),
+    });
+    if (res.ok) {
+      setEducations(prev => prev.filter((_, i) => i !== idx));
+    }
+  } finally {
     setDeletingEducationIdx(null);
-  };
+  }
+};
 
 const handleDeleteExp = async (idx: number) => {
   setDeletingExpIdx(idx);
-  const newExperiences = experiences.filter((_, i) => i !== idx);
-  setExperiences(newExperiences);
-  await saveProfileField("experiences", newExperiences);
-  setDeletingExpIdx(null);
+  const student_id = (session?.user as { studentId?: string })?.studentId || "student_001";
+  try {
+    const res = await fetch("/api/students/student-profile/userActions", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "experience_delete",
+        experienceIdx: idx,
+        student_id
+      }),
+    });
+    if (res.ok) {
+      setExperiences(prev => prev.filter((_, i) => i !== idx));
+    }
+  } finally {
+    setDeletingExpIdx(null);
+  }
 };
 
   const handleAddExpertise = async (data: { skill: string; mastery: number }) => {
@@ -1028,7 +1061,10 @@ try {
         <div className="mt-8">
           <ExperienceSection
             experiences={experiences}
-            onEdit={idx => setEditingExpIdx(idx)}
+            onEdit={idx => {
+              setEditingExpIdx(idx);
+              setOpenAddExp(true);
+            }}
             onDelete={idx => handleDeleteExp(idx)}
             deletingExpIdx={deletingExpIdx}
             onAdd={() => setOpenAddExp(true)}
@@ -1156,7 +1192,7 @@ try {
                     </Button>
                   )}
                 </div>
-                {skills.slice(0, 6).map((skill, idx) => (
+                {skills.slice().reverse().slice(0, 6).map((skill, idx) => (
                   <span
                     key={skill}
                     className={`relative flex items-center px-3 py-1 rounded-full text-sm font-medium shadow-sm ${chipColors[idx % chipColors.length].color} ${chipColors[idx % chipColors.length].textColor}`}
@@ -1198,7 +1234,7 @@ try {
               <h3 className="font-medium mb-2">Expertise</h3>
               <p className="text-sm text-gray-500 mb-3 -mt-2">Showcase your technical expertise and areas of proficiency.</p>
               <div className="space-y-4 mb-4">
-                {expertise.slice(0, 3).map((exp, idx) => (
+                {expertise.slice().reverse().slice(0, 3).map((exp, idx) => (
                   <div key={idx} className="flex flex-col gap-1">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
@@ -1538,7 +1574,7 @@ try {
         </div>
         <div className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
-            {certs.slice(0, 4).map((cert, idx) => (
+            {certs.slice().reverse().slice(0, 4).map((cert, idx) => (
               <div key={idx} className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow min-h-[232px] flex flex-col">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-12 h-12 bg-blue-100 text-blue-600 flex items-center justify-center rounded-full">
@@ -2150,13 +2186,44 @@ try {
 
 {showAiSuggestionsModal && aiSuggestions && (
   <AiSuggestionsModal
-    open={showAiSuggestionsModal}
-    onClose={() => setShowAiSuggestionsModal(false)}
-    skills={aiSuggestions.skills}
-    experience={aiSuggestions.experience}
-    certificates={aiSuggestions.certificates.map(c => ({ title: c }))}
-    bio={aiSuggestions.bio}
-  />
+  open={showAiSuggestionsModal}
+  onClose={() => setShowAiSuggestionsModal(false)}
+  onSuggestionsAdded={fetchProfile}
+  skills={aiSuggestions.skills}
+  expertise={
+    Array.isArray(aiSuggestions.expertise)
+      ? aiSuggestions.expertise.map(e =>
+          typeof e === "string"
+            ? e
+            : e.name || ""
+        )
+      : []
+  }
+ experience={
+    Array.isArray(aiSuggestions.experience)
+      ? aiSuggestions.experience.map(exp =>
+          typeof exp === "string"
+            ? { jobTitle: exp, company: "", years: "", iconColor: "#2563eb" }
+            : exp
+        )
+      : []
+  }
+  certificates={
+    Array.isArray(aiSuggestions.certificates)
+      ? aiSuggestions.certificates.map(c =>
+          typeof c === "string"
+            ? { title: c }
+            : {
+                title: c.title || "",
+                issuer: c.issuer || "",
+                description: c.description || ""
+              }
+        )
+      : []
+  }
+  bio={aiSuggestions.bio}
+  educations={aiSuggestions.educations}
+/>
 )}
 
     </div>

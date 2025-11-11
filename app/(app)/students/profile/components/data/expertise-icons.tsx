@@ -107,3 +107,17 @@ export function ExpertiseIcon({ name }: { name: string }) {
     </div>
   );
 }
+
+// Example usage in your expertise list component
+export function ExpertiseList({ expertise }: { expertise: { skill: string; mastery: number }[] }) {
+  return (
+    <div className="flex flex-wrap gap-4">
+      {expertise.map((exp) => (
+        <div key={exp.skill} className="flex items-center gap-2">
+          <ExpertiseIcon name={exp.skill} />
+          <span>{exp.skill}</span>
+        </div>
+      ))}
+    </div>
+  );
+}

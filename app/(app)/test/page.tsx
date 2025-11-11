@@ -10,7 +10,7 @@ export default function TestModalPage() {
   const handleOpen = async () => {
     const res = await fetch("/api/students/student-profile/suggestions/test-fetch");
     const data = await res.json();
-    console.log(data); // <-- add this line
+    console.log(data); 
     setModalData(data);
     setOpen(true);
   };
@@ -36,9 +36,11 @@ export default function TestModalPage() {
           open={open}
           onClose={() => setOpen(false)}
           skills={modalData.skills || []}
+          expertise={modalData.expertise || []}
           experience={modalData.experience || []}
           certificates={modalData.certificates || []}
           bio={modalData.bio || ""}
+          educations={modalData.educations || []}
         />
       )}
     </div>

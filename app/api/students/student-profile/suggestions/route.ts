@@ -1,69 +1,76 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getAdminSupabase } from "@/lib/supabase";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextRequest, NextResponse } from "next/server"
+import { getAdminSupabase } from "@/lib/supabase"
 
 export async function GET(req: NextRequest) {
-  console.log("API /student-profile/suggestions called");
-  const { searchParams } = new URL(req.url);
-  const student_id = searchParams.get("student_id");
+  const supabase = getAdminSupabase()
+  const student_id = req.nextUrl.searchParams.get("student_id")
   if (!student_id) {
-    return NextResponse.json({ error: "Missing student_id" }, { status: 400 });
+    return NextResponse.json({ error: "student_id is required" }, { status: 400 })
   }
 
-  const supabase = getAdminSupabase();
-
- const { data: resumes, error: resumeError } = await supabase
-  .from("parsed_resumes")
-  .select("parsed_skills, parsed_experience, parsed_certificates, summary")
-  .eq("student_id", student_id)
-  .order("parsed_at", { ascending: false })
-  .limit(1);
-
-const resume = resumes && resumes.length > 0 ? resumes[0] : null;
-console.log("Resume:", resume);
-
-  const { data: profile, error: profileError } = await supabase
-    .from("student_profile")
-    .select("skills, certs, expertise, introduction, short_bio")
+  const { data: resumeData, error: resumeError } = await supabase
+    .from("parsed_resumes")
+    .select("*")
     .eq("student_id", student_id)
-    .single();
-      console.log("Profile:", profile);
+    .order("parsed_at", { ascending: false })
+    .limit(1)
 
-  if (resumeError || !resume || profileError || !profile) {
-    return NextResponse.json({ suggestions: [] }, { status: 200 });
+  if (resumeError) {
+    return NextResponse.json({ error: "Failed to fetch parsed resume", details: resumeError }, { status: 500 })
   }
 
+  if (!resumeData || resumeData.length === 0) {
+    return NextResponse.json({ suggestions: { skills: [], experience: [], certificates: [], bio: "", educations: [] } })
+  }
 
-  const profileSkills = Array.isArray(profile.skills) ? profile.skills.map(s => typeof s === "string" ? s.toLowerCase() : "") : [];
-  const aiSkills = Array.isArray(resume.parsed_skills) ? resume.parsed_skills.map(s => s.name.toLowerCase()) : [];
-  const skills = aiSkills.filter(s => !profileSkills.includes(s));
+  const row = resumeData[0]
+  console.log("resume row:", row);
 
-  const profileCerts = Array.isArray(profile.certs) ? profile.certs.map(c => typeof c.title === "string" ? c.title.toLowerCase() : "") : [];
-  const aiCerts = Array.isArray(resume.parsed_certificates) ? resume.parsed_certificates.map(c => c.name.toLowerCase()) : [];
-  const certificates = aiCerts.filter(c => !profileCerts.includes(c));
+  const expertiseArr = row.parsed_expertise;
 
-  const profileExp = Array.isArray(profile.expertise) ? profile.expertise.map(e => typeof e.skill === "string" ? e.skill.toLowerCase() : "") : [];
-  const aiExp = Array.isArray(resume.parsed_experience) ? resume.parsed_experience.map(e => `${e.company} ${e.role}`.toLowerCase()) : [];
-  const experience = aiExp.filter(e => !profileExp.includes(e));
+  console.log("parsed_expertise parsed:", expertiseArr);
 
-  const bio = resume.summary ?? "";
-  const intro = profile.introduction ?? "";
-  const short_bio = profile.short_bio ?? "";
-  const showBio = bio && bio !== intro && bio !== short_bio ? bio : "";
+  const skillsArr = row.parsed_skills;
+  const experienceArr = row.parsed_experience;
+  const certificatesArr = row.parsed_certificates;
+  const educationsArr = row.parsed_education;
 
-  console.log({
-    skills,
-    experience,
-    certificates,
-    bio: showBio
-  });
+  const skills = Array.isArray(skillsArr)
+    ? skillsArr.map((s: any) => typeof s === "string" ? s : s.name || "")
+    : [];
+  const experience = Array.isArray(experienceArr)
+    ? experienceArr.filter((e: any) =>
+        typeof e === "object" &&
+        e !== null &&
+        ("jobTitle" in e || "company" in e || "years" in e)
+      )
+    : [];
+  const certificates = Array.isArray(certificatesArr)
+    ? certificatesArr.map((c: any) => ({
+        title: c.title || "",
+        issuer: c.issuer || "",
+        description: c.description || ""
+      }))
+    : [];
+  const bio = row.summary || "";
 
-  return NextResponse.json({
-    suggestions: {
-      skills,
-      experience,
-      certificates,
-      bio: showBio
-    }
-  });
+  const educations = Array.isArray(educationsArr)
+    ? educationsArr.map((e: any) => ({
+        level: e.level || "",
+        years: e.years || "",
+        degree: e.degree || "",
+        school: e.school || "",
+        acronym: e.acronym || ""
+      }))
+    : [];
 
+  const expertise = Array.isArray(expertiseArr)
+    ? expertiseArr
+        .map((e: any) => typeof e === "string" ? e : e.name)
+        .filter((name: any) => typeof name === "string" && name.length > 0)
+    : [];
+  console.log("expertise mapped:", expertise);
+
+  return NextResponse.json({ suggestions: { skills, experience, certificates, bio, educations, expertise } })
 }

@@ -5,7 +5,7 @@ import { authOptions } from "../../../../../../lib/authOptions";
 import { getServerSession } from "next-auth/next";
 
 export async function POST(req: NextRequest) {
-  const { skills, experience, certificates, bio, educations } = await req.json();
+  const { skills, expertise = [], experience, certificates, bio, educations } = await req.json();
 
   const session = await getServerSession(authOptions);
   const student_id = session?.user?.studentId;
@@ -81,9 +81,9 @@ export async function POST(req: NextRequest) {
   }
   const newExpertise = [
     ...existingExpertise,
-    ...experience
-      .filter((exp: string) => !existingExpertise.some((e: any) => e.skill === exp))
-      .map((exp: string) => ({ skill: exp, mastery: 100 }))
+    ...expertise.filter((exp: any) =>
+      !existingExpertise.some((e: any) => e.skill === exp.skill)
+    )
   ];
 
   let existingExperiences: any[] = [];
@@ -98,9 +98,26 @@ export async function POST(req: NextRequest) {
       existingExperiences = profile.experiences;
     }
   }
+  const iconColors = [
+    "#2563eb", "#10b981", "#f59e42", "#ef4444", "#a855f7", "#f43f5e", "#22d3ee", "#eab308", "#6366f1"
+  ];
+  function getRandomIconColor() {
+    return iconColors[Math.floor(Math.random() * iconColors.length)];
+  }
+  const validExperienceObjects = (experience ?? []).filter(
+    (exp: any) =>
+      typeof exp === "object" &&
+      exp !== null &&
+      "jobTitle" in exp &&
+      "company" in exp &&
+      "years" in exp
+  ).map((exp: any) => ({
+    ...exp,
+    iconColor: exp.iconColor ?? getRandomIconColor()
+  }));
   const newExperiences = [
     ...existingExperiences,
-    ...(experience ?? []).filter((exp: any) =>
+    ...validExperienceObjects.filter((exp: any) =>
       !existingExperiences.some((e: any) =>
         e.jobTitle === exp.jobTitle &&
         e.company === exp.company &&
@@ -153,6 +170,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
+
 
 export async function GET() {
   return NextResponse.json({ status: "ok" });
