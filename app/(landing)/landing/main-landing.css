@@ -1,0 +1,16 @@
+/* Auto-scrolling animation */
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.scrolling-wrapper {
+  display: flex;
+  gap: 1.5rem;
+  animation: scroll 20s linear infinite;
+  will-change: transform;
+}

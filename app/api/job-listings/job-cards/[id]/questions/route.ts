@@ -1,0 +1,22 @@
+import { NextResponse } from "next/server"
+import supabase from "@/lib/supabase"
+
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
+  const { id: jobId } = await context.params
+  const { data, error } = await supabase
+    .from("application_questions")
+    .select("id, question, type, auto_reject, correct_answer, options")
+    .eq("job_id", jobId)
+
+  if (error) {
+    console.error("Supabase error:", error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "No questions found" }, { status: 404 })
+  }
+
+  return NextResponse.json(data)
+}
+

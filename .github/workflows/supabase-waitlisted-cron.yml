@@ -1,0 +1,14 @@
+name: Supabase Waitlisted Cron
+
+on:
+  schedule:
+    - cron: '0 * * * *' # every hour
+
+jobs:
+  call-edge-function:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call update-waitlisted Edge Function
+        run: |
+          curl -X POST "https://dbuyxpovejdakzveiprx.supabase.co/functions/v1/update-waitlisted" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"

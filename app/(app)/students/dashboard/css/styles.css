@@ -1,0 +1,19 @@
+/* Sticky behavior for the right section */
+.sticky-right-section {
+  position: fixed;
+  top: 5rem;
+  right: 20px;
+  width: calc(55% - 20px);
+  height: calc(100vh - 1rem);
+  overflow-y: auto;
+  z-index: 10;
+}
+
+/* Default relative positioning */
+.relative-right-section {
+  position: relative;
+  top: unset;
+  right: unset;
+  width: 60%; 
+  height: calc(100vh - 2rem); 
+}
