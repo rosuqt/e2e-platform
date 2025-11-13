@@ -1,0 +1,32 @@
+Ways to combat limited job pool (since STI college lng nmn to what company wud wanna 
+post here (unless partnered ka ng school)).
+-Beneficial for partnered companies (no need for in school meetings, since pede veriffy online)
+
+IDEAS to make it better kht wla masyado company mag aapply
+-Student Recommended Job Listings
+    -students shud be able to recommend jobs they see online/applied for (then be verified 
+    by a coor admin).
+    -how it would look like. Only be able to post job title, company then link
+
+-Self input job lilstings by coor  
+    -same with first one pero by coordinators,
+
+How would application tracking work here?
+If clicking APPLY button for Recommended jobs, it will open a tab
+the system will then open a modal (Did you apply? Yes or No) pag yes automatically
+stored like any normal applciation (BUT further status will be manually set by the student)
+Siguro we shud just make this required ganon
+-OJT coor shud be able to manually post jobs
+
+Mark task
+(Ask who are the current partneredcompanies)
+
+Everyone
+-Get a list na of possible companies we can invite (find atleast 3 for each member)
+
+
+
+Me:
+Transsion
+
+
