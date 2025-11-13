@@ -15,7 +15,7 @@ export async function GET() {
     // Fetch from multiple tables in parallel
     const [activityRes, offerRes] = await Promise.all([
       supabase.from("activity_log").select("id, employer_id, student_id, job_id, type, message, created_at").eq("student_id", user_id),
-      supabase.from("job_offers").select("id, first_name, last_name") .eq("student_id", user_id),
+      supabase.from("job_offers").select("id, created_at") .eq("student_id", user_id),
     ]);
     
     // Check for errors

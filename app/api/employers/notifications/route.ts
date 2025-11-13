@@ -16,7 +16,7 @@ export async function GET() {
     const [activityRes, accessRes, offerRes] = await Promise.all([
       supabase.from("activity_log").select("id, employer_id, student_id, job_id, type, message, created_at").eq("employer_id", user_id),
       supabase.from("job_team_access").select("id, job_id, employer_id, role, updated_at") .eq("employer_id", user_id),
-      supabase.from("job_offers").select("id, first_name, last_name") .eq("employer_id", user_id),
+      supabase.from("job_offers").select("id, created_at, accept_status") .eq("employer_id", user_id),
     ]);
     
     // Check for errors
@@ -34,7 +34,7 @@ export async function GET() {
       access: accessRes.data,
       offer: offerRes.data,
     })
-    
+
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
