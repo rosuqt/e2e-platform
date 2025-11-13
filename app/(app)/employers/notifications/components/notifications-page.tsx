@@ -1,6 +1,5 @@
 "use client"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Search, Bell, ChevronDown } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -47,10 +46,59 @@ const notifications = [
   },
 ]
 
+type Activity = {
+  id: string;
+  employer_id: string;
+  student_id: string;
+  job_id: string;
+  type: string;
+  message: string;
+  created_at: Date;
+};
+
+type Access = {
+  id: string;
+  employer_id: string;
+  role: string;
+  updated_at: Date;
+};
+
+type Offer = {
+  id: string;
+  created_at: Date;
+  accept_status: string;
+}
+
+
 export default function NotificationsPage() {
   const [selectedNotification, setSelectedNotification] = useState<number | null>(null)
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  
+  const [activity, setActivity] = useState<Activity[]>([]);
+  const [access, setAccess] = useState<Access[]>([]);
+  const [offer, setOffer] = useState<Offer[]>([]);
+
+  //FETCH NOTIFS
+  const getNotif = async () => {
+    async function loadNotif() {
+      try {
+        const res = await fetch("/api/employers/notifications");
+        const data = await res.json();
+        setActivity(data.activity);
+        setAccess(data.access);
+        setOffer(data.offer);
+        console.log(data.activity);
+        console.log(data.access);
+        console.log(data.offer);
+      } catch (err) {
+        console.error("Error fetching students:", err);
+      }
+    }
+
+    loadNotif();
+  };
+  useEffect(() => { getNotif() }, []);
 
   const handleNotificationClick = (id: number) => {
     setSelectedNotification(id)
@@ -68,6 +116,7 @@ export default function NotificationsPage() {
   const handleMenuClose = () => {
     setAnchorEl(null)
   }
+
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
@@ -145,7 +194,8 @@ export default function NotificationsPage() {
                     </Menu>
                   </div>
                 </div>
-
+                
+                {/* NOTIF STARTS HERE */}
                 <TabsContent value="all" className="mt-0 min-h-[400px]">
                   <h3 className="text-lg font-semibold mb-4 text-blue-800">Latest Notifications</h3>
                   <div className="space-y-3">

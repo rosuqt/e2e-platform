@@ -3,13 +3,8 @@ import { useState, useEffect } from "react"
 import {
   Search,
   Plus,
-  ImageIcon,
-  Paperclip,
   Send,
   MoreVertical,
-  Bell,
-  UserCog,
-  Shield,
   Trash2,
   Archive,
   Moon,
@@ -58,15 +53,10 @@ interface Conversation {
 }
 
 export default function MessageInterface({conversationId, messages}: any) {
-
-  const [messageInput, setMessageInput] = useState("")
   const [active, setActive] = useState<"contacts" | "messages">("messages");
   const [students, setStudents] = useState<Contacts[]>([]);
   const [employers, setEmployers] = useState<Contacts[]>([]);
   const [admins, setAdmins] = useState<Contacts[]>([]);
-  const [studentsC, setStudentsC] = useState<Conversation[]>([]);
-  const [employersC, setEmployersC] = useState<Conversation[]>([]);
-  const [adminsC, setAdminsC] = useState<Conversation[]>([]);
   const [isOpenS, setIsOpenS] = useState(false);
   const [isOpenE, setIsOpenE] = useState(false);
   const [isOpenA, setIsOpenA] = useState(false);
@@ -107,8 +97,9 @@ export default function MessageInterface({conversationId, messages}: any) {
         alert('You already have a chat with this user.')
         console.log(result.data)
       } else {
-        alert('Conversation created!')
-        console.log(result.data)
+        setActive("messages");
+        setActiveConversation(chosenUserId);
+        getConversations();
       }
 
       setLoading(false)
@@ -117,7 +108,7 @@ export default function MessageInterface({conversationId, messages}: any) {
   //FETCH CONVERSATIONS
   const [conversations, setConversations] = useState<Conversation[]>([]); 
 
-  useEffect(() => {
+  const getConversations = async () => {
     async function fetchConversations() {
       try {
         const res = await fetch("/api/employers/messages-events/get-contacts", { method: "GET" });
@@ -133,7 +124,10 @@ export default function MessageInterface({conversationId, messages}: any) {
       }
     }
     fetchConversations();
-  }, []);
+  };
+
+  useEffect(() => { getConversations() }, []);
+
   const [activeConversation, setActiveConversation] = useState<any>(null);
   const activeConvo = conversations.find((c) => c.id === activeConversation);
   
@@ -163,6 +157,7 @@ export default function MessageInterface({conversationId, messages}: any) {
       console.error("❌ Network error:", err);
     } finally {
       setSending(false);
+      getConversations();
     }
   };
 
