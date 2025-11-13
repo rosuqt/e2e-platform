@@ -1051,7 +1051,14 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
       </div>
       {isModalOpen && (
         <ApplicationModal
-          jobId={job && job.id ? job.id : ""}
+          jobId={job && job.id ? Number(job.id) : 0}
+          jobTitle={
+            typeof job?.job_title === "string" && job.job_title.trim()
+              ? job.job_title
+              : typeof job?.title === "string" && job.title.trim()
+              ? job.title
+              : "Untitled Position"
+          }
           onClose={() => setIsModalOpen(false)}
         />
       )}
