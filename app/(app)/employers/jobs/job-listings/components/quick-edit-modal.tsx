@@ -442,6 +442,17 @@ export default function QuickEditModal({
         setIsPosting(false)
         onClose()
         if (onSuccess) onSuccess()
+        const embeddingsRes = await fetch("/api/ai-matches/embeddings/job", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: draftData.id }),
+        })
+        const embeddingsJson = await embeddingsRes.json()
+        console.log("Embeddings API response:", embeddingsJson)
+
+        if (!embeddingsRes.ok) {
+          setPostError(embeddingsJson?.error || "Embeddings API failed")
+        }
       } else {
         const response = await fetch("/api/employers/post-a-job", {
           method: "POST",
@@ -523,6 +534,16 @@ export default function QuickEditModal({
         setIsSaving(false)
         onClose()
         if (onSuccess) onSuccess()
+        const embeddingsRes = await fetch("/api/ai-matches/embeddings/job", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: draftData.id }),
+        })
+        const embeddingsJson = await embeddingsRes.json()
+        console.log("Embeddings API response (save):", embeddingsJson)
+        if (!embeddingsRes.ok) {
+          setSaveError(embeddingsJson?.error || "Embeddings API failed")
+        }
       } else {
         const response = await fetch("/api/employers/post-a-job", {
           method: "POST",
@@ -539,9 +560,23 @@ export default function QuickEditModal({
           setIsSaving(false)
           return
         }
+        const result = await response.json()
         setIsSaving(false)
         onClose()
         if (onSuccess) onSuccess()
+        if (result?.jobId || result?.id) {
+          const createdJobId = result.jobId ?? result.id
+          const embeddingsRes = await fetch("/api/ai-matches/embeddings/job", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: createdJobId }),
+          })
+          const embeddingsJson = await embeddingsRes.json()
+          console.log("Embeddings API response (save new job):", embeddingsJson)
+          if (!embeddingsRes.ok) {
+            setSaveError(embeddingsJson?.error || "Embeddings API failed")
+          }
+        }
       }
     } catch (err) {
       console.error("Save job error:", err)
@@ -681,4 +716,4 @@ export default function QuickEditModal({
     </div>
   )
 }
-              
+

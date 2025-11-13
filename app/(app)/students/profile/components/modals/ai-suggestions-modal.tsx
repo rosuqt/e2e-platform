@@ -10,7 +10,6 @@ type AiSuggestionsModalProps = {
   onSuggestionsAdded?: () => void;
   skills: string[];
   expertise?: string[];
-  // Change experience to array of objects
   experience: {
     jobTitle: string;
     company: string;
@@ -102,7 +101,6 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
     const selectedExpertise = expertise
       .filter((_, idx) => checkedExpertise[idx])
       .map(skill => ({ skill, mastery: 100 }));
-    // Change selectedExperience to filter objects
     const selectedExperience = experience.filter((_, idx) => checkedExperience[idx]);
     const selectedCertificates = certificates.filter((_, idx) => checkedCertificates[idx]);
     const selectedBio = checkedBio ? bio : null;
@@ -121,6 +119,14 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
       }),
     });
 
+    const studentId = (typeof window !== "undefined" && window.sessionStorage.getItem("student_id")) || null;
+    if (studentId) {
+      await fetch("/api/ai-matches/embeddings/student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
+    }
     setLoading(false);
     if (onSuggestionsAdded) onSuggestionsAdded();
     onClose();
@@ -653,4 +659,3 @@ export const AiSuggestionsModal: React.FC<AiSuggestionsModalProps> = ({
     </div>
   );
 };
-// NOTE: 'expertise' is sent as [{ skill, mastery }] objects, 'experience' as objects with jobTitle/company/years.

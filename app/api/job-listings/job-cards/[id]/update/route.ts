@@ -5,6 +5,9 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   try {
     const { id: jobId } = await context.params
     const body = await request.json()
+    if ('max_applicants' in body && body.max_applicants === '') {
+      body.max_applicants = null
+    }
     console.log('Update jobId:', jobId)
     console.log('Update payload:', body)
 

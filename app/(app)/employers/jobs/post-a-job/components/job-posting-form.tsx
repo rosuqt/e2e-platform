@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -143,6 +145,7 @@ export default function JobPostingForm() {
   }
 
   const postJob = async () => {
+    console.log("postJob called")
     if (!employerId) {
       setShowUnauthorized(true)
       return
@@ -150,61 +153,82 @@ export default function JobPostingForm() {
 
     setIsPostingJob(true)
 
-    try {
-      const sanitizedFormData = {
-        ...formData,
-        maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
-        applicationDeadline: {
-          date: formData.applicationDeadline.date || null,
-          time: formData.applicationDeadline.time || null,
-        },
-        perksAndBenefits: formData.perksAndBenefits.length > 0 ? formData.perksAndBenefits : null,
-        applicationQuestions: formData.applicationQuestions.length > 0 ? formData.applicationQuestions : null,
+    const sanitizedFormData = {
+      ...formData,
+      maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
+      applicationDeadline: {
+        date: formData.applicationDeadline.date || null,
+        time: formData.applicationDeadline.time || null,
+      },
+      perksAndBenefits: formData.perksAndBenefits.length > 0 ? formData.perksAndBenefits : null,
+      applicationQuestions: formData.applicationQuestions.length > 0 ? formData.applicationQuestions : null,
+    }
+
+    console.log("About to POST job with data:", sanitizedFormData)
+    const response = await fetch("/api/employers/post-a-job", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        action: "publishJob",
+        formData: sanitizedFormData,
+      }),
+    })
+    console.log("POST /api/employers/post-a-job response status:", response.status, "ok:", response.ok);
+    console.log("Response headers:", Array.from(response.headers.entries()));
+    response.clone().text().then(t => console.log("DEBUG: response.clone().text():", t));
+    if (response.ok) {
+      const contentLength = response.headers.get("content-length")
+      console.log("Response content-length:", contentLength)
+      const text = await response.text()
+      console.log("Raw response text:", text)
+      let result: any = {}
+      try {
+        result = JSON.parse(text)
+      } catch (err) {
+        result = { rawText: text }
       }
+      console.log("Job posted successfully, backend response (parsed):", result)
+      console.log("Result keys:", result && typeof result === "object" ? Object.keys(result) : [])
+      console.log("Result.data:", result.data)
 
-      const response = await fetch("/api/employers/post-a-job", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          action: "publishJob",
-          formData: sanitizedFormData,
-        }),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        console.log("Job posted successfully:", result)
-        toast.success("Job posted successfully!")
-        setCurrentStep(6)
-      } else {
-        const error = await response.json()
-        if (error.error === "Session expired" || error.error.includes("violates foreign key constraint")) {
-          setShowUnauthorized(true)
-        } else {
-          MySwal.fire({
-            title: "Error",
-            text: `Failed to post job: ${error.error}`,
-            icon: "error",
-            confirmButtonText: "Close",
-            confirmButtonColor: "#1D4ED8",
-          })
+      let createdJobId: string | undefined = undefined;
+      if (result.data) {
+        if (Array.isArray(result.data) && result.data.length > 0 && result.data[0].id) {
+          createdJobId = result.data[0].id;
+        } else if (typeof result.data === "object" && "id" in result.data) {
+          createdJobId = result.data.id;
+        } else if (typeof result.data === "object" && "job" in result.data && result.data.job.id) {
+          createdJobId = result.data.job.id;
+        } else if (typeof result.data === "object") {
+          for (const key in result.data) {
+            const val = result.data[key]
+            if (val && typeof val === "object" && "id" in val) {
+              createdJobId = val.id
+              break
+            }
+          }
         }
       }
-    } catch (error) {
-      console.error("Error posting job:", error)
-      MySwal.fire({
-        title: "Error",
-        text: "An error occurred while posting the job. Please try again.",
-        icon: "error",
-        confirmButtonText: "Close",
-        confirmButtonColor: "#1D4ED8",
-      })
-    } finally {
-      setIsPostingJob(false)
+
+      console.log("Embeddings job_id:", createdJobId)
+      if (createdJobId) {
+        console.log("Calling embeddings API for job_id:", createdJobId)
+        const embeddingsRes = await fetch("/api/ai-matches/embeddings/job", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: createdJobId }),
+        })
+        if (embeddingsRes.ok) {
+          console.log("Embeddings API called successfully")
+        }
+      }
+
+      setCurrentStep(6)
     }
+    setIsPostingJob(false)
   }
 
   const saveDraft = async () => {
@@ -215,41 +239,27 @@ export default function JobPostingForm() {
 
     setIsSavingDraft(true)
 
-    await toast.promise(
-      (async () => {
-        const sanitizedFormData = {
-          ...formData,
-          maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
-        }
+    const sanitizedFormData = {
+      ...formData,
+      maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
+    }
 
-        const response = await fetch("/api/employers/post-a-job", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            action: "saveDraft",
-            formData: sanitizedFormData,
-          }),
-        })
+    const response = await fetch("/api/employers/post-a-job", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        action: "saveDraft",
+        formData: sanitizedFormData,
+      }),
+    })
 
-        if (response.ok) {
-          localStorage.setItem("draftSaved", "true")
-          return
-        } else {
-          const error = await response.json()
-          console.error("Failed to save draft:", error)
-          throw new Error("Oops! Looks like there's nothing to save.")
-        }
-      })(),
-      {
-        loading: "Saving draft...",
-        success: <b>Draft saved successfully!</b>,
-        error: (err) => <b>{err.message || "An error occurred while saving the draft."}</b>,
-      }
-    )
-
+    if (response.ok) {
+      localStorage.setItem("draftSaved", "true")
+      return
+    }
     setIsSavingDraft(false)
   }
 

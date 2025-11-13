@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState, useRef, useLayoutEffect, useCallback } from "react"
+import { useSession } from "next-auth/react"
 import { Search, MapPin, ChevronDown, Briefcase, ArrowLeft, ArrowRight, Award, BookOpen, Bus, CheckCircle, Clock, UserCheck } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import JobCards from "./components/JobCards"
@@ -165,6 +166,7 @@ function ApplicationModalWrapper({ jobId, onClose }: { jobId: number, onClose: (
 }
 
 export default function Home() {
+  const { data: session } = useSession()
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [jobDetails, setJobDetails] = useState<JobDetails | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -402,6 +404,18 @@ export default function Home() {
       setJobDetails(null)
     }
   }, [selectedJob])
+
+  useEffect(() => {
+    const sessionKey = "aiMatchAndRescoreRun";
+    const studentId = session?.user?.studentId
+    if (typeof window !== "undefined" && studentId && !sessionStorage.getItem(sessionKey)) {
+      fetch("/api/ai-matches/match/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ student_id: studentId }) })
+        .then(() => fetch("/api/ai-matches/rescore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ student_id: studentId }) }))
+        .finally(() => {
+          sessionStorage.setItem(sessionKey, "1");
+        });
+    }
+  }, [session]);
 
   return (
     <div className="flex overflow-x-hidden bg-gradient-to-br from-blue-50 to-sky-100">

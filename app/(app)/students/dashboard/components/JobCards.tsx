@@ -9,7 +9,9 @@ import { AiFillSmile, AiOutlineMeh } from "react-icons/ai"
 import { TbMoodConfuzed } from "react-icons/tb"
 import { SiStarship } from "react-icons/si"
 import { calculateSkillsMatch } from "../../../../../lib/match-utils"
-import { Tooltip } from "@mui/material"
+import { Tooltip, Badge } from "@mui/material"
+import { useSession } from "next-auth/react"
+import Link from "next/link"
 
 const logoUrlCache: Record<string, string> = {}
 
@@ -63,8 +65,12 @@ const JobCards: React.FC<JobCardsProps> = ({
   const [studentSkills, setStudentSkills] = useState<string[]>([])
   const [jobSkillsMap, setJobSkillsMap] = useState<Record<string, string[]>>({})
   const [viewedJobs, setViewedJobs] = useState<Set<string>>(new Set())
+  const [matchScores, setMatchScores] = useState<Record<string, number | null>>({})
+  const [studentPrefs, setStudentPrefs] = useState<{ workTypes: string[], remoteOptions: string[] }>({ workTypes: [], remoteOptions: [] });
+  const [allowUnrelatedJobs, setAllowUnrelatedJobs] = useState<boolean | null>(null)
   const pageSize = 8
   const firstCardRef = useRef<HTMLDivElement | null>(null)
+  const { data: session } = useSession()
 
   useEffect(() => {
     async function fetchAllJobs() {
@@ -72,9 +78,12 @@ const JobCards: React.FC<JobCardsProps> = ({
       let page = 1
       let hasMore = true
       const pageSize = 50 
+      let preferredTypes: string[] = []
+      let preferredLocations: string[] = []
+      let unrelatedJobsFlag: boolean | null = null
 
       while (hasMore) {
-        const res = await fetch(`/api/students/job-listings?page=${page}&pageSize=${pageSize}`)
+        const res = await fetch(`/api/students/job-listings?page=${page}&limit=${pageSize}`)
         if (!res.ok) break
         const data = await res.json()
         const jobsArray = Array.isArray(data) ? data : Array.isArray(data.jobs) ? data.jobs : []
@@ -86,6 +95,9 @@ const JobCards: React.FC<JobCardsProps> = ({
               match: "98%"
             }))
         )
+        if (Array.isArray(data.preferredTypes)) preferredTypes = data.preferredTypes
+        if (Array.isArray(data.preferredLocations)) preferredLocations = data.preferredLocations
+        if (typeof data.allowUnrelatedJobs === "boolean") unrelatedJobsFlag = data.allowUnrelatedJobs
         if (jobsArray.length < pageSize) {
           hasMore = false
         } else {
@@ -94,6 +106,29 @@ const JobCards: React.FC<JobCardsProps> = ({
       }
       setJobs(allJobs)
       setLoading(false)
+      setStudentPrefs({
+        workTypes: preferredTypes
+          .map((t: string) =>
+            t
+              .replace(/[\[\]"]/g, "") 
+              .replace(/^internship$/, "ojt/internship")
+              .replace(/^ojt$/, "ojt/internship")
+              .trim()
+              .toLowerCase()
+          )
+          .filter(Boolean),
+        remoteOptions: preferredLocations
+          .map((r: string) =>
+            r
+              .replace(/[\[\]"]/g, "")
+              .replace(/^onsite$/, "on-site") 
+              .replace(/^wfh$/, "work from home")
+              .trim()
+              .toLowerCase()
+          )
+          .filter(Boolean),
+      });
+      setAllowUnrelatedJobs(unrelatedJobsFlag)
     }
     fetchAllJobs().catch(() => {
       setError("Could not load jobs.")
@@ -221,6 +256,28 @@ const JobCards: React.FC<JobCardsProps> = ({
     if (jobs.length > 0) fetchSkillsForJobs()
   }, [jobs])
 
+  useEffect(() => {
+    async function fetchMatchScores() {
+      const studentId = session?.user?.studentId
+      if (!studentId) return
+      const res = await fetch("/api/ai-matches/fetch-current-matches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      })
+      const data = await res.json()
+      if (Array.isArray(data.matches)) {
+        const scores: Record<string, number | null> = {}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data.matches.forEach((m: any) => {
+          scores[m.job_id] = typeof m.gpt_score === "number" ? m.gpt_score : null
+        })
+        setMatchScores(scores)
+      }
+    }
+    fetchMatchScores()
+  }, [session])
+
   function getMatchIcon(percent: number) {
     if (percent >= 70) return <AiFillSmile color="#4CAF50" size={20} />
     if (percent >= 40) return <AiOutlineMeh color="#FFC107" size={20} />
@@ -241,10 +298,33 @@ const JobCards: React.FC<JobCardsProps> = ({
 
   if (!filteredJobs.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-80">
-        <PiFileMagnifyingGlassBold size={100} className="text-blue-300 mb-4" />
-        <div className="text-blue-400 text-base font-semibold">Nothing here right now, </div>
-          <span className="text-blue-400 text-base font-semibold">but opportunities may pop up soon!</span>
+      <div className="flex flex-col items-center justify-center h-80 w-full">
+        <div className="w-full flex flex-col items-center mb-2">
+          <div className="w-full max-w-md border-t border-gray-300 mb-4"></div>
+          <PiFileMagnifyingGlassBold size={100} className="text-blue-300 mb-4" />
+          {searchTitle || searchLocation ? (
+            <>
+              <div className="text-blue-400 text-base font-semibold">No jobs found for your search.</div>
+              <span className="text-blue-400 text-base font-semibold">Try adjusting your search or filters.</span>
+            </>
+          ) : allowUnrelatedJobs === true ? (
+            <>
+              <div className="text-gray-500 text-sm font-medium mb-2">Displaying jobs outside your set preferences</div>
+              <div className="text-blue-400 text-base font-semibold">Nothing here right now, </div>
+              <span className="text-blue-400 text-base font-semibold">but opportunities may pop up soon!</span>
+            </>
+          ) : (
+            <>
+              <div className="text-gray-500 text-sm font-medium mb-2">
+                That’s all the jobs matching your preferences! Edit them in{' '}
+                <Link href="/students/settings" className="text-gray-400 font-bold underline">
+                  Settings
+                </Link>{' '}
+                to find new opportunities.
+              </div>
+            </>
+          )}
+        </div>
       </div>
     )
   }
@@ -274,16 +354,19 @@ const JobCards: React.FC<JobCardsProps> = ({
       }
       return null;
     });
+    const [loadingLogo, setLoadingLogo] = useState(false);
 
     useEffect(() => {
       let ignore = false;
       const safeLogoPath = typeof logoPath === "string" ? logoPath : "";
       if (safeLogoPath.length === 0) {
         setLogoUrl(null);
+        setLoadingLogo(false);
         return;
       }
       if (logoUrlCache[safeLogoPath]) {
         setLogoUrl(logoUrlCache[safeLogoPath]);
+        setLoadingLogo(false);
         return;
       }
       const cacheKey = `companyLogoUrl:${safeLogoPath}`;
@@ -297,6 +380,7 @@ const JobCards: React.FC<JobCardsProps> = ({
           if (parsed && typeof parsed === "object" && parsed.url && typeof parsed.url === "string") {
             logoUrlCache[safeLogoPath] = parsed.url;
             setLogoUrl(parsed.url);
+            setLoadingLogo(false);
             return;
           }
         } catch {
@@ -304,6 +388,7 @@ const JobCards: React.FC<JobCardsProps> = ({
         }
       }
       async function fetchLogoUrl() {
+        setLoadingLogo(true);
         try {
           const res = await fetch("/api/employers/get-signed-url", {
             method: "POST",
@@ -323,9 +408,13 @@ const JobCards: React.FC<JobCardsProps> = ({
             } else {
               setLogoUrl(null);
             }
+            setLoadingLogo(false);
           }
         } catch {
-          if (!ignore) setLogoUrl(null);
+          if (!ignore) {
+            setLogoUrl(null);
+            setLoadingLogo(false);
+          }
         }
       }
       fetchLogoUrl();
@@ -334,6 +423,13 @@ const JobCards: React.FC<JobCardsProps> = ({
       };
     }, [logoPath])
 
+    if (loadingLogo) {
+      return (
+        <div className="flex items-center justify-center w-16 h-16">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-4 border-blue-400 border-solid"></div>
+        </div>
+      )
+    }
     if (logoUrl && typeof logoUrl === "string") {
       return (
         <Image
@@ -383,184 +479,276 @@ const JobCards: React.FC<JobCardsProps> = ({
 
   return (
     <motion.div className="space-y-6 z-0" variants={container} initial="hidden" animate="show">
-      {paginatedJobs.map((job, idx) => {
-        const isSaved = savedJobIds.includes(job.id)
-        let logoPath: string | undefined;
-        if (job.registered_employers?.company_logo) {
-          logoPath = job.registered_employers.company_logo;
-        } else if (
-          job.hasOwnProperty("registered_companies") &&
-          typeof (job as unknown as { registered_companies?: { company_logo_image_path?: unknown } }).registered_companies?.company_logo_image_path === "string"
-        ) {
-          logoPath = (job as unknown as { registered_companies?: { company_logo_image_path?: string } }).registered_companies!.company_logo_image_path;
-        } else if (
-          typeof (job as unknown as { company_logo_image_path?: unknown }).company_logo_image_path === "string"
-        ) {
-          logoPath = (job as unknown as { company_logo_image_path: string }).company_logo_image_path;
-        } else {
-          logoPath = undefined;
-        }
-        const jobSkills = jobSkillsMap[job.id] || []
-        const matchPercent = studentSkills.length > 0 && jobSkills.length > 0
-          ? calculateSkillsMatch(studentSkills, jobSkills)
-          : null
-        return (
-        <motion.div
-          key={job.id}
-          ref={idx === 0 ? firstCardRef : undefined}
-          className={`bg-white rounded-3xl border-2 ${
-            selectedJob === job.id ? "border-blue-300 ring-4 ring-blue-100" : "border-blue-200 hover:border-blue-300"
-          } p-6 relative shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer overflow-visible`}
-          onClick={() => {
-            trackJobView(job.id);
-            trackJobClick(job.id);
-            onSelectJob(job.id);
-          }}
-          onMouseEnter={() => trackJobView(job.id)}
-          whileHover={{
-            y: -4,
-            boxShadow: "0 10px 15px -5px rgba(0, 0, 0, 0.1)",
-          }}
-          transition={{ duration: 0.2 }}
-        >
-          <motion.button
-            className="absolute top-2 right-2 flex items-center justify-center w-12 h-12 rounded-full bg-transparent hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors duration-200 z-20"
-            style={{ pointerEvents: "auto" }}
-            whileHover={{ scale: 1.2, rotate: [0, -10, 10, -10, 0] }}
-            whileTap={{ scale: 0.95 }}
-            disabled={saving === job.id}
-            onClick={e => {
-              e.stopPropagation();
-              handleToggleSave(job.id, isSaved)
-            }}
-          >
-            <Tooltip title={isSaved ? "Unsave this job" : "Save this job"} placement="top" arrow>
-              <span aria-label={isSaved ? "Unsave this job" : "Save this job"}>
-                {isSaved ? <BookmarkFilled size={28} fill="currentColor" /> : <Bookmark size={28} />}
-              </span>
-            </Tooltip>
-          </motion.button>
+      {(() => {
+        const isPreferred = (job: Job) => {
+          const jobWorkType = (job.work_type || "").toLowerCase().trim();
+          const jobRemoteOption = (job.remote_options || "").toLowerCase().trim();
+          return (
+            (studentPrefs.workTypes.length > 0 && studentPrefs.workTypes.includes(jobWorkType)) ||
+            (studentPrefs.remoteOptions.length > 0 && studentPrefs.remoteOptions.includes(jobRemoteOption))
+          );
+        };
 
-          <div className="flex gap-4 relative z-10">
+        const preferredCards: React.ReactNode[] = [];
+        const unrelatedCards: React.ReactNode[] = [];
+
+        paginatedJobs.forEach((job, idx) => {
+
+          const isSaved = savedJobIds.includes(job.id);
+          let logoPath: string | undefined;
+          if (job.registered_employers?.company_logo) {
+            logoPath = job.registered_employers.company_logo;
+          } else if (
+            job.hasOwnProperty("registered_companies") &&
+            typeof (job as unknown as { registered_companies?: { company_logo_image_path?: unknown } }).registered_companies?.company_logo_image_path === "string"
+          ) {
+            logoPath = (job as unknown as { registered_companies?: { company_logo_image_path?: string } }).registered_companies!.company_logo_image_path;
+          } else if (
+            typeof (job as unknown as { company_logo_image_path?: unknown }).company_logo_image_path === "string"
+          ) {
+            logoPath = (job as unknown as { company_logo_image_path: string }).company_logo_image_path;
+          } else {
+            logoPath = undefined;
+          }
+          const jobSkills = jobSkillsMap[job.id] || [];
+          const matchPercent = matchScores[job.id] ?? (
+            studentSkills.length > 0 && jobSkills.length > 0
+              ? calculateSkillsMatch(studentSkills, jobSkills)
+              : null
+          );
+          const matchedPrefs: string[] = [];
+          const jobWorkType = (job.work_type || "").toLowerCase().trim();
+          const jobRemoteOption = (job.remote_options || "").toLowerCase().trim();
+          if (studentPrefs.workTypes.length > 0 && studentPrefs.workTypes.includes(jobWorkType)) {
+            matchedPrefs.push(job.work_type || "");
+          }
+          if (studentPrefs.remoteOptions.length > 0 && studentPrefs.remoteOptions.includes(jobRemoteOption)) {
+            matchedPrefs.push(job.remote_options || "");
+          }
+          const card = (
             <motion.div
-              className={`w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-sky-500 flex items-center justify-center text-white font-bold text-xl shadow-lg overflow-hidden`}
-              whileHover={{ scale: 1.1, rotate: [0, -5, 5, -5, 0] }}
-              transition={{ duration: 0.5 }}
+              key={job.id}
+              ref={idx === 0 ? firstCardRef : undefined}
+              className={`bg-white rounded-3xl border-2 ${
+                selectedJob === job.id ? "border-blue-300 ring-4 ring-blue-100" : "border-blue-200 hover:border-blue-300"
+              } p-6 relative shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer overflow-visible`}
+              onClick={() => {
+                trackJobView(job.id);
+                trackJobClick(job.id);
+                onSelectJob(job.id);
+              }}
+              onMouseEnter={() => trackJobView(job.id)}
+              whileHover={{
+                y: -4,
+                boxShadow: "0 10px 15px -5px rgba(0, 0, 0, 0.1)",
+              }}
+              transition={{ duration: 0.2 }}
             >
-              <JobCardLogo
-                logoPath={logoPath}
-                fallback={job.employers?.first_name?.[0] || "?"}
-              />
-            </motion.div>
-            <div>
-              <h3
-                className="font-bold text-xl text-blue-800 truncate max-w-[36rem]"
-                title={job.job_title}
+              <motion.button
+                className="absolute top-2 right-2 flex items-center justify-center w-12 h-12 rounded-full bg-transparent hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors duration-200 z-20"
+                style={{ pointerEvents: "auto" }}
+                whileHover={{ scale: 1.2, rotate: [0, -10, 10, -10, 0] }}
+                whileTap={{ scale: 0.95 }}
+                disabled={saving === job.id}
+                onClick={e => {
+                  e.stopPropagation();
+                  handleToggleSave(job.id, isSaved)
+                }}
               >
-                {job.job_title}
-              </h3>
-              <p className="text-sm text-blue-600">
-                {job.employers
-                  ? `${job.employers.first_name} ${job.employers.last_name}`
-                  : "Unknown Employer"}
-                {job.registered_employers?.company_name
-                  ? ` | ${job.registered_employers.company_name}`
-                  : ""}
-              </p>
-              <div className="flex items-center mt-1">
-                <div className="flex">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} size={14} className="text-yellow-400" fill="rgb(250 204 21)" />
+                <Tooltip title={isSaved ? "Unsave this job" : "Save this job"} placement="top" arrow>
+                  <span aria-label={isSaved ? "Unsave this job" : "Save this job"}>
+                    {isSaved ? <BookmarkFilled size={28} fill="currentColor" /> : <Bookmark size={28} />}
+                  </span>
+                </Tooltip>
+              </motion.button>
+
+              {/* Preference badges*/}
+              {matchedPrefs.length > 0 && (
+                <div className="absolute bottom-2 left-5 flex flex-row gap-2 z-30 items-center">
+                  {matchedPrefs.map((pref) => (
+                    <Tooltip key={pref} title="This matches your set preferences" placement="top" arrow>
+                      <Badge
+                        badgeContent={pref}
+                        color={pref === job.work_type ? "primary" : "secondary"}
+                        sx={{
+                          "& .MuiBadge-badge": {
+                            fontSize: "0.70rem",
+                            padding: "2px 8px",
+                            borderRadius: "10px",
+                            boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+                            minWidth: "unset",
+                            height: "18px",
+                            lineHeight: "16px",
+                            background: pref === job.work_type ? "#E3F2FD" : "#F3E5F5",
+                            color: pref === job.work_type ? "#1976d2" : "#9c27b0",
+                            position: "static",
+                            transform: "none",
+                            fontWeight: 500,
+                          }
+                        }}
+                      >
+                        <span />
+                      </Badge>
+                    </Tooltip>
                   ))}
                 </div>
-                <span className="text-xs ml-1 text-blue-500">{"4.5/5 (N/A)"}</span>
+              )}
+
+              <div className="flex gap-4 relative z-10">
+                <motion.div
+                  className={`w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-sky-500 flex items-center justify-center text-white font-bold text-xl shadow-lg overflow-hidden`}
+                  whileHover={{ scale: 1.1, rotate: [0, -5, 5, -5, 0] }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <JobCardLogo
+                    logoPath={logoPath}
+                    fallback={job.employers?.first_name?.[0] || "?"}
+                  />
+                </motion.div>
+                <div>
+                  <h3
+                    className="font-bold text-xl text-blue-800 truncate max-w-[20rem]"
+                    title={job.job_title}
+                  >
+                    {job.job_title.length > 50
+                      ? job.job_title.slice(0, 47) + "..."
+                      : job.job_title}
+                  </h3>
+                  <p className="text-sm text-blue-600">
+                    {job.employers
+                      ? `${job.employers.first_name} ${job.employers.last_name}`
+                      : "Unknown Employer"}
+                    {job.registered_employers?.company_name
+                      ? ` | ${job.registered_employers.company_name}`
+                      : ""}
+                  </p>
+                  <div className="flex items-center mt-1">
+                    <div className="flex">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star key={star} size={14} className="text-yellow-400" fill="rgb(250 204 21)" />
+                      ))}
+                    </div>
+                    <span className="text-xs ml-1 text-blue-500">{"4.5/5 (N/A)"}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="flex items-center mt-3 text-xs text-blue-500 relative z-10">
-            <MapPin size={14} className="mr-1" />
-            <span>{job.location || "N/A"}</span>
-          </div>
+              <div className="flex items-center mt-3 text-xs text-blue-500 relative z-10">
+                <MapPin size={14} className="mr-1" />
+                <span>{job.location || "N/A"}</span>
+              </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3 relative z-10">
-            <div className="flex items-center text-sm bg-blue-50 p-3 rounded-xl border border-blue-100">
-              <Clock size={16} className="text-blue-500 mr-2 flex-shrink-0" />
-              <span className="text-blue-700 text-xs">
-                {job.application_deadline
-                  ? `Closing ${new Date(job.application_deadline).toLocaleDateString()}`
-                  : "No deadline"}
-              </span>
-            </div>
-            <div className="flex items-center text-sm bg-blue-50 p-3 rounded-xl border border-blue-100">
-              <Briefcase size={16} className="text-blue-500 mr-2 flex-shrink-0" />
-              <span className="text-blue-700 text-xs">{job.work_type || "N/A"}</span>
-            </div>
-            <div className="flex items-center text-sm bg-blue-50 p-3 rounded-xl border border-blue-100">
-              <FaMoneyBill size={16} className="text-blue-500 mr-2 flex-shrink-0" />
-              <span className="text-blue-700 text-xs">{job.pay_amount || "No Pay"}</span>
-            </div>
-            <div className="flex items-center text-sm bg-blue-50 p-3 rounded-xl border border-blue-100">
-              <Globe size={16} className="text-blue-500 mr-2 flex-shrink-0" />
-              <span className="text-blue-700 text-xs">
-                {job.remote_options === "Hybrid"
-                  ? "Hybrid"
-                  : job.remote_options === "Work from home"
-                  ? "Work from home"
-                  : job.remote_options === "On-site"
-                  ? "On-site"
-                  : job.remote_options
-                  ? job.remote_options
-                  : "N/A"}
-              </span>
-            </div>
-          </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 relative z-10">
+                <div className="flex items-center text-sm bg-blue-50 p-3 rounded-xl border border-blue-100">
+                  <Clock size={16} className="text-blue-500 mr-2 flex-shrink-0" />
+                  <span className="text-blue-700 text-xs">
+                    {job.application_deadline
+                      ? `Closing ${new Date(job.application_deadline).toLocaleDateString()}`
+                      : "No deadline"}
+                  </span>
+                </div>
+                <div className="flex items-center text-sm bg-blue-50 p-3 rounded-xl border border-blue-100">
+                  <Briefcase size={16} className="text-blue-500 mr-2 flex-shrink-0" />
+                  <span className="text-blue-700 text-xs">{job.work_type || "N/A"}</span>
+                </div>
+                <div className="flex items-center text-sm bg-blue-50 p-3 rounded-xl border border-blue-100">
+                  <FaMoneyBill size={16} className="text-blue-500 mr-2 flex-shrink-0" />
+                  <span className="text-blue-700 text-xs">{job.pay_amount || "No Pay"}</span>
+                </div>
+                <div className="flex items-center text-sm bg-blue-50 p-3 rounded-xl border border-blue-100">
+                  <Globe size={16} className="text-blue-500 mr-2 flex-shrink-0" />
+                  <span className="text-blue-700 text-xs">
+                    {job.remote_options === "Hybrid"
+                      ? "Hybrid"
+                      : job.remote_options === "Work from home"
+                      ? "Work from home"
+                      : job.remote_options === "On-site"
+                      ? "On-site"
+                      : job.remote_options
+                      ? job.remote_options
+                      : "N/A"}
+                  </span>
+                </div>
+              </div>
 
-          <div className="mt-4 relative z-10">
-            {studentSkills.length > 0 && jobSkills.length > 0 ? (
-              <div
-                className="rounded-xl py-3 px-4 flex items-center justify-center shadow-md"
-                style={{
-                  background:
-                    matchPercent !== null && matchPercent >= 70
-                      ? "#E6F4EA"
-                      : matchPercent !== null && matchPercent >= 40
-                      ? "#FFF8E1"
-                      : "#FDECEA",
-                  color:
-                    matchPercent !== null && matchPercent >= 70
-                      ? "#256029"
-                      : matchPercent !== null && matchPercent >= 40
-                      ? "#8D6E00"
-                      : "#B71C1C"
-                }}
-              >
-                {getMatchIcon(matchPercent ?? 0)}
-                <span className="text-sm font-medium ml-2">
-                  You are {matchPercent}% match to this job.
+              <div className="mt-4 relative z-10">
+                {matchPercent !== null ? (
+                  <div
+                    className="rounded-xl py-3 px-4 flex items-center justify-center shadow-md"
+                    style={{
+                      background:
+                        matchPercent >= 70
+                          ? "#E6F4EA"
+                          : matchPercent >= 40
+                          ? "#FFF8E1"
+                          : "#FDECEA",
+                      color:
+                        matchPercent >= 70
+                          ? "#256029"
+                          : matchPercent >= 40
+                          ? "#8D6E00"
+                          : "#B71C1C"
+                    }}
+                  >
+                    {getMatchIcon(matchPercent)}
+                    <span className="text-sm font-medium ml-2">
+                      AI Match Score: {matchPercent}%
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    className="rounded-xl py-3 px-4 flex items-center justify-center shadow-md"
+                    style={{
+                      background: "#F3F4F6",
+                      color: "#6B7280"
+                    }}
+                  >
+                    <SiStarship size={18} color="#9CA3AF" className="mr-2" />
+                    <span className="text-sm font-medium">
+                      Set up your profile to get a match for you.
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-3 text-right text-xs text-blue-400 relative z-10">
+                Posted {job.created_at ? new Date(job.created_at).toLocaleDateString() : "N/A"}
+              </div>
+            </motion.div>
+          );
+          if (isPreferred(job)) {
+            preferredCards.push(card);
+          } else {
+            unrelatedCards.push(card);
+          }
+        });
+
+        if (allowUnrelatedJobs === true) {
+          if (preferredCards.length > 0 && unrelatedCards.length > 0) {
+            return [
+              ...preferredCards,
+              <div key="divider-unrelated" className="w-full flex items-center my-6">
+                <div className="flex-grow border-t border-gray-400"></div>
+                <span className="mx-4 text-gray-400 text-sm font-medium whitespace-nowrap">
+                 More Jobs Outside Your Preferences
                 </span>
-              </div>
-            ) : (
-              <div
-                className="rounded-xl py-3 px-4 flex items-center justify-center shadow-md"
-                style={{
-                  background: "#F3F4F6",
-                  color: "#6B7280"
-                }}
-              >
-                <SiStarship size={18} color="#9CA3AF" className="mr-2" />
-                <span className="text-sm font-medium">
-                  Set up your profile to get a match for you.
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-3 text-right text-xs text-blue-400 relative z-10">
-            Posted {job.created_at ? new Date(job.created_at).toLocaleDateString() : "N/A"}
-          </div>
-        </motion.div>
-      )})}
+                <div className="flex-grow border-t border-gray-400"></div>
+              </div>,
+              ...unrelatedCards,
+            ];
+          }
+          if (preferredCards.length === 0 && unrelatedCards.length > 0) {
+            return unrelatedCards;
+          }
+          if (preferredCards.length > 0 && unrelatedCards.length === 0) {
+            return preferredCards;
+          }
+        }
+        if (allowUnrelatedJobs === false) {
+          return preferredCards;
+        }
+        return [...preferredCards, ...unrelatedCards];
+      })()}
       <div className="flex flex-col items-center mt-8 gap-1">
         <div className="flex items-center gap-1">
           <motion.button
@@ -573,21 +761,44 @@ const JobCards: React.FC<JobCardsProps> = ({
           >
             <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
           </motion.button>
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button
-              key={i + 1}
-              className={`mx-1 w-9 h-9 flex items-center justify-center rounded-full transition text-base ${
-                page === i + 1
-                  ? "bg-blue-500 text-white font-bold"
-                  : "text-blue-600 hover:underline"
-              }`}
-              style={{ background: page === i + 1 ? undefined : "none", border: "none" }}
-              onClick={() => setPage(i + 1)}
-              type="button"
-            >
-              {i + 1}
-            </button>
-          ))}
+          {
+            (() => {
+              let pages: (number | string)[] = [];
+              if (totalPages <= 5) {
+                pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+              } else {
+                if (page <= 3) {
+                  pages = [1, 2, 3, 4, '...', totalPages];
+                } else if (page >= totalPages - 2) {
+                  pages = [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+                } else {
+                  pages = [1, '...', page - 1, page, page + 1, '...', totalPages];
+                }
+              }
+              return pages.map((p, idx) => {
+                if (p === '...') {
+                  return (
+                    <span key={`ellipsis-${idx}`} className="mx-1 w-9 h-9 flex items-center justify-center text-blue-400 select-none">...</span>
+                  );
+                }
+                return (
+                  <button
+                    key={p}
+                    className={`mx-1 w-9 h-9 flex items-center justify-center rounded-full transition text-base ${
+                      page === p
+                        ? "bg-blue-500 text-white font-bold"
+                        : "text-blue-600 hover:underline"
+                    }`}
+                    style={{ background: page === p ? undefined : "none", border: "none" }}
+                    onClick={() => setPage(Number(p))}
+                    type="button"
+                  >
+                    {p}
+                  </button>
+                );
+              });
+            })()
+          }
           <motion.button
             className="w-9 h-9 flex items-center justify-center rounded-full text-blue-500 hover:bg-blue-100 transition disabled:opacity-40"
             whileHover={{ scale: page < totalPages ? 1.1 : 1 }}

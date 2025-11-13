@@ -44,7 +44,7 @@ export default function SkillsPage() {
   const [editingExpertiseIdx, setEditingExpertiseIdx] = useState<number | null>(null)
   const [editingExpertise, setEditingExpertise] = useState<{ skill: string; mastery: number } | null>(null)
   const [editingCertIdx, setEditingCertIdx] = useState<number | null>(null)
-  // Add portfolio state
+ 
   type Portfolio = {
     title: string;
     description?: string;
@@ -103,6 +103,14 @@ export default function SkillsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ skills: newSkills }),
     })
+    const studentId = (session?.user as { studentId?: string })?.studentId
+    if (studentId) {
+      await fetch("/api/ai-matches/embeddings/student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      })
+    }
   }
 
   const removeSkill = async (idx: number) => {
@@ -115,6 +123,14 @@ export default function SkillsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skills: newSkills }),
       })
+      const studentId = (session?.user as { studentId?: string })?.studentId
+      if (studentId) {
+        await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        })
+      }
     } finally {
       setDeletingSkillIdx(null)
     }
@@ -146,6 +162,14 @@ export default function SkillsPage() {
           data: newExpertise
         }),
       })
+      const studentId = (session?.user as { studentId?: string })?.studentId
+      if (studentId) {
+        await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        })
+      }
     } else {
       setExpertise([data, ...expertise])
       await fetch("/api/students/student-profile/postHandlers", {
@@ -156,6 +180,14 @@ export default function SkillsPage() {
           data
         }),
       })
+      const studentId = (session?.user as { studentId?: string })?.studentId
+      if (studentId) {
+        await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        })
+      }
     }
     setExpertiseError(null)
     setOpenAddExpertise(false)
@@ -181,6 +213,14 @@ export default function SkillsPage() {
           expertiseMastery: exp.mastery,
         }),
       })
+      const studentId = (session?.user as { studentId?: string })?.studentId
+      if (studentId) {
+        await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        })
+      }
     } finally {
       setDeletingExpertiseIdx(null)
     }
@@ -201,6 +241,14 @@ export default function SkillsPage() {
           issueDate: cert.issueDate,
         }),
       })
+      const studentId = (session?.user as { studentId?: string })?.studentId
+      if (studentId) {
+        await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        })
+      }
     } finally {
       setDeletingCertIdx(null)
     }
@@ -214,6 +262,14 @@ export default function SkillsPage() {
       setCerts(prev => [...prev, cert])
     }
     setOpenAddCert(false)
+    const studentId = (session?.user as { studentId?: string })?.studentId
+    if (studentId) {
+      fetch("/api/ai-matches/embeddings/student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      })
+    }
   }
 
   // Add or update portfolio
@@ -227,6 +283,14 @@ export default function SkillsPage() {
       setPortfolio(prev => [...prev, data]);
     }
     setOpenAddPortfolio(false);
+    const studentId = (session?.user as { studentId?: string })?.studentId
+    if (studentId) {
+      fetch("/api/ai-matches/embeddings/student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      })
+    }
   };
 
   // Delete portfolio
@@ -243,6 +307,14 @@ export default function SkillsPage() {
           portfolioTitle: item.title,
         }),
       });
+      const studentId = (session?.user as { studentId?: string })?.studentId
+      if (studentId) {
+        await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        })
+      }
     } finally {
       setDeletingPortfolioIdx(null);
     }

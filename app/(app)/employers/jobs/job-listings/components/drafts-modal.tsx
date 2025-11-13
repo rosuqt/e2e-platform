@@ -333,6 +333,15 @@ export default function DraftsModal({
           setIsPosting(false)
           return
         }
+        const result = await response.json()
+        const publishedJobId = result?.jobId ?? result?.id
+        if (publishedJobId) {
+          await fetch("/api/ai-matches/embeddings/job", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: publishedJobId }),
+          })
+        }
       } else {
         const response = await fetch("/api/employers/post-a-job", {
           method: "POST",
@@ -562,4 +571,3 @@ export default function DraftsModal({
     </div>
   )
 }
-             

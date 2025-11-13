@@ -135,6 +135,11 @@ export default function AddCertModal({
             data: { title, issuer, issueDate, description, attachmentUrl, category }
           })
         });
+        await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        });
       } else {
         await fetch("/api/students/student-profile/postHandlers", {
           method: "POST",
@@ -144,6 +149,11 @@ export default function AddCertModal({
             student_id: studentId,
             data: { title, issuer, issueDate, description, attachmentUrl, category }
           })
+        });
+        await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
         });
       }
     }

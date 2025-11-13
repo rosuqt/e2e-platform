@@ -168,6 +168,11 @@ export default function AddExpertiseModal({
         setSaving(false);
         return;
       }
+      await fetch("/api/ai-matches/embeddings/student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
     }
     onSave?.({ skill, mastery });
     handleClose();

@@ -30,6 +30,7 @@ import toast from "react-hot-toast"
 import { PiFiles } from "react-icons/pi";
 import { TbFileSmile } from "react-icons/tb";
 import { AiSuggestionsModal } from "./modals/ai-suggestions-modal";
+import JobMatchesSection from "./job-matches-section"
 
 const colorMap: Record<string, { color: string; textColor: string }> = {
   "#2563eb": { color: "bg-blue-600", textColor: "text-white" },
@@ -154,6 +155,14 @@ export default function AboutPage() {
   } | null>(null);
 const [showAiSuggestionsModal, setShowAiSuggestionsModal] = useState(false);
 
+const triggerStudentEmbedding = async () => {
+  const currentStudentId = (session?.user as { studentId?: string })?.studentId || "student_001";
+  await fetch("/api/ai-matches/embeddings/student", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ student_id: currentStudentId }),
+  });
+};
 
   type Portfolio = {
     title: string;
@@ -370,6 +379,7 @@ useEffect(() => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value }),
     });
+    await triggerStudentEmbedding();
     if (field === "introduction") setLoadingIntro(false);
     if (field === "career_goals") setLoadingCareer(false);
   };
@@ -528,6 +538,7 @@ const handleDeleteExp = async (idx: number) => {
           data: newExpertise
         }),
       });
+      await triggerStudentEmbedding();
     } else {
       setExpertise([data, ...expertise]);
       const student_id = (session?.user as { studentId?: string })?.studentId;
@@ -540,6 +551,7 @@ const handleDeleteExp = async (idx: number) => {
           data
         }),
       });
+      await triggerStudentEmbedding();
     }
     setExpertiseError(null);
     setOpenAddExpertise(false);
@@ -628,6 +640,7 @@ const handleDeleteExp = async (idx: number) => {
     setShowSkillInput(false);
     setFocusedSuggestion(-1);
     await saveProfileField("skills", newSkills);
+    await triggerStudentEmbedding();
   };
 
   const removeSkill = async (idx: number) => {
@@ -640,6 +653,7 @@ const handleDeleteExp = async (idx: number) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skills: newSkills }),
       });
+      await triggerStudentEmbedding();
     } finally {
       setDeletingSkillIdx(null);
     }
@@ -1769,6 +1783,7 @@ try {
                     <Pencil size={18} />
                   </button>
                   <button
+                   
                     className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
                     title="Delete Portfolio"
                     disabled={deletingPortfolioIdx === idx}
@@ -2016,98 +2031,7 @@ try {
           <p className="text-xs italic text-gray-500">Explore job opportunities tailored to your profile.</p>
         </div>
         <div className="p-4 relative">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-center pt-6">
-                  <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
-                    J
-                  </div>
-                </div>
-                <div className="px-4 pt-4 pb-4 relative">
-                  <div className="text-center mb-2">
-                    <h3 className="font-medium text-gray-900">Junior Software Tester</h3>
-                    <p className="text-sm text-gray-500">Av-average Inc. | Manila</p>
-                    <p className="text-sm text-gray-400">₱25,000 - ₱35,000 / month</p>
-                  </div>
-                  <div className="text-xs font-medium text-orange-500 mb-4 text-center">{43 + i}% Match for this job</div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
-                      onClick={() => {
-                        setQuickViewJob({
-                          title: "Junior Software Tester",
-                          company: "Av-average Inc.",
-                          location: "Manila",
-                          salary: "₱25,000 - ₱35,000 / month",
-                          posted: "7 days ago",
-                          logoUrl: "",
-                          type: "On-the-Job Training",
-                          vacancies: 5,
-                          description: "Assist in software testing and quality assurance for web applications.",
-                          closingDate: "March 28, 2025",
-                          remote: true,
-                          matchScore: 43 + i
-                        });
-                        setOpenQuickView(true);
-                      }}
-                    >
-                      <MdWorkOutline className="mr-1" size={16} /> Quick View
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 border-blue-300 text-blue-600 hover:bg-blue-100 hover:text-blue-800"
-                      onClick={() => {
-                        setSavedJobs((prev) =>
-                          prev.includes(i)
-                            ? prev.filter((jobId) => jobId !== i)
-                            : [...prev, i]
-                        );
-                      }}
-                    >
-                      {savedJobs.includes(i) ? (
-                        <>
-                          <FaBookmark className="mr-1" size={16} /> Saved
-                        </>
-                      ) : (
-                        <>
-                          <FaRegBookmark className="mr-1" size={16} /> Save Job
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="text-right mt-4">
-            <Button
-              variant="link"
-              className="text-blue-600 hover:underline"
-            >
-              View More
-            </Button>
-          </div>
-          <QuickViewModal
-            open={openQuickView}
-            onClose={() => setOpenQuickView(false)}
-            job={quickViewJob || {
-              title: "",
-              company: "",
-              location: "",
-              salary: "",
-              posted: "",
-              logoUrl: "",
-              type: "",
-              vacancies: 0,
-              description: "",
-              closingDate: "",
-              remote: false,
-              matchScore: 0
-            }}
-          />
+          <JobMatchesSection />
         </div>
       </div>
       <UploadFileModal

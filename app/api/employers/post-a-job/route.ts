@@ -298,6 +298,7 @@ export async function POST(request: Request) {
             }
 
             console.log("Job posted successfully");
+            console.log("Returning response to frontend:", { message: "Job posted successfully", data });
             return NextResponse.json({ message: "Job posted successfully", data });
         } else if (action === "fetchVerificationStatus") {
             console.log("Fetching verification status...");
