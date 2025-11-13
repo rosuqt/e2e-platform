@@ -114,8 +114,7 @@ export const authOptions: NextAuthOptions = {
           console.log("AzureAD signIn: normalized email received:", normalizedEmail);
           if (
             !normalizedEmail.endsWith("@alabang.sti.edu.ph") &&
-            normalizedEmail !== "alro8612140@gmail.com" &&
-            normalizedEmail !== "seekr.assist@gmail.com"
+            normalizedEmail !== "alro8612140@gmail.com" && normalizedEmail !== "seekr.assist@gmail.com"
           ) {
             console.log("AzureAD signIn: invalid domain, redirecting to /sign-in?error=invalid_domain");
             return "/sign-in?error=invalid_domain"
