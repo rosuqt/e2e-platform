@@ -45,8 +45,10 @@ import Image from "next/image"
 
 interface Student {
   id: string 
+  uid: string
   studentId: string
-  name: string
+  first_name: string
+  last_name: string
   email: string
   phone: string
   course: string
@@ -58,9 +60,11 @@ interface Student {
   address: string
   dateOfBirth: string
   department: string
+  
 }
 
 export default function StudentsManagement() {
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("active")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
@@ -100,7 +104,8 @@ export default function StudentsManagement() {
             return {
               id: typeof s.id === "string" ? s.id : String(s.id),
               studentId,
-              name: `${String(s.first_name ?? "")} ${String(s.last_name ?? "")}`.trim(),
+              first_name: String(s.first_name ?? ""),
+              last_name: String(s.last_name ?? ""),
               email,
               phone: "",
               course: String(s.course ?? ""),
@@ -135,12 +140,35 @@ export default function StudentsManagement() {
     )
   )
 
+  const handleEditStudent = (student: Student) => {
+    setSelectedStudent(student)
+    setIsEditDialogOpen(true)
+  }
+
+  const confirmEditStudent = async (updatedStudent: Student) => {
+    try {
+      const res = await fetch(`/api/superadmin/updateStudent`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedStudent),
+      })
+      if (res.ok) {
+        setStudents((prev) =>
+          prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
+        )
+        setIsEditDialogOpen(false)
+      }
+    } catch (error) {
+      console.error("Error updating student:", error)
+    }
+  }
+  
   const filteredStudents = students.filter((student) => {
-    const matchesSearch =
-      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.course.toLowerCase().includes(searchQuery.toLowerCase())
+  const matchesSearch =
+  `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  student.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  student.course.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesTab =
       (activeTab === "active" && student.status === "active") ||
@@ -215,7 +243,7 @@ export default function StudentsManagement() {
     const csv = filteredStudents
       .map(
         (student) =>
-          `${student.studentId},${student.name},${student.email},${student.phone},${student.course},${student.year},${student.status}`,
+          `${student.studentId},${student.first_name} ${student.last_name},${student.email},${student.phone},${student.course},${student.year},${student.status}`,
       )
       .join("\n")
 
@@ -359,6 +387,7 @@ export default function StudentsManagement() {
                       students={paginatedStudents}
                       onViewStudent={handleViewStudent}
                       onDeleteStudent={handleDeleteStudent}
+                      onEditStudent={handleEditStudent}
                     />
                   </TabsContent>
                   <TabsContent value="active" className="mt-4">
@@ -366,6 +395,7 @@ export default function StudentsManagement() {
                       students={paginatedStudents}
                       onViewStudent={handleViewStudent}
                       onDeleteStudent={handleDeleteStudent}
+                      onEditStudent={handleEditStudent}
                     />
                   </TabsContent>
                   <TabsContent value="inactive" className="mt-4">
@@ -373,6 +403,7 @@ export default function StudentsManagement() {
                       students={paginatedStudents}
                       onViewStudent={handleViewStudent}
                       onDeleteStudent={handleDeleteStudent}
+                      onEditStudent={handleEditStudent}
                     />
                   </TabsContent>
                   <TabsContent value="graduated" className="mt-4">
@@ -380,6 +411,7 @@ export default function StudentsManagement() {
                       students={paginatedStudents}
                       onViewStudent={handleViewStudent}
                       onDeleteStudent={handleDeleteStudent}
+                      onEditStudent={handleEditStudent}
                     />
                   </TabsContent>
                   <TabsContent value="on_leave" className="mt-4">
@@ -387,6 +419,7 @@ export default function StudentsManagement() {
                       students={paginatedStudents}
                       onViewStudent={handleViewStudent}
                       onDeleteStudent={handleDeleteStudent}
+                      onEditStudent={handleEditStudent}
                     />
                   </TabsContent>
                 </Tabs>
@@ -481,7 +514,7 @@ export default function StudentsManagement() {
                   )}
                 </MuiAvatar>
                 <div>
-                  <h3 className="text-xl font-bold">{selectedStudent.name}</h3>
+                  <h3 className="text-xl font-bold">{selectedStudent.first_name} {selectedStudent.last_name}</h3>
                   <p className="text-muted-foreground">{selectedStudent.studentId}</p>
                   {username && (
                     <div className="text-gray-600 text-sm font-medium">Username: {username}</div>
@@ -555,12 +588,154 @@ export default function StudentsManagement() {
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)} className="rounded-xl px-6">
               Close
             </Button>
-            <Button className="rounded-xl px-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+            <Button
+              onClick={() => {
+                setIsViewDialogOpen(false)
+                if (selectedStudent) {
+                  handleEditStudent(selectedStudent)
+                }
+              }}
+              className="rounded-xl px-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+            >
               Edit Student
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Student Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+  <DialogContent className="sm:max-w-[600px] rounded-3xl">
+    <DialogHeader>
+      <DialogTitle className="text-2xl font-bold text-gray-900">Edit Student</DialogTitle>
+      <DialogDescription className="text-gray-600">
+        Modify the student information below and save changes.
+      </DialogDescription>
+    </DialogHeader>
+
+    {selectedStudent && (
+      <div className="grid gap-4 py-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>First Name</Label>
+            <Input
+              value={selectedStudent.first_name}
+              onChange={(e) =>
+                setSelectedStudent({ ...selectedStudent, first_name: e.target.value })
+              }
+            />
+          </div>
+          <div>
+            <Label>Last Name</Label>
+            <Input
+              value={selectedStudent.last_name}
+              onChange={(e) =>
+                setSelectedStudent({ ...selectedStudent, last_name: e.target.value })
+              }
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>Email</Label>
+            <Input
+              value={selectedStudent.email}
+              onChange={(e) =>
+                setSelectedStudent({ ...selectedStudent, email: e.target.value })
+              }
+            />
+          </div>
+          <div>
+            <Label>Course</Label>
+            <Input
+              value={selectedStudent.course}
+              onChange={(e) =>
+                setSelectedStudent({ ...selectedStudent, course: e.target.value })
+              }
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>Year</Label>
+            <Input
+              value={selectedStudent.year}
+              onChange={(e) =>
+                setSelectedStudent({ ...selectedStudent, year: e.target.value })
+              }
+            />
+          </div>
+          <div>
+            <Label>Section</Label>
+            <Input
+              value={selectedStudent.section}
+              onChange={(e) =>
+                setSelectedStudent({ ...selectedStudent, section: e.target.value })
+              }
+            />
+          </div>
+        </div>
+      </div>
+    )}
+
+    <DialogFooter>
+      <Button
+        variant="outline"
+        onClick={() => setIsEditDialogOpen(false)}
+        className="rounded-xl"
+      >
+        Cancel
+      </Button>
+      <Button
+        className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+        onClick={async () => {
+          if (!selectedStudent) return
+          try {
+            const res = await fetch("/api/superadmin/fetchUsers", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: selectedStudent.id, // ✅ use primary key
+                first_name: selectedStudent.first_name,
+                last_name: selectedStudent.last_name,
+                email: selectedStudent.email,
+                course: selectedStudent.course,
+                year: selectedStudent.year,
+                section: selectedStudent.section,
+              }),
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+              console.error("Failed to update student:", data?.error || data)
+              return
+            }
+
+            setIsEditDialogOpen(false)
+
+
+
+            const updatedStudent = data?.student ?? data?.profile ?? selectedStudent
+
+            setStudents((prev) =>
+              prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
+            )
+
+            setSelectedStudent(updatedStudent)
+            setIsEditDialogOpen(false)
+
+          } catch (err) {
+            console.error("Error updating student:", err)
+          }
+        }}
+      >
+        Save Changes
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+      </Dialog>
+
 
       {/* Delete Confirmation Dialog using MUI */}
       <MuiDialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
@@ -582,6 +757,8 @@ export default function StudentsManagement() {
           </MuiButton>
         </MuiDialogActions>
       </MuiDialog>
+
+      
     </div>
   )
 }
@@ -590,10 +767,12 @@ function StudentsTable({
   students,
   onViewStudent,
   onDeleteStudent,
+  onEditStudent,
 }: {
   students: Student[]
   onViewStudent: (student: Student) => void
   onDeleteStudent: (student: Student) => void
+  onEditStudent: (student: Student) => void
 }) {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
   const [menuStudentId, setMenuStudentId] = useState<string | null>(null)
@@ -643,7 +822,7 @@ function StudentsTable({
                 className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
               >
                 <td className="font-semibold text-gray-900 py-4 px-6">{student.studentId}</td>
-                <td className="text-gray-700 py-4 px-6">{student.name}</td>
+                <td className="text-gray-700 py-4 px-6">{student.first_name} {student.last_name}</td>
                 <td className="text-gray-700 py-4 px-6">{student.email}</td>
                 <td className="text-gray-700 py-4 px-6">{student.course}</td>
                 <td className="text-gray-700 py-4 px-6">{student.year}</td>
@@ -683,6 +862,7 @@ function StudentsTable({
                     <MuiMenuItem
                       onClick={() => {
                         handleMenuClose()
+                        onEditStudent(student)
                       }}
                     >
                       <Edit className="mr-2 h-4 w-4" />
@@ -731,4 +911,3 @@ function StatusBadge({ status }: { status: string }) {
     </Badge>
   )
 }
-
