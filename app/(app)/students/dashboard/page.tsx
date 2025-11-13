@@ -154,7 +154,7 @@ function FilterDropdown({
   );
 }
 
-function ApplicationModalWrapper({ jobId, onClose }: { jobId: number, onClose: () => void }) {
+function ApplicationModalWrapper({ jobId, jobTitle, onClose }: { jobId: number, jobTitle: string, onClose: () => void }) {
   useEffect(() => {
     const original = document.body.style.overflow
     document.body.style.overflow = "hidden"
@@ -162,7 +162,7 @@ function ApplicationModalWrapper({ jobId, onClose }: { jobId: number, onClose: (
       document.body.style.overflow = original
     }
   }, [])
-  return <ApplicationModal jobId={jobId} onClose={onClose} />
+  return <ApplicationModal jobId={jobId} jobTitle={jobTitle} onClose={onClose} />
 }
 
 export default function Home() {
@@ -924,6 +924,7 @@ export default function Home() {
                                   createPortal(
                                     <ApplicationModalWrapper
                                       jobId={Number(jobDetails.id)}
+                                      jobTitle={jobDetails.job_title}
                                       onClose={() => setShowQuickApply(false)}
                                     />,
                                     document.body

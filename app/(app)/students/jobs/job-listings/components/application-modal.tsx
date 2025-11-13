@@ -85,7 +85,15 @@ const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 import mailAnim from "@/../public/animations/mail.json"
 import { ConfettiStars } from "@/components/magicui/star"
 
-export function ApplicationModal({ jobId = "", onClose }: { jobId: string | number; onClose: () => void }) {
+export function ApplicationModal({
+  jobId,
+  jobTitle,
+  onClose,
+}: {
+  jobId: number
+  jobTitle: string
+  onClose: () => void
+}) {
   const [step, setStep] = useState(1)
   const totalSteps = 4
 
@@ -124,7 +132,6 @@ export function ApplicationModal({ jobId = "", onClose }: { jobId: string | numb
   const QUESTIONS_PER_PAGE = 2
   const [submitting, setSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [jobTitle, setJobTitle] = useState<string>("")
   const router = useRouter()
 
   useEffect(() => {
@@ -489,17 +496,6 @@ export function ApplicationModal({ jobId = "", onClose }: { jobId: string | numb
         setAllCovers(covers.filter(c => c.url && c.url.trim() !== ""));
       });
   }, [student?.id]);
-
-  useEffect(() => {
-    if (!jobId) return
-    fetch(`/api/students/job-listings/${jobId}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) {
-          setJobTitle(data.job_title || data.title || "")
-        }
-      })
-  }, [jobId])
 
   return (
     <motion.div
