@@ -489,11 +489,14 @@ const JobCards: React.FC<JobCardsProps> = ({
           );
         };
 
-        const preferredCards: React.ReactNode[] = [];
-        const unrelatedCards: React.ReactNode[] = [];
+        let lastPrefGlobalIdx = -1;
+        for (let i = 0; i < jobs.length; i++) {
+          if (isPreferred(jobs[i])) lastPrefGlobalIdx = i;
+        }
+        const globalLastPrefId = lastPrefGlobalIdx >= 0 ? jobs[lastPrefGlobalIdx]?.id : undefined;
 
+        const cards: React.ReactNode[] = [];
         paginatedJobs.forEach((job, idx) => {
-
           const isSaved = savedJobIds.includes(job.id);
           let logoPath: string | undefined;
           if (job.registered_employers?.company_logo) {
@@ -716,21 +719,46 @@ const JobCards: React.FC<JobCardsProps> = ({
               </div>
             </motion.div>
           );
-          if (isPreferred(job)) {
-            preferredCards.push(card);
-          } else {
-            unrelatedCards.push(card);
+          cards.push(card);
+
+          if (
+            allowUnrelatedJobs === false &&
+            job.id === globalLastPrefId &&
+            idx === paginatedJobs.length - 1
+          ) {
+            cards.push(
+              <div key="divider-nomatch" className="w-full flex items-center my-6">
+                <div className="flex-grow border-t border-gray-300"></div>
+                <div className="mx-3 max-w-[70%] text-center text-gray-400 text-sm font-medium">
+                  That’s all the jobs matching your preferences! Edit them in{' '}
+                  <Link href="/students/settings" className="text-gray-400 font-bold underline">
+                    Settings
+                  </Link>{' '}
+                  to find new opportunities.
+                </div>
+                <div className="flex-grow border-t border-gray-300"></div>
+              </div>
+            );
           }
         });
 
         if (allowUnrelatedJobs === true) {
+          const preferredCards: React.ReactNode[] = [];
+          const unrelatedCards: React.ReactNode[] = [];
+          paginatedJobs.forEach((job, idx) => {
+            if (isPreferred(job)) {
+              preferredCards.push(cards[idx]);
+            } else {
+              unrelatedCards.push(cards[idx]);
+            }
+          });
           if (preferredCards.length > 0 && unrelatedCards.length > 0) {
             return [
               ...preferredCards,
               <div key="divider-unrelated" className="w-full flex items-center my-6">
                 <div className="flex-grow border-t border-gray-400"></div>
                 <span className="mx-4 text-gray-400 text-sm font-medium whitespace-nowrap">
-                 More Jobs Outside Your Preferences
+                  More Jobs Outside Your Preferences
                 </span>
                 <div className="flex-grow border-t border-gray-400"></div>
               </div>,
@@ -744,10 +772,8 @@ const JobCards: React.FC<JobCardsProps> = ({
             return preferredCards;
           }
         }
-        if (allowUnrelatedJobs === false) {
-          return preferredCards;
-        }
-        return [...preferredCards, ...unrelatedCards];
+
+        return cards;
       })()}
       <div className="flex flex-col items-center mt-8 gap-1">
         <div className="flex items-center gap-1">
