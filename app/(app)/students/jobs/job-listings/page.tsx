@@ -1,15 +1,25 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import {
   Search,
   ChevronLeft,
   ChevronRight,
   Filter,
+  X,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 
 import Drawer from "@mui/material/Drawer"
 import { createPortal } from "react-dom"
@@ -24,6 +34,7 @@ import notFoundAnimation from "../../../../../public/animations/not-found.json";
 import Lottie from "lottie-react";
 import type { Job } from "./components/job-details";
 
+type JobFilters = Partial<Pick<Job, "work_type" | "location">> & { salary?: string; match_score_min?: number; match_score_max?: number };
 
 export default function JobListingPage() {
   useEffect(() => {
@@ -299,13 +310,17 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
   const [limit] = useState(10);
   const [search, setSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState(""); 
-  const [filters, setFilters] = useState<Record<string, string | boolean>>({});
+  const [filters, setFilters] = useState<JobFilters>({});
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [totalJobs, setTotalJobs] = useState<number>(0);
+  const [totalPagesState, setTotalPagesState] = useState<number>(1);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
  
-  const [sortBy, setSortBy] = useState("recent");
+  const [sortBy, setSortBy] = useState("relevant");
+  const [preferredTypes, setPreferredTypes] = useState<string[]>([]);
+  const [preferredLocations, setPreferredLocations] = useState<string[]>([]);
+  const [, setAllowUnrelatedJobsState] = useState<boolean | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -313,16 +328,25 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
     params.set("page", String(page));
     params.set("limit", String(limit));
     if (searchQuery) params.set("search", searchQuery);
-    if (filters.work_type && typeof filters.work_type === "string" && filters.work_type.length > 0) params.set("type", filters.type as string);
+    if (filters.work_type && typeof filters.work_type === "string" && filters.work_type.length > 0) params.set("work_type", filters.work_type as string);
     if (filters.location && typeof filters.location === "string" && filters.location.length > 0) params.set("location", filters.location as string);
     if (filters.salary && typeof filters.salary === "string" && filters.salary.length > 0) params.set("salary", filters.salary as string);
+    if (typeof filters.match_score_min === "number") params.set("match_score_min", String(filters.match_score_min));
+    if (typeof filters.match_score_max === "number") params.set("match_score_max", String(filters.match_score_max));
     if (sortBy) params.set("sortBy", sortBy);
 
     fetch(`/api/students/job-listings?${params.toString()}`)
       .then(res => res.json())
-      .then(data => {
+      .then((data) => {
         setJobs(Array.isArray(data.jobs) ? data.jobs : []);
         setTotalJobs(typeof data.total === "number" ? data.total : (Array.isArray(data.jobs) ? data.jobs.length : 0));
+        const computedTotalPages = typeof data.totalPages === "number"
+          ? data.totalPages
+          : Math.max(1, Math.ceil((typeof data.total === "number" ? data.total : (Array.isArray(data.jobs) ? data.jobs.length : 0)) / limit));
+        setTotalPagesState(computedTotalPages);
+        setPreferredTypes(Array.isArray(data.preferredTypes) ? data.preferredTypes : []);
+        setPreferredLocations(Array.isArray(data.preferredLocations) ? data.preferredLocations : []);
+        setAllowUnrelatedJobsState(typeof data.allowUnrelatedJobs === "boolean" ? data.allowUnrelatedJobs : null);
         setLoading(false);
       })
       .catch(() => {
@@ -406,7 +430,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
     }
   }, [page]);
 
-  function handleFilterModalApply(newFilters: Record<string, string | boolean>) {
+  function handleFilterModalApply(newFilters: Partial<Pick<Job, "work_type" | "location">> & { salary?: string; match_score?: number }) {
     setFilters(newFilters);
   }
 
@@ -418,7 +442,107 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
     );
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalJobs / limit));
+  const filterCount = Object.values(filters).reduce<number>((acc, val) => {
+    if (typeof val === "boolean") return acc + (val ? 1 : 0);
+    if (typeof val === "string") return acc + (val.trim().length > 0 ? 1 : 0);
+    if (typeof val === "number") return acc + 1;
+    return acc;
+  }, 0);
+
+  const totalPages = totalPagesState;
+
+  const getJobSalaryNumber = (job: Job): number | null => {
+    const hasPayAmountField = Object.prototype.hasOwnProperty.call(job, "pay_amount");
+    const rawPay = hasPayAmountField ? (job as any).pay_amount : ((job as any).payAmount ?? (job as any).salary ?? "");
+
+    if (rawPay === null || rawPay === undefined) return null;
+    if (typeof rawPay === "number") return rawPay;
+
+    if (typeof rawPay === "string") {
+      if (/unpaid|no pay/i.test(rawPay)) return null;
+      const digits = rawPay.replace(/[^0-9]/g, "");
+      return digits ? Number(digits) : null;
+    }
+
+    return null;
+  };
+
+  const matchesFilter = (job: Job) => {
+    // work_type filter
+    if (filters.work_type && typeof filters.work_type === "string" && filters.work_type.trim() !== "") {
+      const wanted = filters.work_type.split(",").map(s => s.trim()).filter(Boolean);
+      const jobTypes = Array.isArray((job as any).work_type)
+        ? (job as any).work_type
+        : String((job as any).work_type || "").split(",").map((s: string) => s.trim());
+      if (!wanted.some(w => jobTypes.includes(w))) return false;
+    }
+
+    // location filter
+    if (filters.location && typeof filters.location === "string" && filters.location.trim() !== "") {
+      const wantedLoc = filters.location.split(",").map(s => s.trim()).filter(Boolean);
+      const jobLocs = Array.isArray((job as any).location)
+        ? (job as any).location
+        : String((job as any).location || "").split(",").map((s: string) => s.trim());
+      if (!wantedLoc.some(w => jobLocs.includes(w))) return false;
+    }
+
+    // salary filter
+    if (filters.salary && typeof filters.salary === "string" && filters.salary.trim() !== "") {
+      const f = filters.salary;
+
+      const jobSalaryNum = getJobSalaryNumber(job);
+
+      const isUnpaid = jobSalaryNum === null && typeof ((job as any).salary || (job as any).pay_amount || (job as any).payAmount) === "string"
+        ? /unpaid|no pay/i.test(String((job as any).salary ?? (job as any).pay_amount ?? (job as any).payAmount))
+        : jobSalaryNum === null;
+
+      if (f === "unpaid") {
+        if (!isUnpaid) return false;
+      } else if (f.startsWith(">=")) {
+        const val = Number(f.replace(">=", "").replace(/[^0-9]/g, ""));
+        if (isNaN(val)) return false;
+        if (jobSalaryNum === null) return false;
+        if (jobSalaryNum < val) return false;
+      } else {
+        const val = Number(f.replace(/[^0-9]/g, ""));
+        if (!isNaN(val)) {
+          if (jobSalaryNum === null) return false;
+          if (jobSalaryNum < val) return false;
+        }
+      }
+    }
+
+    // match_score filter
+    const min = typeof filters.match_score_min === "number" ? filters.match_score_min : null;
+    const max = typeof filters.match_score_max === "number" ? filters.match_score_max : null;
+    if (min !== null || max !== null) {
+      const jobScore = (job as any).match_score;
+      if (typeof jobScore !== "number") return false;
+      if (min !== null && jobScore < min) return false;
+      if (max !== null && jobScore > max) return false;
+    }
+
+    return true;
+  };
+
+  const filteredJobs = useMemo(() => {
+    if (!filters || Object.keys(filters).length === 0) return jobs;
+
+    const filtered = jobs.filter(matchesFilter);
+
+    if (typeof filters.salary === "string" && /^\s*>=\s*\d+/.test(filters.salary)) {
+      return filtered.slice().sort((a, b) => {
+        const na = getJobSalaryNumber(a);
+        const nb = getJobSalaryNumber(b);
+        if (na === null && nb === null) return 0;
+        if (na === null) return 1;
+        if (nb === null) return -1;
+        return na - nb;
+      });
+    }
+
+    return filtered;
+  }, [jobs, filters]);
 
   return (
     <div className="flex flex-col h-full">
@@ -471,13 +595,28 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
               whileHover={{ boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
               onSubmit={handleSearchSubmit}
             >
-              <Input
-                type="text"
-                placeholder="Search jobs"
-                className="border-0 text-black focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 sm:mb-0 flex-1"
-                value={search}
-                onChange={handleSearchChange}
-              />
+              <div className="relative flex-1 w-full">
+                <Input
+                  type="text"
+                  placeholder="Search jobs"
+                  className="border-0 text-black focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 sm:mb-0 pr-10"
+                  value={search}
+                  onChange={handleSearchChange}
+                />
+                {search && (
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
+                    onClick={() => {
+                      setSearch("");
+                      setSearchQuery("");
+                    }}
+                    tabIndex={0}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
               <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" type="submit">
                 <Search className="mr-2 h-4 w-4" />
                 Search
@@ -485,30 +624,36 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
             </motion.form>
           </motion.div>
 
-          {/* Controls */}
+          {/* Controls (shadcn) */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium text-blue-600">{totalJobs} job listings</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-blue-600">Sort by</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50"
-                >
-                  <option value="relevant">Relevance</option>
-                  <option value="reco">Recommended</option>
-                  <option value="newest">Newest First</option>
-                </select>
+                <Label className="text-sm font-medium text-blue-600">Sort by</Label>
+                <Select value={sortBy} onValueChange={(val: string) => setSortBy(val)}>
+                  <SelectTrigger className="w-[180px] h-8 bg-white text-blue-600 border font-medium text-center border-blue-200 rounded-full px-3 flex items-center">
+                    <SelectValue placeholder="Select sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relevant">Relevance</SelectItem>
+                    <SelectItem value="reco">Recommended</SelectItem>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <Button
               variant="outline"
-              className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center"
               onClick={() => setIsFilterOpen(!isFilterOpen)}
             >
               <Filter className="w-4 h-4 mr-1" />
-              Filters
+              <span>Filters</span>
+              {filterCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-2 rounded-full bg-blue-600 text-white text-xs font-medium">
+                  {filterCount}
+                </span>
+              )}
             </Button>
           </div>
         </div>
@@ -523,7 +668,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
                 Fetching job listings, please wait...
               </span>
             </div>
-          ) : jobs.length === 0 ? (
+          ) : filteredJobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[300px]">
               <div className="bg-white rounded-full shadow-lg flex items-center justify-center mt-10 w-64 h-64">
                 <Lottie animationData={notFoundAnimation} loop={true} />
@@ -534,7 +679,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
             </div>
           ) : (
             <>
-              {jobs
+              {filteredJobs
                 .map((job) => (
                   <JobCard
                     key={job.id}
@@ -545,6 +690,8 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
                       setShowQuickApply(true);
                     }}
                     job={job}
+                    studentPreferredTypes={preferredTypes}
+                    studentPreferredLocations={preferredLocations}
                     onSaveToggle={handleJobSaveToggle}
                   />
                 ))}
@@ -552,7 +699,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
             </>
           )}
 
-          {!loading && jobs.length > 0 && totalPages > 1 && (
+          {!loading && filteredJobs.length > 0 && totalPages > 1 && (
             <Pagination
               totalPages={totalPages}
               currentPage={page}

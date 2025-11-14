@@ -8,7 +8,6 @@ import { PiFileMagnifyingGlassBold } from "react-icons/pi"
 import { AiFillSmile, AiOutlineMeh } from "react-icons/ai"
 import { TbMoodConfuzed } from "react-icons/tb"
 import { SiStarship } from "react-icons/si"
-import { calculateSkillsMatch } from "../../../../../lib/match-utils"
 import { Tooltip, Badge } from "@mui/material"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
@@ -62,8 +61,7 @@ const JobCards: React.FC<JobCardsProps> = ({
   const [page, setPage] = useState(1)
   const [savedJobIds, setSavedJobIds] = useState<string[]>([])
   const [saving, setSaving] = useState<string | null>(null)
-  const [studentSkills, setStudentSkills] = useState<string[]>([])
-  const [jobSkillsMap, setJobSkillsMap] = useState<Record<string, string[]>>({})
+
   const [viewedJobs, setViewedJobs] = useState<Set<string>>(new Set())
   const [matchScores, setMatchScores] = useState<Record<string, number | null>>({})
   const [studentPrefs, setStudentPrefs] = useState<{ workTypes: string[], remoteOptions: string[] }>({ workTypes: [], remoteOptions: [] });
@@ -216,45 +214,6 @@ const JobCards: React.FC<JobCardsProps> = ({
     return matchesTitle && matchesLocation && matchesWorkType && matchesRemoteOption && matchesListedAnytime
   })
 
-  useEffect(() => {
-    fetch("/api/students/student-profile/getHandlers")
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data.skills)) setStudentSkills(data.skills)
-        else if (typeof data.skills === "string") {
-          try {
-            const arr = JSON.parse(data.skills)
-            if (Array.isArray(arr)) setStudentSkills(arr)
-            else setStudentSkills(
-              (data.skills as string).split(",").map((s: string) => s.trim()).filter((s: string) => !!s)
-            )
-          } catch {
-            setStudentSkills(
-              (data.skills as string).split(",").map((s: string) => s.trim()).filter((s: string) => !!s)
-            )
-          }
-        } else setStudentSkills([])
-      })
-      .catch(() => setStudentSkills([]))
-  }, [])
-
-  useEffect(() => {
-    async function fetchSkillsForJobs() {
-      const map: Record<string, string[]> = {}
-      await Promise.all(jobs.map(async (job) => {
-        if (!job.id) return
-        try {
-          const res = await fetch(`/api/jobs/${job.id}/skills`)
-          const json = await res.json()
-          map[job.id] = Array.isArray(json.skills) ? json.skills : []
-        } catch {
-          map[job.id] = []
-        }
-      }))
-      setJobSkillsMap(map)
-    }
-    if (jobs.length > 0) fetchSkillsForJobs()
-  }, [jobs])
 
   useEffect(() => {
     async function fetchMatchScores() {
@@ -513,12 +472,7 @@ const JobCards: React.FC<JobCardsProps> = ({
           } else {
             logoPath = undefined;
           }
-          const jobSkills = jobSkillsMap[job.id] || [];
-          const matchPercent = matchScores[job.id] ?? (
-            studentSkills.length > 0 && jobSkills.length > 0
-              ? calculateSkillsMatch(studentSkills, jobSkills)
-              : null
-          );
+          const matchPercent = matchScores[job.id] ?? null
           const matchedPrefs: string[] = [];
           const jobWorkType = (job.work_type || "").toLowerCase().trim();
           const jobRemoteOption = (job.remote_options || "").toLowerCase().trim();

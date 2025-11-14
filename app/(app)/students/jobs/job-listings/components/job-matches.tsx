@@ -1,16 +1,37 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useRouter } from "next/navigation";
 import { BriefcaseIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getSession } from "next-auth/react";
+
 export default function JobMatches() {
   const router = useRouter();
+  const [jobMatches, setJobMatches] = useState<
+    { job_id: string; job_title: string; company_name: string; gpt_score: number }[]
+  >([]);
 
-  const jobMatches = [
-    { id: 1, title: "Software Engineer", company: "ABC", match: 96 },
-    { id: 2, title: "Frontend Developer", company: "XYZ", match: 92 },
-  ];
+  useEffect(() => {
+    getSession().then((session: any) => {
+      const student_id = session?.user?.studentId;
+      if (!student_id) return;
+      fetch("/api/ai-matches/fetch-current-matches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          const sorted = (data.matches || [])
+            .sort((a: any, b: any) => b.gpt_score - a.gpt_score)
+            .slice(0, 2);
+          setJobMatches(sorted);
+        });
+    });
+  }, []);
 
   function getBadgeColor(match: number) {
-    if (match >= 70) return "bg-green-100 text-green-700 border-green-300";
-    if (match >= 20) return "bg-orange-100 text-orange-700 border-orange-300";
+    if (match >= 60) return "bg-green-100 text-green-700 border-green-300";
+    if (match >= 31) return "bg-orange-100 text-orange-700 border-orange-300";
     return "bg-red-100 text-red-700 border-red-300";
   }
 
@@ -29,27 +50,29 @@ export default function JobMatches() {
         </button>
       </div>
       <div className="space-y-2">
-        {jobMatches.map((job) => (
-          <div
-            key={job.id}
-            className="bg-white border border-blue-100 rounded-lg px-3 py-2 flex flex-col shadow-sm transition-transform duration-200 hover:scale-105"
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-sm text-gray-900">{job.title}</span>
-              <span className="flex items-center gap-1">
-              
-                <span
-                  className={`border text-xs font-semibold px-2 py-0.5 rounded ${getBadgeColor(job.match)}`}
-                >
-                  {job.match}%
+        {jobMatches.length === 0 ? (
+          <div className="text-xs text-gray-500">No matches found</div>
+        ) : (
+          jobMatches.map((job) => (
+            <div
+              key={job.job_id}
+              className="bg-white border border-blue-100 rounded-lg px-3 py-2 flex flex-col shadow-sm transition-transform duration-200 hover:scale-105"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm text-gray-900">{job.job_title}</span>
+                <span className="flex items-center gap-1">
+                  <span
+                    className={`border text-xs font-semibold px-2 py-0.5 rounded ${getBadgeColor(job.gpt_score)}`}
+                  >
+                    {job.gpt_score}%
+                  </span>
                 </span>
-              </span>
+              </div>
+              <span className="text-xs text-gray-500">{job.company_name}</span>
             </div>
-            <span className="text-xs text-gray-500">{job.company}</span>
-          </div>
-        ))}
+          ))
+        )}
       </div>
-      {/* Removed bottom View All button and number count */}
     </div>
   );
 }

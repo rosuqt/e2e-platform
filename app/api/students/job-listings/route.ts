@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from 'next/server'
 import supabase from "@/lib/supabase"
 import { getServerSession } from "next-auth"
@@ -11,8 +13,16 @@ export async function GET(req: Request) {
   const to = from + limit - 1;
 
   const typeParam = searchParams.get("work_type");
-  // eslint-disable-next-line prefer-const
-  let locationParam = searchParams.get("location");
+  const locationParam = searchParams.get("location");
+  const searchQuery = searchParams.get("search")?.toLowerCase() || "";
+  const sortBy = (searchParams.get("sortBy") || "relevant").toLowerCase();
+  const salaryParam = searchParams.get("salary")?.toLowerCase() || "";
+  const matchScoreParamRaw = searchParams.get("match_score");
+  const matchScoreFilter = matchScoreParamRaw ? Number(matchScoreParamRaw) : null;
+  const matchScoreMinRaw = searchParams.get("match_score_min");
+  const matchScoreMaxRaw = searchParams.get("match_score_max");
+  const matchScoreMin = matchScoreMinRaw ? Number(matchScoreMinRaw) : null;
+  const matchScoreMax = matchScoreMaxRaw ? Number(matchScoreMaxRaw) : null;
 
   const session = await getServerSession(authOptions)
   const studentId = session?.user?.studentId
@@ -39,8 +49,6 @@ export async function GET(req: Request) {
       .select("job_type, remote_options, unrelated_jobs")
       .eq("student_id", studentId)
       .single()
-    console.log("s_job_pref data:", pref)
-    console.log("s_job_pref error:", prefErr)
     if (!prefErr && pref) {
       if (pref.job_type) {
         try {
@@ -72,9 +80,6 @@ export async function GET(req: Request) {
         allowUnrelatedJobs = pref.unrelated_jobs
       }
     }
-    console.log("preferredTypes:", preferredTypes)
-    console.log("preferredLocations:", preferredLocations)
-    console.log("allowUnrelatedJobs:", allowUnrelatedJobs)
   }
 
   let query = supabase
@@ -158,8 +163,95 @@ export async function GET(req: Request) {
         }
       })
     : [];
-  console.log("Initial jobs count:", Array.isArray(data) ? data.length : 0)
-  console.log("Result jobs count before filtering:", result.length)
+
+  let scoreMap: Record<string, number> = {};
+  if (studentId) {
+    try {
+      const { data: matchesData } = await supabase
+        .from("job_matches")
+        .select("job_id, gpt_score")
+        .eq("student_id", studentId);
+      if (Array.isArray(matchesData)) {
+        for (const m of matchesData) {
+          if (m && m.job_id != null && typeof m.gpt_score === "number") {
+            scoreMap[String(m.job_id)] = m.gpt_score;
+          }
+        }
+      }
+    } catch (e) {
+      scoreMap = {};
+    }
+  }
+  result = result.map(job => ({ ...job, match_score: scoreMap[String(job.id)] ?? 0 }));
+
+  // apply match score range filtering if provided
+  if ((typeof matchScoreMin === "number" && !isNaN(matchScoreMin)) || (typeof matchScoreMax === "number" && !isNaN(matchScoreMax))) {
+    result = result.filter(job => {
+      const s = Number(job.match_score ?? 0);
+      const hasMin = typeof matchScoreMin === "number" && !isNaN(matchScoreMin);
+      const hasMax = typeof matchScoreMax === "number" && !isNaN(matchScoreMax);
+
+      if (hasMin && hasMax) {
+        return s >= (matchScoreMin as number) && s <= (matchScoreMax as number);
+      }
+      if (hasMin) return s >= (matchScoreMin as number);
+      if (hasMax) return s <= (matchScoreMax as number);
+      return true;
+    });
+  }
+
+  if (matchScoreFilter !== null && !isNaN(matchScoreFilter)) {
+    result = result.filter(job => (job.match_score ?? 0) >= matchScoreFilter);
+  }
+
+  if (salaryParam) {
+    const parseNumericFrom = (val: unknown): number | null => {
+      if (val == null) return null;
+      if (typeof val === "number") return val;
+      if (typeof val === "string") {
+        const digits = val.replace(/[^0-9]/g, "");
+        return digits ? Number(digits) : null;
+      }
+      return null;
+    };
+
+    const isUnpaidValue = (raw: unknown): boolean => {
+      if (raw == null) return true;
+      if (typeof raw === "number") return raw === 0;
+      if (typeof raw === "string") {
+        const t = raw.trim();
+        if (t === "" || t === "0") return true;
+        if (/unpaid|no pay/i.test(t)) return true;
+      }
+      return false;
+    };
+
+    result = result.filter(job => {
+      const hasPayAmountField = Object.prototype.hasOwnProperty.call(job, "pay_amount");
+      const rawPay = hasPayAmountField ? (job as any).pay_amount : ((job as any).payAmount ?? (job as any).salary ?? null);
+      const jobSalaryNum = parseNumericFrom(rawPay);
+
+      if (salaryParam === "unpaid") {
+        return isUnpaidValue(rawPay);
+      }
+
+      if (salaryParam.startsWith(">=")) {
+        const val = Number(salaryParam.replace(">=", "").replace(/[^0-9]/g, ""));
+        if (isNaN(val)) return false;
+        if (jobSalaryNum === null) return false;
+        return jobSalaryNum >= val;
+      }
+
+      const numeric = Number(salaryParam.replace(/[^0-9]/g, ""));
+      if (!isNaN(numeric) && numeric > 0) {
+        if (jobSalaryNum === null) return false;
+        return jobSalaryNum >= numeric;
+      }
+
+      return true;
+    });
+  }
+
   if (preferredTypes.length > 0 || preferredLocations.length > 0) {
     if (!allowUnrelatedJobs) {
       result = result.filter(job => {
@@ -170,7 +262,6 @@ export async function GET(req: Request) {
           (preferredLocations.length > 0 && preferredLocations.includes(remoteNorm))
         )
       });
-      console.log("Filtered jobs count (only related):", result.length)
     } else {
       result = result.sort((a, b) => {
         const aTypeNorm = jobTypeMap[(a.work_type || "").trim().toLowerCase()] || (a.work_type || "").trim().toLowerCase()
@@ -185,37 +276,70 @@ export async function GET(req: Request) {
           (preferredLocations.length > 0 && preferredLocations.includes(bRemoteNorm));
         return (bMatches ? 1 : 0) - (aMatches ? 1 : 0);
       });
-      console.log("Sorted jobs count (related first):", result.length)
     }
   }
-  console.log("Final jobs count after filtering/sorting:", result.length)
-  console.log("Paged jobs count:", result.slice(from, to + 1).length)
 
-  const pagedResult = result.slice(from, to + 1);
-
-  function parsePrefArray(arr: unknown): string[] {
-    if (!Array.isArray(arr)) return [];
-    if (arr.length === 1 && typeof arr[0] === "string" && arr[0].startsWith("[")) {
-      const cleaned = arr[0].replace(/^\[|\]$/g, "");
-      return cleaned
-        .split(",")
-        .map(s => s.replace(/"/g, "").trim().toLowerCase())
-        .filter(Boolean);
-    }
-    return arr
-      .map((s: unknown) => typeof s === "string" ? s.replace(/"/g, "").trim().toLowerCase() : "")
-      .filter(Boolean);
+  if (searchQuery) {
+    result = result.filter(job => {
+      const title = (job.title || job.job_title || "").toLowerCase();
+      const description = (job.description || "").toLowerCase();
+      const company =
+        (job.registered_employers?.company_name ||
+         job.employers?.company_name ||
+         [job.employers?.first_name, job.employers?.last_name].filter(Boolean).join(" ") ||
+         "").toLowerCase();
+      return (
+        title.includes(searchQuery) ||
+        description.includes(searchQuery) ||
+        company.includes(searchQuery)
+      );
+    });
   }
 
-  return NextResponse.json({
-    jobs: pagedResult,
-    total: result.length,
-    totalPages: Math.ceil(result.length / limit),
-    page,
-    limit,
-    preferredTypes: parsePrefArray(preferredTypes),
-    preferredLocations: parsePrefArray(preferredLocations),
-    allowUnrelatedJobs
-  })
+  if (sortBy === "reco") {
+    result = result.sort((a, b) => {
+      const aScore = (a.match_score ?? 0);
+      const bScore = (b.match_score ?? 0);
+      if (bScore === aScore) {
+        const aTime = new Date(a.created_at || 0).getTime();
+        const bTime = new Date(b.created_at || 0).getTime();
+        return bTime - aTime;
+      }
+      return bScore - aScore;
+    });
+  } else if (sortBy === "newest") {
+     result = result.sort((a, b) => {
+       const aTime = new Date(a.created_at || 0).getTime();
+       const bTime = new Date(b.created_at || 0).getTime();
+       return bTime - aTime;
+     });
+   }
+
+   const pagedResult = result.slice(from, to + 1);
+
+   function parsePrefArray(arr: unknown): string[] {
+     if (!Array.isArray(arr)) return [];
+     if (arr.length === 1 && typeof arr[0] === "string" && arr[0].startsWith("[")) {
+       const cleaned = arr[0].replace(/^\[|\]$/g, "");
+       return cleaned
+         .split(",")
+         .map(s => s.replace(/"/g, "").trim().toLowerCase())
+         .filter(Boolean);
+     }
+     return arr
+       .map((s: unknown) => typeof s === "string" ? s.replace(/"/g, "").trim().toLowerCase() : "")
+       .filter(Boolean);
+   }
+
+   return NextResponse.json({
+     jobs: pagedResult,
+     total: result.length,
+     totalPages: Math.ceil(result.length / limit),
+     page,
+     limit,
+     preferredTypes: parsePrefArray(preferredTypes),
+     preferredLocations: parsePrefArray(preferredLocations),
+     allowUnrelatedJobs
+   })
 }
 

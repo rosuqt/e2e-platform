@@ -18,7 +18,7 @@ async function getStudentDetails(student_id: string) {
   try {
     const { data: student, error: studentError } = await supabase
       .from("registered_students")
-      .select("id, first_name, last_name, course, year, section, email")
+      .select("id, first_name, last_name, course, year, section, email,address")
       .eq("id", student_id)
       .single();
 
@@ -113,6 +113,13 @@ async function getStudentDetails(student_id: string) {
       }
     }
 
+    let country = ""
+    let city = ""
+    if (Array.isArray(student.address) && student.address.length >= 2) {
+      country = student.address[0] || ""
+      city = student.address[1] || ""
+    }
+
     return {
       ...student,
       profile_img: signedProfileImgUrl,
@@ -121,6 +128,8 @@ async function getStudentDetails(student_id: string) {
       contact_info,
       uploaded_resume_url: profile?.uploaded_resume_url ?? null,
       uploaded_cover_letter_url: profile?.uploaded_cover_letter_url ?? null,
+      country,
+      city,
     };
   } catch (err) {
     console.log("Error in getStudentDetails:", err)

@@ -212,7 +212,7 @@ export default function ProfileCompletion() {
       <div className="mt-3">
         <Button
           variant="outline"
-          className="w-full text-blue-600 border-blue-100 hover:bg-blue-50 text-xs py-2"
+          className="w-full text-blue-600 border-blue-100 hover:bg-blue-50 hover:text-blue-700 text-xs py-2"
           onClick={() => router.push("/students/profile")}
         >
           {completion.percent === 100 ? "View Profile" : "Complete Profile"}
