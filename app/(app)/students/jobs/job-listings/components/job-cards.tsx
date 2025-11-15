@@ -11,6 +11,7 @@ import { SiStarship } from "react-icons/si";
 import { useSession } from "next-auth/react";
 import QuickApplyModal from "./quick-apply-modal";
 import { ApplicationModal } from "./application-modal";
+import QuickApplyFormModal from "./application-modal-quick-version";
 
 type Employer = {
   first_name?: string;
@@ -130,6 +131,7 @@ function JobCard({
   const [matchLoading, setMatchLoading] = useState<boolean>(false);
   const [showQuickApplyModal, setShowQuickApplyModal] = useState(false);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [showQuickApplyFormModal, setShowQuickApplyFormModal] = useState(false);
 
   const logoPath =
     companyLogoImagePath ||
@@ -155,7 +157,6 @@ function JobCard({
         setLogoLoading(false);
         return;
       }
-      // Always fetch a fresh signed URL, do not use sessionStorage cache
       const res = await fetch("/api/employers/get-signed-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -312,7 +313,7 @@ function JobCard({
     if (!json.exists) {
       setShowQuickApplyModal(true)
     } else {
-      setShowApplicationModal(true)
+      setShowQuickApplyFormModal(true)
     }
   }
 
@@ -545,13 +546,19 @@ function JobCard({
           setShowQuickApplyModal(false);
           setShowApplicationModal(true);
         }}
-        onOpenApplicationModal={() => setShowApplicationModal(true)} // Ensure this is passed
+        jobId={job.id}
+        jobTitle={title}
       />
       {showApplicationModal && (
         <ApplicationModal
           jobId={job.id}
           jobTitle={title}
           onClose={() => setShowApplicationModal(false)}
+        />
+      )}
+      {showQuickApplyFormModal && (
+        <QuickApplyFormModal
+          onClose={() => setShowQuickApplyFormModal(false)}
         />
       )}
     </>

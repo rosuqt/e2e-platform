@@ -301,7 +301,6 @@ function Pagination({
 
 // Job Listings Component
 function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | null) => void; selectedJob: string | null }) {
-  const [showQuickApply, setShowQuickApply] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -316,7 +315,6 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
   const [totalPagesState, setTotalPagesState] = useState<number>(1);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
- 
   const [sortBy, setSortBy] = useState("relevant");
   const [preferredTypes, setPreferredTypes] = useState<string[]>([]);
   const [preferredLocations, setPreferredLocations] = useState<string[]>([]);
@@ -686,9 +684,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
                     id={job.id}
                     isSelected={selectedJob === String(job.id)}
                     onSelect={() => onSelectJob(selectedJob === String(job.id) ? null : String(job.id))}
-                    onQuickApply={() => {
-                      setShowQuickApply(true);
-                    }}
+                    onQuickApply={() => {}}
                     job={job}
                     studentPreferredTypes={preferredTypes}
                     studentPreferredLocations={preferredLocations}
@@ -718,193 +714,6 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
           />,
           document.body
         )}
-
-      {showQuickApply &&
-        createPortal(
-          <QuickApplyModal onClose={() => setShowQuickApply(false)} />,
-          document.body
-        )}
     </div>
   );
-}
-
-// Quick Apply Modal
-function QuickApplyModal({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState(1)
-  const totalSteps = 3
-
-  return (
-    <motion.div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
-      <motion.div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-xl">Quick Apply</h3>
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={onClose}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-x"
-              >
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-              <span className="sr-only">Close</span>
-            </Button>
-          </div>
-       
-
-          {/* Progress bar */}
-          <div className="mt-4 h-1.5 bg-white/30 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-white rounded-full transition-all duration-300"
-              style={{ width: `${(step / totalSteps) * 100}%` }}
-            ></div>
-          </div>
-          <div className="flex justify-between text-xs mt-1 text-blue-100">
-            <span>
-              Step {step} of {totalSteps}
-            </span>
-            <span>{Math.round((step / totalSteps) * 100)}% Complete</span>
-          </div>
-        </div>
-
-        <div className="p-6">
-          {step === 1 && (
-            <div className="space-y-4">
-              <h4 className="font-medium text-lg text-blue-700">Personal Information</h4>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <Input defaultValue="Kemly Rose" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <Input defaultValue="kemly.rose@example.com" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <Input placeholder="Enter your phone number" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4">
-              <h4 className="font-medium text-lg text-blue-700">Resume & Cover Letter</h4>
-              <div className="space-y-3">
-                <div className="border-2 border-dashed border-blue-200 rounded-lg p-4 text-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-blue-500 mb-2"
-                    >
-                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <path d="M16 13H8" />
-                      <path d="M16 17H8" />
-                      <path d="M10 9H8" />
-                    </svg>
-                    <p className="text-sm text-blue-700 font-medium">Upload your resume</p>
-                    <p className="text-xs text-gray-500 mt-1">PDF, DOCX or TXT (Max 5MB)</p>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      Browse Files
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cover Letter (Optional)</label>
-                  <textarea
-                    className="w-full min-h-[100px] rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Tell us why you're a good fit for this position..."
-                  ></textarea>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
-              <h4 className="font-medium text-lg text-blue-700">Additional Questions</h4>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    How many years of experience do you have in this field?
-                  </label>
-                  <select className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option>Less than 1 year</option>
-                    <option>1-2 years</option>
-                    <option>3-5 years</option>
-                    <option>5+ years</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">When can you start?</label>
-                  <select className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option>Immediately</option>
-                    <option>In 2 weeks</option>
-                    <option>In 1 month</option>
-                    <option>More than 1 month</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">What is your expected salary?</label>
-                  <Input placeholder="Enter amount in PHP" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between mt-6">
-            {step > 1 ? (
-              <Button variant="outline" onClick={() => setStep(step - 1)}>
-                Back
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-            )}
-
-            {step < totalSteps ? (
-              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setStep(step + 1)}>
-                Continue
-              </Button>
-            ) : (
-              <Button className="bg-green-600 hover:bg-green-700" onClick={onClose}>
-                Submit Application
-              </Button>
-            )}
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  )
 }
