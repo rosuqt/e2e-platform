@@ -11,7 +11,7 @@ import Image from "next/image";
 //import { FaWandMagicSparkles } from "react-icons/fa6";
 
 import { useSession } from "next-auth/react";
-
+import { useRouter } from "next/navigation";
 
 import { ApplicationModal } from "./application-modal";
 import dynamic from "next/dynamic";
@@ -151,7 +151,8 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   const [hasApplied, setHasApplied] = useState(false);
   const [loadingApply, setLoadingApply] = useState(false);
   const { data: session } = useSession();
-
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const router = useRouter();
 
   const trackJobView = async (jobId: string) => {
     if (viewTracked) return
@@ -343,8 +344,14 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
       body: JSON.stringify({ studentId: session.user.studentId, jobId }),
     })
       .then((res) => res.json())
-      .then((data) => setHasApplied(data.exists))
-      .catch(() => setHasApplied(false))
+      .then((data) => {
+        setHasApplied(data.exists);
+        setApplicationId(data.applicationId ? String(data.applicationId) : null);
+      })
+      .catch(() => {
+        setHasApplied(false);
+        setApplicationId(null);
+      })
       .finally(() => setLoadingApply(false));
   }, [jobId, session?.user?.studentId]);
 
@@ -635,26 +642,37 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         </div>
 
         <div className="mt-4 flex gap-3">
-          <Button
-            className={`gap-2 rounded-full ${
-              hasApplied || loadingApply
-                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700 text-white"
-            }`}
-            onClick={() => setIsModalOpen(true)}
-            disabled={hasApplied || loadingApply}
-          >
-            {loadingApply ? (
-              <CircularProgress size={20} color="inherit" />
-            ) : (
-              <Tooltip title={hasApplied ? "Looks like you’ve applied before — no need to apply again." : ""}>
+          {!hasApplied && (
+            <Button
+              className={`gap-2 rounded-full ${
+                loadingApply
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
+              }`}
+              onClick={() => setIsModalOpen(true)}
+              disabled={loadingApply}
+            >
+              {loadingApply ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
                 <span className="flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  <span className="px-3">{hasApplied ? "Submitted" : "Apply"}</span>
+                  <span className="px-3">Apply</span>
                 </span>
-              </Tooltip>
-            )}
-          </Button>
+              )}
+            </Button>
+          )}
+          {hasApplied && applicationId && (
+            <Button
+              className="gap-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-5"
+              onClick={() => {
+                router.push(`/students/jobs/applications?application=${encodeURIComponent(applicationId)}`);
+              }}
+            >
+              <Mail className="w-4 h-4" />
+              <span>View Application</span>
+            </Button>
+          )}
           <Button
             variant="outline"
             className={`gap-2 rounded-full border-blue-600 ${saved ? "text-blue-600" : "text-blue-600"} hover:bg-blue-50 px-5`}

@@ -21,7 +21,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Error checking application" }, { status: 500 });
     }
 
-    return NextResponse.json({ exists: data.length > 0 });
+    const exists = data && data.length > 0;
+    const applicationId = exists ? data[0].application_id : null;
+
+    return NextResponse.json({ exists, applicationId });
   } catch (err) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

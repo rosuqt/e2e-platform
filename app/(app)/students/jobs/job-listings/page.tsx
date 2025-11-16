@@ -707,4 +707,4 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
         )}
     </div>
   );
-}
+} 

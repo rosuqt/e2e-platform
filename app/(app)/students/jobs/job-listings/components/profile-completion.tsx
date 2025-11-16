@@ -3,16 +3,13 @@
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { CheckCircle } from "lucide-react"
-import Image from "next/image"
 import Skeleton from "@mui/material/Skeleton"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Progress } from "@/components/ui/progress"
-import { FaUser } from "react-icons/fa"
 
 export default function ProfileCompletion() {
   const [studentName, setStudentName] = useState<string | null>(null)
-  const [profileImg, setProfileImg] = useState<string | null>(null)
   const [course, setCourse] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [completion, setCompletion] = useState({
@@ -26,12 +23,11 @@ export default function ProfileCompletion() {
   const router = useRouter()
 
   useEffect(() => {
-    (async () => {
+    ;(async () => {
       setLoading(true)
       let first_name: string | null = null
       let last_name: string | null = null
       let course: string | null = null
-      let profile_img: string | null = null
       try {
         const detailsRes = await fetch("/api/students/get-student-details", {
           credentials: "include",
@@ -41,43 +37,15 @@ export default function ProfileCompletion() {
           first_name = details.first_name ?? null
           last_name = details.last_name ?? null
           course = details.course ?? null
-          profile_img = details.profile_img ?? null
           setStudentName(
             first_name && last_name
               ? `${first_name} ${last_name}`
               : first_name || last_name || null
           )
           setCourse(course || null)
-          if (profile_img) {
-            try {
-              const signedRes = await fetch("/api/students/get-signed-url", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ bucket: "user.avatars", path: profile_img }),
-                credentials: "include",
-              })
-              const apiResponse = await signedRes.json();
-              if (signedRes.ok && apiResponse.signedUrl) {
-                setProfileImg(apiResponse.signedUrl)
-                sessionStorage.setItem(
-                  "studentProfileCompletion",
-                  JSON.stringify({
-                    profileImg: apiResponse.signedUrl,
-                  })
-                );
-              } else {
-                setProfileImg(null)
-              }
-            } catch {
-              setProfileImg(null)
-            }
-          } else {
-            setProfileImg(null)
-          }
         } else {
           setStudentName(null)
           setCourse(null)
-          setProfileImg(null)
         }
 
         const profileRes = await fetch("/api/students/student-profile/getHandlers", {
@@ -113,7 +81,6 @@ export default function ProfileCompletion() {
       } catch {
         setStudentName(null)
         setCourse(null)
-        setProfileImg(null)
         setCompletion({ basic: false, achievements: false, resume: false, skills: false, portfolio: false, percent: 0 })
       }
       setLoading(false)
@@ -127,46 +94,19 @@ export default function ProfileCompletion() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <motion.div
-          className="relative w-10 h-10 rounded-full overflow-hidden border border-blue-200 bg-blue-50 flex items-center justify-center"
-          whileHover={{ scale: 1.05 }}
-        >
+      <div className="mb-3">
+        <h3 className="font-medium text-blue-700 text-sm">
           {loading ? (
-            <Skeleton variant="circular" width={40} height={40} />
-          ) : profileImg ? (
-            <Image
-              src={profileImg}
-              alt="Profile"
-              width={40}
-              height={40}
-              className="object-cover"
-              onError={() => {
-                setProfileImg(null);
-              }}
-            />
+            <Skeleton variant="text" width={80} height={16} />
           ) : studentName ? (
-            <span className="text-blue-700 font-bold text-lg">
-              {studentName
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()}
-            </span>
+            `Hello ${studentName.split(" ")[0]}!`
           ) : (
-            <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
-              <FaUser className="text-white w-4 h-4" />
-            </div>
+            "Hello!"
           )}
-        </motion.div>
-        <div>
-          <h3 className="font-medium text-blue-700 text-sm">
-            {loading ? <Skeleton variant="text" width={60} height={16} /> : studentName || "Full Name"}
-          </h3>
-          <p className="text-xs text-blue-500">
-            {loading ? <Skeleton variant="text" width={80} height={12} /> : course || "Course"}
-          </p>
-        </div>
+        </h3>
+        <p className="text-xs text-blue-500">
+          {loading ? <Skeleton variant="text" width={50} height={12} /> : "Find your future—countless jobs await."}
+        </p>
       </div>
 
       <div className="mb-2">

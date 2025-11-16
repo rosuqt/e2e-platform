@@ -40,6 +40,7 @@ import { BadgeCheck as LuBadgeCheck } from "lucide-react"
 import Tooltip from "@mui/material/Tooltip"
 import { styled } from "@mui/material/styles"
 import { AiFillStar } from "react-icons/ai"
+import { useSearchParams, useRouter } from "next/navigation"
 
 type JobPosting = {
   employer_id?: string
@@ -91,6 +92,7 @@ type ApplicationData = {
   id?: string | number
   achievements?: string[]
   portfolio?: string[]
+  application_id?: string | number
 }
 
 type JobRatingData = {
@@ -121,9 +123,9 @@ const CustomTooltip = styled(Tooltip)(() => ({
 }))
 
 export default function ApplicationTrackerNoSidebar() {
-  const [selectedApplication, setSelectedApplication] = useState<number | null>(null)
+  const [selectedApplication, setSelectedApplication] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalApplicationId, setModalApplicationId] = useState<number | null>(null)
+  const [modalApplicationId, setModalApplicationId] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false)
@@ -163,7 +165,11 @@ export default function ApplicationTrackerNoSidebar() {
   const [applicationsData, setApplicationsData] = useState<ApplicationData[] | null>(null)
 
   const [logoUrls, setLogoUrls] = useState<{ [key: number]: string | null }>({})
-
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [prefilledApplicationId, setPrefilledApplicationId] = useState<string | null>(null)
+  const [prefillHandled, setPrefillHandled] = useState(false)
+  const [highlightLogicalId, setHighlightLogicalId] = useState<string | null>(null)
 
   const applications = [
     {
@@ -220,10 +226,11 @@ export default function ApplicationTrackerNoSidebar() {
             resumeUrl?: string
             achievements?: string[]
             portfolio?: string[]
+            application_id?: string | number
           }) => {
             let resumeUrl = app.resumeUrl ?? ""
             const resume = app.resume ?? ""
-        
+
             if (resume && !resumeUrl) {
               let found = false
               for (const bucket of ["student.documents"]) {
@@ -242,9 +249,7 @@ export default function ApplicationTrackerNoSidebar() {
                     found = true
                     break
                   }
-                } catch {
-                
-                }
+                } catch {}
               }
               if (!found) resumeUrl = ""
             }
@@ -260,6 +265,44 @@ export default function ApplicationTrackerNoSidebar() {
         setApplicationsData(applicationsWithResume)
       })
   }, [])
+
+  useEffect(() => {
+    const param = searchParams?.get("application")
+    if (param && !prefillHandled) {
+      setPrefilledApplicationId(param)
+      setHighlightLogicalId(param)
+    }
+  }, [searchParams, prefillHandled])
+
+  useEffect(() => {
+    if (!applicationsData || !prefilledApplicationId || prefillHandled) return
+
+    const normalized = String(prefilledApplicationId)
+    const idx = applicationsData.findIndex(app =>
+      String(app.application_id ?? app.id ?? app.job_postings?.id ?? "") === normalized
+    )
+
+    if (idx !== -1) {
+      const reordered = [
+        applicationsData[idx],
+        ...applicationsData.filter((_, i) => i !== idx),
+      ]
+      setApplicationsData(reordered)
+      setSelectedApplication(normalized)
+
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search)
+        params.set("application", normalized)
+        const query = params.toString() ? `?${params.toString()}` : ""
+        router.replace(`/students/jobs/applications${query}`)
+      }
+
+      setPrefillHandled(true)
+      setTimeout(() => {
+        setHighlightLogicalId(null)
+      }, 2000)
+    }
+  }, [applicationsData, prefilledApplicationId, prefillHandled, router])
 
   useEffect(() => {
     async function fetchLogos() {
@@ -356,26 +399,26 @@ export default function ApplicationTrackerNoSidebar() {
     fetchProfileImgs()
   }, [applicationsData])
 
-  const handleViewDetails = (id: number, e: React.MouseEvent) => {
+  const handleViewDetails = (logicalId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    setModalApplicationId(id)
+    setModalApplicationId(logicalId)
     setIsModalOpen(true)
   }
 
-  const handleFollowUp = (id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const application = applications.find((app) => app.id === id);
+  const handleFollowUp = (logicalId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const application = applications.find((app) => String(app.id) === logicalId)
     if (application && application.contacts?.length > 0) {
-      const contact = application.contacts[0];
+      const contact = application.contacts[0]
       setFollowUpDetails({
         employerName: contact.name,
         jobTitle: contact.role,
         company: application.company,
-      });
-      setModalApplicationId(id);
-      setIsFollowUpModalOpen(true);
+      })
+      setModalApplicationId(logicalId)
+      setIsFollowUpModalOpen(true)
     }
-  };
+  }
 
   const [activeTab, setActiveTab] = useState("all")
   const [isJobRatingModalOpen, setIsJobRatingModalOpen] = useState(false)
@@ -448,6 +491,13 @@ export default function ApplicationTrackerNoSidebar() {
     })
     setIsJobRatingModalOpen(true)
   }
+
+  const allApps = applicationsData || []
+  const pendingApps = allApps.filter(a => (a.status || "").toLowerCase() === "new")
+  const reviewApps = allApps.filter(a => (a.status || "").toLowerCase() === "shortlisted")
+  const interviewApps = allApps.filter(a => (a.status || "").toLowerCase() === "interview scheduled")
+  const hiredApps = allApps.filter(a => (a.status || "").toLowerCase() === "hired")
+  const rejectedApps = allApps.filter(a => (a.status || "").toLowerCase() === "rejected")
 
   return (
     <>
@@ -530,16 +580,18 @@ export default function ApplicationTrackerNoSidebar() {
 
                     <div className="mt-3 flex items-center justify-between">
                       <span className="text-sm font-medium text-blue-600">
-                        {(() => {
-                          if (!applicationsData) return 0
-                          if (activeTab === "all") return applicationsData.length
-                          if (activeTab === "pending") return applicationsData.filter(a => (a.status || "").toLowerCase() === "new").length
-                          if (activeTab === "review") return applicationsData.filter(a => (a.status || "").toLowerCase() === "shortlisted").length
-                          if (activeTab === "interview") return applicationsData.filter(a => (a.status || "").toLowerCase() === "interview scheduled").length
-                          if (activeTab === "hired") return applicationsData.filter(a => (a.status || "").toLowerCase() === "hired").length
-                          if (activeTab === "rejected") return applicationsData.filter(a => (a.status || "").toLowerCase() === "rejected").length
-                          return 0
-                        })()} applications
+                        {activeTab === "all"
+                          ? allApps.length
+                          : activeTab === "pending"
+                          ? pendingApps.length
+                          : activeTab === "review"
+                          ? reviewApps.length
+                          : activeTab === "interview"
+                          ? interviewApps.length
+                          : activeTab === "hired"
+                          ? hiredApps.length
+                          : rejectedApps.length}{" "}
+                        applications
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-blue-600">Sort by</span>
@@ -557,18 +609,18 @@ export default function ApplicationTrackerNoSidebar() {
                     </div>
 
                     <TabsContent value="all" className="mt-4 space-y-4">
-                      {applicationsData?.length
+                      {allApps.length
                         ? generateApplicationCards(
-                            applicationsData.length,
+                            allApps,
                             "all",
                             selectedApplication,
                             setSelectedApplication,
                             handleViewDetails,
                             handleFollowUp,
                             handleMenuOpen,
-                            applicationsData,
                             logoUrls,
-                            handleOpenJobRatingModal
+                            handleOpenJobRatingModal,
+                            highlightLogicalId
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -580,18 +632,18 @@ export default function ApplicationTrackerNoSidebar() {
                       }
                     </TabsContent>
                     <TabsContent value="pending" className="mt-4 space-y-4">
-                      {applicationsData && applicationsData.filter(a => (a.status || "").toLowerCase() === "new").length
+                      {pendingApps.length
                         ? generateApplicationCards(
-                            applicationsData.filter(a => (a.status || "").toLowerCase() === "new").length,
+                            pendingApps,
                             "pending",
                             selectedApplication,
                             setSelectedApplication,
                             handleViewDetails,
                             handleFollowUp,
                             handleMenuOpen,
-                            applicationsData.filter(a => (a.status || "").toLowerCase() === "new"),
                             logoUrls,
-                            handleOpenJobRatingModal
+                            handleOpenJobRatingModal,
+                            highlightLogicalId
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -603,18 +655,18 @@ export default function ApplicationTrackerNoSidebar() {
                       }
                     </TabsContent>
                     <TabsContent value="review" className="mt-4 space-y-4">
-                      {applicationsData && applicationsData.filter(a => (a.status || "").toLowerCase() === "shortlisted").length
+                      {reviewApps.length
                         ? generateApplicationCards(
-                            applicationsData.filter(a => (a.status || "").toLowerCase() === "shortlisted").length,
+                            reviewApps,
                             "review",
                             selectedApplication,
                             setSelectedApplication,
                             handleViewDetails,
                             handleFollowUp,
                             handleMenuOpen,
-                            applicationsData.filter(a => (a.status || "").toLowerCase() === "shortlisted"),
                             logoUrls,
-                            handleOpenJobRatingModal
+                            handleOpenJobRatingModal,
+                            highlightLogicalId
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -626,18 +678,18 @@ export default function ApplicationTrackerNoSidebar() {
                       }
                     </TabsContent>
                     <TabsContent value="interview" className="mt-4 space-y-4">
-                      {applicationsData && applicationsData.filter(a => (a.status || "").toLowerCase() === "interview scheduled").length
+                      {interviewApps.length
                         ? generateApplicationCards(
-                            applicationsData.filter(a => (a.status || "").toLowerCase() === "interview scheduled").length,
+                            interviewApps,
                             "interview",
                             selectedApplication,
                             setSelectedApplication,
                             handleViewDetails,
                             handleFollowUp,
                             handleMenuOpen,
-                            applicationsData.filter(a => (a.status || "").toLowerCase() === "interview scheduled"),
                             logoUrls,
-                            handleOpenJobRatingModal
+                            handleOpenJobRatingModal,
+                            highlightLogicalId
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -649,18 +701,18 @@ export default function ApplicationTrackerNoSidebar() {
                       }
                     </TabsContent>
                     <TabsContent value="hired" className="mt-4 space-y-4">
-                      {applicationsData && applicationsData.filter(a => (a.status || "").toLowerCase() === "hired").length
+                      {hiredApps.length
                         ? generateApplicationCards(
-                            applicationsData.filter(a => (a.status || "").toLowerCase() === "hired").length,
+                            hiredApps,
                             "hired",
                             selectedApplication,
                             setSelectedApplication,
                             handleViewDetails,
                             handleFollowUp,
                             handleMenuOpen,
-                            applicationsData.filter(a => (a.status || "").toLowerCase() === "hired"),
                             logoUrls,
-                            handleOpenJobRatingModal
+                            handleOpenJobRatingModal,
+                            highlightLogicalId
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -672,18 +724,18 @@ export default function ApplicationTrackerNoSidebar() {
                       }
                     </TabsContent>
                     <TabsContent value="rejected" className="mt-4 space-y-4">
-                      {applicationsData && applicationsData.filter(a => (a.status || "").toLowerCase() === "rejected").length
+                      {rejectedApps.length
                         ? generateApplicationCards(
-                            applicationsData.filter(a => (a.status || "").toLowerCase() === "rejected").length,
+                            rejectedApps,
                             "rejected",
                             selectedApplication,
                             setSelectedApplication,
                             handleViewDetails,
                             handleFollowUp,
                             handleMenuOpen,
-                            applicationsData.filter(a => (a.status || "").toLowerCase() === "rejected"),
                             logoUrls,
-                            handleOpenJobRatingModal
+                            handleOpenJobRatingModal,
+                            highlightLogicalId
                           )
                         : (
                           <div className="flex flex-col items-center justify-center min-h-[220px]">
@@ -795,13 +847,10 @@ export default function ApplicationTrackerNoSidebar() {
           isModalOpen={isModalOpen}
           setIsModalOpen={setIsModalOpen}
           applicationData={
-            typeof modalApplicationId === "number" && applicationsData
+            modalApplicationId && applicationsData
               ? (() => {
-                  const app = applicationsData.find(
-                    (app, idx) =>
-                      (app.job_postings?.id && Number(app.job_postings.id) === modalApplicationId) ||
-                      (app["id"] && Number(app["id"]) === modalApplicationId) ||
-                      idx + 1 === modalApplicationId
+                  const app = applicationsData.find(app =>
+                    String(app.application_id ?? app.id ?? app.job_postings?.id ?? "") === modalApplicationId
                   )
                   return app
                     ? {
@@ -854,16 +903,16 @@ export default function ApplicationTrackerNoSidebar() {
 }
 
 function generateApplicationCards(
-  count: number,
+  applicationsData: ApplicationData[],
   status: string,
-  selectedApplication: number | null,
-  setSelectedApplication: (id: number | null) => void,
-  handleViewDetails: (id: number, e: React.MouseEvent) => void,
-  handleFollowUp: (id: number, e: React.MouseEvent) => void,
+  selectedApplication: string | null,
+  setSelectedApplication: (id: string | null) => void,
+  handleViewDetails: (logicalId: string, e: React.MouseEvent) => void,
+  handleFollowUp: (logicalId: string, e: React.MouseEvent) => void,
   handleMenuOpen: (event: React.MouseEvent<HTMLButtonElement>, id: number) => void,
-  applicationsData?: ApplicationData[],
   logoUrls?: { [key: number]: string | null },
-  handleOpenJobRatingModal?: (app: ApplicationData) => void
+  handleOpenJobRatingModal?: (app: ApplicationData) => void,
+  highlightLogicalId?: string | null
 ) {
   const statusConfig = {
     all: { title: "Mixed", badge: "", hover: "hover:border-l-yellow-400" },
@@ -896,48 +945,38 @@ function generateApplicationCards(
 
   return (
     <>
-      {Array.from({ length: count }).map((_, index) => {
-        const id = index + 1
+      {applicationsData.map((app, index) => {
+        const logicalIdForCard = String(app.application_id ?? app.id ?? app.job_postings?.id ?? index)
+        const idForMenu = index + 1
+
         let cardStatus = status
-        let appStatus = ""
-        if (applicationsData && applicationsData[index]) {
-          appStatus = mapStatus(applicationsData[index].status)
-          cardStatus = status === "all" ? appStatus : status
-        } else if (status === "all") {
-          const statuses = ["pending", "review", "interview", "hired", "rejected", "waitlisted"]
-          cardStatus = statuses[index % statuses.length]
-        }
+        const appStatus = mapStatus(app.status)
+        if (status === "all") cardStatus = appStatus
 
         const badgeClass = statusConfig[cardStatus as keyof typeof statusConfig]?.badge
-        const hoverBorder = statusConfig[cardStatus as keyof typeof statusConfig]?.hover || "hover:border-l-blue-400"
+        const hoverBorder = statusConfig[cardStatus as keyof typeof statusConfig]?.hover || "hover:border-l-blue-100"
 
-        let workType = ""
-        let payAmount = ""
-        let payType = ""
-        let appliedAt = ""
-        let remoteOptions = ""
-        let verificationTier = "basic"
-        if (applicationsData && applicationsData[index]) {
-          const app = applicationsData[index]
-          workType = app.job_postings?.work_type || ""
-          payAmount = app.job_postings?.pay_amount ? app.job_postings.pay_amount.toString() : ""
-          payType = app.job_postings?.pay_type || ""
-          appliedAt = app.applied_at
-            ? new Date(app.applied_at).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
-            : ""
-          remoteOptions = app.job_postings?.remote_options || app.remote_options || ""
-          verificationTier = app.job_postings?.verification_tier || "basic"
-        }
+        const workType = app.job_postings?.work_type || ""
+        const payAmount = app.job_postings?.pay_amount ? String(app.job_postings.pay_amount) : ""
+        const payType = app.job_postings?.pay_type || ""
+        const appliedAt = app.applied_at
+          ? new Date(app.applied_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : ""
+        const remoteOptions = app.job_postings?.remote_options || app.remote_options || ""
+        const verificationTier = app.job_postings?.verification_tier || "basic"
 
+        const shouldHighlight = !!highlightLogicalId && logicalIdForCard === String(highlightLogicalId) && index === 0
 
         return (
           <motion.div
-            key={id}
-            className={`bg-white rounded-lg shadow-sm p-5 border-l-4 border-l-gray-200 ${hoverBorder} relative overflow-hidden transition-colors duration-200`}
+            key={logicalIdForCard}
+            className={`relative overflow-hidden rounded-lg shadow-sm p-5 border-l-4 border-l-gray-200 ${hoverBorder} transition-colors duration-200 ${
+              selectedApplication === logicalIdForCard ? "bg-yellow-100/40" : "bg-white"
+            }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -945,9 +984,24 @@ function generateApplicationCards(
               y: -2,
               boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
             }}
-            onClick={() => setSelectedApplication(id === selectedApplication ? null : id)}
+            onClick={() =>
+              setSelectedApplication(selectedApplication === logicalIdForCard ? null : logicalIdForCard)
+            }
           >
-            <div className="flex justify-between items-start">
+            {shouldHighlight && (
+              <motion.div
+                className="absolute inset-0 pointer-events-none"
+                initial={{
+                  x: "-100%",
+                  background:
+                    "linear-gradient(90deg, rgba(216,180,254,0) 0%, rgba(216,180,254,0.9) 35%, rgba(251,207,232,0.9) 65%, rgba(251,207,232,0) 100%)",
+                }}
+                animate={{ x: "100%" }}
+                transition={{ duration: 2, ease: "easeInOut" }}
+              />
+            )}
+
+            <div className="flex justify-between items-start relative">
               <div className="flex gap-3">
                 <div
                   className={`w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold ${
@@ -962,16 +1016,14 @@ function generateApplicationCards(
                       height={48}
                       className="object-cover rounded-lg"
                     />
-                  ) : applicationsData && applicationsData[index]
-                    ? (applicationsData[index].company_name || "C").charAt(0)
+                  ) : app.company_name
+                    ? app.company_name.charAt(0)
                     : "C"}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
-                      {applicationsData && applicationsData[index]
-                        ? applicationsData[index].job_postings?.job_title || "Position"
-                        : "Position"}
+                      {app.job_postings?.job_title || "Position"}
                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white">
                         {verificationTier === "full" ? (
                           <CustomTooltip title="Fully verified and trusted company" arrow>
@@ -994,10 +1046,7 @@ function generateApplicationCards(
                         )}
                       </span>
                     </h3>
-                    <motion.div
-                      whileHover={{ scale: 1.15 }}
-                      className="pointer-events-auto"
-                    >
+                    <motion.div whileHover={{ scale: 1.15 }} className="pointer-events-auto">
                       <Badge className={`${badgeClass} pointer-events-none`}>
                         {statusConfig[cardStatus as keyof typeof statusConfig]?.title || "Pending"}
                       </Badge>
@@ -1005,11 +1054,8 @@ function generateApplicationCards(
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-gray-500">
-                      {applicationsData && applicationsData[index]
-                        ? applicationsData[index].company_name || ""
-                        : ""}
+                      {app.company_name || ""}
                     </p>
-         
                   </div>
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
                     <div className="flex flex-col gap-2">
@@ -1027,10 +1073,9 @@ function generateApplicationCards(
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                     
                       {remoteOptions && (
                         <div className="flex items-center gap-1 text-xs text-gray-500">
-                           <Globe className="h-3 w-3" />
+                          <Globe className="h-3 w-3" />
                           <span>{remoteOptions}</span>
                         </div>
                       )}
@@ -1042,27 +1087,23 @@ function generateApplicationCards(
                   </div>
                 </div>
               </div>
-              <div className="flex gap-1 items-center">
 
-                  <motion.div whileHover={{ scale: 1.15 }} className="pointer-events-auto">
+              <div className="flex gap-1 items-center">
+                <motion.div whileHover={{ scale: 1.15 }} className="pointer-events-auto">
                   <Badge className="bg-green-100 text-green-700 pointer-events-none">
-                    {applicationsData && applicationsData[index]
-                      ? applicationsData[index].match_score || "98%"
-                      : "98%"} Match
+                    {app.match_score || "98%"} Match
                   </Badge>
                 </motion.div>
-                
                 <button
                   className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Bookmark className="h-4 w-4" />
                 </button>
-              
                 <IconButton
                   size="small"
                   className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
-                  onClick={(e) => handleMenuOpen(e, id)}
+                  onClick={(e) => handleMenuOpen(e, idForMenu)}
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </IconButton>
@@ -1084,7 +1125,7 @@ function generateApplicationCards(
                   <Button
                     size="sm"
                     className="bg-yellow-600 hover:bg-yellow-700 text-xs"
-                    onClick={(e) => handleFollowUp(id, e)}
+                    onClick={(e) => handleFollowUp(logicalIdForCard, e)}
                   >
                     Follow Up
                   </Button>
@@ -1095,12 +1136,7 @@ function generateApplicationCards(
                     className="bg-green-600 hover:bg-green-700 text-xs flex items-center gap-1"
                     onClick={async e => {
                       e.stopPropagation()
-                      if (
-                        applicationsData &&
-                        applicationsData[index] &&
-                        handleOpenJobRatingModal
-                      ) {
-                        const app = applicationsData[index]
+                      if (handleOpenJobRatingModal) {
                         await handleOpenJobRatingModal(app)
                       }
                     }}
@@ -1113,7 +1149,7 @@ function generateApplicationCards(
                   variant="outline"
                   size="sm"
                   className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 text-xs"
-                  onClick={(e) => handleViewDetails(id, e)}
+                  onClick={(e) => handleViewDetails(logicalIdForCard, e)}
                 >
                   View Details
                 </Button>
@@ -1125,7 +1161,7 @@ function generateApplicationCards(
                     onClick={e => {
                       e.stopPropagation()
                       if (typeof window !== "undefined") {
-                        navigator.clipboard.writeText("Withdraw application " + id)
+                        navigator.clipboard.writeText("Withdraw application " + logicalIdForCard)
                       }
                     }}
                   >
