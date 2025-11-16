@@ -165,16 +165,7 @@ export default function JobListingPage() {
               w-[35%] max-w-[600px]
             `}
           >
-            {/* Debug: log selected job's responsibilities */}
-            {/* 
-            {(() => {
-              const job = jobs.find(j => j.id === selectedJob);
-              if (job) {
-                console.log("DEBUG responsibilities:", job.responsibilities);
-              }
-              return null;
-            })()}
-            */}
+
             <JobDetails onClose={() => setSelectedJob(null)} jobId={selectedJob} />
           </div>
         )}

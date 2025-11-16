@@ -88,7 +88,7 @@ type ApplicationData = {
 }
 
 interface ApplicationDetailsProps {
-  applicationId: number | null 
+  applicationId: string | null // Changed from number | null to string | null
   isModalOpen: boolean
   setIsModalOpen: (open: boolean) => void
   applicationData?: ApplicationData
@@ -161,6 +161,16 @@ function buildTimeline(applicationData?: ApplicationData) {
 }
 
 export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModalOpen, applicationData }: ApplicationDetailsProps) {
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  if (!isClient) return null
+
+  console.log("Modal Props - applicationId:", applicationId, "isModalOpen:", isModalOpen) // Debug log
+
   const applications = [
     {
       id: 1,
@@ -346,9 +356,9 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
   }
 
   const application =
-    applicationData && typeof applicationId === "number"
+    applicationData && applicationId
       ? {
-          id: applicationId,
+          id: applicationId, // Ensure this matches the updated type
           company: applicationData.company_name || applicationData.job_postings?.company || "",
           position: applicationData.job_postings?.job_title || "",
           status: applicationData.status || "",
@@ -384,7 +394,7 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
           achievements: applicationData.achievements || applicationData.job_postings?.achievements || [],
           portfolio: applicationData.portfolio || applicationData.job_postings?.portfolio || []
         }
-      : applications.find((app) => app.id === applicationId)
+      : applications.find((app) => String(app.id) === applicationId) // Ensure comparison is done with string
 
   if (!application) {
     return null
@@ -404,8 +414,10 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
   }
 
   return (
-    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto mt-10 p-0">
+    isClient && (
+      <div style={{ display: isModalOpen ? "block" : "none", background: "white", padding: "20px" }}>
+        <h1>Application Details</h1>
+        <p>Application ID: {applicationId}</p>
         <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-6 text-white rounded-t-lg relative">
           <div className="flex items-center justify-between">
             <div>
@@ -452,13 +464,13 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
           <DialogTitle className="sr-only">Application Details</DialogTitle>
           <ApplicationDetailsContent application={application} />
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    )
   )
 }
 
 interface Application {
-  id: number
+  id: string | number; // Updated from number to string | number
   company: string
   position: string
   status: string
@@ -638,13 +650,13 @@ function ApplicationDetailsContent({ application }: { application: Application }
   const [portfolio, setPortfolio] = useState<{ name: string; url: string }[]>([])
 
   useEffect(() => {
-    console.log("Details: application.achievements", application.achievements)
-    console.log("Details: application.portfolio", application.portfolio)
+    //console.log("Details: application.achievements", application.achievements)
+    //console.log("Details: application.portfolio", application.portfolio)
     const fetchAchievementPortfolio = async () => {
       const jobPostings = application.job_postings as
         | (ApplicationData["job_postings"] & { achievements?: string[]; portfolio?: string[] })
         | undefined
-      console.log("Details: jobPostings", jobPostings)
+     // console.log("Details: jobPostings", jobPostings)
       let achArr = (application.achievements && application.achievements.length > 0
         ? application.achievements
         : jobPostings?.achievements) || []
@@ -653,8 +665,8 @@ function ApplicationDetailsContent({ application }: { application: Application }
         : jobPostings?.portfolio) || []
       if (!Array.isArray(achArr)) achArr = []
       if (!Array.isArray(portArr)) portArr = []
-      console.log("Details: achArr", achArr)
-      console.log("Details: portArr", portArr)
+     // console.log("Details: achArr", achArr)
+      //console.log("Details: portArr", portArr)
       const fetchSigned = async (path: string): Promise<string | null> => {
         if (!path) return null
         try {

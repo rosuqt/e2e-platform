@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import supabase from "@/lib/supabase";
 
@@ -6,33 +7,22 @@ export async function POST(req: Request) {
     const { studentId, jobId } = await req.json();
 
     if (!studentId || !jobId) {
-      return NextResponse.json(
-        { error: "Missing required fields: studentId or jobId" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing studentId or jobId" }, { status: 400 });
     }
 
     const { data, error } = await supabase
       .from("applications")
-      .select("id")
+      .select("application_id")
       .eq("student_id", studentId)
       .eq("job_id", jobId)
-      .maybeSingle();
+      .limit(1);
 
     if (error) {
-      console.error("Supabase query error:", error);
-      return NextResponse.json(
-        { exists: false, error: error.message },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Error checking application" }, { status: 500 });
     }
 
-    return NextResponse.json({ exists: !!data });
+    return NextResponse.json({ exists: data.length > 0 });
   } catch (err) {
-    console.error("Unexpected error in check-apply-exist route:", err);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

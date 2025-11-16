@@ -12,6 +12,7 @@ import { useSession } from "next-auth/react";
 import QuickApplyModal from "./quick-apply-modal";
 import { ApplicationModal } from "./application-modal";
 import ApplicationModalQuickVersion from "./application-modal-quick-version";
+import { Tooltip, CircularProgress } from "@mui/material";
 
 type Employer = {
   first_name?: string;
@@ -132,6 +133,8 @@ function JobCard({
   const [showQuickApplyModal, setShowQuickApplyModal] = useState(false);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [showApplicationModalQuickVersion, setShowApplicationModalQuickVersion] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
+  const [loadingApply, setLoadingApply] = useState(false);
 
   const logoPath =
     companyLogoImagePath ||
@@ -230,6 +233,21 @@ function JobCard({
     fetchMatchScore();
     return () => { ignore = true; };
   }, [job.id, session?.user?.studentId]);
+
+  useEffect(() => {
+    if (!session?.user?.studentId || !job.id) return;
+
+    setLoadingApply(true);
+    fetch("/api/students/apply/check-apply-exist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: session.user.studentId, jobId: job.id }),
+    })
+      .then((res) => res.json())
+      .then((data) => setHasApplied(data.exists))
+      .catch(() => setHasApplied(false))
+      .finally(() => setLoadingApply(false));
+  }, [session?.user?.studentId, job.id]);
 
   async function toggleSave(e: React.MouseEvent) {
     e.stopPropagation();
@@ -531,16 +549,29 @@ function JobCard({
               </motion.button>
             )}
             <motion.button
-              className="bg-white hover:bg-blue-50 text-blue-600 px-6 py-2 rounded-full font-medium shadow-sm border border-blue-600 flex-1 sm:flex-none flex items-center justify-center gap-2"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+              className={`px-6 py-2 rounded-full font-medium shadow-sm border flex-1 sm:flex-none flex items-center justify-center gap-2 ${
+                hasApplied
+                  ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
+                  : "bg-white hover:bg-blue-50 text-blue-600 border-blue-600"
+              }`}
+              whileHover={hasApplied || loadingApply ? {} : { scale: 1.03 }}
+              whileTap={hasApplied || loadingApply ? {} : { scale: 0.97 }}
               onClick={(e) => {
-                e.stopPropagation()
-                handleQuickApply()
+                e.stopPropagation();
+                handleQuickApply();
               }}
+              disabled={hasApplied || loadingApply}
             >
-              <IoIosRocket className="w-4 h-4" />
-              Quick Apply
+              {loadingApply ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                <Tooltip title={hasApplied ? "Looks like you’ve applied before — no need to apply again." : ""}>
+                  <span className="flex items-center gap-2">
+                    <IoIosRocket className="w-4 h-4" />
+                    {hasApplied ? "Submitted" : "Quick Apply"}
+                  </span>
+                </Tooltip>
+              )}
             </motion.button>
           </div>
         </div>

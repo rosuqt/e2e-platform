@@ -2,13 +2,16 @@ import React, { useState, useEffect } from "react";
 import { ArrowRight,  MapPin, Users, Mail, Bookmark, Briefcase, Clock, Globe,   FileText, BadgeCheck as LuBadgeCheck,  } from "lucide-react";
 import { HiBadgeCheck } from "react-icons/hi";
 import { RiErrorWarningLine } from "react-icons/ri"
-import { Divider as Separator, Tooltip, tooltipClasses, TooltipProps } from "@mui/material";
+import { Divider as Separator, Tooltip, CircularProgress, tooltipClasses } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
 //import { FaWandMagicSparkles } from "react-icons/fa6";
+
+import { useSession } from "next-auth/react";
+
 
 import { ApplicationModal } from "./application-modal";
 import dynamic from "next/dynamic";
@@ -90,7 +93,7 @@ function getDaysLeft(deadline?: string): string {
 }
 
 
-const CustomTooltip = styled(Tooltip)<TooltipProps>(() => ({
+const CustomTooltip = styled(Tooltip)(() => ({
   [`& .${tooltipClasses.tooltip}`]: {
     backgroundColor: "#fff",
     color: "#222",
@@ -145,6 +148,10 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   const [jobSkills, setJobSkills] = useState<string[]>([]);
   const [studentSkills, setStudentSkills] = useState<string[]>([]);
   const [viewTracked, setViewTracked] = useState(false)
+  const [hasApplied, setHasApplied] = useState(false);
+  const [loadingApply, setLoadingApply] = useState(false);
+  const { data: session } = useSession();
+
 
   const trackJobView = async (jobId: string) => {
     if (viewTracked) return
@@ -325,6 +332,21 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         setLoading(false);
       });
   }, [jobId]);
+
+  useEffect(() => {
+    if (!jobId || !session?.user?.studentId) return;
+
+    setLoadingApply(true);
+    fetch("/api/students/apply/check-apply-exist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: session.user.studentId, jobId }),
+    })
+      .then((res) => res.json())
+      .then((data) => setHasApplied(data.exists))
+      .catch(() => setHasApplied(false))
+      .finally(() => setLoadingApply(false));
+  }, [jobId, session?.user?.studentId]);
 
   useEffect(() => {
     if (!jobId) return;
@@ -614,12 +636,24 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
 
         <div className="mt-4 flex gap-3">
           <Button
-            className="gap-2 rounded-full"
-            onClick={() => setIsModalOpen(true)
-            }
+            className={`gap-2 rounded-full ${
+              hasApplied || loadingApply
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 text-white"
+            }`}
+            onClick={() => setIsModalOpen(true)}
+            disabled={hasApplied || loadingApply}
           >
-            <Mail className="w-4 h-4" />
-            <span className="text-white px-3">Apply</span>
+            {loadingApply ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              <Tooltip title={hasApplied ? "Looks like you’ve applied before — no need to apply again." : ""}>
+                <span className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  <span className="px-3">{hasApplied ? "Submitted" : "Apply"}</span>
+                </span>
+              </Tooltip>
+            )}
           </Button>
           <Button
             variant="outline"
