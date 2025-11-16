@@ -14,13 +14,10 @@ export default function QuickApplyModal({
   open,
   onClose,
   onSubscribe,
-  jobId,
-  jobTitle,
 }: {
   open: boolean
   onClose: () => void
   onSubscribe: () => void
-  jobId: string | number
   jobTitle: string
 }) {
   return (
@@ -30,7 +27,11 @@ export default function QuickApplyModal({
         onClose={onClose}
         className="fixed inset-0 z-50 flex items-center justify-center"
       >
-        <div className="fixed inset-0 bg-black bg-opacity-30" aria-hidden="true" />
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30"
+          aria-hidden="true"
+          style={{ width: "100vw", height: "100vh", top: 0, margin: 0 }}
+        />
         <AnimatePresence>
           {open && (
             <Dialog.Panel className="bg-transparent shadow-none max-w-5xl w-full flex justify-center p-0 h-[530px] relative z-10">

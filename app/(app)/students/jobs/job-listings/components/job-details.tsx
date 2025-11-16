@@ -902,61 +902,59 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
 
       <Separator />
 
-      <Card className="m-6">
-        <div className="p-6">
-          <h2 className="text-xl font-bold mb-6">About the Company</h2>
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 flex items-center justify-center bg-gray-100 rounded-md overflow-hidden">
-              <div className="relative w-16 h-16">
-                {logoUrl && typeof logoUrl === "string" ? (
-                  <Image
-                    src={logoUrl}
-                    alt="Company Logo"
-                    width={64}
-                    height={64}
-                    className="object-cover w-full h-full rounded-md"
-                    unoptimized
-                    onError={async e => {
-                      e.currentTarget.onerror = null;
-                      await refreshLogoUrl(job);
-                      if (e.currentTarget && document.body.contains(e.currentTarget)) {
-                        e.currentTarget.style.display = "none";
-                        const parent = e.currentTarget.parentElement;
-                        if (parent) {
-                          parent.innerHTML = `<div class='bg-blue-600 w-full h-full flex items-center justify-center rounded-md'><svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="white"><rect width="18" height="12" x="3" y="7" rx="2"/><path d="M16 3v4M8 3v4"/></svg></div>`;
-                        }
+      <div className="p-6">
+        <h2 className="text-xl font-bold mb-6">About the Company</h2>
+        <div className="flex items-start gap-4">
+          <div className="w-16 h-16 flex items-center justify-center bg-gray-100 rounded-md overflow-hidden">
+            <div className="relative w-16 h-16">
+              {logoUrl && typeof logoUrl === "string" ? (
+                <Image
+                  src={logoUrl}
+                  alt="Company Logo"
+                  width={64}
+                  height={64}
+                  className="object-cover w-full h-full rounded-md"
+                  unoptimized
+                  onError={async e => {
+                    e.currentTarget.onerror = null;
+                    await refreshLogoUrl(job);
+                    if (e.currentTarget && document.body.contains(e.currentTarget)) {
+                      e.currentTarget.style.display = "none";
+                      const parent = e.currentTarget.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class='bg-blue-600 w-full h-full flex items-center justify-center rounded-md'><svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="white"><rect width="18" height="12" x="3" y="7" rx="2"/><path d="M16 3v4M8 3v4"/></svg></div>`;
                       }
-                    }}
-                  />
-                ) : (
-                  <div className="bg-gray-200 w-full h-full flex items-center justify-center rounded-md">
-                    <PiBuildingsFill className="w-8 h-8" color="#6B7280" />
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold">{company}</h3>
-              <div className="text-xs text-muted-foreground mt-1">
-                {companyAddress}
-              </div>
-              {companyIndustry && (
-                <span className="inline-block mt-2 bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full">
-                  {companyIndustry}
-                </span>
+                    }
+                  }}
+                />
+              ) : (
+                <div className="bg-gray-200 w-full h-full flex items-center justify-center rounded-md">
+                  <PiBuildingsFill className="w-8 h-8" color="#6B7280" />
+                </div>
               )}
             </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">
-            See company profile for more information.
-          </p>
-          <div className="mt-2 text-right">
-            <Button variant="link" className="p-0 h-auto text-primary">
-              View company
-            </Button>
+          <div className="flex-1">
+            <h3 className="font-bold">{company}</h3>
+            <div className="text-xs text-muted-foreground mt-1">
+              {companyAddress}
+            </div>
+            {companyIndustry && (
+              <span className="inline-block mt-2 bg-blue-100 text-blue-700 text-xs font-semibold px-3 py-1 rounded-full">
+                {companyIndustry}
+              </span>
+            )}
           </div>
         </div>
-      </Card>
+        <p className="text-sm text-muted-foreground mt-4">
+          See company profile for more information.
+        </p>
+        <div className="mt-2 text-right">
+          <Button variant="link" className="p-0 h-auto text-primary">
+            View company
+          </Button>
+        </div>
+      </div>
 
       <div className="p-6">
         <h2 className="text-lg font-semibold mb-4">Employees linked to this company</h2>
@@ -1051,13 +1049,11 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
       </div>
       {isModalOpen && (
         <ApplicationModal
-          jobId={job && job.id ? job.id : ""}
+          jobId={job?.id || ""}
           jobTitle={
-            typeof job?.job_title === "string" && job.job_title.trim()
-              ? job.job_title
-              : typeof job?.title === "string" && job.title.trim()
-              ? job.title
-              : "Untitled Position"
+            job?.job_title?.trim() ||
+            job?.title?.trim() ||
+            "Untitled Position"
           }
           onClose={() => setIsModalOpen(false)}
         />

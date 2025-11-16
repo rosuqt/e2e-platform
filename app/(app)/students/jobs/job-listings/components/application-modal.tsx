@@ -90,15 +90,15 @@ import { ConfettiStars } from "@/components/magicui/star"
 import { TbFileLike } from "react-icons/tb"
 
 export function ApplicationModal({
-  jobId,
-  jobTitle,
   onClose,
+  jobId,
+  
 }: {
-  jobId: string | number
-  jobTitle: string
-  onClose: () => void
+  onClose: () => void;
+  jobId: string;
+  jobTitle: string;
 }) {
-  console.log("ApplicationModal jobId:", jobId, "type:", typeof jobId)
+  console.log("ApplicationModal initialized for jobId:", jobId)
 
   const [step, setStep] = useState(1)
   const totalSteps = 4
@@ -316,36 +316,29 @@ export function ApplicationModal({
   }
 
   const handleSubmit = async () => {
-    setSubmitting(true)
-    let resumePath = ""
-    let coverLetterPath = ""
+    setSubmitting(true);
+    let resumePath = "";
+    let coverLetterPath = "";
     if (existingResume?.name) {
-      resumePath = student?.id + "/" + existingResume.name
+      resumePath = student?.id + "/" + existingResume.name;
     } else if (form.resume) {
       try {
-        const urlObj = new URL(form.resume)
-        resumePath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname
+        const urlObj = new URL(form.resume);
+        resumePath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname;
       } catch {
-        resumePath = form.resume
+        resumePath = form.resume;
       }
     }
     if (existingCover?.name) {
-      coverLetterPath = student?.id + "/" + existingCover.name
+      coverLetterPath = student?.id + "/" + existingCover.name;
     } else if (form.cover_letter) {
       try {
-        const urlObj = new URL(form.cover_letter)
-        coverLetterPath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname
+        const urlObj = new URL(form.cover_letter);
+        coverLetterPath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname;
       } catch {
-        coverLetterPath = form.cover_letter
+        coverLetterPath = form.cover_letter;
       }
     }
-
-    const safeJobId =
-      typeof jobId === "string" && jobId !== ""
-        ? jobId
-        : typeof jobId === "number" && !isNaN(jobId)
-        ? jobId
-        : "";
 
     await fetch("/api/students/apply", {
       method: "POST",
@@ -354,19 +347,19 @@ export function ApplicationModal({
         ...form,
         resume: resumePath || "",
         cover_letter: coverLetterPath || "",
-        job_id: safeJobId,
         student_id: student?.id,
+        job_id: jobId,
         project_description: form.project_description,
         portfolio: form.portfolio,
         achievements: form.achievements,
         rememberDetails,
       }),
-    })
-    setSubmitting(false)
-    setShowSuccess(true)
+    });
+    setSubmitting(false);
+    setShowSuccess(true);
     setTimeout(() => {
-      if (typeof window !== "undefined" && window.scrollTo) window.scrollTo(0, 0)
-    }, 0)
+      if (typeof window !== "undefined" && window.scrollTo) window.scrollTo(0, 0);
+    }, 0);
   }
 
 
@@ -404,9 +397,9 @@ export function ApplicationModal({
   }
 
   useEffect(() => {
-    if (!jobId) return
+    if (!student) return
     setLoadingQuestions(true)
-    fetch(`/api/employers/application-questions?job_id=${jobId}`)
+    fetch(`/api/employers/application-questions?job_id=${student.id}`)
       .then(res => res.ok ? res.json() : [])
       .then((data: unknown[]) => {
         const normalized = (data as Question[]).map((q) => {
@@ -448,7 +441,7 @@ export function ApplicationModal({
         setLoadingQuestions(false)
       })
       .catch(() => setLoadingQuestions(false))
-  }, [jobId])
+  }, [student])
 
   const handleQuestionAnswer = (questionId: string, value: string | string[]) => {
     setForm(prev => ({
@@ -461,7 +454,7 @@ export function ApplicationModal({
   }
 
   useEffect(() => {
-  }, [jobId]);
+  }, [student]);
 
   useEffect(() => {
     if (allCovers.length > 0) {
@@ -586,6 +579,7 @@ export function ApplicationModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
+      style={{ width: "100vw", height: "100vh", top: 0, margin: 0 }}
     >
       <motion.div
         className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col relative z-[61]"
@@ -606,9 +600,6 @@ export function ApplicationModal({
           </div>
           {!showSuccess && (
             <p className="text-blue-100 text-sm">
-              {jobTitle
-                ? jobTitle
-                : "Job Title"}
             </p>
           )}
         </div>
@@ -621,7 +612,7 @@ export function ApplicationModal({
               </div>
               <h2 className="text-2xl font-bold text-blue-700 mb-2">Application Submitted!</h2>
               <p className="text-gray-600 text-sm text-center mb-6 max-w-xs">
-                Wow you applied for {jobTitle} ! Your application has been successfully submitted. You can view the status of your applications at any time.
+                Wow you applied for  ! Your application has been successfully submitted. You can view the status of your applications at any time.
               </p>
               <div className="flex gap-3">
                 <Button
@@ -1590,7 +1581,7 @@ export function ApplicationModal({
                   </Button>
                 ) : (
                   <Button
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-blue-600 hover:bg-blue-700"
                     onClick={handleSubmit}
                     disabled={
                       submitting ||

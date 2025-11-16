@@ -11,7 +11,7 @@ import { SiStarship } from "react-icons/si";
 import { useSession } from "next-auth/react";
 import QuickApplyModal from "./quick-apply-modal";
 import { ApplicationModal } from "./application-modal";
-import QuickApplyFormModal from "./application-modal-quick-version";
+import ApplicationModalQuickVersion from "./application-modal-quick-version";
 
 type Employer = {
   first_name?: string;
@@ -131,7 +131,7 @@ function JobCard({
   const [matchLoading, setMatchLoading] = useState<boolean>(false);
   const [showQuickApplyModal, setShowQuickApplyModal] = useState(false);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
-  const [showQuickApplyFormModal, setShowQuickApplyFormModal] = useState(false);
+  const [showApplicationModalQuickVersion, setShowApplicationModalQuickVersion] = useState(false);
 
   const logoPath =
     companyLogoImagePath ||
@@ -303,17 +303,23 @@ function JobCard({
   }
 
   async function handleQuickApply() {
-    if (!session?.user?.studentId) return
+    if (!session?.user?.studentId) return;
+
     const res = await fetch("/api/students/apply/quick-apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ studentId: session.user.studentId }),
-    })
-    const json = await res.json()
-    if (!json.exists) {
-      setShowQuickApplyModal(true)
+    });
+
+    const json = await res.json();
+
+    if (json.exists) {
+      setShowQuickApplyModal(false); 
+      setShowApplicationModal(false); 
+      setShowApplicationModalQuickVersion(true);
     } else {
-      setShowQuickApplyFormModal(true)
+      setShowApplicationModal(false);
+      setShowQuickApplyModal(true);
     }
   }
 
@@ -546,19 +552,19 @@ function JobCard({
           setShowQuickApplyModal(false);
           setShowApplicationModal(true);
         }}
-        jobId={job.id}
         jobTitle={title}
       />
       {showApplicationModal && (
         <ApplicationModal
-          jobId={job.id}
+          jobId={String(job.id)}
           jobTitle={title}
           onClose={() => setShowApplicationModal(false)}
         />
       )}
-      {showQuickApplyFormModal && (
-        <QuickApplyFormModal
-          onClose={() => setShowQuickApplyFormModal(false)}
+      {showApplicationModalQuickVersion && (
+        <ApplicationModalQuickVersion
+          onClose={() => setShowApplicationModalQuickVersion(false)}
+          jobId={String(job.id)} 
         />
       )}
     </>

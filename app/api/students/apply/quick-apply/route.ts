@@ -6,11 +6,16 @@ export async function POST(req: NextRequest) {
   if (!studentId) return NextResponse.json({ exists: false })
 
   const supabase = getAdminSupabase()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("quick-apply-pref")
-    .select("id")
+    .select("*") 
     .eq("student_id", studentId)
-    .maybeSingle()
+    .single() 
 
-  return NextResponse.json({ exists: !!data })
+  if (error) {
+    console.error("Error fetching quick-apply-pref:", error)
+    return NextResponse.json({ exists: false })
+  }
+
+  return NextResponse.json({ exists: !!data, studentId })
 }
