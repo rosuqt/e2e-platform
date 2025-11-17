@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState, useRef } from "react"
 import {
   Search,
@@ -16,6 +15,11 @@ import {
   ChevronRight,
   Briefcase,
   Globe,
+  X as XIcon,
+  ChevronDown,
+  ChevronUp,
+  BarChart2,
+  CalendarDays
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -41,6 +45,16 @@ import Tooltip from "@mui/material/Tooltip"
 import { styled } from "@mui/material/styles"
 import { AiFillStar } from "react-icons/ai"
 import { useSearchParams, useRouter } from "next/navigation"
+import { BsMailbox2Flag } from "react-icons/bs"
+import { IoIosCloseCircleOutline } from "react-icons/io"
+import { FaUserCheck } from "react-icons/fa"
+import { TbClockQuestion } from "react-icons/tb"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { StudentFilterModal as FilterModal } from "./filter-modal"
+import type { Filters } from "./filter-modal"
+import { ApplicationTips } from "./application-tips"
+import { useSession } from "next-auth/react"
 
 type JobPosting = {
   employer_id?: string
@@ -93,6 +107,7 @@ type ApplicationData = {
   achievements?: string[]
   portfolio?: string[]
   application_id?: string | number
+  gpt_score?: number | string
 }
 
 type JobRatingData = {
@@ -104,6 +119,14 @@ type JobRatingData = {
   jobType: string
   department: string
   location: string
+}
+
+type StudentRecentActivity = {
+  company: string
+  position: string
+  update: string
+  time: string
+  status?: string
 }
 
 const CustomTooltip = styled(Tooltip)(() => ({
@@ -121,6 +144,32 @@ const CustomTooltip = styled(Tooltip)(() => ({
     color: "#fff",
   },
 }))
+
+const studentActivityIconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
+  new: { icon: <FileText className="h-4 w-4 text-white" />, iconBg: "bg-yellow-500" },
+  shortlisted: { icon: <Search className="h-4 w-4 text-white" />, iconBg: "bg-cyan-500" },
+  interview: { icon: <Calendar className="h-4 w-4 text-white" />, iconBg: "bg-purple-500" },
+  offer_sent: { icon: <BsMailbox2Flag className="h-4 w-4 text-white" />, iconBg: "bg-lime-400" },
+  waitlisted: { icon: <TbClockQuestion className="h-4 w-4 text-white" />, iconBg: "bg-blue-500" },
+  rejected: { icon: <IoIosCloseCircleOutline className="h-4 w-4 text-white" />, iconBg: "bg-red-500" },
+  hired: { icon: <FaUserCheck className="h-4 w-4 text-white" />, iconBg: "bg-green-700" },
+}
+
+function formatStudentActivityTime(dateString?: string) {
+  if (!dateString) return ""
+  let date: Date | null = null
+  if (typeof dateString === "string" && dateString.includes("T")) {
+    date = new Date(dateString)
+  } else if (typeof dateString === "string") {
+    date = new Date(Date.parse(dateString))
+  }
+  if (!date || isNaN(date.getTime())) return dateString
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  const month = monthNames[date.getMonth()]
+  const day = date.getDate().toString().padStart(2, "0")
+  const year = date.getFullYear().toString()
+  return `${month} ${day} ${year}`
+}
 
 export default function ApplicationTrackerNoSidebar() {
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null)
@@ -170,6 +219,23 @@ export default function ApplicationTrackerNoSidebar() {
   const [prefilledApplicationId, setPrefilledApplicationId] = useState<string | null>(null)
   const [prefillHandled, setPrefillHandled] = useState(false)
   const [highlightLogicalId, setHighlightLogicalId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [recentUpdates, setRecentUpdates] = useState<StudentRecentActivity[] | null>(null)
+
+  const [activeTab, setActiveTab] = useState("all")
+  const [page, setPage] = useState(1)
+  const pageSize = 5
+
+  const [searchQuery, setSearchQuery] = useState("")
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState("")
+  const [sortBy, setSortBy] = useState<"match" | "date">("date")
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc") 
+  const [filterModalOpen, setFilterModalOpen] = useState(false)
+  const [filters, setFilters] = useState<Filters>({})
+
+  const [studentId, setStudentId] = useState<string | null>(null)
+  const matchesMergedRef = useRef(false)
+  const { data: session } = useSession()
 
   const applications = [
     {
@@ -209,6 +275,7 @@ export default function ApplicationTrackerNoSidebar() {
   }, [])
 
   useEffect(() => {
+    setLoading(true)
     fetch("/api/students/applications")
       .then(res => res.json())
       .then(async data => {
@@ -263,6 +330,39 @@ export default function ApplicationTrackerNoSidebar() {
           })
         )
         setApplicationsData(applicationsWithResume)
+
+        const recent: StudentRecentActivity[] = (applicationsWithResume || [])
+          .slice()
+          .sort((a, b) => {
+            const aDate = a.applied_at ? new Date(a.applied_at).getTime() : 0
+            const bDate = b.applied_at ? new Date(b.applied_at).getTime() : 0
+            return bDate - aDate
+          })
+          .slice(0, 6)
+          .map(app => {
+            const status = (app.status || "").toLowerCase()
+            let updateText = "Application updated"
+            if (status === "new") updateText = "Application submitted"
+            else if (status === "shortlisted") updateText = "Application shortlisted"
+            else if (status === "interview scheduled") updateText = "Interview scheduled"
+            else if (status === "offer_sent") updateText = "Offer sent"
+            else if (status === "waitlisted") updateText = "Application waitlisted"
+            else if (status === "rejected") updateText = "Application rejected"
+            else if (status === "hired") updateText = "You were hired"
+            return {
+              company: app.company_name || app.job_postings?.registered_employers?.company_name || "Company",
+              position: app.job_postings?.job_title || "Position",
+              update: updateText,
+              time: app.applied_at || "",
+              status,
+            }
+          })
+        setRecentUpdates(recent)
+
+        setLoading(false)
+      })
+      .catch(() => {
+        setLoading(false)
       })
   }, [])
 
@@ -420,7 +520,6 @@ export default function ApplicationTrackerNoSidebar() {
     }
   }
 
-  const [activeTab, setActiveTab] = useState("all")
   const [isJobRatingModalOpen, setIsJobRatingModalOpen] = useState(false)
   const [jobRatingData, setJobRatingData] = useState<JobRatingData | null>(null)
   const [jobRatingCompanyImg, setJobRatingCompanyImg] = useState<string>("")
@@ -492,12 +591,215 @@ export default function ApplicationTrackerNoSidebar() {
     setIsJobRatingModalOpen(true)
   }
 
-  const allApps = applicationsData || []
-  const pendingApps = allApps.filter(a => (a.status || "").toLowerCase() === "new")
-  const reviewApps = allApps.filter(a => (a.status || "").toLowerCase() === "shortlisted")
-  const interviewApps = allApps.filter(a => (a.status || "").toLowerCase() === "interview scheduled")
-  const hiredApps = allApps.filter(a => (a.status || "").toLowerCase() === "hired")
-  const rejectedApps = allApps.filter(a => (a.status || "").toLowerCase() === "rejected")
+  const allAppsRaw = applicationsData || []
+  const pendingAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "new")
+  const reviewAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "shortlisted")
+  const interviewAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "interview scheduled")
+  const hiredAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "hired")
+  const rejectedAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "rejected")
+  const offerAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "offer_sent")
+
+  const normalize = (value?: string) => (value || "").toLowerCase()
+
+  const filterBySearch = (apps: ApplicationData[]) => {
+    if (!appliedSearchQuery.trim()) return apps
+    const q = normalize(appliedSearchQuery)
+    return apps.filter(app => {
+      const title = normalize(app.job_postings?.job_title || "")
+      const company = normalize(app.company_name || app.job_postings?.registered_employers?.company_name || "")
+      const location = normalize(app.job_postings?.location || "")
+      const status = normalize(app.status || "")
+      return (
+        title.includes(q) ||
+        company.includes(q) ||
+        location.includes(q) ||
+        status.includes(q)
+      )
+    })
+  }
+
+  function applyFilters(apps: ApplicationData[]) {
+    let out = [...apps]
+    if (filters.status?.length) {
+      out = out.filter(a => filters.status!.includes((a.status || "").toLowerCase()))
+    }
+    if (filters.workType?.length) {
+      out = out.filter(a => filters.workType!.includes((a.job_postings?.work_type || "").toLowerCase()))
+    }
+    if (filters.remote?.length) {
+      out = out.filter(a => filters.remote!.includes((a.job_postings?.remote_options || a.remote_options || "").toLowerCase()))
+    }
+    if (filters.location?.length) {
+      out = out.filter(a => filters.location!.includes((a.job_postings?.location || "").toLowerCase()))
+    }
+    if (filters.payType?.length) {
+      out = out.filter(a => filters.payType!.includes((a.job_postings?.pay_type || "").toLowerCase()))
+    }
+    if (filters.verification?.length) {
+      out = out.filter(a => filters.verification!.includes((a.job_postings?.verification_tier || "").toLowerCase()))
+    }
+    if (filters.company?.length) {
+      out = out.filter(a => filters.company!.includes((a.company_name || a.job_postings?.registered_employers?.company_name || "").toLowerCase()))
+    }
+    if (filters.matchScoreMin !== undefined || filters.matchScoreMax !== undefined) {
+      const min = filters.matchScoreMin ?? 0
+      const max = filters.matchScoreMax ?? 100
+      out = out.filter(a => {
+        const raw = a.gpt_score ?? a.match_score
+        let score = 0
+        if (typeof raw === "number") score = raw
+        else if (typeof raw === "string") {
+          const n = parseFloat(raw.replace("%", ""))
+          score = isNaN(n) ? 0 : n
+        }
+        return score >= min && score <= max
+      })
+    }
+    if (filters.dateFrom || filters.dateTo) {
+      const from = filters.dateFrom ? new Date(filters.dateFrom).getTime() : 0
+      const to = filters.dateTo ? new Date(filters.dateTo).getTime() : Number.MAX_SAFE_INTEGER
+      out = out.filter(a => {
+        const t = a.applied_at ? new Date(a.applied_at).getTime() : 0
+        return t >= from && t <= to
+      })
+    }
+    return out
+  }
+
+  function sortApps(apps: ApplicationData[]) {
+    if (sortBy === "match") {
+      const getScore = (x?: string | number) => {
+        if (typeof x === "number") return x
+        if (!x) return 0
+        const n = parseFloat(String(x).replace("%", ""))
+        return isNaN(n) ? 0 : n
+      }
+      const scored = [...apps].sort((a, b) =>
+        getScore(b.gpt_score ?? b.match_score) - getScore(a.gpt_score ?? a.match_score)
+      )
+      if (sortDir === "asc") scored.reverse()
+      return scored
+    }
+    const dated = [...apps].sort((a, b) => {
+      const aDate = a.applied_at ? new Date(a.applied_at).getTime() : 0
+      const bDate = b.applied_at ? new Date(b.applied_at).getTime() : 0
+      return sortDir === "desc" ? bDate - aDate : aDate - bDate
+    })
+    return dated
+  }
+
+  const allApps = applyFilters(filterBySearch(allAppsRaw))
+  const pendingApps = applyFilters(filterBySearch(pendingAppsRaw))
+  const reviewApps = applyFilters(filterBySearch(reviewAppsRaw))
+  const interviewApps = applyFilters(filterBySearch(interviewAppsRaw))
+  const hiredApps = applyFilters(filterBySearch(hiredAppsRaw))
+  const rejectedApps = applyFilters(filterBySearch(rejectedAppsRaw))
+  const offerApps = applyFilters(filterBySearch(offerAppsRaw))
+
+  const totalCount = allApps.length
+  const activeCount = allApps.filter(a => {
+    const s = (a.status || "").toLowerCase()
+    return s === "new" || s === "shortlisted" || s === "interview scheduled" || s === "offer_sent"
+  }).length
+  const interviewsCount = interviewApps.length
+  const offersCount = offerApps.length
+
+  useEffect(() => {
+    setPage(1)
+  }, [activeTab, allApps.length, pendingApps.length, reviewApps.length, interviewApps.length, hiredApps.length, rejectedApps.length, offerApps.length])
+
+  function getAppsForTab() {
+    if (activeTab === "pending") return pendingApps
+    if (activeTab === "review") return reviewApps
+    if (activeTab === "interview") return interviewApps
+    if (activeTab === "offers") return offerApps
+    if (activeTab === "hired") return hiredApps
+    if (activeTab === "rejected") return rejectedApps
+    return allApps
+  }
+
+  const currentTabApps = sortApps(getAppsForTab())
+  const totalPages = Math.max(1, Math.ceil(currentTabApps.length / pageSize))
+  const startIndex = (page - 1) * pageSize
+  const paginatedApps = currentTabApps.slice(startIndex, startIndex + pageSize)
+
+  const tabCount = (tab: string) => {
+    if (tab === "all") return allApps.length
+    if (tab === "pending") return pendingApps.length
+    if (tab === "review") return reviewApps.length
+    if (tab === "interview") return interviewApps.length
+    if (tab === "offers") return offerApps.length
+    if (tab === "hired") return hiredApps.length
+    if (tab === "rejected") return rejectedApps.length
+    return 0
+  }
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setAppliedSearchQuery(searchQuery)
+    setPage(1)
+  }
+
+  const handleClearSearch = () => {
+    setSearchQuery("")
+    setAppliedSearchQuery("")
+    setPage(1)
+  }
+
+  useEffect(() => {
+    const sid = (session?.user as { studentId?: string })?.studentId
+    if (sid) setStudentId(String(sid))
+  }, [session])
+
+  useEffect(() => {
+    if (!applicationsData || !studentId || matchesMergedRef.current) return
+    const needsScores = applicationsData.some(a => a.gpt_score === undefined || a.gpt_score === null)
+    if (!needsScores) { matchesMergedRef.current = true; return }
+    ;(async () => {
+      try {
+        const res = await fetch("/api/ai-matches/fetch-current-matches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        })
+        const json = await res.json()
+        const matches = Array.isArray(json.matches) ? json.matches : []
+        if (matches.length === 0) { matchesMergedRef.current = true; return }
+
+        const scoreByJobId = new Map<string, number | string>(
+          matches.map((m: any) => [String(m.job_id).trim().toLowerCase(), m.gpt_score as number | string])
+        )
+
+        setApplicationsData(prev => {
+          if (!prev) return prev
+          let changed = false
+          const next = prev.map(app => {
+            const candidatesRaw = [
+              app.job_postings?.id,
+              (app as any).job_posting_id,
+              (app as any).job_id,
+              (app.job_postings as any)?.job_id,
+            ]
+            const candidates = candidatesRaw
+              .map(v => v !== undefined && v !== null ? String(v).trim().toLowerCase() : "")
+              .filter(Boolean)
+
+            const foundKey = candidates.find(c => scoreByJobId.has(c))
+            if (foundKey) {
+              const newScore = scoreByJobId.get(foundKey)
+              if (newScore !== undefined && app.gpt_score !== newScore) {
+                changed = true
+                return { ...app, gpt_score: newScore as number | string }
+              }
+            }
+            return app
+          })
+          return changed ? next : prev
+        })
+        matchesMergedRef.current = true
+      } catch {}
+    })()
+  }, [applicationsData, studentId])
 
   return (
     <>
@@ -530,34 +832,50 @@ export default function ApplicationTrackerNoSidebar() {
                 <div className="grid grid-cols-4 gap-3 mt-6">
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
                     <p className="text-xs text-white/80">Total</p>
-                    <p className="text-xl font-bold text-white">24</p>
+                    <p className="text-xl font-bold text-white">{totalCount}</p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
                     <p className="text-xs text-white/80">Active</p>
-                    <p className="text-xl font-bold text-white">18</p>
+                    <p className="text-xl font-bold text-white">{activeCount}</p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
                     <p className="text-xs text-white/80">Interviews</p>
-                    <p className="text-xl font-bold text-white">5</p>
+                    <p className="text-xl font-bold text-white">{interviewsCount}</p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 text-center">
                     <p className="text-xs text-white/80">Offers</p>
-                    <p className="text-xl font-bold text-white">2</p>
+                    <p className="text-xl font-bold text-white">{offersCount}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl p-2 flex flex-col sm:flex-row relative z-10">
-                <Input
-                  type="text"
-                  placeholder="Search applications"
-                  className="border-0 text-black focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 sm:mb-0"
-                />
-                <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+              <form
+                className="bg-white rounded-xl p-2 flex flex-col sm:flex-row relative z-10 gap-2"
+                onSubmit={handleSearchSubmit}
+              >
+                <div className="relative flex-1">
+                  <Input
+                    type="text"
+                    placeholder="Search applications"
+                    className="border-0 text-black focus-visible:ring-0 focus-visible:ring-offset-0 pr-8"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
                   <Search className="mr-2 h-4 w-4" />
                   Search
                 </Button>
-              </div>
+              </form>
             </div>
           </div>
 
@@ -568,185 +886,548 @@ export default function ApplicationTrackerNoSidebar() {
                   <CardTitle className="mb-2 text-blue-700 text-xl">My Applications</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="all" className="w-full">
-                    <TabsList className="flex w-full border-b border-gray-200">
-                      <TabsTrigger value="all" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">All</TabsTrigger>
-                      <TabsTrigger value="pending" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">Pending</TabsTrigger>
-                      <TabsTrigger value="review" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">Under Review</TabsTrigger>
-                      <TabsTrigger value="interview" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">Interview</TabsTrigger>
-                      <TabsTrigger value="hired" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">Hired</TabsTrigger>
-                      <TabsTrigger value="rejected" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-gray-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600">Rejected</TabsTrigger>
-                    </TabsList>
-
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className="text-sm font-medium text-blue-600">
-                        {activeTab === "all"
-                          ? allApps.length
-                          : activeTab === "pending"
-                          ? pendingApps.length
-                          : activeTab === "review"
-                          ? reviewApps.length
-                          : activeTab === "interview"
-                          ? interviewApps.length
-                          : activeTab === "hired"
-                          ? hiredApps.length
-                          : rejectedApps.length}{" "}
-                        applications
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-blue-600">Sort by</span>
-                        <button className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 flex items-center gap-1">
-                          Date Applied
-                        </button>
-                        <Button
-                          variant="outline"
-                          className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                        >
-                          <Filter className="w-4 h-4 mr-1" />
-                          Filters
-                        </Button>
+                  {loading ? (
+                    <div className="flex flex-col items-center justify-center min-h-[200px] py-12">
+                      <div className="flex items-center justify-center mb-4">
+                        <span className="w-10 h-10 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></span>
                       </div>
+                      <span className="mt-2 text-blue-700 font-semibold text-base animate-pulse">
+                        Fetching applications, please wait...
+                      </span>
                     </div>
+                  ) : (
+                    <Tabs
+                      value={activeTab}
+                      onValueChange={v => {
+                        setActiveTab(v)
+                        setPage(1)
+                      }}
+                      defaultValue="all"
+                      className="w-full"
+                    >
+                      <TabsList className="flex w-full border-b border-gray-200">
+                        <TabsTrigger
+                          value="all"
+                          className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
+                                     hover:text-blue-600 hover:border-gray-300
+                                     data-[state=active]:text-blue-600 data-[state=active]:border-blue-600 group"
+                        >
+                          All
+                          <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold
+                                           bg-gray-200 text-gray-400
+                                           group-hover:bg-blue-100 group-hover:text-blue-700
+                                           group-data-[state=active]:bg-blue-100 group-data-[state=active]:text-blue-700 transition-colors">
+                            {tabCount("all")}
+                          </span>
+                        </TabsTrigger>
 
-                    <TabsContent value="all" className="mt-4 space-y-4">
-                      {allApps.length
-                        ? generateApplicationCards(
-                            allApps,
-                            "all",
-                            selectedApplication,
-                            setSelectedApplication,
-                            handleViewDetails,
-                            handleFollowUp,
-                            handleMenuOpen,
-                            logoUrls,
-                            handleOpenJobRatingModal,
-                            highlightLogicalId
-                          )
-                        : (
-                          <div className="flex flex-col items-center justify-center min-h-[220px]">
-                            <TbUserSearch size={64} className="text-gray-300 mb-2" />
-                            <div className="text-lg font-semibold text-gray-500">No applications yet</div>
-                            <div className="text-sm text-blue-500 mt-1">You&apos;ll see your applications here once you apply</div>
+                        <TabsTrigger
+                          value="pending"
+                          className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
+                                     hover:text-yellow-600 hover:border-yellow-300
+                                     data-[state=active]:text-yellow-600 data-[state=active]:border-yellow-600 group"
+                        >
+                          Pending
+                          <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold
+                                           bg-gray-200 text-gray-400
+                                           group-hover:bg-yellow-100 group-hover:text-yellow-700
+                                           group-data-[state=active]:bg-yellow-100 group-data-[state=active]:text-yellow-700 transition-colors">
+                            {tabCount("pending")}
+                          </span>
+                        </TabsTrigger>
+
+                        <TabsTrigger
+                          value="review"
+                          className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
+                                     hover:text-cyan-600 hover:border-cyan-300
+                                     data-[state=active]:text-cyan-600 data-[state=active]:border-cyan-600 group"
+                        >
+                          Under Review
+                          <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold
+                                           bg-gray-200 text-gray-400
+                                           group-hover:bg-cyan-100 group-hover:text-cyan-700
+                                           group-data-[state=active]:bg-cyan-100 group-data-[state=active]:text-cyan-700 transition-colors">
+                            {tabCount("review")}
+                          </span>
+                        </TabsTrigger>
+
+                        <TabsTrigger
+                          value="interview"
+                          className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
+                                     hover:text-purple-600 hover:border-purple-300
+                                     data-[state=active]:text-purple-600 data-[state=active]:border-purple-600 group"
+                        >
+                          Interview
+                          <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold
+                                           bg-gray-200 text-gray-400
+                                           group-hover:bg-purple-100 group-hover:text-purple-700
+                                           group-data-[state=active]:bg-purple-100 group-data-[state=active]:text-purple-700 transition-colors">
+                            {tabCount("interview")}
+                          </span>
+                        </TabsTrigger>
+
+                        <TabsTrigger
+                          value="offers"
+                          className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
+                                     hover:text-lime-600 hover:border-lime-300
+                                     data-[state=active]:text-lime-600 data-[state=active]:border-lime-500 group"
+                        >
+                          Offers
+                          <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold
+                                           bg-gray-200 text-gray-400
+                                           group-hover:bg-lime-100 group-hover:text-lime-700
+                                           group-data-[state=active]:bg-lime-100 group-data-[state=active]:text-lime-700 transition-colors">
+                            {tabCount("offers")}
+                          </span>
+                        </TabsTrigger>
+
+                        <TabsTrigger
+                          value="hired"
+                          className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
+                                     hover:text-green-700 hover:border-green-200
+                                     data-[state=active]:text-green-700 data-[state=active]:border-green-700 group"
+                        >
+                          Hired
+                          <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold
+                                           bg-gray-200 text-gray-400
+                                           group-hover:bg-green-100 group-hover:text-green-700
+                                           group-data-[state=active]:bg-green-100 group-data-[state=active]:text-green-700 transition-colors">
+                            {tabCount("hired")}
+                          </span>
+                        </TabsTrigger>
+
+                        <TabsTrigger
+                          value="rejected"
+                          className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
+                                     hover:text-red-600 hover:border-red-300
+                                     data-[state=active]:text-red-600 data-[state=active]:border-red-600 group"
+                        >
+                          Rejected
+                          <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold
+                                           bg-gray-200 text-gray-400
+                                           group-hover:bg-red-100 group-hover:text-red-700
+                                           group-data-[state=active]:bg-red-100 group-data-[state=active]:text-red-700 transition-colors">
+                            {tabCount("rejected")}
+                          </span>
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-blue-600">
+                            {tabCount(activeTab)} applications
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-blue-600">Sort by</span>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-1"
+                                  variant="outline"
+                                >
+                                  {sortBy === "match" ? (
+                                    <>
+                                      <BarChart2 className="w-4 h-4 mr-1" />
+                                      Match Score
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CalendarDays className="w-4 h-4 mr-1" />
+                                      Date Applied
+                                    </>
+                                  )}
+                                  {sortDir === "desc" ? (
+                                    <ChevronDown className="w-4 h-4 ml-1" />
+                                  ) : (
+                                    <ChevronUp className="w-4 h-4 ml-1" />
+                                  )}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start">
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (sortBy === "date") {
+                                      setSortDir(sortDir === "desc" ? "asc" : "desc")
+                                    } else {
+                                      setSortBy("date"); setSortDir("desc")
+                                    }
+                                  }}
+                                >
+                                  <CalendarDays className="w-4 h-4 mr-2" />
+                                  Date Applied
+                                  {sortBy === "date" && (sortDir === "desc" ? <ChevronDown className="w-4 h-4 ml-auto" /> : <ChevronUp className="w-4 h-4 ml-auto" />)}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (sortBy === "match") {
+                                      setSortDir(sortDir === "desc" ? "asc" : "desc")
+                                    } else {
+                                      setSortBy("match"); setSortDir("desc")
+                                    }
+                                  }}
+                                >
+                                  <BarChart2 className="w-4 h-4 mr-2" />
+                                  Match Score
+                                  {sortBy === "match" && (sortDir === "desc" ? <ChevronDown className="w-4 h-4 ml-auto" /> : <ChevronUp className="w-4 h-4 ml-auto" />)}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                        )
-                      }
-                    </TabsContent>
-                    <TabsContent value="pending" className="mt-4 space-y-4">
-                      {pendingApps.length
-                        ? generateApplicationCards(
-                            pendingApps,
-                            "pending",
-                            selectedApplication,
-                            setSelectedApplication,
-                            handleViewDetails,
-                            handleFollowUp,
-                            handleMenuOpen,
-                            logoUrls,
-                            handleOpenJobRatingModal,
-                            highlightLogicalId
+                        </div>
+                        <div className="flex items-center">
+                          <Button
+                            variant="outline"
+                            className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 hover:text-blue-700 relative"
+                            onClick={() => setFilterModalOpen(true)}
+                          >
+                            <Filter className="w-4 h-4 mr-1" />
+                            Filters
+                            {(
+                              (filters.status?.length || 0) +
+                              (filters.workType?.length || 0) +
+                              (filters.remote?.length || 0) +
+                              (filters.location?.length || 0) +
+                              (filters.payType?.length || 0) +
+                              (filters.verification?.length || 0) +
+                              (filters.company?.length || 0) +
+                              (filters.matchScoreMin ? 1 : 0) +
+                              (filters.matchScoreMax ? 1 : 0) +
+                              (filters.dateFrom ? 1 : 0) +
+                              (filters.dateTo ? 1 : 0)
+                            ) > 0 && (
+                              <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-blue-600 text-white text-[10px]">
+                                {(filters.status?.length || 0) +
+                                  (filters.workType?.length || 0) +
+                                  (filters.remote?.length || 0) +
+                                  (filters.location?.length || 0) +
+                                  (filters.payType?.length || 0) +
+                                  (filters.verification?.length || 0) +
+                                  (filters.company?.length || 0) +
+                                  (filters.matchScoreMin ? 1 : 0) +
+                                  (filters.matchScoreMax ? 1 : 0) +
+                                  (filters.dateFrom ? 1 : 0) +
+                                  (filters.dateTo ? 1 : 0)}
+                              </span>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <TabsContent value="all" className="mt-4 space-y-4">
+                        {allApps.length
+                          ? (
+                            <>
+                              {generateApplicationCards(
+                                paginatedApps,
+                                "all",
+                                selectedApplication,
+                                setSelectedApplication,
+                                handleViewDetails,
+                                handleFollowUp,
+                                handleMenuOpen,
+                                logoUrls,
+                                handleOpenJobRatingModal,
+                                highlightLogicalId
+                              )}
+                              {totalPages > 1 && (
+                                <div className="flex flex-col items-center gap-2 mt-4">
+                                  <div className="flex items-center gap-4">
+                                    <button
+                                      type="button"
+                                      disabled={page === 1}
+                                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Previous
+                                    </button>
+                                    <span className="text-xs text-gray-500">
+                                      Page {page} of {totalPages}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={page === totalPages}
+                                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Next
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )
-                        : (
-                          <div className="flex flex-col items-center justify-center min-h-[220px]">
-                            <TbUserSearch size={64} className="text-gray-300 mb-2" />
-                            <div className="text-lg font-semibold text-gray-500">No pending applications</div>
-                            <div className="text-sm text-blue-500 mt-1">Pending applications will appear here</div>
-                          </div>
-                        )
-                      }
-                    </TabsContent>
-                    <TabsContent value="review" className="mt-4 space-y-4">
-                      {reviewApps.length
-                        ? generateApplicationCards(
-                            reviewApps,
-                            "review",
-                            selectedApplication,
-                            setSelectedApplication,
-                            handleViewDetails,
-                            handleFollowUp,
-                            handleMenuOpen,
-                            logoUrls,
-                            handleOpenJobRatingModal,
-                            highlightLogicalId
+                          : (
+                            <div className="flex flex-col items-center justify-center min-h-[220px]">
+                              <TbUserSearch size={64} className="text-gray-300 mb-2" />
+                              <div className="text-lg font-semibold text-gray-500">No applications yet</div>
+                              <div className="text-sm text-blue-500 mt-1">You&apos;ll see your applications here once you apply</div>
+                            </div>
                           )
-                        : (
-                          <div className="flex flex-col items-center justify-center min-h-[220px]">
-                            <TbUserSearch size={64} className="text-gray-300 mb-2" />
-                            <div className="text-lg font-semibold text-gray-500">No applications under review</div>
-                            <div className="text-sm text-blue-500 mt-1">Reviewed applications will appear here</div>
-                          </div>
-                        )
-                      }
-                    </TabsContent>
-                    <TabsContent value="interview" className="mt-4 space-y-4">
-                      {interviewApps.length
-                        ? generateApplicationCards(
-                            interviewApps,
-                            "interview",
-                            selectedApplication,
-                            setSelectedApplication,
-                            handleViewDetails,
-                            handleFollowUp,
-                            handleMenuOpen,
-                            logoUrls,
-                            handleOpenJobRatingModal,
-                            highlightLogicalId
+                        }
+                      </TabsContent>
+
+                      <TabsContent value="pending" className="mt-4 space-y-4">
+                        {pendingApps.length
+                          ? (
+                            <>
+                              {generateApplicationCards(
+                                paginatedApps,
+                                "pending",
+                                selectedApplication,
+                                setSelectedApplication,
+                                handleViewDetails,
+                                handleFollowUp,
+                                handleMenuOpen,
+                                logoUrls,
+                                handleOpenJobRatingModal,
+                                highlightLogicalId
+                              )}
+                              {totalPages > 1 && (
+                                <div className="flex flex-col items-center gap-2 mt-4">
+                                  <div className="flex items-center gap-4">
+                                    <button
+                                      type="button"
+                                      disabled={page === 1}
+                                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Previous
+                                    </button>
+                                    <span className="text-xs text-gray-500">
+                                      Page {page} of {totalPages}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={page === totalPages}
+                                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Next
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )
-                        : (
-                          <div className="flex flex-col items-center justify-center min-h-[220px]">
-                            <TbUserSearch size={64} className="text-gray-300 mb-2" />
-                            <div className="text-lg font-semibold text-gray-500">No interviews scheduled</div>
-                            <div className="text-sm text-blue-500 mt-1">Interviewed applications will appear here</div>
-                          </div>
-                        )
-                      }
-                    </TabsContent>
-                    <TabsContent value="hired" className="mt-4 space-y-4">
-                      {hiredApps.length
-                        ? generateApplicationCards(
-                            hiredApps,
-                            "hired",
-                            selectedApplication,
-                            setSelectedApplication,
-                            handleViewDetails,
-                            handleFollowUp,
-                            handleMenuOpen,
-                            logoUrls,
-                            handleOpenJobRatingModal,
-                            highlightLogicalId
+                          : (
+                            <div className="flex flex-col items-center justify-center min-h-[220px]">
+                              <TbUserSearch size={64} className="text-gray-300 mb-2" />
+                              <div className="text-lg font-semibold text-gray-500">No pending applications</div>
+                              <div className="text-sm text-blue-500 mt-1">Pending applications will appear here</div>
+                            </div>
                           )
-                        : (
-                          <div className="flex flex-col items-center justify-center min-h-[220px]">
-                            <TbUserSearch size={64} className="text-gray-300 mb-2" />
-                            <div className="text-lg font-semibold text-gray-500">No hired applications</div>
-                            <div className="text-sm text-green-500 mt-1">Hired applications will appear here</div>
-                          </div>
-                        )
-                      }
-                    </TabsContent>
-                    <TabsContent value="rejected" className="mt-4 space-y-4">
-                      {rejectedApps.length
-                        ? generateApplicationCards(
-                            rejectedApps,
-                            "rejected",
-                            selectedApplication,
-                            setSelectedApplication,
-                            handleViewDetails,
-                            handleFollowUp,
-                            handleMenuOpen,
-                            logoUrls,
-                            handleOpenJobRatingModal,
-                            highlightLogicalId
+                        }
+                      </TabsContent>
+                      <TabsContent value="review" className="mt-4 space-y-4">
+                        {reviewApps.length
+                          ? (
+                            <>
+                              {generateApplicationCards(
+                                paginatedApps,
+                                "review",
+                                selectedApplication,
+                                setSelectedApplication,
+                                handleViewDetails,
+                                handleFollowUp,
+                                handleMenuOpen,
+                                logoUrls,
+                                handleOpenJobRatingModal,
+                                highlightLogicalId
+                              )}
+                              {totalPages > 1 && (
+                                <div className="flex flex-col items-center gap-2 mt-4">
+                                  <div className="flex items-center gap-4">
+                                    <button
+                                      type="button"
+                                      disabled={page === 1}
+                                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Previous
+                                    </button>
+                                    <span className="text-xs text-gray-500">
+                                      Page {page} of {totalPages}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={page === totalPages}
+                                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Next
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )
-                        : (
-                          <div className="flex flex-col items-center justify-center min-h-[220px]">
-                            <TbUserSearch size={64} className="text-gray-300 mb-2" />
-                            <div className="text-lg font-semibold text-gray-500">No rejected applications</div>
-                            <div className="text-sm text-blue-500 mt-1">Rejected applications will appear here</div>
-                          </div>
-                        )
-                      }
-                    </TabsContent>
-                  </Tabs>
+                          : (
+                            <div className="flex flex-col items-center justify-center min-h-[220px]">
+                              <TbUserSearch size={64} className="text-gray-300 mb-2" />
+                              <div className="text-lg font-semibold text-gray-500">No applications under review</div>
+                              <div className="text-sm text-blue-500 mt-1">Reviewed applications will appear here</div>
+                            </div>
+                          )
+                        }
+                      </TabsContent>
+                      <TabsContent value="interview" className="mt-4 space-y-4">
+                        {interviewApps.length
+                          ? (
+                            <>
+                              {generateApplicationCards(
+                                paginatedApps,
+                                "interview",
+                                selectedApplication,
+                                setSelectedApplication,
+                                handleViewDetails,
+                                handleFollowUp,
+                                handleMenuOpen,
+                                logoUrls,
+                                handleOpenJobRatingModal,
+                                highlightLogicalId
+                              )}
+                              {totalPages > 1 && (
+                                <div className="flex flex-col items-center gap-2 mt-4">
+                                  <div className="flex items-center gap-4">
+                                    <button
+                                      type="button"
+                                      disabled={page === 1}
+                                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Previous
+                                    </button>
+                                    <span className="text-xs text-gray-500">
+                                      Page {page} of {totalPages}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={page === totalPages}
+                                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Next
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )
+                          : (
+                            <div className="flex flex-col items-center justify-center min-h-[220px]">
+                              <TbUserSearch size={64} className="text-gray-300 mb-2" />
+                              <div className="text-lg font-semibold text-gray-500">No interviews scheduled</div>
+                              <div className="text-sm text-blue-500 mt-1">Interviewed applications will appear here</div>
+                            </div>
+                          )
+                        }
+                      </TabsContent>
+                      <TabsContent value="offers" className="mt-4 space-y-4">
+                        {offerApps.length
+                          ? (
+                            <>
+                              {generateApplicationCards(
+                                paginatedApps,
+                                "offers",
+                                selectedApplication,
+                                setSelectedApplication,
+                                handleViewDetails,
+                                handleFollowUp,
+                                handleMenuOpen,
+                                logoUrls,
+                                handleOpenJobRatingModal,
+                                highlightLogicalId
+                              )}
+                              {totalPages > 1 && (
+                                <div className="flex flex-col items-center gap-2 mt-4">
+                                  <div className="flex items-center gap-4">
+                                    <button
+                                      type="button"
+                                      disabled={page === 1}
+                                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Previous
+                                    </button>
+                                    <span className="text-xs text-gray-500">
+                                      Page {page} of {totalPages}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={page === totalPages}
+                                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Next
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )
+                          : (
+                            <div className="flex flex-col items-center justify-center min-h-[220px]">
+                              <TbUserSearch size={64} className="text-gray-300 mb-2" />
+                              <div className="text-lg font-semibold text-gray-500">No offers yet</div>
+                              <div className="text-sm text-lime-500 mt-1">Offers you receive will appear here</div>
+                            </div>
+                          )
+                        }
+                      </TabsContent>
+                      <TabsContent value="hired" className="mt-4 space-y-4">
+                        {hiredApps.length
+                          ? (
+                            <>
+                              {generateApplicationCards(
+                                paginatedApps,
+                                "hired",
+                                selectedApplication,
+                                setSelectedApplication,
+                                handleViewDetails,
+                                handleFollowUp,
+                                handleMenuOpen,
+                                logoUrls,
+                                handleOpenJobRatingModal,
+                                highlightLogicalId
+                              )}
+                              {totalPages > 1 && (
+                                <div className="flex flex-col items-center gap-2 mt-4">
+                                  <div className="flex items-center gap-4">
+                                    <button
+                                      type="button"
+                                      disabled={page === 1}
+                                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Previous
+                                    </button>
+                                    <span className="text-xs text-gray-500">
+                                      Page {page} of {totalPages}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={page === totalPages}
+                                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Next
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )
+                          : (
+                            <div className="flex flex-col items-center justify-center min-h-[220px]">
+                              <TbUserSearch size={64} className="text-gray-300 mb-2" />
+                              <div className="text-lg font-semibold text-gray-500">No rejected applications</div>
+                              <div className="text-sm text-blue-500 mt-1">Rejected applications will appear here</div>
+                            </div>
+                          )
+                        }
+                      </TabsContent>
+                    </Tabs>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -758,86 +1439,53 @@ export default function ApplicationTrackerNoSidebar() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {[
-                      {
-                        company: "Google",
-                        position: "Frontend Developer",
-                        update: "Interview scheduled",
-                        time: "2 hours ago",
-                        icon: <Calendar className="h-4 w-4 text-white" />,
-                        iconBg: "bg-green-500",
-                      },
-                      {
-                        company: "Meta",
-                        position: "UI/UX Designer",
-                        update: "Application under review",
-                        time: "1 day ago",
-                        icon: <Search className="h-4 w-4 text-white" />,
-                        iconBg: "bg-blue-500",
-                      },
-                      {
-                        company: "Amazon",
-                        position: "Software Engineer",
-                        update: "Technical assessment received",
-                        time: "2 days ago",
-                        icon: <FileText className="h-4 w-4 text-white" />,
-                        iconBg: "bg-yellow-500",
-                      },
-                    ].map((update, index) => (
-                      <div key={index} className="flex gap-3">
-                        <div className="relative">
-                          <div className={`w-8 h-8 rounded-full ${update.iconBg} flex items-center justify-center`}>
-                            {update.icon}
-                          </div>
-                          {update.time.includes("hours") && index < 1 ? (
-                            <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
-                          ) : null}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-800">{update.company}</p>
-                          <p className="text-xs text-gray-500">{update.position}</p>
-                          <p className="text-xs font-medium text-blue-600 mt-1">{update.update}</p>
-                          <p className="text-xs text-gray-400 mt-1">{update.time}</p>
-                        </div>
-                        <button className="text-gray-400 hover:text-blue-500">
-                          <ChevronRight className="h-5 w-5" />
-                        </button>
+                    {loading ? (
+                      <div className="flex flex-col items-center justify-center mb-2 py-6">
+                        <span className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></span>
+                        <div className="text-gray-400 text-sm mt-2">Loading updates...</div>
                       </div>
-                    ))}
+                    ) : recentUpdates === null || recentUpdates.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center mb-2">
+                        <TbClockQuestion size={48} className="text-gray-300 mb-1" />
+                        <div className="text-gray-400 text-sm text-center">No recent updates yet</div>
+                      </div>
+                    ) : (
+                      recentUpdates.map((update, index) => {
+                        let key = (update.status || "").toLowerCase()
+                        if (key === "interview scheduled") key = "interview"
+                        const iconInfo =
+                          studentActivityIconMap[key] ||
+                          { icon: <FileText className="h-4 w-4 text-white" />, iconBg: "bg-blue-400" }
+                        return (
+                          <div key={index} className="flex gap-3 hover:bg-blue-50 rounded-lg transition-colors">
+                            <div className="relative">
+                              <div className={`w-8 h-8 rounded-full ${iconInfo.iconBg} flex items-center justify-center`}>
+                                {iconInfo.icon}
+                              </div>
+                              {index === 0 ? (
+                                <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                              ) : null}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-800">{update.company}</p>
+                              <p className="text-xs text-gray-500">{update.position}</p>
+                              <p className="text-xs font-medium text-blue-600 mt-1">{update.update}</p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {formatStudentActivityTime(update.time)}
+                              </p>
+                            </div>
+                            <button className="text-gray-400 hover:text-blue-500">
+                              <ChevronRight className="h-5 w-5" />
+                            </button>
+                          </div>
+                        )
+                      })
+                    )}
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="shadow-sm border-blue-100">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center">
-                    Application Tips
-                    <Badge className="ml-2 bg-red-500 text-white text-xs">New</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex gap-3 items-start">
-                      <div className="w-6 h-6 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
-                        <AlertCircle className="h-4 w-4" />
-                      </div>
-                      <p className="text-sm text-gray-700">Follow up on applications older than 7 days</p>
-                    </div>
-                    <div className="flex gap-3 items-start">
-                      <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                        <FileText className="h-4 w-4" />
-                      </div>
-                      <p className="text-sm text-gray-700">Update your resume for tech positions</p>
-                    </div>
-                    <div className="flex gap-3 items-start">
-                      <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
-                        <MessageCircle className="h-4 w-4" />
-                      </div>
-                      <p className="text-sm text-gray-700">Prepare for upcoming Google interview</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <ApplicationTips />
             </div>
           </div>
         </div>
@@ -898,6 +1546,13 @@ export default function ApplicationTrackerNoSidebar() {
         companyLogoImg={jobRatingCompanyImg}
         recruiterName={jobRatingRecruiterName}
       />
+      <FilterModal
+        open={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        onApply={(f) => { setFilters(f); setFilterModalOpen(false); setPage(1) }}
+        initial={filters}
+        sourceApps={allAppsRaw}
+      />
     </>
   )
 }
@@ -919,6 +1574,7 @@ function generateApplicationCards(
     pending: { title: "Pending", badge: "bg-yellow-100 text-yellow-700", hover: "hover:border-l-yellow-400" },
     review: { title: "Under Review", badge: "bg-cyan-100 text-cyan-700", hover: "hover:border-l-cyan-400" },
     interview: { title: "To be Interviewed", badge: "bg-purple-100 text-purple-700", hover: "hover:border-l-purple-400" },
+    offers: { title: "Offer Received", badge: "bg-lime-100 text-lime-700", hover: "hover:border-l-lime-400" },
     hired: { title: "Hired", badge: "bg-green-100 text-green-700", hover: "hover:border-l-green-400" },
     rejected: { title: "Rejected", badge: "bg-red-100 text-red-700", hover: "hover:border-l-red-400" },
     waitlisted: { title: "Waitlisted", badge: "bg-blue-100 text-blue-700", hover: "hover:border-l-blue-400" },
@@ -932,6 +1588,8 @@ function generateApplicationCards(
         return "review"
       case "interview scheduled":
         return "interview"
+      case "offer_sent":
+        return "offers"
       case "hired":
         return "hired"
       case "rejected":
@@ -970,6 +1628,8 @@ function generateApplicationCards(
         const verificationTier = app.job_postings?.verification_tier || "basic"
 
         const shouldHighlight = !!highlightLogicalId && logicalIdForCard === String(highlightLogicalId) && index === 0
+
+        const matchDisplay = formatMatchScore(app.gpt_score ?? app.match_score)
 
         return (
           <motion.div
@@ -1048,27 +1708,29 @@ function generateApplicationCards(
                     </h3>
                     <motion.div whileHover={{ scale: 1.15 }} className="pointer-events-auto">
                       <Badge className={`${badgeClass} pointer-events-none`}>
-                        {statusConfig[cardStatus as keyof typeof statusConfig]?.title || "Pending"}
+                        {titleCase(statusConfig[cardStatus as keyof typeof statusConfig]?.title || "Pending")}
                       </Badge>
                     </motion.div>
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-gray-500">
-                      {app.company_name || ""}
+                      {app.company_name ||
+                        app.job_postings?.registered_employers?.company_name ||
+                        ""}
                     </p>
                   </div>
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <Briefcase className="h-3 w-3" />
-                        <span>{workType}</span>
+                        <span>{titleCase(workType)}</span>
                       </div>
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <PiMoneyDuotone className="h-3 w-3" />
                         <span>
                           {payAmount && payAmount.toLowerCase() !== "no pay"
-                            ? <>{payAmount}{payType ? `/${payType}` : ""}</>
-                            : "No pay"}
+                            ? <>{payAmount}{payType ? `/${titleCase(payType)}` : ""}</>
+                            : "No Pay"}
                         </span>
                       </div>
                     </div>
@@ -1076,7 +1738,7 @@ function generateApplicationCards(
                       {remoteOptions && (
                         <div className="flex items-center gap-1 text-xs text-gray-500">
                           <Globe className="h-3 w-3" />
-                          <span>{remoteOptions}</span>
+                          <span>{titleCase(remoteOptions)}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -1089,11 +1751,13 @@ function generateApplicationCards(
               </div>
 
               <div className="flex gap-1 items-center">
-                <motion.div whileHover={{ scale: 1.15 }} className="pointer-events-auto">
-                  <Badge className="bg-green-100 text-green-700 pointer-events-none">
-                    {app.match_score || "98%"} Match
-                  </Badge>
-                </motion.div>
+                {matchDisplay && (
+                  <motion.div whileHover={{ scale: 1.15 }} className="pointer-events-auto">
+                    <Badge className="bg-green-100 text-green-700 pointer-events-none">
+                      {matchDisplay} Match
+                    </Badge>
+                  </motion.div>
+                )}
                 <button
                   className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
                   onClick={(e) => e.stopPropagation()}
@@ -1192,6 +1856,25 @@ function generateApplicationCards(
       })}
     </>
   )
+}
+
+function titleCase(s?: string) {
+  if (!s) return ""
+  return s
+    .split(/[\s_-]+/)
+    .map(p => p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : p)
+    .join(" ")
+}
+
+function formatMatchScore(score?: string | number) {
+  if (score === undefined || score === null) return ""
+  if (typeof score === "number") return `${Math.round(score)}%`
+  const s = String(score).trim()
+  if (!s) return ""
+  if (s.includes("%")) return s
+  const n = parseFloat(s)
+  if (isNaN(n)) return ""
+  return `${Math.round(n)}%`
 }
 
 

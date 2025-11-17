@@ -135,6 +135,7 @@ function JobCard({
   const [showApplicationModalQuickVersion, setShowApplicationModalQuickVersion] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
   const [loadingApply, setLoadingApply] = useState(false);
+  const [quickApplyProcessing, setQuickApplyProcessing] = useState(false);
 
   const logoPath =
     companyLogoImagePath ||
@@ -321,24 +322,40 @@ function JobCard({
   }
 
   async function handleQuickApply() {
-    if (!session?.user?.studentId) return;
-
+    if (!session?.user?.studentId || quickApplyProcessing) return;
+    setQuickApplyProcessing(true);
     const res = await fetch("/api/students/apply/quick-apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ studentId: session.user.studentId }),
     });
-
     const json = await res.json();
-
     if (json.exists) {
-      setShowQuickApplyModal(false); 
-      setShowApplicationModal(false); 
-      setShowApplicationModalQuickVersion(true);
+      if (!hasApplied) {
+        try {
+          const copyRes = await fetch("/api/students/apply/copy-to-applications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId: session.user.studentId, jobId: job.id }),
+          });
+          const copyJson = await copyRes.json();
+          if (copyJson.success) {
+            setHasApplied(true);
+          }
+          setShowApplicationModalQuickVersion(true);
+        } catch {
+          setShowApplicationModalQuickVersion(true);
+        }
+      } else {
+        setShowApplicationModalQuickVersion(true);
+      }
+      setShowQuickApplyModal(false);
+      setShowApplicationModal(false);
     } else {
       setShowApplicationModal(false);
       setShowQuickApplyModal(true);
     }
+    setQuickApplyProcessing(false);
   }
 
   return (
@@ -554,15 +571,15 @@ function JobCard({
                   ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
                   : "bg-white hover:bg-blue-50 text-blue-600 border-blue-600"
               }`}
-              whileHover={hasApplied || loadingApply ? {} : { scale: 1.03 }}
-              whileTap={hasApplied || loadingApply ? {} : { scale: 0.97 }}
+              whileHover={hasApplied || loadingApply || quickApplyProcessing ? {} : { scale: 1.03 }}
+              whileTap={hasApplied || loadingApply || quickApplyProcessing ? {} : { scale: 0.97 }}
               onClick={(e) => {
                 e.stopPropagation();
                 handleQuickApply();
               }}
-              disabled={hasApplied || loadingApply}
+              disabled={hasApplied || loadingApply || quickApplyProcessing}
             >
-              {loadingApply ? (
+              {(loadingApply || quickApplyProcessing) ? (
                 <CircularProgress size={20} color="inherit" />
               ) : (
                 <Tooltip title={hasApplied ? "Looks like you’ve applied before — no need to apply again." : ""}>

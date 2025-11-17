@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../../lib/authOptions";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -8,15 +10,27 @@ const supabase = createClient(
 );
 
 export async function POST(req: Request) {
-  const { student_id } = await req.json();
+  const body = await req.json().catch(() => ({} as any));
+  const bodySid = body?.student_id;
+  const session = !bodySid ? await getServerSession(authOptions) : null;
+  const sessionSid = (session?.user as { studentId?: string })?.studentId;
+  const sidRaw = bodySid ?? sessionSid;
+
+  if (!sidRaw) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const sidNum = Number(sidRaw);
+  const sid = Number.isNaN(sidNum) ? String(sidRaw) : sidNum;
 
   const { data: matches, error } = await supabase
     .from("job_matches")
     .select("job_id, gpt_score, last_scored_at")
-    .eq("student_id", student_id);
+    .eq("student_id", sid);
 
   if (error) {
-    console.error("job_matches fetch error:", error);
+    // console.error kept intentionally for server errors
+    // console.error("[ai-matches][route] job_matches fetch error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -35,7 +49,7 @@ export async function POST(req: Request) {
     .in("id", jobIds);
 
   if (jobsError) {
-    console.error("job_postings fetch error:", jobsError);
+    console.error("[ai-matches][route] job_postings fetch error:", jobsError);
     return NextResponse.json({ error: jobsError.message }, { status: 500 });
   }
 
@@ -52,7 +66,7 @@ export async function POST(req: Request) {
       .in("id", companyIds);
 
     if (companiesError) {
-      console.error("registered_companies fetch error:", companiesError);
+      console.error("[ai-matches][route] registered_companies fetch error:", companiesError);
       return NextResponse.json({ error: companiesError.message }, { status: 500 });
     }
     companies = Array.isArray(companiesData) ? companiesData : [];
