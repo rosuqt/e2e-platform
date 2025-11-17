@@ -19,8 +19,10 @@ export default function ApplicationModalQuickVersion({ onClose, jobId }: QuickAp
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [applicationId, setApplicationId] = useState<string | null>(null)
   const router = useRouter()
   const { data: session } = useSession()
+  const studentId = session?.user?.studentId
 
   useEffect(() => {
     async function fetchQuestionsAndApply() {
@@ -29,26 +31,40 @@ export default function ApplicationModalQuickVersion({ onClose, jobId }: QuickAp
       const data = await res.json()
       setQuestions(data)
 
-      if (data.length === 0 && session?.user?.studentId) {
+      if (data.length === 0 && studentId) {
         const applyRes = await fetch(`/api/students/apply/copy-to-applications`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId, studentId: session.user.studentId }),
+          body: JSON.stringify({ jobId, studentId }),
         })
 
         if (applyRes.ok) {
           const applyData = await applyRes.json()
           if (applyData.success) {
             setQuestions([]) 
+            setShowSuccess(true)
           }
         }
-        setShowSuccess(true)
       }
 
       setLoading(false)
     }
     fetchQuestionsAndApply()
-  }, [jobId, session?.user?.studentId])
+  }, [jobId, studentId])
+
+  useEffect(() => {
+    if (!showSuccess || !studentId || !jobId) return
+    async function fetchApplicationId() {
+      const res = await fetch("/api/students/apply/check-apply-exist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId, jobId }),
+      })
+      const data = await res.json()
+      if (data.applicationId) setApplicationId(String(data.applicationId))
+    }
+    fetchApplicationId()
+  }, [showSuccess, studentId, jobId])
 
   const handleAnswerChange = (id: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [id]: value }))
@@ -56,12 +72,12 @@ export default function ApplicationModalQuickVersion({ onClose, jobId }: QuickAp
 
   const handleSubmit = async () => {
     const allAnswered = questions.every((q) => answers[q.id]?.trim())
-    if (allAnswered && session?.user?.studentId) {
+    if (allAnswered && studentId) {
       setSubmitting(true)
       const applyRes = await fetch(`/api/students/apply/copy-to-applications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId, studentId: session.user.studentId }),
+        body: JSON.stringify({ jobId, studentId }),
       })
 
       if (applyRes.ok) {
@@ -169,10 +185,14 @@ export default function ApplicationModalQuickVersion({ onClose, jobId }: QuickAp
                   className="bg-blue-600 hover:bg-blue-700"
                   onClick={() => {
                     onClose()
-                    router.push("/students/applications")
+                    if (applicationId) {
+                      router.push(`/students/jobs/applications?application=${encodeURIComponent(applicationId)}`)
+                    } else {
+                      router.push("/students/applications")
+                    }
                   }}
                 >
-                  View applications
+                  View Application
                 </Button>
               </div>
             </div>
