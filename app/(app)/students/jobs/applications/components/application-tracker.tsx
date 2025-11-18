@@ -1,17 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import type React from "react"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import {
   Search,
   Calendar,
   FileText,
-  Bookmark,
-  MessageCircle,
   Filter,
   MoreHorizontal,
   ArrowUpRight,
-  AlertCircle,
   ChevronRight,
   Briefcase,
   Globe,
@@ -39,7 +37,7 @@ import Image from "next/image"
 import { TbUserSearch } from "react-icons/tb"
 import { MdOutlineExitToApp } from "react-icons/md"
 import { HiBadgeCheck } from "react-icons/hi"
-import { RiErrorWarningLine } from "react-icons/ri"
+import { RiErrorWarningLine, RiMailStarFill } from "react-icons/ri"
 import { BadgeCheck as LuBadgeCheck } from "lucide-react"
 import Tooltip from "@mui/material/Tooltip"
 import { styled } from "@mui/material/styles"
@@ -50,11 +48,11 @@ import { IoIosCloseCircleOutline } from "react-icons/io"
 import { FaUserCheck } from "react-icons/fa"
 import { TbClockQuestion } from "react-icons/tb"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { StudentFilterModal as FilterModal } from "./filter-modal"
 import type { Filters } from "./filter-modal"
 import { ApplicationTips } from "./application-tips"
 import { useSession } from "next-auth/react"
+import { WarningModal } from "./ui/warningmodal"
 
 type JobPosting = {
   employer_id?: string
@@ -108,6 +106,9 @@ type ApplicationData = {
   portfolio?: string[]
   application_id?: string | number
   gpt_score?: number | string
+  is_inivted?: boolean
+  is_invited?: boolean
+  is_archived?: boolean
 }
 
 type JobRatingData = {
@@ -153,6 +154,7 @@ const studentActivityIconMap: Record<string, { icon: React.ReactNode; iconBg: st
   waitlisted: { icon: <TbClockQuestion className="h-4 w-4 text-white" />, iconBg: "bg-blue-500" },
   rejected: { icon: <IoIosCloseCircleOutline className="h-4 w-4 text-white" />, iconBg: "bg-red-500" },
   hired: { icon: <FaUserCheck className="h-4 w-4 text-white" />, iconBg: "bg-green-700" },
+  withdrawn: { icon: <MdOutlineExitToApp className="h-4 w-4 text-white" />, iconBg: "bg-gray-500" },
 }
 
 function formatStudentActivityTime(dateString?: string) {
@@ -181,9 +183,9 @@ export default function ApplicationTrackerNoSidebar() {
   const [followUpDetails, setFollowUpDetails] = useState<{ employerName: string; jobTitle: string; company: string } | null>(null)
 
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
-  const [menuCardId, setMenuCardId] = useState<number | null>(null)
+  const [menuCardId, setMenuCardId] = useState<string | null>(null)
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, id: number) => {
+  const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, id: string) => {
     event.stopPropagation()
     setMenuAnchorEl(event.currentTarget)
     setMenuCardId(id)
@@ -193,8 +195,45 @@ export default function ApplicationTrackerNoSidebar() {
     setMenuCardId(null)
   }
 
-  const handleWithdraw = () => {
-    toast.info("Withdrawn application " + menuCardId)
+  const [confirmWithdrawOpen, setConfirmWithdrawOpen] = useState(false)
+  const [confirmWithdrawId, setConfirmWithdrawId] = useState<string | null>(null)
+  const [applicationsData, setApplicationsData] = useState<ApplicationData[] | null>(null)
+  const confirmWithdrawTitle = useMemo(() => {
+    if (!confirmWithdrawId) return ""
+    const app = applicationsData?.find(a =>
+      String(a.application_id ?? a.id ?? a.job_postings?.id ?? "") === confirmWithdrawId
+    )
+    return app?.job_postings?.job_title || "this application"
+  }, [confirmWithdrawId, applicationsData])
+
+  const withdrawApplication = async (logicalId: string) => {
+    try {
+      const res = await fetch("/api/employers/applications/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: logicalId, action: "withdraw" }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json?.error || "Failed to withdraw application")
+        return
+      }
+      setApplicationsData(prev =>
+        (prev || []).map(a => {
+          const id = String(a.application_id ?? a.id ?? a.job_postings?.id ?? "")
+          return id === logicalId ? { ...a, status: "withdrawn" } : a
+        })
+      )
+      toast.success("Application withdrawn")
+    } catch {
+      toast.error("Failed to withdraw application")
+    }
+  }
+
+  const handleWithdraw = async () => {
+    if (!menuCardId) return
+    setConfirmWithdrawId(menuCardId)
+    setConfirmWithdrawOpen(true)
     handleMenuClose()
   }
   const handleEdit = () => {
@@ -206,14 +245,14 @@ export default function ApplicationTrackerNoSidebar() {
     handleMenuClose()
   }
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href + "?application=" + menuCardId)
-    toast.success("Link copied!")
+    if (menuCardId) {
+      navigator.clipboard.writeText(window.location.href + "?application=" + menuCardId)
+      toast.success("Link copied!")
+    }
     handleMenuClose()
   }
 
-  const [applicationsData, setApplicationsData] = useState<ApplicationData[] | null>(null)
-
-  const [logoUrls, setLogoUrls] = useState<{ [key: number]: string | null }>({})
+  const [logoUrls, setLogoUrls] = useState<{ [key: string]: string | null }>({})
   const searchParams = useSearchParams()
   const router = useRouter()
   const [prefilledApplicationId, setPrefilledApplicationId] = useState<string | null>(null)
@@ -232,6 +271,8 @@ export default function ApplicationTrackerNoSidebar() {
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc") 
   const [filterModalOpen, setFilterModalOpen] = useState(false)
   const [filters, setFilters] = useState<Filters>({})
+
+  const withdrawnActive = (filters.status?.length === 1 && filters.status[0] === "withdrawn")
 
   const [studentId, setStudentId] = useState<string | null>(null)
   const matchesMergedRef = useRef(false)
@@ -332,13 +373,6 @@ export default function ApplicationTrackerNoSidebar() {
         setApplicationsData(applicationsWithResume)
 
         const recent: StudentRecentActivity[] = (applicationsWithResume || [])
-          .slice()
-          .sort((a, b) => {
-            const aDate = a.applied_at ? new Date(a.applied_at).getTime() : 0
-            const bDate = b.applied_at ? new Date(b.applied_at).getTime() : 0
-            return bDate - aDate
-          })
-          .slice(0, 6)
           .map(app => {
             const status = (app.status || "").toLowerCase()
             let updateText = "Application updated"
@@ -349,16 +383,19 @@ export default function ApplicationTrackerNoSidebar() {
             else if (status === "waitlisted") updateText = "Application waitlisted"
             else if (status === "rejected") updateText = "Application rejected"
             else if (status === "hired") updateText = "You were hired"
+            else if (status === "withdrawn") updateText = "Application withdrawn"
             return {
-              company: app.company_name || app.job_postings?.registered_employers?.company_name || "Company",
-              position: app.job_postings?.job_title || "Position",
+              company: app.job_postings?.job_title || "Position",
+              position: app.company_name || app.job_postings?.registered_employers?.company_name || "Company",
               update: updateText,
               time: app.applied_at || "",
-              status,
+              status: status,
             }
           })
-        setRecentUpdates(recent)
+          .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+          .slice(0, 6)
 
+        setRecentUpdates(recent)
         setLoading(false)
       })
       .catch(() => {
@@ -407,12 +444,13 @@ export default function ApplicationTrackerNoSidebar() {
   useEffect(() => {
     async function fetchLogos() {
       if (!applicationsData) return
-      const newLogoUrls: { [key: number]: string | null } = {}
+      const newLogoUrls: { [key: string]: string | null } = {}
       await Promise.all(
         applicationsData.map(async (app, idx) => {
           const logoPath = app.company_logo_image_path || app.job_postings?.company_logo_image_path
+          const key = String(app.application_id ?? app.id ?? app.job_postings?.id ?? idx)
           if (!logoPath) {
-            newLogoUrls[idx] = null
+            newLogoUrls[key] = null
             return
           }
           const cacheKey = `companyLogoUrl:${logoPath}`
@@ -421,12 +459,12 @@ export default function ApplicationTrackerNoSidebar() {
             try {
               const parsed = JSON.parse(cached)
               if (typeof parsed === "string") {
-                newLogoUrls[idx] = parsed
+                newLogoUrls[key] = parsed
                 return
               }
-              if (parsed && typeof parsed === "object" && parsed.url && typeof parsed.url === "string") {
-                newLogoUrls[idx] = parsed.url
-                sessionStorage.setItem(cacheKey, JSON.stringify(parsed.url))
+              if (parsed && typeof parsed === "object" && (parsed as any).url && typeof (parsed as any).url === "string") {
+                newLogoUrls[key] = (parsed as any).url
+                sessionStorage.setItem(cacheKey, JSON.stringify((parsed as any).url))
                 return
               }
             } catch {}
@@ -449,10 +487,10 @@ export default function ApplicationTrackerNoSidebar() {
             url = json.url
           }
           if (url && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("/"))) {
-            newLogoUrls[idx] = url
+            newLogoUrls[key] = url
             sessionStorage.setItem(cacheKey, JSON.stringify(url))
           } else {
-            newLogoUrls[idx] = null
+            newLogoUrls[key] = null
             sessionStorage.removeItem(cacheKey)
           }
         })
@@ -688,7 +726,12 @@ export default function ApplicationTrackerNoSidebar() {
     return dated
   }
 
-  const allApps = applyFilters(filterBySearch(allAppsRaw))
+  const allAppsUnfiltered = applyFilters(filterBySearch(allAppsRaw))
+  const allApps = allAppsUnfiltered.filter(a => {
+    const s = (a.status || "").toLowerCase()
+    if (filters.status?.includes("withdrawn")) return true
+    return s !== "withdrawn"
+  })
   const pendingApps = applyFilters(filterBySearch(pendingAppsRaw))
   const reviewApps = applyFilters(filterBySearch(reviewAppsRaw))
   const interviewApps = applyFilters(filterBySearch(interviewAppsRaw))
@@ -1074,7 +1117,7 @@ export default function ApplicationTrackerNoSidebar() {
                             </DropdownMenu>
                           </div>
                         </div>
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-2">
                           <Button
                             variant="outline"
                             className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 hover:text-blue-700 relative"
@@ -1110,6 +1153,36 @@ export default function ApplicationTrackerNoSidebar() {
                               </span>
                             )}
                           </Button>
+
+                          {/* Withdrawn Jobs quick filter */}
+                          <Button
+                            variant="outline"
+                            aria-pressed={withdrawnActive}
+                            className={`px-3 py-1 rounded-full text-sm font-medium flex items-center
+                              ${withdrawnActive
+                                ? "text-white bg-red-600 hover:bg-red-700 border border-red-600 hover:text-pink-200"
+                                : "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:text-red-700 "}`}
+                            onClick={() => {
+                              setActiveTab("all")
+                              setFilters(prev =>
+                                withdrawnActive
+                                  ? { ...prev, status: undefined }
+                                  : { ...prev, status: ["withdrawn"] }
+                              )
+                              setPage(1)
+                            }}
+                          >
+                            <motion.span
+                              initial={false}
+                              animate={{ scaleX: withdrawnActive ? -1 : 1 }}
+                              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                              style={{ originX: 0.5 }}
+                              className="inline-flex mr-1"
+                            >
+                              <MdOutlineExitToApp className="w-4 h-4" />
+                            </motion.span>
+                            {withdrawnActive ? "Go Back" : "Withdrawn Jobs"}
+                          </Button>
                         </div>
                       </div>
 
@@ -1127,7 +1200,9 @@ export default function ApplicationTrackerNoSidebar() {
                                 handleMenuOpen,
                                 logoUrls,
                                 handleOpenJobRatingModal,
-                                highlightLogicalId
+                                highlightLogicalId,
+                                setConfirmWithdrawId,
+                                setConfirmWithdrawOpen
                               )}
                               {totalPages > 1 && (
                                 <div className="flex flex-col items-center gap-2 mt-4">
@@ -1180,7 +1255,9 @@ export default function ApplicationTrackerNoSidebar() {
                                 handleMenuOpen,
                                 logoUrls,
                                 handleOpenJobRatingModal,
-                                highlightLogicalId
+                                highlightLogicalId,
+                                setConfirmWithdrawId,
+                                setConfirmWithdrawOpen
                               )}
                               {totalPages > 1 && (
                                 <div className="flex flex-col items-center gap-2 mt-4">
@@ -1232,7 +1309,9 @@ export default function ApplicationTrackerNoSidebar() {
                                 handleMenuOpen,
                                 logoUrls,
                                 handleOpenJobRatingModal,
-                                highlightLogicalId
+                                highlightLogicalId,
+                                setConfirmWithdrawId,
+                                setConfirmWithdrawOpen
                               )}
                               {totalPages > 1 && (
                                 <div className="flex flex-col items-center gap-2 mt-4">
@@ -1284,7 +1363,9 @@ export default function ApplicationTrackerNoSidebar() {
                                 handleMenuOpen,
                                 logoUrls,
                                 handleOpenJobRatingModal,
-                                highlightLogicalId
+                                highlightLogicalId,
+                                setConfirmWithdrawId,
+                                setConfirmWithdrawOpen
                               )}
                               {totalPages > 1 && (
                                 <div className="flex flex-col items-center gap-2 mt-4">
@@ -1336,7 +1417,9 @@ export default function ApplicationTrackerNoSidebar() {
                                 handleMenuOpen,
                                 logoUrls,
                                 handleOpenJobRatingModal,
-                                highlightLogicalId
+                                highlightLogicalId,
+                                setConfirmWithdrawId,
+                                setConfirmWithdrawOpen
                               )}
                               {totalPages > 1 && (
                                 <div className="flex flex-col items-center gap-2 mt-4">
@@ -1388,7 +1471,9 @@ export default function ApplicationTrackerNoSidebar() {
                                 handleMenuOpen,
                                 logoUrls,
                                 handleOpenJobRatingModal,
-                                highlightLogicalId
+                                highlightLogicalId,
+                                setConfirmWithdrawId,
+                                setConfirmWithdrawOpen
                               )}
                               {totalPages > 1 && (
                                 <div className="flex flex-col items-center gap-2 mt-4">
@@ -1553,6 +1638,26 @@ export default function ApplicationTrackerNoSidebar() {
         initial={filters}
         sourceApps={allAppsRaw}
       />
+
+      <WarningModal
+        open={confirmWithdrawOpen}
+        title="Withdraw Application"
+        message={`Are you sure you want to withdraw ${confirmWithdrawTitle}? This action cannot be undone.`}
+        confirmText="Withdraw"
+        cancelText="Cancel"
+        loading={false}
+        onConfirm={() => {
+          if (confirmWithdrawId) {
+            withdrawApplication(confirmWithdrawId)
+          }
+          setConfirmWithdrawOpen(false)
+          setConfirmWithdrawId(null)
+        }}
+        onCancel={() => {
+          setConfirmWithdrawOpen(false)
+          setConfirmWithdrawId(null)
+        }}
+      />
     </>
   )
 }
@@ -1564,10 +1669,12 @@ function generateApplicationCards(
   setSelectedApplication: (id: string | null) => void,
   handleViewDetails: (logicalId: string, e: React.MouseEvent) => void,
   handleFollowUp: (logicalId: string, e: React.MouseEvent) => void,
-  handleMenuOpen: (event: React.MouseEvent<HTMLButtonElement>, id: number) => void,
-  logoUrls?: { [key: number]: string | null },
+  handleMenuOpen: (event: React.MouseEvent<HTMLButtonElement>, id: string) => void,
+  logoUrls?: { [key: string]: string | null },
   handleOpenJobRatingModal?: (app: ApplicationData) => void,
-  highlightLogicalId?: string | null
+  highlightLogicalId?: string | null,
+  setConfirmWithdrawId?: (id: string) => void,
+  setConfirmWithdrawOpen?: (open: boolean) => void
 ) {
   const statusConfig = {
     all: { title: "Mixed", badge: "", hover: "hover:border-l-yellow-400" },
@@ -1578,7 +1685,8 @@ function generateApplicationCards(
     hired: { title: "Hired", badge: "bg-green-100 text-green-700", hover: "hover:border-l-green-400" },
     rejected: { title: "Rejected", badge: "bg-red-100 text-red-700", hover: "hover:border-l-red-400" },
     waitlisted: { title: "Waitlisted", badge: "bg-blue-100 text-blue-700", hover: "hover:border-l-blue-400" },
-  }
+    withdrawn: { title: "Withdrawn", badge: "bg-gray-100 text-gray-700", hover: "hover:border-l-gray-400" },
+  } as const
 
   function mapStatus(appStatus?: string) {
     switch ((appStatus || "").toLowerCase()) {
@@ -1596,6 +1704,8 @@ function generateApplicationCards(
         return "rejected"
       case "waitlisted":
         return "waitlisted"
+      case "withdrawn":
+        return "withdrawn"
       default:
         return "pending"
     }
@@ -1605,14 +1715,14 @@ function generateApplicationCards(
     <>
       {applicationsData.map((app, index) => {
         const logicalIdForCard = String(app.application_id ?? app.id ?? app.job_postings?.id ?? index)
-        const idForMenu = index + 1
+
 
         let cardStatus = status
         const appStatus = mapStatus(app.status)
         if (status === "all") cardStatus = appStatus
 
-        const badgeClass = statusConfig[cardStatus as keyof typeof statusConfig]?.badge
-        const hoverBorder = statusConfig[cardStatus as keyof typeof statusConfig]?.hover || "hover:border-l-blue-100"
+        const badgeClass = (statusConfig as any)[cardStatus]?.badge
+        const hoverBorder = (statusConfig as any)[cardStatus]?.hover || "hover:border-l-blue-100"
 
         const workType = app.job_postings?.work_type || ""
         const payAmount = app.job_postings?.pay_amount ? String(app.job_postings.pay_amount) : ""
@@ -1630,6 +1740,8 @@ function generateApplicationCards(
         const shouldHighlight = !!highlightLogicalId && logicalIdForCard === String(highlightLogicalId) && index === 0
 
         const matchDisplay = formatMatchScore(app.gpt_score ?? app.match_score)
+
+        const isInvited = Boolean((app as any).is_inivited ?? (app as any).is_invited)
 
         return (
           <motion.div
@@ -1661,16 +1773,17 @@ function generateApplicationCards(
               />
             )}
 
+            {/* header section */}
             <div className="flex justify-between items-start relative">
               <div className="flex gap-3">
                 <div
                   className={`w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold ${
-                    index % 2 === 0 ? "bg-blue-600" : index % 3 === 0 ? "bg-green-600" : "bg-purple-600"
+                    index % 2 === 0 ? "bg-blue-600" : index % 3 ===  0 ? "bg-green-600" : "bg-purple-600"
                   }`}
                 >
-                  {logoUrls && logoUrls[index] ? (
+                  {logoUrls && logoUrls[logicalIdForCard] ? (
                     <Image
-                      src={logoUrls[index] as string}
+                      src={logoUrls[logicalIdForCard] as string}
                       alt="Company logo"
                       width={48}
                       height={48}
@@ -1711,6 +1824,13 @@ function generateApplicationCards(
                         {titleCase(statusConfig[cardStatus as keyof typeof statusConfig]?.title || "Pending")}
                       </Badge>
                     </motion.div>
+                    {app.is_archived && (
+                      <motion.div whileHover={{ scale: 1.15 }} className="pointer-events-auto">
+                        <Badge className="bg-amber-100 text-amber-700 border border-amber-200 pointer-events-none">
+                          Archived
+                        </Badge>
+                      </motion.div>
+                    )}
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-gray-500">
@@ -1724,7 +1844,7 @@ function generateApplicationCards(
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <Briefcase className="h-3 w-3" />
                         <span>{titleCase(workType)}</span>
-                      </div>
+                                           </div>
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <PiMoneyDuotone className="h-3 w-3" />
                         <span>
@@ -1758,16 +1878,21 @@ function generateApplicationCards(
                     </Badge>
                   </motion.div>
                 )}
-                <button
-                  className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Bookmark className="h-4 w-4" />
-                </button>
+                {/* Removed Archived badge from this right-side group */}
+                {isInvited ? (
+                  <Tooltip title="You joined this opportunity through an invite — great move!🎉" arrow>
+                    <motion.span
+                      whileHover={{ scale: 1.15 }}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-400 text-cyan-50"
+                    >
+                      <RiMailStarFill className="w-4 h-4" />
+                    </motion.span>
+                  </Tooltip>
+                ) : null}
                 <IconButton
                   size="small"
                   className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
-                  onClick={(e) => handleMenuOpen(e, idForMenu)}
+                  onClick={(e) => handleMenuOpen(e, logicalIdForCard)}
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </IconButton>
@@ -1817,15 +1942,16 @@ function generateApplicationCards(
                 >
                   View Details
                 </Button>
-                {cardStatus !== "hired" && cardStatus !== "rejected" && (
+                {cardStatus !== "hired" && cardStatus !== "rejected" && cardStatus !== "withdrawn" && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-red-600 hover:bg-red-50 hover:text-red-700 text-xs flex items-center gap-1 px-2"
                     onClick={e => {
                       e.stopPropagation()
-                      if (typeof window !== "undefined") {
-                        navigator.clipboard.writeText("Withdraw application " + logicalIdForCard)
+                      if (setConfirmWithdrawId && setConfirmWithdrawOpen) {
+                        setConfirmWithdrawId(logicalIdForCard)
+                        setConfirmWithdrawOpen(true)
                       }
                     }}
                   >
@@ -1846,7 +1972,9 @@ function generateApplicationCards(
                           ? "Congratulations!"
                           : cardStatus === "waitlisted"
                             ? "Waitlisted"
-                            : "Better luck next time"}
+                            : cardStatus === "withdrawn"
+                              ? "Withdrawn"
+                              : "Better luck next time"}
                 </span>
                 <ArrowUpRight className="h-3 w-3 text-gray-600" />
               </div>

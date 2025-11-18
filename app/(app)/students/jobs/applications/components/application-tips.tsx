@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "./ui/badge"
@@ -7,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import catTyping from "../../../../../../public/animations/application-tips/Cat typing.json"
 import studentResearch from "../../../../../../public/animations/application-tips/STUDENT.json"
 import interviewAnim from "../../../../../../public/animations/application-tips/interview.json"
-import devSkillsAnim from "../../../../../../public/animations/application-tips/developer skills.json"
+import devSkillsAnim from "../../../../../../public/animations/application-tips/skills_cat.json"
 
 
 type Tip = { icon?: React.ReactNode; text: string; animation?: any };
@@ -15,7 +16,7 @@ type Tip = { icon?: React.ReactNode; text: string; animation?: any };
 export function ApplicationTips() {
   const defaultTips: Tip[] = [
     { icon: <FileText className="h-4 w-4" />, text: "Give your resume a quick refresh before applying.", animation: catTyping },
-    { icon: <Search className="h-4 w-4" />, text: "Research each company before applying.", animation: studentResearch },
+    { icon: <Search className="h-4 w-4" />, text: "It’s worth getting to know each company a bit before sending your application.", animation: studentResearch },
     { icon: <MessageSquare className="h-4 w-4" />, text: "Ace your next interview with help from our AI practice tool", animation: interviewAnim },
     { icon: <Wrench className="h-4 w-4" />, text: "Add job-specific skills to stand out in your applications.", animation: devSkillsAnim },
   ]

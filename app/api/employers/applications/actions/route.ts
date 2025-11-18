@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server"
-import supabase from "@/lib/supabase"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "../../../../../lib/authOptions"
+import { getAdminSupabase } from "@/lib/supabase"
 
 export async function POST(req: Request) {
   await new Promise((res) => setTimeout(res, 2000))
   const { application_id, action, message } = await req.json()
   if (
     !application_id ||
-    !["shortlist", "reject", "interview_scheduled", "offer_sent", "hired", "offer_updated", "waitlist"].includes(action)
+    !["shortlist", "reject", "interview_scheduled", "offer_sent", "hired", "offer_updated", "waitlist", "withdraw"].includes(action)
   ) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 })
   }
+
+  const supabase = getAdminSupabase() 
+
   let status = ""
   let logType = ""
   let logMessage = ""
@@ -42,6 +45,10 @@ export async function POST(req: Request) {
     status = "waitlisted"
     logType = "waitlisted"
     logMessage = "Applicant was waitlisted after interview"
+  } else if (action === "withdraw") {
+    status = "withdrawn"
+    logType = "withdrawn"
+    logMessage = message || "Applicant withdrew the application"
   }
   if (status) {
     const { error } = await supabase
@@ -49,23 +56,36 @@ export async function POST(req: Request) {
       .update({ status })
       .eq("application_id", application_id)
     if (error) {
-      return NextResponse.json({ error: "Failed to update status" }, { status: 500 })
+      return NextResponse.json({ error: "Failed to update status", details: error.message }, { status: 500 })
     }
   }
-  const { data: appRow } = await supabase
+
+  const { data: appRow, error: fetchErr } = await supabase
     .from("applications")
-    .select("student_id, job_id")
+    .select("application_id, student_id, job_id")
     .eq("application_id", application_id)
     .single()
+  if (fetchErr) {
+    return NextResponse.json({ error: "Failed to fetch application row", details: fetchErr.message }, { status: 500 })
+  }
+
   const session = await getServerSession(authOptions)
   const employerId = (session?.user as { employerId?: string })?.employerId || null
-  await supabase.from("activity_log").insert({
-    application_id,
+
+  const payload = {
+    application_id: appRow?.application_id ?? application_id,
     student_id: appRow?.student_id || null,
     job_id: appRow?.job_id || null,
     employer_id: employerId,
     type: logType,
     message: logMessage,
-  })
+    created_at: new Date().toISOString(),
+  }
+
+  const { error: insertErr } = await supabase.from("activity_log").insert(payload)
+  if (insertErr) {
+    return NextResponse.json({ error: "Failed to write activity log", details: insertErr.message }, { status: 500 })
+  }
+
   return NextResponse.json({ success: true, status })
 }
