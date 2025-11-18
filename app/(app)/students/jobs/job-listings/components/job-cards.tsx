@@ -81,6 +81,7 @@ function JobCard({
   companyLogoImagePath,
   studentPreferredTypes,
   studentPreferredLocations,
+  shouldHighlight,
 }: {
   id: number | string;
   isSelected: boolean;
@@ -91,6 +92,7 @@ function JobCard({
   companyLogoImagePath?: string | null;
   studentPreferredTypes?: string[];
   studentPreferredLocations?: string[];
+  shouldHighlight?: boolean;
 }) {
   function getDaysLeft(deadline?: string): string {
     if (!deadline) return "No application deadline";
@@ -374,6 +376,18 @@ function JobCard({
           borderColor: "rgba(96, 165, 250, 0.8)",
         }}
       >
+        {shouldHighlight && (
+          <motion.div
+            className="absolute inset-0 pointer-events-none"
+            initial={{
+              x: "-100%",
+              background:
+                "linear-gradient(90deg, rgba(216,180,254,0) 0%, rgba(216,180,254,0.9) 35%, rgba(251,207,232,0.9) 65%, rgba(251,207,232,0) 100%)",
+            }}
+            animate={{ x: "100%" }}
+            transition={{ duration: 2, ease: "easeInOut" }}
+          />
+        )}
         <div className="flex justify-between">
           <div className="flex gap-3">
             <motion.div

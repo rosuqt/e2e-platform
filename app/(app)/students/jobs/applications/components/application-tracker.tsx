@@ -17,7 +17,9 @@ import {
   ChevronDown,
   ChevronUp,
   BarChart2,
-  CalendarDays
+  CalendarDays,
+  Edit,
+  Mail
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -251,6 +253,15 @@ export default function ApplicationTrackerNoSidebar() {
     }
     handleMenuClose()
   }
+
+  const menuIsPending = useMemo(() => {
+    if (!menuCardId || !applicationsData) return false
+    const app = applicationsData.find(
+      a => String(a.application_id ?? a.id ?? a.job_postings?.id ?? "") === menuCardId
+    )
+    if (!app) return false
+    return mapAppStatus(app.status) === "pending"
+  }, [menuCardId, applicationsData])
 
   const [logoUrls, setLogoUrls] = useState<{ [key: string]: string | null }>({})
   const searchParams = useSearchParams()
@@ -1160,8 +1171,8 @@ export default function ApplicationTrackerNoSidebar() {
                             aria-pressed={withdrawnActive}
                             className={`px-3 py-1 rounded-full text-sm font-medium flex items-center
                               ${withdrawnActive
-                                ? "text-white bg-red-600 hover:bg-red-700 border border-red-600 hover:text-pink-200"
-                                : "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:text-red-700 "}`}
+                                ? "text-white bg-gray-500 hover:bg-red-gray border border-gray-600 hover:text-gray-200"
+                                : "bg-gray-200/30 text-gray-600 border border-gray-200 hover:bg-gray-100 hover:text-gray-700 "}`}
                             onClick={() => {
                               setActiveTab("all")
                               setFilters(prev =>
@@ -1505,6 +1516,60 @@ export default function ApplicationTrackerNoSidebar() {
                           : (
                             <div className="flex flex-col items-center justify-center min-h-[220px]">
                               <TbUserSearch size={64} className="text-gray-300 mb-2" />
+                              <div className="text-lg font-semibold text-gray-500">No hired applications</div>
+                              <div className="text-sm text-blue-500 mt-1">Hired applications will appear here</div>
+                            </div>
+                          )
+                        }
+                      </TabsContent>
+                      <TabsContent value="rejected" className="mt-4 space-y-4">
+                        {rejectedApps.length
+                          ? (
+                            <>
+                              {generateApplicationCards(
+                                paginatedApps,
+                                "rejected",
+                                selectedApplication,
+                                setSelectedApplication,
+                                handleViewDetails,
+                                handleFollowUp,
+                                handleMenuOpen,
+                                logoUrls,
+                                handleOpenJobRatingModal,
+                                highlightLogicalId,
+                                setConfirmWithdrawId,
+                                setConfirmWithdrawOpen
+                              )}
+                              {totalPages > 1 && (
+                                <div className="flex flex-col items-center gap-2 mt-4">
+                                  <div className="flex items-center gap-4">
+                                    <button
+                                      type="button"
+                                      disabled={page === 1}
+                                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Previous
+                                    </button>
+                                    <span className="text-xs text-gray-500">
+                                      Page {page} of {totalPages}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={page === totalPages}
+                                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                                    >
+                                      Next
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )
+                          : (
+                            <div className="flex flex-col items-center justify-center min-h-[220px]">
+                              <TbUserSearch size={64} className="text-gray-300 mb-2" />
                               <div className="text-lg font-semibold text-gray-500">No rejected applications</div>
                               <div className="text-sm text-blue-500 mt-1">Rejected applications will appear here</div>
                             </div>
@@ -1607,10 +1672,36 @@ export default function ApplicationTrackerNoSidebar() {
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <MenuItem onClick={handleWithdraw}>Withdraw</MenuItem>
-        <MenuItem onClick={handleEdit}>Edit</MenuItem>
-        <MenuItem onClick={handleViewCompany}>Contact Recruiter</MenuItem>
-        <MenuItem onClick={handleCopyLink}>Copy Link</MenuItem>
+        {menuIsPending && (
+          <MenuItem onClick={handleWithdraw}>
+            <MdOutlineExitToApp className="h-4 w-4 mr-2" />
+            Withdraw
+          </MenuItem>
+        )}
+        {menuIsPending && (
+          <MenuItem onClick={handleEdit}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </MenuItem>
+        )}
+        <MenuItem onClick={handleViewCompany}>
+          <Mail className="h-4 w-4 mr-2" />
+          Contact Recruiter
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!menuCardId || !applicationsData) { handleMenuClose(); return }
+            const app = applicationsData.find(a => String(a.application_id ?? a.id ?? a.job_postings?.id ?? "") === menuCardId)
+            const jobId = app?.job_postings?.id
+            if (jobId) {
+              router.push(`/students/jobs/job-listings?jobId=${encodeURIComponent(String(jobId))}`)
+            }
+            handleMenuClose()
+          }}
+        >
+          <ArrowUpRight className="h-4 w-4 mr-2" />
+          View Job Posting
+        </MenuItem>
       </Menu>
 
       <FollowUpChatModal
@@ -1662,6 +1753,29 @@ export default function ApplicationTrackerNoSidebar() {
   )
 }
 
+function mapAppStatus(appStatus?: string) {
+  switch ((appStatus || "").toLowerCase()) {
+    case "new":
+      return "pending"
+    case "shortlisted":
+      return "review"
+    case "interview scheduled":
+      return "interview"
+    case "offer_sent":
+      return "offers"
+    case "hired":
+      return "hired"
+    case "rejected":
+      return "rejected"
+    case "waitlisted":
+      return "waitlisted"
+    case "withdrawn":
+      return "withdrawn"
+    default:
+      return "pending"
+  }
+}
+
 function generateApplicationCards(
   applicationsData: ApplicationData[],
   status: string,
@@ -1688,29 +1802,6 @@ function generateApplicationCards(
     withdrawn: { title: "Withdrawn", badge: "bg-gray-100 text-gray-700", hover: "hover:border-l-gray-400" },
   } as const
 
-  function mapStatus(appStatus?: string) {
-    switch ((appStatus || "").toLowerCase()) {
-      case "new":
-        return "pending"
-      case "shortlisted":
-        return "review"
-      case "interview scheduled":
-        return "interview"
-      case "offer_sent":
-        return "offers"
-      case "hired":
-        return "hired"
-      case "rejected":
-        return "rejected"
-      case "waitlisted":
-        return "waitlisted"
-      case "withdrawn":
-        return "withdrawn"
-      default:
-        return "pending"
-    }
-  }
-
   return (
     <>
       {applicationsData.map((app, index) => {
@@ -1718,7 +1809,7 @@ function generateApplicationCards(
 
 
         let cardStatus = status
-        const appStatus = mapStatus(app.status)
+        const appStatus = mapAppStatus(app.status)
         if (status === "all") cardStatus = appStatus
 
         const badgeClass = (statusConfig as any)[cardStatus]?.badge
@@ -1737,6 +1828,9 @@ function generateApplicationCards(
         const remoteOptions = app.job_postings?.remote_options || app.remote_options || ""
         const verificationTier = app.job_postings?.verification_tier || "basic"
 
+        const appliedDateRaw = app.applied_at ? new Date(app.applied_at) : null
+        const canFollowUp = !appliedDateRaw || (Date.now() >= (appliedDateRaw.getTime() + 5 * 24 * 60 * 60 * 1000))
+
         const shouldHighlight = !!highlightLogicalId && logicalIdForCard === String(highlightLogicalId) && index === 0
 
         const matchDisplay = formatMatchScore(app.gpt_score ?? app.match_score)
@@ -1751,7 +1845,7 @@ function generateApplicationCards(
             }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
+            transition={{ duration:  0.5, delay: index * 0.1 }}
             whileHover={{
               y: -2,
               boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
@@ -1763,6 +1857,7 @@ function generateApplicationCards(
             {shouldHighlight && (
               <motion.div
                 className="absolute inset-0 pointer-events-none"
+               
                 initial={{
                   x: "-100%",
                   background:
@@ -1826,7 +1921,7 @@ function generateApplicationCards(
                     </motion.div>
                     {app.is_archived && (
                       <motion.div whileHover={{ scale: 1.15 }} className="pointer-events-auto">
-                        <Badge className="bg-amber-100 text-amber-700 border border-amber-200 pointer-events-none">
+                        <Badge className="bg-[#b35102]/20  text-gray-600 border border-amber-200 pointer-events-none">
                           Archived
                         </Badge>
                       </motion.div>
@@ -1911,13 +2006,22 @@ function generateApplicationCards(
                   </Button>
                 )}
                 {cardStatus === "pending" && (
-                  <Button
-                    size="sm"
-                    className="bg-yellow-600 hover:bg-yellow-700 text-xs"
-                    onClick={(e) => handleFollowUp(logicalIdForCard, e)}
+                  <Tooltip
+                    title={!canFollowUp ? "You can follow up 5 days after applying." : ""}
+                    arrow
+                    disableHoverListener={canFollowUp}
                   >
-                    Follow Up
-                  </Button>
+                    <span className={!canFollowUp ? "cursor-not-allowed" : ""}>
+                      <Button
+                        size="sm"
+                        className="bg-yellow-600 hover:bg-yellow-700 text-xs"
+                        onClick={(e) => handleFollowUp(logicalIdForCard, e)}
+                        disabled={!canFollowUp}
+                      >
+                        Follow Up
+                      </Button>
+                    </span>
+                  </Tooltip>
                 )}
                 {cardStatus === "hired" && (
                   <Button
@@ -1942,7 +2046,7 @@ function generateApplicationCards(
                 >
                   View Details
                 </Button>
-                {cardStatus !== "hired" && cardStatus !== "rejected" && cardStatus !== "withdrawn" && (
+                {cardStatus === "pending" && (
                   <Button
                     variant="ghost"
                     size="sm"

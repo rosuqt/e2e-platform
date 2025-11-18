@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useState, useRef, useEffect, useMemo, useLayoutEffect } from "react"
 import {
   Search,
   ChevronLeft,
@@ -20,7 +20,6 @@ import {
   SelectItem,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-
 import Drawer from "@mui/material/Drawer"
 import { createPortal } from "react-dom"
 import FilterModal from "./components/filter-modal"
@@ -37,13 +36,15 @@ import type { Job } from "./components/job-details";
 type JobFilters = Partial<Pick<Job, "work_type" | "location">> & { salary?: string; match_score_min?: number; match_score_max?: number };
 
 export default function JobListingPage() {
-  useEffect(() => {
-    document.documentElement.classList.add("overflow-hidden");
-
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    document.body.classList.add("overflow-hidden")
     return () => {
-      document.documentElement.classList.remove("overflow-hidden");
-    };
-  }, []);
+      document.body.classList.remove("overflow-hidden")
+    }
+  }, [])
 
   const searchParams = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search)
@@ -310,6 +311,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
   const [preferredTypes, setPreferredTypes] = useState<string[]>([]);
   const [preferredLocations, setPreferredLocations] = useState<string[]>([]);
   const [, setAllowUnrelatedJobsState] = useState<boolean | null>(null);
+  const [highlightJobId, setHighlightJobId] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -317,9 +319,9 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
     params.set("page", String(page));
     params.set("limit", String(limit));
     if (searchQuery) params.set("search", searchQuery);
-    if (filters.work_type && typeof filters.work_type === "string" && filters.work_type.length > 0) params.set("work_type", filters.work_type as string);
-    if (filters.location && typeof filters.location === "string" && filters.location.length > 0) params.set("location", filters.location as string);
-    if (filters.salary && typeof filters.salary === "string" && filters.salary.length > 0) params.set("salary", filters.salary as string);
+    if (filters.work_type) params.set("work_type", String(filters.work_type));
+    if (filters.location) params.set("location", String(filters.location));
+    if (filters.salary) params.set("salary", String(filters.salary));
     if (typeof filters.match_score_min === "number") params.set("match_score_min", String(filters.match_score_min));
     if (typeof filters.match_score_max === "number") params.set("match_score_max", String(filters.match_score_max));
     if (sortBy) params.set("sortBy", sortBy);
@@ -327,25 +329,23 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
     fetch(`/api/students/job-listings?${params.toString()}`)
       .then(res => res.json())
       .then((data) => {
-        setJobs(Array.isArray(data.jobs) ? data.jobs : []);
-        setTotalJobs(typeof data.total === "number" ? data.total : (Array.isArray(data.jobs) ? data.jobs.length : 0));
+        const fetched = Array.isArray(data.jobs) ? data.jobs : [];
+        setJobs(fetched);
+        setTotalJobs(typeof data.total === "number" ? data.total : fetched.length);
         const computedTotalPages = typeof data.totalPages === "number"
           ? data.totalPages
-          : Math.max(1, Math.ceil((typeof data.total === "number" ? data.total : (Array.isArray(data.jobs) ? data.jobs.length : 0)) / limit));
+          : Math.max(1, Math.ceil((typeof data.total === "number" ? data.total : fetched.length) / limit));
         setTotalPagesState(computedTotalPages);
         setPreferredTypes(Array.isArray(data.preferredTypes) ? data.preferredTypes : []);
         setPreferredLocations(Array.isArray(data.preferredLocations) ? data.preferredLocations : []);
         setAllowUnrelatedJobsState(typeof data.allowUnrelatedJobs === "boolean" ? data.allowUnrelatedJobs : null);
         setLoading(false);
+        if (selectedJob) setHighlightJobId(selectedJob);
       })
       .catch(() => {
         setLoading(false);
       });
-  }, [page, limit, searchQuery, filters, sortBy]);
-
-  useEffect(() => {
-    onSelectJob(null);
-  }, [jobs, onSelectJob]);
+  }, [page, limit, searchQuery, filters, sortBy, selectedJob]);
 
   useEffect(() => {
     fetch("/api/students/job-listings/saved-jobs")
@@ -354,8 +354,8 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
   }, []);
 
   useEffect(() => {
-    setJobs(jobs =>
-      jobs.map(job => ({
+    setJobs(j =>
+      j.map(job => ({
         ...job,
         isSaved: savedJobIds.includes(String(job.id)),
       }))
@@ -371,19 +371,15 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
       }
 
       scrollTimeoutRef.current = setTimeout(() => {
-        if (scrollContainerRef.current!.scrollTop > 50) {
-          setIsHeaderCollapsed(true);
-        } else {
-          setIsHeaderCollapsed(false);
-        }
+        setIsHeaderCollapsed(scrollContainerRef.current!.scrollTop > 50);
       }, 100);
     };
 
-    const scrollContainer = scrollContainerRef.current;
-    if (scrollContainer) {
-      scrollContainer.addEventListener("scroll", handleScroll);
+    const el = scrollContainerRef.current;
+    if (el) {
+      el.addEventListener("scroll", handleScroll);
       return () => {
-        scrollContainer.removeEventListener("scroll", handleScroll);
+        el.removeEventListener("scroll", handleScroll);
         if (scrollTimeoutRef.current) {
           clearTimeout(scrollTimeoutRef.current);
         }
@@ -437,8 +433,6 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
     if (typeof val === "number") return acc + 1;
     return acc;
   }, 0);
-
-  const totalPages = totalPagesState;
 
   const getJobSalaryNumber = (job: Job): number | null => {
     const hasPayAmountField = Object.prototype.hasOwnProperty.call(job, "pay_amount");
@@ -532,6 +526,26 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
 
     return filtered;
   }, [jobs, filters]);
+
+  const orderedJobs = useMemo(() => {
+    let base = filteredJobs;
+    const sel = selectedJob ? jobs.find(j => String(j.id) === String(selectedJob)) : null;
+    if (sel && !base.some(j => String(j.id) === String(selectedJob))) {
+      base = [sel, ...base];
+    }
+    if (!selectedJob) return base;
+    const idx = base.findIndex(j => String(j.id) === String(selectedJob));
+    if (idx <= 0) return base;
+    return [base[idx], ...base.filter((_, i) => i !== idx)];
+  }, [filteredJobs, selectedJob, jobs]);
+
+  useEffect(() => {
+    if (selectedJob) {
+      setHighlightJobId(selectedJob);
+      const t = setTimeout(() => setHighlightJobId(null), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [selectedJob]);
 
   return (
     <div className="flex flex-col h-full">
@@ -657,7 +671,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
                 Fetching job listings, please wait...
               </span>
             </div>
-          ) : filteredJobs.length === 0 ? (
+          ) : orderedJobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[300px]">
               <div className="bg-white rounded-full shadow-lg flex items-center justify-center mt-10 w-64 h-64">
                 <Lottie animationData={notFoundAnimation} loop={true} />
@@ -668,27 +682,27 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
             </div>
           ) : (
             <>
-              {filteredJobs
-                .map((job) => (
-                  <JobCard
-                    key={job.id}
-                    id={job.id}
-                    isSelected={selectedJob === String(job.id)}
-                    onSelect={() => onSelectJob(selectedJob === String(job.id) ? null : String(job.id))}
-                    onQuickApply={() => {}}
-                    job={job}
-                    studentPreferredTypes={preferredTypes}
-                    studentPreferredLocations={preferredLocations}
-                    onSaveToggle={handleJobSaveToggle}
-                  />
-                ))}
+              {orderedJobs.map((job, i) => (
+                <JobCard
+                  key={job.id}
+                  id={job.id}
+                  isSelected={selectedJob === String(job.id)}
+                  onSelect={() => onSelectJob(selectedJob === String(job.id) ? null : String(job.id))}
+                  onQuickApply={() => {}}
+                  job={job}
+                  studentPreferredTypes={preferredTypes}
+                  studentPreferredLocations={preferredLocations}
+                  onSaveToggle={handleJobSaveToggle}
+                  shouldHighlight={highlightJobId === String(job.id) && i === 0}
+                />
+              ))}
               <div style={{ minHeight: 20 }} />
             </>
           )}
 
-          {!loading && filteredJobs.length > 0 && totalPages > 1 && (
+          {!loading && orderedJobs.length > 0 && totalPagesState > 1 && (
             <Pagination
-              totalPages={totalPages}
+              totalPages={totalPagesState}
               currentPage={page}
               onPageChange={setPage}
             />
@@ -707,4 +721,4 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
         )}
     </div>
   );
-} 
+}
