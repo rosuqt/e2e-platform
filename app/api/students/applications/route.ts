@@ -137,6 +137,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   const body = await req.json()
+  console.log("POST /api/students/applications body:", body)
   
   if (body.jobId && body.applicationData) {
     const { jobId, applicationData } = body
@@ -178,20 +179,29 @@ export async function POST(req: Request) {
 
   const { applicationId, note } = body
   if (!applicationId || !note) {
+    console.log("Missing applicationId or note:", { applicationId, note })
     return NextResponse.json({ error: "Missing applicationId or note" }, { status: 400 })
   }
 
-  const { data: app } = await supabase
+  console.log("Fetching notes for application_id:", applicationId)
+
+  const { data: app, error: fetchError } = await supabase
     .from("applications")
     .select("notes")
-    .eq("id", applicationId)
+    .eq("application_id", applicationId)
     .single()
 
-  let notesArr = []
+  if (fetchError) {
+    console.error("Error fetching existing notes:", fetchError)
+    return NextResponse.json({ error: "Failed to fetch existing notes" }, { status: 500 })
+  }
+
+  let notesArr: any[] = []
   if (app && app.notes) {
     try {
-      notesArr = JSON.parse(app.notes)
-    } catch {
+      notesArr = JSON.parse(app.notes as string)
+    } catch (e) {
+      console.error("Error parsing existing notes JSON:", e, "raw:", app.notes)
       notesArr = []
     }
   }
@@ -201,14 +211,19 @@ export async function POST(req: Request) {
     isEmployer: false
   })
 
+  console.log("Updating notes for application_id:", applicationId)
+
   const { error: updateError } = await supabase
     .from("applications")
     .update({ notes: JSON.stringify(notesArr) })
-    .eq("id", applicationId)
+    .eq("application_id", applicationId)
 
   if (updateError) {
+    console.error("Error updating notes:", updateError)
     return NextResponse.json({ error: "Failed to add note" }, { status: 500 })
   }
 
-  return NextResponse.json({ success: true })
+  const studentNotes = notesArr.filter(n => n && n.isEmployer === false)
+
+  return NextResponse.json({ success: true, notes: studentNotes })
 }

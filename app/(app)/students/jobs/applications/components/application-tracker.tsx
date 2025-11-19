@@ -107,10 +107,13 @@ type ApplicationData = {
   achievements?: string[]
   portfolio?: string[]
   application_id?: string | number
+  job_id?: string | number | null
   gpt_score?: number | string
   is_inivted?: boolean
   is_invited?: boolean
   is_archived?: boolean
+  application_answers?: any
+  notes?: { note: string; date_added: string; isEmployer?: boolean }[] | string
 }
 
 type JobRatingData = {
@@ -264,6 +267,7 @@ export default function ApplicationTrackerNoSidebar() {
   }, [menuCardId, applicationsData])
 
   const [logoUrls, setLogoUrls] = useState<{ [key: string]: string | null }>({})
+  const [logoRetryCounts, setLogoRetryCounts] = useState<{ [path: string]: number }>({})
   const searchParams = useSearchParams()
   const router = useRouter()
   const [prefilledApplicationId, setPrefilledApplicationId] = useState<string | null>(null)
@@ -346,6 +350,9 @@ export default function ApplicationTrackerNoSidebar() {
             achievements?: string[]
             portfolio?: string[]
             application_id?: string | number
+            job_id?: string | number
+            application_answers?: any
+            notes?: any
           }) => {
             let resumeUrl = app.resumeUrl ?? ""
             const resume = app.resume ?? ""
@@ -377,7 +384,10 @@ export default function ApplicationTrackerNoSidebar() {
               resume,
               resumeUrl,
               achievements: app.achievements || [],
-              portfolio: app.portfolio || []
+              portfolio: app.portfolio || [],
+              job_id: app.job_id ?? (app as any).job_posting_id ?? app.job_postings?.id ?? undefined,
+              application_answers: app.application_answers,
+              notes: app.notes,
             }
           })
         )
@@ -456,6 +466,9 @@ export default function ApplicationTrackerNoSidebar() {
     async function fetchLogos() {
       if (!applicationsData) return
       const newLogoUrls: { [key: string]: string | null } = {}
+      const updatedRetryCounts: { [path: string]: number } = { ...logoRetryCounts }
+      const maxRetries = 3
+
       await Promise.all(
         applicationsData.map(async (app, idx) => {
           const logoPath = app.company_logo_image_path || app.job_postings?.company_logo_image_path
@@ -464,52 +477,89 @@ export default function ApplicationTrackerNoSidebar() {
             newLogoUrls[key] = null
             return
           }
+
           const cacheKey = `companyLogoUrl:${logoPath}`
           const cached = sessionStorage.getItem(cacheKey)
+
+          let shouldFetchNew = true
           if (cached) {
             try {
               const parsed = JSON.parse(cached)
-              if (typeof parsed === "string") {
-                newLogoUrls[key] = parsed
-                return
-              }
-              if (parsed && typeof parsed === "object" && (parsed as any).url && typeof (parsed as any).url === "string") {
-                newLogoUrls[key] = (parsed as any).url
-                sessionStorage.setItem(cacheKey, JSON.stringify((parsed as any).url))
-                return
-              }
-            } catch {}
-            sessionStorage.removeItem(cacheKey)
-          }
-          const res = await fetch("/api/employers/get-signed-url", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              bucket: "company.logo",
-              path: logoPath,
-            }),
-          })
-          const json = await res.json()
+              const candidate =
+                typeof parsed === "string"
+                  ? parsed
+                  : parsed && typeof parsed === "object" && (parsed as any).url && typeof (parsed as any).url === "string"
+                    ? (parsed as any).url
+                    : null
 
-          let url = ""
-          if (typeof json.signedUrl === "string") {
-            url = json.signedUrl
-          } else if (json.url && typeof json.url === "string") {
-            url = json.url
+              if (candidate) {
+                try {
+                  const headRes = await fetch(candidate, { method: "HEAD" })
+                  if (headRes.ok) {
+                    newLogoUrls[key] = candidate
+                    shouldFetchNew = false
+                  } else {
+                    sessionStorage.removeItem(cacheKey)
+                  }
+                } catch {
+                  sessionStorage.removeItem(cacheKey)
+                }
+              } else {
+                sessionStorage.removeItem(cacheKey)
+              }
+            } catch {
+              sessionStorage.removeItem(cacheKey)
+            }
           }
-          if (url && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("/"))) {
-            newLogoUrls[key] = url
-            sessionStorage.setItem(cacheKey, JSON.stringify(url))
-          } else {
+
+          if (!shouldFetchNew) return
+
+          const currentRetries = updatedRetryCounts[logoPath] ?? 0
+          if (currentRetries >= maxRetries) {
+            newLogoUrls[key] = null
+            return
+          }
+
+          try {
+            const res = await fetch("/api/employers/get-signed-url", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                bucket: "company.logo",
+                path: logoPath,
+              }),
+            })
+            const json = await res.json()
+
+            let url = ""
+            if (typeof json.signedUrl === "string") {
+              url = json.signedUrl
+            } else if (json.url && typeof json.url === "string") {
+              url = json.url
+            }
+
+            if (url && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("/"))) {
+              newLogoUrls[key] = url
+              sessionStorage.setItem(cacheKey, JSON.stringify(url))
+              updatedRetryCounts[logoPath] = currentRetries + 1
+            } else {
+              newLogoUrls[key] = null
+              sessionStorage.removeItem(cacheKey)
+              updatedRetryCounts[logoPath] = currentRetries + 1
+            }
+          } catch {
             newLogoUrls[key] = null
             sessionStorage.removeItem(cacheKey)
+            updatedRetryCounts[logoPath] = currentRetries + 1
           }
         })
       )
-      setLogoUrls(newLogoUrls)
+
+      setLogoRetryCounts(updatedRetryCounts)
+      setLogoUrls(prev => ({ ...prev, ...newLogoUrls }))
     }
     fetchLogos()
-  }, [applicationsData])
+  }, [applicationsData, logoRetryCounts])
 
   useEffect(() => {
     async function fetchProfileImgs() {
@@ -1656,7 +1706,11 @@ export default function ApplicationTrackerNoSidebar() {
                         resume: app.resume ?? "",
                         resumeUrl: app.resumeUrl ?? "",
                         achievements: app.achievements || [],
-                        portfolio: app.portfolio || []
+                        portfolio: app.portfolio || [],
+                        job_id: app.job_id ?? app.job_postings?.id,
+                        student_id: studentId ?? undefined,
+                        application_answers: app.application_answers,
+                        notes: app.notes,
                       }
                     : undefined
                 })()

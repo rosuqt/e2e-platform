@@ -85,10 +85,14 @@ type ApplicationData = {
   profile_img?: string
   achievements?: string[]
   portfolio?: string[]
+  job_id?: string | number | null
+  student_id?: string | number | null
+  notes?: { note: string; date_added: string; isEmployer?: boolean }[] | string
+  application_answers?: any
 }
 
 interface ApplicationDetailsProps {
-  applicationId: string | null // Changed from number | null to string | null
+  applicationId: string | null
   isModalOpen: boolean
   setIsModalOpen: (open: boolean) => void
   applicationData?: ApplicationData
@@ -168,8 +172,6 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
   }, [])
 
   if (!isClient) return null
-
-  console.log("Modal Props - applicationId:", applicationId, "isModalOpen:", isModalOpen) // Debug log
 
   const applications = [
     {
@@ -355,10 +357,24 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
     }
   }
 
+  const parsedNotes =
+    applicationData && applicationData.notes
+      ? Array.isArray(applicationData.notes)
+        ? applicationData.notes.filter(n => !n.isEmployer)
+        : (() => {
+            try {
+              const arr = JSON.parse(applicationData.notes as string)
+              return Array.isArray(arr) ? arr.filter((n: any) => !n.isEmployer) : []
+            } catch {
+              return []
+            }
+          })()
+      : []
+
   const application =
     applicationData && applicationId
       ? {
-          id: applicationId, // Ensure this matches the updated type
+          id: applicationId,
           company: applicationData.company_name || applicationData.job_postings?.company || "",
           position: applicationData.job_postings?.job_title || "",
           status: applicationData.status || "",
@@ -384,7 +400,7 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
             : "",
           description: applicationData.job_postings?.job_summary || "",
           timeline: buildTimeline(applicationData),
-          notes: "",
+          notes: parsedNotes,
           contacts: employerContact ? [employerContact] : [],
           documents: [],
           profile_img: applicationData.profile_img || "",
@@ -392,9 +408,12 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
           resume: applicationData.resume,
           resumeUrl: applicationData.resumeUrl,
           achievements: applicationData.achievements || applicationData.job_postings?.achievements || [],
-          portfolio: applicationData.portfolio || applicationData.job_postings?.portfolio || []
+          portfolio: applicationData.portfolio || applicationData.job_postings?.portfolio || [],
+          job_id: (applicationData.job_id ?? applicationData.job_postings?.id) ?? undefined,
+          student_id: applicationData.student_id ?? undefined,
+          application_answers: applicationData.application_answers,
         }
-      : applications.find((app) => String(app.id) === applicationId) // Ensure comparison is done with string
+      : applications.find((app) => String(app.id) === applicationId)
 
   if (!application) {
     return null
@@ -414,11 +433,10 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
   }
 
   return (
-    isClient && (
-      <div style={{ display: isModalOpen ? "block" : "none", background: "white", padding: "20px" }}>
-        <h1>Application Details</h1>
-        <p>Application ID: {applicationId}</p>
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-6 text-white rounded-t-lg relative">
+    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <DialogContent className="max-w-4xl w-full p-0 overflow-hidden max-h-[90vh] flex flex-col">
+        <DialogTitle className="sr-only">Application Details</DialogTitle>
+        <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-6 text-white relative shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
@@ -460,17 +478,16 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
             </div>
           </div>
         </div>
-        <div className="p-6">
-          <DialogTitle className="sr-only">Application Details</DialogTitle>
+        <div className="p-6 overflow-y-auto">
           <ApplicationDetailsContent application={application} />
         </div>
-      </div>
-    )
+      </DialogContent>
+    </Dialog>
   )
 }
 
 interface Application {
-  id: string | number; // Updated from number to string | number
+  id: string | number
   company: string
   position: string
   status: string
@@ -491,7 +508,7 @@ interface Application {
     iconBg: string
     current?: boolean
   }[]
-  notes: string
+  notes: string | { note: string; date_added: string }[]
   contacts: {
     name: string
     role: string
@@ -510,6 +527,9 @@ interface Application {
   resumeUrl?: string
   achievements?: string[]
   portfolio?: string[]
+  job_id?: string | number
+  student_id?: string | number
+  application_answers?: any
 }
 
 const CustomTooltip = styled(Tooltip)(() => ({
@@ -532,7 +552,7 @@ function ApplicationDetailsContent({ application }: { application: Application }
   const [profileImgUrl, setProfileImgUrl] = useState<string | null>(null)
   const [showMore, setShowMore] = useState(false)
 
-  type Note = { note: string; date_added: string };
+  type Note = { note: string; date_added: string }
   const [notes, setNotes] = useState<Note[]>(() =>
     Array.isArray(application.notes)
       ? application.notes.map((n: Partial<Note>) => ({
@@ -540,12 +560,23 @@ function ApplicationDetailsContent({ application }: { application: Application }
           date_added: n.date_added || new Date().toISOString(),
         }))
       : []
-  );
+  )
   const [editMode, setEditMode] = useState(false)
   const [editNoteIdx, setEditNoteIdx] = useState<number | null>(null)
   const [editNoteText, setEditNoteText] = useState("")
   const [loading, setLoading] = useState(false)
   const [newNote, setNewNote] = useState("")
+
+  useEffect(() => {
+    if (Array.isArray(application.notes)) {
+      setNotes(
+        application.notes.map((n: Partial<Note>) => ({
+          note: n.note ?? "",
+          date_added: n.date_added || new Date().toISOString(),
+        }))
+      )
+    }
+  }, [application.notes])
 
   function formatNoteDate(dateString?: string) {
     if (!dateString) return ""
@@ -602,10 +633,14 @@ function ApplicationDetailsContent({ application }: { application: Application }
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setNotes(prev => [
-            ...prev,
-            { note: newNote, date_added: new Date().toISOString() },
-          ])
+          if (Array.isArray(data.notes)) {
+            setNotes(
+              data.notes.map((n: any) => ({
+                note: n.note ?? "",
+                date_added: n.date_added || new Date().toISOString(),
+              }))
+            )
+          }
           setNewNote("")
         }
         setLoading(false)
@@ -649,14 +684,81 @@ function ApplicationDetailsContent({ application }: { application: Application }
   const [achievements, setAchievements] = useState<{ name: string; url: string }[]>([])
   const [portfolio, setPortfolio] = useState<{ name: string; url: string }[]>([])
 
+  const [applicationQuestions, setApplicationQuestions] = useState<
+    { id: string | number; question_text: string; answer?: string | null }[]
+  >([])
+  const [questionsLoading, setQuestionsLoading] = useState(false)
+  const [questionsError, setQuestionsError] = useState<string | null>(null)
+
   useEffect(() => {
-    //console.log("Details: application.achievements", application.achievements)
-    //console.log("Details: application.portfolio", application.portfolio)
+    const rawAnswers = (application as any).application_answers
+    if (!rawAnswers) {
+      setApplicationQuestions([])
+      return
+    }
+
+    const jobId =
+      (application.job_postings as { id?: string | number } | undefined)?.id ??
+      application.job_id ??
+      (application as any).job_id ??
+      null
+
+    if (!jobId) {
+      setApplicationQuestions([])
+      return
+    }
+
+    async function loadQuestionsAndAnswers() {
+      try {
+        setQuestionsLoading(true)
+        setQuestionsError(null)
+
+        const params = new URLSearchParams()
+        params.set("job_id", String(jobId))
+
+        const questionsRes = await fetch(`/api/employers/applications/getQuestions?${params.toString()}`)
+        if (!questionsRes.ok) throw new Error("questions_failed")
+        const questionsJson = await questionsRes.json()
+        const rawQuestions: any[] = Array.isArray(questionsJson.questions) ? questionsJson.questions : []
+
+        let answerMap: Record<string, string> = {}
+        if (typeof rawAnswers === "string") {
+          try {
+            answerMap = JSON.parse(rawAnswers)
+          } catch {
+            answerMap = {}
+          }
+        } else if (typeof rawAnswers === "object" && rawAnswers !== null) {
+          answerMap = rawAnswers as Record<string, string>
+        }
+
+        const merged = rawQuestions.map((q: any) => {
+          const qid = q.id ?? q.question_id
+          const key = qid != null ? String(qid) : ""
+          const ans = key && answerMap[key] != null ? String(answerMap[key]) : ""
+          return {
+            id: qid ?? String(Math.random()),
+            question_text: q.question_text ?? q.question ?? "",
+            answer: ans,
+          }
+        })
+
+        setApplicationQuestions(merged)
+        setQuestionsLoading(false)
+      } catch {
+        setQuestionsError("Unable to load questions right now.")
+        setQuestionsLoading(false)
+      }
+    }
+
+    loadQuestionsAndAnswers()
+  }, [application.id, application.job_postings, application.job_id, (application as any).application_answers])
+
+  useEffect(() => {
     const fetchAchievementPortfolio = async () => {
       const jobPostings = application.job_postings as
         | (ApplicationData["job_postings"] & { achievements?: string[]; portfolio?: string[] })
         | undefined
-     // console.log("Details: jobPostings", jobPostings)
       let achArr = (application.achievements && application.achievements.length > 0
         ? application.achievements
         : jobPostings?.achievements) || []
@@ -665,8 +767,6 @@ function ApplicationDetailsContent({ application }: { application: Application }
         : jobPostings?.portfolio) || []
       if (!Array.isArray(achArr)) achArr = []
       if (!Array.isArray(portArr)) portArr = []
-     // console.log("Details: achArr", achArr)
-      //console.log("Details: portArr", portArr)
       const fetchSigned = async (path: string): Promise<string | null> => {
         if (!path) return null
         try {
@@ -989,6 +1089,41 @@ function ApplicationDetailsContent({ application }: { application: Application }
             )}
           </div>
   
+          <div className="px-6 mt-2">
+            <h2 className="text-lg font-semibold mb-3">Application Questions &amp; Answers</h2>
+            {questionsLoading ? (
+              <div className="text-sm text-gray-500">Loading questions...</div>
+            ) : questionsError ? (
+              <div className="text-sm text-red-500">{questionsError}</div>
+            ) : !applicationQuestions.length ? (
+              <div className="text-sm text-gray-500">No application questions for this job.</div>
+            ) : (
+              <div className="space-y-3">
+                {applicationQuestions.map((q, idx) => (
+                  <div
+                    key={q.id ?? idx}
+                    className="rounded-lg border border-blue-100 bg-blue-50/60 px-4 py-3"
+                  >
+                    <div className="text-xs font-semibold text-blue-700 mb-1">
+                      Question {idx + 1}
+                    </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {q.question_text || "No question text"}
+                    </div>
+                    <div className="mt-2 text-xs font-semibold text-gray-500">
+                      Your Answer
+                    </div>
+                    <div className="mt-1 text-sm text-gray-800 whitespace-pre-line">
+                      {q.answer && String(q.answer).trim()
+                        ? q.answer
+                        : "No answer recorded."}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <Separator />
           <div className="space-y-2">
             <h3 className="text-md font-semibold text-blue-700">Contact Information</h3>

@@ -219,7 +219,7 @@ export function JobRatingModal({
 
   const getStepContent = () => {
     if (loading) {
-      return <p className="text-center text-gray-500">Checking rating...</p>
+      return <p className="text-center text-gray-500 text-sm">Checking your previous rating...</p>
     }
     if (alreadyRated) {
       return (
