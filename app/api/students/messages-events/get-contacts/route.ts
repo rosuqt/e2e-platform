@@ -9,7 +9,7 @@ export async function GET() {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = (session.user as any).employerId ?? session.user.employerId;
+    const userId = (session.user as any).employerId ?? session.user.studentId;
 
     // Fetch only conversations involving the current user
     const { data: conversations, error } = await supabase
@@ -66,7 +66,6 @@ export async function GET() {
       if (convo.user1_id === userId || convo.user2_id === userId) {
         formatted.push({
           id: convo.id,
-          user_id: userId,
           name: userData ? `${userData.first_name} ${userData.last_name}` : "Unknown User",
           //AVATAR GET NOT HERE
           avatar:"",
@@ -97,7 +96,7 @@ export async function POST(req: Request) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = (session.user as any).employerId ?? session.user.employerId;
+    const userId = (session.user as any).employerId ?? session.user.studentId;
 
     if (!conversationId || !content) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });

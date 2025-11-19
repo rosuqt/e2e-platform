@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/authOptions";
 import supabase from "@/lib/supabase";
 
-
 export async function GET() {
   try {
     //Get User ID
