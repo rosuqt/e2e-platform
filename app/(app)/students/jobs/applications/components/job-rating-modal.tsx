@@ -44,14 +44,14 @@ export function JobRatingModal({
 }: JobRatingModalProps) {
   const [currentStep, setCurrentStep] = useState<RatingStep>("intro")
   const [ratings, setRatings] = useState<RatingData>({
-    overall: { rating: 0, comment: "" },
-    recruiter: { rating: 0, comment: "" },
-    company: { rating: 0, comment: "" },
+    overall: { rating: 1, comment: "" },
+    recruiter: { rating: 1, comment: "" },
+    company: { rating: 1, comment: "" },
   })
+
   const [recruiterImgUrl, setRecruiterImgUrl] = useState<string | null>(null)
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null)
 
-  // NEW: track if already rated
   const [alreadyRated, setAlreadyRated] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -62,13 +62,8 @@ export function JobRatingModal({
       try {
         const res = await fetch(`/api/students/ratings?jobId=${jobId}`)
         const data = await res.json()
-        if (Array.isArray(data) && data.length > 0) {
-          setAlreadyRated(true)
-        } else {
-          setAlreadyRated(false)
-        }
-      } catch (err) {
-        console.error("Failed to check rating:", err)
+        setAlreadyRated(Array.isArray(data) && data.length > 0)
+      } catch {
         setAlreadyRated(false)
       } finally {
         setLoading(false)
@@ -79,14 +74,10 @@ export function JobRatingModal({
 
   useEffect(() => {
     async function fetchRecruiterImg() {
-      if (!recruiterProfileImg) {
-        setRecruiterImgUrl(null)
-        return
-      }
-      if (recruiterProfileImg.startsWith("http")) {
-        setRecruiterImgUrl(recruiterProfileImg)
-        return
-      }
+      if (!recruiterProfileImg) return setRecruiterImgUrl(null)
+      if (recruiterProfileImg.startsWith("http"))
+        return setRecruiterImgUrl(recruiterProfileImg)
+
       try {
         const res = await fetch("/api/employers/get-signed-url", {
           method: "POST",
@@ -102,19 +93,15 @@ export function JobRatingModal({
         setRecruiterImgUrl(null)
       }
     }
+
     if (isOpen && currentStep === "recruiter") fetchRecruiterImg()
   }, [recruiterProfileImg, isOpen, currentStep])
 
   useEffect(() => {
     async function fetchCompanyLogo() {
-      if (companyLogoImg) {
-        setCompanyLogoUrl(companyLogoImg)
-        return
-      }
-      if (!companyName) {
-        setCompanyLogoUrl(null)
-        return
-      }
+      if (companyLogoImg) return setCompanyLogoUrl(companyLogoImg)
+      if (!companyName) return setCompanyLogoUrl(null)
+
       try {
         const res = await fetch("/api/employers/get-signed-url", {
           method: "POST",
@@ -130,13 +117,14 @@ export function JobRatingModal({
         setCompanyLogoUrl(null)
       }
     }
+
     if (isOpen && currentStep === "company") fetchCompanyLogo()
   }, [companyLogoImg, companyName, isOpen, currentStep])
 
   const handleRatingChange = (step: keyof RatingData, rating: number) => {
     setRatings((prev) => ({
       ...prev,
-      [step]: { ...prev[step], rating },
+      [step]: { ...prev[step], rating: Math.max(1, rating) }, // force minimum 1
     }))
   }
 
@@ -150,14 +138,11 @@ export function JobRatingModal({
   const handleNext = async () => {
     switch (currentStep) {
       case "intro":
-        setCurrentStep("recruiter")
-        break
+        return setCurrentStep("recruiter")
       case "recruiter":
-        setCurrentStep("company")
-        break
+        return setCurrentStep("company")
       case "company":
-        setCurrentStep("overall")
-        break
+        return setCurrentStep("overall")
       case "overall":
         try {
           await fetch("/api/students/ratings", {
@@ -165,29 +150,24 @@ export function JobRatingModal({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ jobId, ...ratings }),
           })
-        } catch (error) {
-          console.error("Failed to submit ratings:", error)
+        } catch (err) {
+          console.error("Failed to submit rating:", err)
         }
-        setCurrentStep("complete")
-        break
+        return setCurrentStep("complete")
       case "complete":
         onClose()
-        setCurrentStep("intro")
-        break
+        return setCurrentStep("intro")
     }
   }
 
   const handleBack = () => {
     switch (currentStep) {
       case "recruiter":
-        setCurrentStep("intro")
-        break
+        return setCurrentStep("intro")
       case "company":
-        setCurrentStep("recruiter")
-        break
+        return setCurrentStep("recruiter")
       case "overall":
-        setCurrentStep("company")
-        break
+        return setCurrentStep("company")
     }
   }
 
@@ -203,7 +183,7 @@ export function JobRatingModal({
         <button
           key={star}
           onClick={() => onRatingChange(star)}
-          className="transition-colors hover:scale-110 transform duration-200"
+          className="transition-all hover:scale-110"
         >
           <Star
             className={`w-8 h-8 ${
@@ -218,30 +198,24 @@ export function JobRatingModal({
   )
 
   const getStepContent = () => {
-    if (loading) {
+    if (loading)
       return <p className="text-center text-gray-500">Checking rating...</p>
-    }
-    if (alreadyRated) {
+
+    if (alreadyRated)
       return (
         <div className="text-center space-y-4">
           <h2 className="text-xl font-semibold text-gray-800">
             You already rated this job
           </h2>
           <p className="text-gray-600 text-sm">
-            Thanks for your feedback on <b>{jobTitle}</b> at{" "}
-            <b>{companyName}</b>. You can only submit one rating per job.
+            Thanks for your feedback on <b>{jobTitle}</b> at <b>{companyName}</b>.
           </p>
-          <Button
-            onClick={onClose}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-          >
+          <Button onClick={onClose} className="w-full bg-blue-500 text-white">
             Close
           </Button>
         </div>
       )
-    }
 
-    // ... existing step-based UI
     switch (currentStep) {
       case "intro":
         return (
@@ -249,42 +223,179 @@ export function JobRatingModal({
             <h2 className="text-2xl -mt-6 font-semibold text-gray-800">
               Share Your Experience
             </h2>
-            <p className="text-gray-600 max-w-sm text-sm mx-auto">
-              Help others by rating your experience with the <b>{jobTitle}</b>{" "}
-              position at <b>{companyName}</b>
+            <p className="text-gray-600 text-sm">
+              Help others by rating your experience with <b>{jobTitle}</b> at <b>{companyName}</b>.
             </p>
-            <div className="h-2" />
-            <p className="text-xs text-gray-400">
-              This is a multi-step rating that will only take a moment
-            </p>
-            <div className="flex gap-2 mt-2">
-              <button
-                className="flex-1 text-gray-400 text-sm hover:underline bg-transparent border-0 outline-none"
-                onClick={onClose}
-                tabIndex={0}
-                type="button"
-              >
-                Not Now
-              </button>
-              <Button
-                onClick={handleNext}
-                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white"
-              >
-                Rate Now
+            <Button
+              onClick={handleNext}
+              className="w-full bg-blue-500 text-white"
+            >
+              Rate Now
+            </Button>
+          </div>
+        )
+
+      case "recruiter":
+        return (
+          <div className="space-y-4 text-center">
+            <h2 className="text-xl font-semibold">Rate the Recruiter</h2>
+
+            <div className="w-24 h-24 mx-auto rounded-full overflow-hidden flex items-center justify-center bg-gray-100">
+              {recruiterImgUrl ? (
+                <Image
+                  src={recruiterImgUrl}
+                  alt="Recruiter"
+                  width={96}
+                  height={96}
+                  className="object-cover w-full h-full"
+                />
+              ) : (
+                <FaUserLarge className="w-12 h-12 text-gray-400" />
+              )}
+            </div>
+
+            <StarRating
+              rating={ratings.recruiter.rating}
+              onRatingChange={(r) => handleRatingChange("recruiter", r)}
+            />
+
+            <div className="relative">
+              <Textarea
+                placeholder="Your comments…"
+                value={ratings.recruiter.comment}
+                maxLength={200}
+                onChange={(e) =>
+                  handleCommentChange("recruiter", e.target.value)
+                }
+              />
+              <div className="text-xs text-gray-400 mt-1 text-right">
+                {ratings.recruiter.comment.length}/200
+              </div>
+            </div>
+
+            <div className="flex justify-between">
+              <Button variant="ghost" onClick={handleBack}>
+                Back
               </Button>
+              <Button onClick={handleNext}>Next</Button>
             </div>
           </div>
         )
-      // ... keep recruiter, company, overall, complete steps as in your code
+
+      case "company":
+        return (
+          <div className="space-y-4 text-center">
+            <h2 className="text-xl font-semibold">Rate the Company</h2>
+
+            <div className="w-24 h-24 mx-auto rounded-full overflow-hidden flex items-center justify-center bg-white border border-gray-200">
+              {companyLogoUrl ? (
+                <Image
+                  src={companyLogoUrl}
+                  alt="Company Logo"
+                  width={96}
+                  height={96}
+                  className="object-cover w-full h-full"
+                />
+              ) : (
+                <Lottie animationData={briefcaseLottie} className="w-20 h-20" />
+              )}
+            </div>
+
+            <StarRating
+              rating={ratings.company.rating}
+              onRatingChange={(r) => handleRatingChange("company", r)}
+            />
+
+            <div className="relative">
+              <Textarea
+                placeholder="Your comments…"
+                value={ratings.company.comment}
+                maxLength={200}
+                onChange={(e) =>
+                  handleCommentChange("company", e.target.value)
+                }
+              />
+              <div className="text-xs text-gray-400 mt-1 text-right">
+                {ratings.company.comment.length}/200
+              </div>
+            </div>
+
+            <div className="flex justify-between">
+              <Button variant="ghost" onClick={handleBack}>
+                Back
+              </Button>
+              <Button onClick={handleNext}>Next</Button>
+            </div>
+          </div>
+        )
+
+      case "overall":
+        return (
+          <div className="space-y-4 text-center">
+            <h2 className="text-xl font-semibold">Overall Experience</h2>
+
+            <Lottie animationData={starLottie} className="w-24 h-24 mx-auto" />
+
+            <StarRating
+              rating={ratings.overall.rating}
+              onRatingChange={(r) => handleRatingChange("overall", r)}
+            />
+
+            <div className="relative">
+              <Textarea
+                placeholder="Final comments…"
+                value={ratings.overall.comment}
+                maxLength={200}
+                onChange={(e) =>
+                  handleCommentChange("overall", e.target.value)
+                }
+              />
+              <div className="text-xs text-gray-400 mt-1 text-right">
+                {ratings.overall.comment.length}/200
+              </div>
+            </div>
+
+            <div className="flex justify-between">
+              <Button variant="ghost" onClick={handleBack}>
+                Back
+              </Button>
+              <Button onClick={handleNext}>Submit</Button>
+            </div>
+          </div>
+        )
+
+      case "complete":
+        return (
+          <div className="text-center space-y-4">
+            <ConfettiStars />
+            <Lottie
+              animationData={celebrationLottie}
+              className="w-40 h-40 mx-auto"
+            />
+            <h2 className="text-xl font-semibold">Thank you!</h2>
+            <p className="text-gray-600 text-sm">
+              Your feedback helps improve the OJT experience.
+            </p>
+            <Button onClick={handleNext} className="w-full bg-blue-500">
+              Close
+            </Button>
+          </div>
+        )
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose() // FIXED: Prevent auto-close bug
+      }}
+    >
       <DialogContent className="sm:max-w-md max-h-[700px] bg-gradient-to-b from-blue-50 to-white border-0 shadow-2xl p-0">
         <DialogHeader className="sr-only">
           <DialogTitle>Job Rating Modal</DialogTitle>
         </DialogHeader>
+
         <div className={`p-8 pt-4 ${currentStep !== "complete" ? "mt-16" : ""}`}>
           {getStepContent()}
         </div>

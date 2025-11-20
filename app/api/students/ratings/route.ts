@@ -29,7 +29,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch ratings with job info
+    // Get jobId from query string
+    const url = new URL(req.url);
+    const jobId = url.searchParams.get("jobId");
+
+    if (!jobId) {
+      return NextResponse.json({ success: false, error: "jobId is required" }, { status: 400 });
+    }
+
     const { data: ratingsData, error } = await supabase
       .from("student_ratings")
       .select(`
@@ -46,48 +53,42 @@ export async function GET(req: Request) {
         created_at,
         job_postings(job_title)
       `)
-      .eq("student_id", studentId) as { data: Rating[] | null; error: any };
+      .eq("student_id", studentId)
+      .eq("job_id", jobId) as { data: Rating[] | null; error: any };
 
     if (error) throw error;
-    if (!ratingsData) return NextResponse.json([]);
+    if (!ratingsData || ratingsData.length === 0) return NextResponse.json([]);
 
-    // Collect unique company and employer IDs
     const companyIds = [...new Set(ratingsData.map(r => r.company_id).filter(Boolean))];
     const employerIds = [...new Set(ratingsData.map(r => r.employer_id).filter(Boolean))];
 
-    // Fetch company profiles (with company_name)
     const { data: companies, error: companyError } = await supabase
-  .from("company_profile")
-  .select(`
-    company_id,
-    hq_img,
-    registered_companies (
-      company_name
-    )
-  `)
-  .in("company_id", companyIds) as {
-    data: {
-      company_id: string;
-      hq_img: string | null;
-      registered_companies: { company_name: string } | null;
-    }[] | null;
-    error: any;
-  };
+      .from("company_profile")
+      .select(`
+        company_id,
+        hq_img,
+        registered_companies (
+          company_name
+        )
+      `)
+      .in("company_id", companyIds) as {
+        data: {
+          company_id: string;
+          hq_img: string | null;
+          registered_companies: { company_name: string } | null;
+        }[] | null;
+        error: any;
+      };
 
     if (companyError) console.error("Company query error:", companyError);
 
-    // Fetch employer profiles (with employer name)
     const { data: employers, error: employerError } = await supabase
       .from("employer_profile")
       .select("employer_id, first_name, last_name")
       .in("employer_id", employerIds);
 
-      console.log("Employer IDs:", employerIds);
-      console.log("Employers fetched:", employers);
-
     if (employerError) console.error("Employer query error:", employerError);
 
-    // Merge info into ratings
     const updatedRatings = await Promise.all(ratingsData.map(async r => {
       const companyProfile = companies?.find(c => c.company_id === r.company_id) || null;
       const employer = employers?.find(e => e.employer_id === r.employer_id) || null;
@@ -122,3 +123,57 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+
+// ----------------------
+// POST handler to save rating
+// ----------------------
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    const studentId = (session?.user as { studentId?: string })?.studentId
+
+    if (!studentId) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    }
+
+    const body = await req.json()
+    const { jobId, overall, recruiter, company } = body
+
+    // Lookup the job to get employer_id and company_id
+    const { data: jobData, error: jobError } = await supabase
+      .from("job_postings")
+      .select("id, employer_id, company_id")
+      .eq("id", jobId)
+      .single()
+
+    if (jobError || !jobData) {
+      return NextResponse.json({ success: false, error: "Job not found" }, { status: 404 })
+    }
+
+    const { employer_id, company_id } = jobData
+
+    const { data, error } = await supabase.from("student_ratings").insert([
+      {
+        student_id: studentId,
+        job_id: jobId,
+        overall_rating: overall.rating,
+        overall_comment: overall.comment,
+        recruiter_rating: recruiter.rating,
+        recruiter_comment: recruiter.comment,
+        company_rating: company.rating,
+        company_comment: company.comment,
+        employer_id,
+        company_id,
+      },
+    ])
+
+    if (error) throw error
+
+    return NextResponse.json({ success: true, data })
+  } catch (err: any) {
+    console.error("🔥 Failed to save rating:", err)
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+  }
+}
+
