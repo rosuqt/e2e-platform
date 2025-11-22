@@ -160,7 +160,7 @@ export async function POST(req: Request) {
 
     const { data: jobData, error: jobError } = await supabase
       .from("job_postings")
-      .select("id, employer_id, company_id")
+      .select("id, employer_id, company_id, job_title")
       .eq("id", jobId)
       .single()
 
@@ -168,24 +168,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Job not found" }, { status: 404 })
     }
 
-    const { employer_id, company_id } = jobData
+    const { employer_id, company_id, job_title } = jobData
 
-    const { data, error } = await supabase.from("student_ratings").insert([
-      {
-        student_id: studentId,
-        job_id: jobId,
-        overall_rating: overall.rating,
-        overall_comment: overall.comment,
-        recruiter_rating: recruiter.rating,
-        recruiter_comment: recruiter.comment,
-        company_rating: company.rating,
-        company_comment: company.comment,
-        employer_id,
-        company_id,
-      },
-    ])
+    const { data, error } = await supabase.from("student_ratings").insert([{
+      student_id: studentId,
+      job_id: jobId,
+      overall_rating: overall.rating,
+      overall_comment: overall.comment,
+      recruiter_rating: recruiter.rating,
+      recruiter_comment: recruiter.comment,
+      company_rating: company.rating,
+      company_comment: company.comment,
+      employer_id,
+      company_id,
+    }])
 
     if (error) throw error
+
+    await supabase.from("activity_log").insert([{
+      type: "student_rating",
+      message: `You submitted a rating for "${job_title}"`,
+      student_id: studentId,
+      job_id: jobId,
+      application_id: null,
+      created_at: new Date().toISOString(),
+    }])
 
     return NextResponse.json({ success: true, data })
   } catch (err: any) {

@@ -5,6 +5,7 @@ export async function GET(req: Request) {
   const supabase = getAdminSupabase()
   const { searchParams } = new URL(req.url)
   const application_id = searchParams.get('application_id')
+  const student_id = searchParams.get('student_id')
 
   let query = supabase
     .from('activity_log')
@@ -24,6 +25,8 @@ export async function GET(req: Request) {
 
   if (application_id) {
     query = query.eq('application_id', application_id)
+  } else if (student_id) {
+    query = query.eq('student_id', student_id)
   } else {
     query = query.limit(10)
   }
@@ -31,11 +34,9 @@ export async function GET(req: Request) {
   const { data, error } = await query
 
   if (error) {
-    console.error('Supabase error:', error)
     return NextResponse.json({ error: error.message, details: error }, { status: 500 })
   }
   if (!data) {
-    console.error('No data returned from Supabase')
     return NextResponse.json({ error: 'No data returned from Supabase' }, { status: 500 })
   }
 
