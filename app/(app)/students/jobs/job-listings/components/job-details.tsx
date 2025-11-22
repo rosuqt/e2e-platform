@@ -1119,4 +1119,3 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
 export default JobDetails;
 
 
-

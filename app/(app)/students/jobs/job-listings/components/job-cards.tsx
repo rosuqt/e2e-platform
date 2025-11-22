@@ -497,7 +497,15 @@ function JobCard({
           >
             {getMatchIcon(matchPercent)}
             <span>
-              You are {matchPercent}% match to this job.
+              You are <span style={{
+                color:
+                  matchPercent >= 60
+                    ? "#256029"
+                    : matchPercent >= 31
+                    ? "#F59E42"
+                    : "#EF4444",
+                fontWeight: 700
+              }}>{matchPercent}%</span> match to this job.
             </span>
           </motion.div>
         ) : (

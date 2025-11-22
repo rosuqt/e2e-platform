@@ -13,6 +13,7 @@ Extract the following from this resume:
 - education (array: level, years, degree, school, acronym(make sure to use only letters acronym no full words. maximum the acronym letters to only 5 letters))
 - certificates or achievements (array: title, issuer, category, issueDate, description; category is "Award" if not clear)
 - summary (short paragraph)
+- resources (array: skill, title, url, level)
 Return as JSON:
 {
   skills: [{ name, confidence }],
@@ -20,7 +21,8 @@ Return as JSON:
   parsed_experience: [{ years, company, jobType, jobTitle }],
   parsed_education: [{ level, years, degree, school, acronym }],
   parsed_certificates: [{ title, issuer, category, issueDate, description }],
-  summary: ""
+  summary: "",
+  resources: [{ skill, title, url, level }]
 }
 Resume text:
 ${parsed_text}
@@ -43,6 +45,7 @@ ${parsed_text}
     parsed_education?: { level: string; years: string; degree: string; school: string; acronym: string }[]
     parsed_certificates?: { title: string; issuer: string; category?: string; issueDate?: string; description?: string }[]
     summary?: string
+    resources?: { skill: string; title: string; url: string; level: string }[]
   }
   let parsed: ParsedResume = {}
   try {
@@ -61,7 +64,6 @@ ${parsed_text}
     }
     if (Array.isArray(parsed.parsed_experience)) {
       parsed.parsed_experience = parsed.parsed_experience.filter(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (exp: any) =>
           typeof exp === "object" &&
           exp !== null &&
@@ -90,6 +92,7 @@ ${parsed_text}
         parsed_education: parsed.parsed_education ?? [],
         parsed_certificates: parsed.parsed_certificates ?? [],
         summary: parsed.summary ?? "",
+        resources: parsed.resources ?? [],
         ai_model: "gpt-4-turbo"
       }
     ])
