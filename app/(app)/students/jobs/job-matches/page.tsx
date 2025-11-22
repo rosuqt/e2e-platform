@@ -37,12 +37,8 @@ import loadingAnimation from "../../../../../public/animations/loading_purpleblu
 
 export default function JobListingPage() {
   useEffect(() => {
-    document.documentElement.classList.add("overflow-hidden");
-
-    return () => {
-      document.documentElement.classList.remove("overflow-hidden");
-    };
-  }, []);
+    window.scrollTo(0, 0)
+  }, [])
 
   const [selectedJob, setSelectedJob] = useState<number | null>(null)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)

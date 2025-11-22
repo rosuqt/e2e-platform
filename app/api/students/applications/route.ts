@@ -38,7 +38,6 @@ export async function GET() {
       .in("employer_id", employerIds)
     if (profiles) {
       for (const prof of profiles) {
-        console.log("profile_img for employer_id", prof.employer_id, ":", prof.profile_img)
         employerProfiles[prof.employer_id] = { profile_img: prof.profile_img }
       }
     }
@@ -86,7 +85,6 @@ export async function GET() {
       }
       return []
     }
-    console.log("RAW achievements:", app.achievements, "RAW portfolio:", app.portfolio)
     const achievementsArr = parseArrayField(app.achievements)
     const portfolioArr = parseArrayField(app.portfolio)
     return {
@@ -125,7 +123,6 @@ export async function GET() {
     }
   }
 
-  console.log("applicationsWithJobTitle profile_img:", applicationsWithJobTitle.map(a => a.profile_img))
 
   return NextResponse.json({ applications: applicationsWithJobTitle, applicationStatus })
 }
@@ -137,7 +134,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   const body = await req.json()
-  console.log("POST /api/students/applications body:", body)
   
   if (body.jobId && body.applicationData) {
     const { jobId, applicationData } = body
@@ -183,7 +179,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing applicationId or note" }, { status: 400 })
   }
 
-  console.log("Fetching notes for application_id:", applicationId)
 
   const { data: app, error: fetchError } = await supabase
     .from("applications")
@@ -211,7 +206,6 @@ export async function POST(req: Request) {
     isEmployer: false
   })
 
-  console.log("Updating notes for application_id:", applicationId)
 
   const { error: updateError } = await supabase
     .from("applications")

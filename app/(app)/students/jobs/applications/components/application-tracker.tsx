@@ -1911,7 +1911,6 @@ function generateApplicationCards(
             {shouldHighlight && (
               <motion.div
                 className="absolute inset-0 pointer-events-none"
-               
                 initial={{
                   x: "-100%",
                   background:
@@ -1922,7 +1921,6 @@ function generateApplicationCards(
               />
             )}
 
-            {/* header section */}
             <div className="flex justify-between items-start relative">
               <div className="flex gap-3">
                 <div
@@ -1930,7 +1928,9 @@ function generateApplicationCards(
                     index % 2 === 0 ? "bg-blue-600" : index % 3 ===  0 ? "bg-green-600" : "bg-purple-600"
                   }`}
                 >
-                  {logoUrls && logoUrls[logicalIdForCard] ? (
+                  {logoUrls && logoUrls[logicalIdForCard] === undefined ? (
+                    <span className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></span>
+                  ) : logoUrls && logoUrls[logicalIdForCard] ? (
                     <Image
                       src={logoUrls[logicalIdForCard] as string}
                       alt="Company logo"

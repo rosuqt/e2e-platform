@@ -29,15 +29,17 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    // NEW: read jobId from query string (used by the modal "already rated" check)
-    const { searchParams } = new URL(req.url);
-    const jobId = searchParams.get("jobId");
+    let urlObj;
+    try {
+      urlObj = new URL(req.url, process.env.NEXT_PUBLIC_BASE_URL || "http://localhost");
+    } catch {
+      urlObj = new URL("http://localhost" + req.url);
+    }
+    const jobId = urlObj.searchParams.get("jobId");
 
-    // Fetch ratings with job info, optionally filtered by jobId
     let query = supabase
       .from("student_ratings")
-      .select(
-        `
+      .select(`
         id,
         job_id,
         employer_id,
@@ -50,90 +52,143 @@ export async function GET(req: Request) {
         company_comment,
         created_at,
         job_postings(job_title)
-      `
-      )
+      `)
       .eq("student_id", studentId);
 
     if (jobId) {
       query = query.eq("job_id", jobId);
     }
 
-    const { data: ratingsData, error } = (await query) as { data: Rating[] | null; error: any };
+    const { data: ratingsData, error } = await query as { data: Rating[] | null; error: any };
 
     if (error) throw error;
-    if (!ratingsData) return NextResponse.json([]);
+    if (!ratingsData || ratingsData.length === 0) return NextResponse.json([]);
 
-    // Collect unique company and employer IDs
     const companyIds = [...new Set(ratingsData.map(r => r.company_id).filter(Boolean))];
     const employerIds = [...new Set(ratingsData.map(r => r.employer_id).filter(Boolean))];
 
-    // Fetch company profiles (with company_name)
-    const { data: companies, error: companyError } = await supabase
+    const { data: companies } = await supabase
       .from("company_profile")
-      .select(
-        `
-    company_id,
-    hq_img,
-    registered_companies (
-      company_name
-    )
-  `
-      )
+      .select(`
+        company_id,
+        registered_companies (
+          company_name,
+          company_logo_image_path
+        )
+      `)
       .in("company_id", companyIds) as {
-      data: {
-        company_id: string;
-        hq_img: string | null;
-        registered_companies: { company_name: string } | null;
-      }[] | null;
-      error: any;
-    };
+        data: {
+          company_id: string;
+          registered_companies: { company_name: string; company_logo_image_path?: string | null } | null;
+        }[] | null;
+        error: any;
+      };
 
-    if (companyError) console.error("Company query error:", companyError);
-
-    // FIX: only select existing employer_profile fields (assume a single full_name column)
-    const { data: employers, error: employerError } = await supabase
+    const { data: employers } = await supabase
       .from("employer_profile")
-      .select("employer_id, full_name")
-      .in("employer_id", employerIds);
+      .select(`
+        employer_id,
+        profile_img,
+        registered_employers!employer_profile_employer_id_fkey (
+          first_name,
+          last_name
+        )
+      `)
+      .in("employer_id", employerIds) as {
+        data: {
+          employer_id: string;
+          profile_img?: string | null;
+          registered_employers: { first_name: string | null; last_name: string | null } | null;
+        }[] | null;
+        error: any;
+      };
 
-    console.log("Employer IDs:", employerIds);
-    console.log("Employers fetched:", employers);
+    const updatedRatings = await Promise.all(ratingsData.map(async r => {
+      const companyProfile = companies?.find(c => c.company_id === r.company_id) || null;
+      const employer = employers?.find(e => e.employer_id === r.employer_id) || null;
 
-    if (employerError) console.error("Employer query error:", employerError);
+      let logoUrl: string | null = null;
+      const logoPath = companyProfile?.registered_companies?.company_logo_image_path;
+      if (logoPath) {
+        logoUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/company.logo/${logoPath}`;
+      }
 
-    // Merge info into ratings
-    const updatedRatings = await Promise.all(
-      ratingsData.map(async r => {
-        const companyProfile = companies?.find(c => c.company_id === r.company_id) || null;
-        const employer = employers?.find(e => e.employer_id === r.employer_id) || null;
-
-        let logoUrl: string | null = null;
-        if (companyProfile?.hq_img) {
-          const { data: signed } = await supabase.storage
-            .from("company_logos")
-            .createSignedUrl(companyProfile.hq_img, 60);
-          logoUrl = signed?.signedUrl ?? null;
+      let employerName = "Unknown Employer";
+      let employerProfileImgUrl: string | null = null;
+      if (employer?.registered_employers) {
+        const regFirst = employer.registered_employers.first_name?.trim() || "";
+        const regLast = employer.registered_employers.last_name?.trim() || "";
+        if (regFirst || regLast) {
+          employerName = `${regFirst} ${regLast}`.trim();
         }
+      }
+      if (employer?.profile_img) {
+        employerProfileImgUrl = employer.profile_img.trim();
+      }
 
-        return {
-          ...r,
-          company: companyProfile
-            ? {
-                id: r.company_id,
-                company_name: companyProfile.registered_companies?.company_name ?? "Unknown Company",
-                company_logo_url: logoUrl,
-              }
-            : { id: r.company_id, company_name: "Unknown Company", company_logo_url: null },
-          employer: employer
-            ? { id: r.employer_id, name: employer.full_name ?? "Unknown Employer" }
-            : { id: r.employer_id, name: "Unknown Employer" },
-        };
-      })
-    );
+      return {
+        ...r,
+        company: companyProfile
+          ? {
+              id: r.company_id,
+              company_name: companyProfile.registered_companies?.company_name ?? "Unknown Company",
+              company_logo_url: logoUrl || null,
+            }
+          : { id: r.company_id, company_name: "Unknown Company", company_logo_url: null },
+        employer: { id: r.employer_id, name: employerName, profile_img: employerProfileImgUrl },
+      };
+    }));
 
     return NextResponse.json(updatedRatings);
+
   } catch (err: any) {
-    console.error("🔥 Database error:", err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions)
+    const studentId = (session?.user as { studentId?: string })?.studentId
+
+    if (!studentId) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    }
+
+    const body = await req.json()
+    const { jobId, overall, recruiter, company } = body
+
+    const { data: jobData, error: jobError } = await supabase
+      .from("job_postings")
+      .select("id, employer_id, company_id")
+      .eq("id", jobId)
+      .single()
+
+    if (jobError || !jobData) {
+      return NextResponse.json({ success: false, error: "Job not found" }, { status: 404 })
+    }
+
+    const { employer_id, company_id } = jobData
+
+    const { data, error } = await supabase.from("student_ratings").insert([
+      {
+        student_id: studentId,
+        job_id: jobId,
+        overall_rating: overall.rating,
+        overall_comment: overall.comment,
+        recruiter_rating: recruiter.rating,
+        recruiter_comment: recruiter.comment,
+        company_rating: company.rating,
+        company_comment: company.comment,
+        employer_id,
+        company_id,
+      },
+    ])
+
+    if (error) throw error
+
+    return NextResponse.json({ success: true, data })
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
   }
 }
