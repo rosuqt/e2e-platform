@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
 import Lottie from "lottie-react"
 import { ConfettiStars } from "@/components/magicui/star"
+import lottieData from "@/../public/animations/star_pop.json" 
 
 interface SuccessMatchProps {
   skills: string[]
@@ -26,12 +27,10 @@ export function SkillAbsorptionAnimation({ skills, profileImgUrl, onFinish }: { 
   const [profileScale, setProfileScale] = useState(1)
   const [showAbsorb, setShowAbsorb] = useState(false)
   const [charging, setCharging] = useState(false)
-  const [chargeProgress, setChargeProgress] = useState(0)
   const [isAbsorbingSkill, setIsAbsorbingSkill] = useState(false)
   const [borderAnimKey, setBorderAnimKey] = useState(0)
   const [showGreenBorder, setShowGreenBorder] = useState(false)
   const [showLottie, setShowLottie] = useState(false)
-  const lottieData = require("@/../public/animations/star_pop.json")
 
   useEffect(() => {
     const arcStart = 210
@@ -42,7 +41,7 @@ export function SkillAbsorptionAnimation({ skills, profileImgUrl, onFinish }: { 
         id: `${skill}-${index}`,
         name: skill,
         angle,
-        delay: index * 0.25, // slower delay between skills
+        delay: index * 0.25, 
       }
     })
     setSkillObjs(newSkills)
@@ -59,8 +58,8 @@ export function SkillAbsorptionAnimation({ skills, profileImgUrl, onFinish }: { 
       setIsAnimating(true)
       setShowAbsorb(false)
       setIsAbsorbingSkill(false)
-      const popInDuration = 700 // slower pop-in
-      const pauseDuration = 1100 // slower pause
+      const popInDuration = 700
+      const pauseDuration = 1100 
       setTimeout(() => {
         setShowAbsorb(true)
         setIsAbsorbingSkill(true)
@@ -72,18 +71,16 @@ export function SkillAbsorptionAnimation({ skills, profileImgUrl, onFinish }: { 
             setProfileScale(1)
             setIsAbsorbingSkill(false)
             setCurrentSkill((prev) => (prev !== null ? prev + 1 : null))
-          }, 1100) // slower shrink
+          }, 1100)
         }, pauseDuration)
       }, popInDuration)
     }
     if (currentSkill !== null && currentSkill >= skillObjs.length) {
       setCharging(true)
-      setChargeProgress(0)
       let progress = 0
       let lottieShown = false
       const interval = setInterval(() => {
         progress += 4
-        setChargeProgress(progress)
         if (!lottieShown && progress >= 80) {
           setShowLottie(true)
           lottieShown = true
@@ -124,7 +121,7 @@ export function SkillAbsorptionAnimation({ skills, profileImgUrl, onFinish }: { 
         <div className="relative flex items-center justify-center w-[260px] h-[44px] pointer-events-none">
           {currentSkill !== null && currentSkill < skillObjs.length && (() => {
             const skill = skillObjs[currentSkill]
-            const { x, y } = getPositionFromAngle(skill.angle, 130) // smaller radius
+            const { x, y } = getPositionFromAngle(skill.angle, 130) 
             return (
               <motion.div
                 key={skill.id}

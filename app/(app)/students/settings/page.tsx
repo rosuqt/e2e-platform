@@ -1001,34 +1001,6 @@ export default function SettingsPage() {
                         </span>
                       </Box>
                     </div>
-                    <Separator className="my-6" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-blue-700 mb-2">Change Password</h3>
-                      <Separator className="mb-6" />
-                      <div className="space-y-4">
-                        <Input
-                          type="password"
-                          placeholder="Current Password"
-                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
-                        />
-                        <Input
-                          type="password"
-                          placeholder="New Password"
-                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
-                        />
-                        <Input
-                          type="password"
-                          placeholder="Confirm New Password"
-                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
-                        />
-                        <button
-                          type="button"
-                          className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition"
-                        >
-                          Update Password
-                        </button>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               </motion.div>

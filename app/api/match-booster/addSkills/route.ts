@@ -41,7 +41,6 @@ export async function POST(req: NextRequest) {
   if (!matches || matches.length === 0) return NextResponse.json({ success: true })
 
   const scores = matches.map(m => Number(m.gpt_score) || 0)
-  const currentAvg = scores.reduce((a, b) => a + b, 0) / scores.length
   const totalBoost = boosterPercent * scores.length - scores.reduce((a, b) => a + b, 0)
 
   const minScore = Math.min(...scores)

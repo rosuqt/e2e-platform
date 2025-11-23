@@ -11,7 +11,7 @@ import skyAnimation from "../../../../../../public/animations/sky.json"
 import flyingAnimation from "../../../../../../public/animations/rocket_loader.json"
 import { useSession } from "next-auth/react"
 import Tooltip from "@mui/material/Tooltip"
-import SuccessMatch, { SkillAbsorptionAnimation } from "./success-match"
+import SuccessMatch from "./success-match"
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
@@ -333,8 +333,6 @@ export function MatchBoosterPopup({
   }, [topSkills, serverSkills])
 
   const [skills, setSkills] = useState<Skill[]>([])
-  const [refetchSkillsFlag, setRefetchSkillsFlag] = useState(0)
-  const [resetFlag, setResetFlag] = useState(0)
 
   useEffect(() => {
     if (progressLoading) return
@@ -347,7 +345,7 @@ export function MatchBoosterPopup({
           : { name: s, selected: autoSelected, completed: false }
       })
     )
-  }, [effectiveTopSkills, progressSkillNames, progressLoading, refetchSkillsFlag])
+  }, [effectiveTopSkills, progressSkillNames, progressLoading])
 
   const handleToggleSkill = (name: string) => {
     setSkills((prev) =>
@@ -646,7 +644,6 @@ export function MatchBoosterPopup({
   const hasUnsavedProgress = useMemo(() => {
     if (selectedSkillsList.length === 0) return false
     if (Object.entries(resourceCompletion).some(([key, val]) => val && !dbResourceCompletion[key])) return true
-    // If there are selected skills not present in db progress, show warning
     const dbSkillNames = Object.keys(progressData).map(skill_id => {
       const skillObj = effectiveResources.find(r => r.skill_id === skill_id)
       return skillObj?.name

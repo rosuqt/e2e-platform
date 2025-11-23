@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { getAdminSupabase } from "@/lib/supabase"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "../../../../lib/authOptions"
 
-export async function GET(req: NextRequest) {
+export async function GET(/* req: NextRequest */) {
   const session = await getServerSession(authOptions)
   const studentId = session?.user?.studentId
   if (!studentId) {

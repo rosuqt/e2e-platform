@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { getAdminSupabase } from "@/lib/supabase"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "../../../../lib/authOptions"
@@ -20,7 +20,7 @@ async function getRandomDbSkills(supabase: ReturnType<typeof getAdminSupabase>, 
   return data.filter((s: unknown) => typeof s === "string") as string[]
 }
 
-export async function GET(req: NextRequest) {
+export async function GET(/* req: NextRequest */) {
   const supabase = getAdminSupabase()
   const session = await getServerSession(authOptions)
   let studentSkills: string[] = []

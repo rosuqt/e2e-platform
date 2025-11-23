@@ -197,7 +197,9 @@ export async function POST(request: Request) {
                                 resource_levels: details.resource_levels
                             });
                     }
-                } catch (err) {}
+                } catch {
+                    // Swallow error, do nothing
+                }
             }
 
             const jobInsertResult = await supabase
@@ -343,8 +345,7 @@ export async function POST(request: Request) {
         console.log("Invalid action received");
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     } catch (error) {
-        const err = error as Error;
-        console.error("Error in API:", err.message);
-        return NextResponse.json({ error: "Internal Server Error", details: err.message }, { status: 500 });
+        console.error("Error in API:", (error as Error).message);
+        return NextResponse.json({ error: "Internal Server Error", details: (error as Error).message }, { status: 500 });
     }
 }

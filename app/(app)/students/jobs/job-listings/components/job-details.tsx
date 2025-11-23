@@ -15,7 +15,6 @@ import { useRouter } from "next/navigation";
 import { ApplicationModal } from "./application-modal";
 import dynamic from "next/dynamic";
 import { FaMoneyBill } from "react-icons/fa";
-import { calculateSkillsMatch } from "../../../../../../lib/match-utils";
 import { SiStarship } from "react-icons/si";
 import { PiBuildingsFill } from "react-icons/pi";
 import { Calendar } from "lucide-react";
@@ -202,7 +201,6 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
           await trackJobClick(jobId);
         }
         const logoPath = getCompanyLogoPath(data);
-        let logoUrlVal: string | null = null;
         if (logoPath) {
           const logoCacheKey = `companyLogoUrl:${logoPath}`;
           const cachedLogo = sessionStorage.getItem(logoCacheKey);
@@ -215,7 +213,6 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
               }
             } catch {}
             setLogoUrl(parsedLogo);
-            logoUrlVal = parsedLogo;
           } else {
             const res = await fetch("/api/employers/get-signed-url", {
               method: "POST",
@@ -228,19 +225,15 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
             if (res.ok) {
               const { signedUrl } = await res.json();
               setLogoUrl(signedUrl || null);
-              logoUrlVal = signedUrl || null;
               if (signedUrl) sessionStorage.setItem(logoCacheKey, JSON.stringify({ url: signedUrl }));
             } else {
               setLogoUrl(null);
-              logoUrlVal = null;
             }
           }
         } else {
           setLogoUrl(null);
-          logoUrlVal = null;
         }
 
-        let employerProfileImgUrlVal: string | null = null;
         if (typeof data?.employer_profile_img === "string" && data.employer_profile_img.trim() !== "") {
           const res = await fetch("/api/employers/get-signed-url", {
             method: "POST",
@@ -253,17 +246,13 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
           if (res.ok) {
             const { signedUrl } = await res.json();
             setEmployerProfileImgUrl(signedUrl || null);
-            employerProfileImgUrlVal = signedUrl || null;
           } else {
             setEmployerProfileImgUrl(null);
-            employerProfileImgUrlVal = null;
           }
         } else {
           setEmployerProfileImgUrl(null);
-          employerProfileImgUrlVal = null;
         }
 
-        let companyEmployeesVal: CompanyEmployee[] = [];
         const companyName =
           data?.registered_companies?.company_name ||
           data?.registered_employers?.company_name ||
@@ -293,23 +282,19 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                 })
               );
               setCompanyEmployees(employeesWithSignedUrl);
-              companyEmployeesVal = employeesWithSignedUrl;
             } else {
               setCompanyEmployees([]);
-              companyEmployeesVal = [];
             }
           } catch {
             setCompanyEmployees([]);
-            companyEmployeesVal = [];
           }
         } else {
           setCompanyEmployees([]);
-          companyEmployeesVal = [];
         }
 
         setLoading(false);
       })
-      .catch((err) => {
+      .catch(() => {
         setLoading(false);
       });
   }, [jobId]);
