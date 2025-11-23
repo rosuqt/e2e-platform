@@ -3,8 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/authOptions";
 import supabase from "@/lib/supabase";
 
-type UserType = { employerId?: string; id?: string }
-
 //POST REQUEST HOPEFULLY
 export async function POST(req: Request) {
   try {
@@ -16,8 +14,8 @@ export async function POST(req: Request) {
 
     const { eventTitle, eventLocation, eventDate, eventStart, eventEnd } = await req.json();
 
-    const user = session.user as UserType
-    const employerId = user.employerId ?? user.id;
+    // Get ID maybe 
+    const employerId = (session.user as any).employerId ?? session.user.employerId;
 
     const { data, error } = await supabase
       .from("employer_calendar")
@@ -36,9 +34,8 @@ export async function POST(req: Request) {
     if (error) throw error;
 
     return NextResponse.json({ success: true, data });
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -51,8 +48,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = session.user as UserType
-    const employerId = user.employerId ?? user.id;
+    const employerId = (session.user as any).employerId ?? (session.user as any).id;
 
     const { data, error } = await supabase
       .from("employer_calendar")
@@ -63,9 +59,8 @@ export async function GET() {
     if (error) throw error;
 
     return NextResponse.json({ success: true, events: data });
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -85,8 +80,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Missing event id" }, { status: 400 });
     }
 
-    const user = session.user as UserType
-    const employerId = user.employerId ?? user.id;
+    const employerId = (session.user as any).employerId ?? session.user.employerId;
 
     const { data, error } = await supabase
       .from("employer_calendar")
@@ -104,9 +98,8 @@ export async function PUT(req: Request) {
     if (error) throw error;
 
     return NextResponse.json({ success: true, data });
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
@@ -125,20 +118,18 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Missing event id" }, { status: 400 });
     }
 
-    const user = session.user as UserType
-    const employerId = user.employerId ?? user.id;
+    const employerId = (session.user as any).employerId ?? session.user.employerId;
 
     const { error } = await supabase
       .from("employer_calendar")
       .delete()
-      .eq("id", id)
-      .eq("employer_id", employerId);
+      .eq("id", id) // only delete this event
+      .eq("employer_id", employerId); // ensure ownership
 
     if (error) throw error;
 
     return NextResponse.json({ success: true, message: "Event deleted!" });
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

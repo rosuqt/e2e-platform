@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronRight, LogOut, Settings, User, Palette, AlertCircle } from "lucide-react"
+import { ChevronRight, LogOut, Settings, User, AlertCircle } from "lucide-react"
 import { Avatar } from "@mui/material"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { HiBadgeCheck } from "react-icons/hi"
-import { LuBadgeCheck } from "react-icons/lu"
+import { LuBadgeCheck, LuSquareActivity } from "react-icons/lu"
 import { PiWarningFill } from "react-icons/pi"
 import Tooltip from "@mui/material/Tooltip"
 
@@ -282,6 +282,11 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     router.push("/students/settings")
     onClose()
   }
+  const handleActivityLogClick = async () => {
+    await router.prefetch("/students/profile?tab=activity-tab")
+    router.push("/students/profile?tab=activity-tab")
+    onClose()
+  }
 
   const handleLogoutClick = async () => {
     sessionStorage.clear()
@@ -297,7 +302,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   const menuItems = [
     { id: "profile", label: "Profile", icon: User, onClick: handleProfileClick },
     { id: "settings", label: "Settings", icon: Settings, onClick: handleSettingsClick },
-    { id: "theme", label: "Theme", icon: Palette, badge: "7" },
+    { id: "theme", label: "Activity Log", icon: LuSquareActivity , onClick: handleActivityLogClick },
     { id: "report", label: "Report a bug", icon: AlertCircle },
   ]
 
@@ -424,11 +429,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                       </div>
                       <span className="ml-3 text-gray-700">{item.label}</span>
                     </div>
-                    {item.badge ? (
-                      <span className="bg-blue-100 text-blue-600 text-xs rounded-full px-2 py-0.5">{item.badge}</span>
-                    ) : (
-                      <ChevronRight size={16} className="text-gray-400" />
-                    )}
+                    <ChevronRight size={16} className="text-gray-400" />
                   </button>
                 )
               })}

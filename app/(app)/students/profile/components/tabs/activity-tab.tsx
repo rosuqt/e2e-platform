@@ -34,6 +34,7 @@ type ActivityType =
   | "hired"
   | "offer sent"
   | "rejected"
+  | "event_posted"
   | string
 
 interface Activity {
@@ -84,6 +85,10 @@ const iconMap: Record<string, { icon: React.ReactNode; bg: string }> = {
   rejected: {
     icon: <Frown className="h-5 w-5 text-white" />,
     bg: "bg-gray-500",
+  },
+  event_posted: {
+    icon: <Calendar className="h-5 w-5 text-white" />,
+    bg: "bg-teal-500",
   },
   default: {
     icon: <FileText className="h-5 w-5 text-white" />,
@@ -174,6 +179,11 @@ export default function ActivityLogPage() {
           title: "Oh no! your application wasn’t selected",
           description: "We’re sorry to share that you weren’t chosen for this role. Don’t lose heart — keep going, your next opportunity is just around the corner.",
         }
+      case "event_posted":
+        return {
+          title: "Event added to your calendar.",
+          description: "Awesome — your event’s been saved to your calendar. We’ll keep it right where it belongs!",
+        }
       default:
         return {
           title: activity.update,
@@ -193,6 +203,7 @@ export default function ActivityLogPage() {
     "hired",
     "offer sent",
     "rejected",
+    "event_posted",
   ]
 
   const filteredActivity = activity.filter((a) => {
@@ -223,8 +234,14 @@ export default function ActivityLogPage() {
     dateKeys.forEach((date) => {
       initial[date] = date === todayStr
     })
-    setExpandedDates(initial)
-  }, [filteredActivity.length, dateKeys, todayStr])
+    const isDifferent =
+      Object.keys(initial).length !== Object.keys(expandedDates).length ||
+      Object.keys(initial).some((key) => initial[key] !== expandedDates[key])
+    if (isDifferent) {
+      setExpandedDates(initial)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateKeys.join(","), todayStr])
 
   return (
     <Card className="border-none shadow-none">
