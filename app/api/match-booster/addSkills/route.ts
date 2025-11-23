@@ -43,9 +43,15 @@ export async function POST(req: NextRequest) {
   const scores = matches.map(m => Number(m.gpt_score) || 0)
   const currentAvg = scores.reduce((a, b) => a + b, 0) / scores.length
   const totalBoost = boosterPercent * scores.length - scores.reduce((a, b) => a + b, 0)
-  const perScoreBoost = totalBoost / scores.length
 
-  const newScores = scores.map(s => s + perScoreBoost)
+  const minScore = Math.min(...scores)
+  const maxScore = Math.max(...scores)
+  const range = maxScore - minScore || 1
+  const weights = scores.map(s => (maxScore - s + 1) / (range + 1))
+  const weightSum = weights.reduce((a, b) => a + b, 0)
+  const boosts = weights.map(w => (w / weightSum) * totalBoost)
+  const newScores = scores.map((s, i) => s + boosts[i])
+
   await Promise.all(
     matches.map((m, i) =>
       supabase

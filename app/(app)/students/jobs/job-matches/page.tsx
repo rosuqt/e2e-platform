@@ -29,15 +29,21 @@ import { GiFairyWand } from "react-icons/gi"
 import Lottie from "lottie-react"
 import notFoundAnimation from "../../../../../public/animations/not-found.json"
 import loadingAnimation from "../../../../../public/animations/loading_purpleblue.json"
+import MatchBoosterPopup from "./components/match-booster"
 
 export default function JobListingPage() {
   useEffect(() => {
     window.scrollTo(0, 0)
+    if (localStorage.getItem("openMatchBooster") === "1") {
+      setShowBooster(true)
+      localStorage.removeItem("openMatchBooster")
+    }
   }, [])
 
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
   const [showProfileColumn, setShowProfileColumn] = useState(true) 
+  const [showBooster, setShowBooster] = useState(false)
   const router = useRouter();
 
   const rightSectionRef = useRef<HTMLDivElement | null>(null)
@@ -155,6 +161,13 @@ export default function JobListingPage() {
           </div>
         )}
       </div>
+      {showBooster && (
+        <MatchBoosterPopup
+          open={showBooster}
+          onClose={() => setShowBooster(false)}
+          matchScore={0}
+        />
+      )}
     </div>
   )
 }

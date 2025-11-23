@@ -2,18 +2,18 @@
 
 import { useMemo, useState, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import Lottie from "lottie-react"
+import dynamic from "next/dynamic"
 import { SiCodemagic, SiStarship } from "react-icons/si"
 import LiquidFillGauge from "react-liquid-gauge"
 import { GiBrokenShield } from "react-icons/gi"
 import rocketLoaderAnimation from "../../../../../../public/animations/space.json"
 import skyAnimation from "../../../../../../public/animations/sky.json"
-import flyingAnimation from "../../../../../../public/animations/flying.json"
+import flyingAnimation from "../../../../../../public/animations/rocket_loader.json"
 import { useSession } from "next-auth/react"
 import Tooltip from "@mui/material/Tooltip"
 import SuccessMatch, { SkillAbsorptionAnimation } from "./success-match"
 
-
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 
 type Skill = {
   name: string
@@ -333,6 +333,8 @@ export function MatchBoosterPopup({
   }, [topSkills, serverSkills])
 
   const [skills, setSkills] = useState<Skill[]>([])
+  const [refetchSkillsFlag, setRefetchSkillsFlag] = useState(0)
+  const [resetFlag, setResetFlag] = useState(0)
 
   useEffect(() => {
     if (progressLoading) return
@@ -345,7 +347,7 @@ export function MatchBoosterPopup({
           : { name: s, selected: autoSelected, completed: false }
       })
     )
-  }, [effectiveTopSkills, progressSkillNames, progressLoading]) 
+  }, [effectiveTopSkills, progressSkillNames, progressLoading, refetchSkillsFlag])
 
   const handleToggleSkill = (name: string) => {
     setSkills((prev) =>
@@ -528,12 +530,9 @@ export function MatchBoosterPopup({
     fetchProfileImg()
   }, [step])
 
-  const resetBoosterState = () => {
-    setStep(0)
-    setProgressSkillNames([])
-    setProgressData({})
-    setSkills([])
-    setResourceCompletion({})
+  const resetBoosterState = async () => {
+    localStorage.setItem("openMatchBooster", "1")
+    window.location.reload()
   }
 
   const handleClose = () => {
@@ -750,44 +749,23 @@ export function MatchBoosterPopup({
                   </div>
                 )}
                 {noSkillsLeft ? (
-                  <div className="relative z-10 grid md:grid-cols-[1.1fr,1fr] gap-6 items-center min-h-[380px]">
-                    <div className="space-y-3">
-                      <p className="text-2xl font-bold text-white">Skill Master!</p>
-                      <p className="text-base text-gray-200">
-                        Looks like you’ve learned it all — no new skills left for now.
-                      </p>
-                      <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-xs text-blue-800">
-                        <p className="font-semibold mb-1">
-                          What you’ve accomplished:
-                        </p>
-                        <ul className="list-disc list-inside space-y-0.5">
-                          <li>
-                            You’ve completed all available skills for your profile.
-                          </li>
-                          <li>
-                            Your profile is now at maximum strength for matches.
-                          </li>
-                          <li>
-                            Come back later for fresh challenges and new skills!
-                          </li>
-                        </ul>
-                      </div>
-                      <p className="text-xs text-gray-200">
-                        🚀 Keep an eye out for new skills and opportunities as we update the platform.
-                      </p>
+                  <div className="flex items-center justify-center min-h-[400px] bg-white rounded-2xl p-8 gap-8">
+                    <div className="w-56 h-56 flex items-center justify-center">
+                      <Lottie
+                        animationData={flyingAnimation}
+                        loop
+                        autoplay
+                      />
                     </div>
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="w-40 h-40 mb-2">
-                        <Lottie
-                          animationData={skyAnimation}
-                          loop
-                          autoplay
-                        />
-                      </div>
-                      <div className="w-full flex gap-2">
+                    <div className="flex flex-col items-start justify-center gap-4">
+                      <p className="text-2xl font-extrabold text-blue-700">You’ve Mastered Every Skill in Sight!</p>
+                      <p className="text-sm text-gray-500 max-w-md">
+                        Looks like you’ve learned it all — no new skills left for now. Come back later for fresh challenges!
+                      </p>
+                      <div className="w-full flex justify-center">
                         <button
                           onClick={onClose}
-                          className="w-full rounded-full bg-cyan-400/50 text-white text-sm font-medium py-2.5 hover:bg-cyan-500 border-2 border-cyan-500 transition-colors shadow-sm"
+                          className="rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-400 text-white text-base font-bold py-3 px-8 hover:opacity-90 transition-colors"
                         >
                           Close Booster
                         </button>
@@ -1323,7 +1301,9 @@ export function MatchBoosterPopup({
                             )}
                             <div className="w-full flex gap-2">
                               <button
-                                onClick={() => setStep(0)}
+                                onClick={async () => {
+                                  await resetBoosterState()
+                                }}
                                 className="w-full rounded-full bg-white text-blue-600 text-sm font-medium py-2.5 hover:bg-blue-50 border-2 border-blue-200 transition-colors shadow-sm flex items-center justify-center gap-2"
                               >
                                 <SiStarship className="w-5 h-5" />
@@ -1331,7 +1311,7 @@ export function MatchBoosterPopup({
                               </button>
                               <button
                                 onClick={onClose}
-                                className="w-full rounded-full bg-cyan-400/50 text-white text-sm font-medium py-2.5 hover:bg-cyan-500 border-2 border-cyan-500 transition-colors shadow-sm"
+                                className="w-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-400 text-white text-sm font-medium py-2.5 hover:opacity-90 transition-colors"
                               >
                                 Close Booster
                               </button>
