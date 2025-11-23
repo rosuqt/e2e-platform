@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "../../../../lib/authOptions"
 import { getAdminSupabase } from "@/lib/supabase"
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   const session = await getServerSession(authOptions)
   const studentId = session?.user?.studentId
   if (!studentId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

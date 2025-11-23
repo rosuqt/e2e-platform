@@ -46,38 +46,10 @@ const notifications = [
   },
 ]
 
-type Activity = {
-  id: string;
-  employer_id: string;
-  student_id: string;
-  job_id: string;
-  type: string;
-  message: string;
-  created_at: Date;
-};
-
-type Access = {
-  id: string;
-  employer_id: string;
-  role: string;
-  updated_at: Date;
-};
-
-type Offer = {
-  id: string;
-  created_at: Date;
-  accept_status: string;
-}
-
-
 export default function NotificationsPage() {
   const [selectedNotification, setSelectedNotification] = useState<number | null>(null)
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  
-  const [activity, setActivity] = useState<Activity[]>([]);
-  const [access, setAccess] = useState<Access[]>([]);
-  const [offer, setOffer] = useState<Offer[]>([]);
 
   //FETCH NOTIFS
   const getNotif = async () => {
@@ -85,9 +57,6 @@ export default function NotificationsPage() {
       try {
         const res = await fetch("/api/employers/notifications");
         const data = await res.json();
-        setActivity(data.activity);
-        setAccess(data.access);
-        setOffer(data.offer);
         console.log(data.activity);
         console.log(data.access);
         console.log(data.offer);

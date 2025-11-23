@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       query = query.eq("job_id", jobId);
     }
 
-    const { data: ratingsData, error } = await query as { data: Rating[] | null; error: any };
+    const { data: ratingsData, error } = await query as { data: Rating[] | null; error: { message?: string } };
 
     if (error) throw error;
     if (!ratingsData || ratingsData.length === 0) return NextResponse.json([]);
@@ -81,7 +81,7 @@ export async function GET(req: Request) {
           company_id: string;
           registered_companies: { company_name: string; company_logo_image_path?: string | null } | null;
         }[] | null;
-        error: any;
+        error: { message?: string };
       };
 
     const { data: employers } = await supabase
@@ -100,7 +100,7 @@ export async function GET(req: Request) {
           profile_img?: string | null;
           registered_employers: { first_name: string | null; last_name: string | null } | null;
         }[] | null;
-        error: any;
+        error: { message?: string };
       };
 
     const updatedRatings = await Promise.all(ratingsData.map(async r => {
@@ -141,8 +141,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json(updatedRatings);
 
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = typeof err === "object" && err !== null && "message" in err ? (err as { message?: string }).message ?? "" : ""
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
@@ -195,7 +196,8 @@ export async function POST(req: Request) {
     }])
 
     return NextResponse.json({ success: true, data })
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    const message = typeof err === "object" && err !== null && "message" in err ? (err as { message?: string }).message ?? "" : ""
+    return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
 }

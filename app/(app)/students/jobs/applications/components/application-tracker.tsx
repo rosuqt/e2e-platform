@@ -249,13 +249,8 @@ export default function ApplicationTrackerNoSidebar() {
     toast.info("View company for application " + menuCardId)
     handleMenuClose()
   }
-  const handleCopyLink = () => {
-    if (menuCardId) {
-      navigator.clipboard.writeText(window.location.href + "?application=" + menuCardId)
-      toast.success("Link copied!")
-    }
-    handleMenuClose()
-  }
+
+
 
   const menuIsPending = useMemo(() => {
     if (!menuCardId || !applicationsData) return false

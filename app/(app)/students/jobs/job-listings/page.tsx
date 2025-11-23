@@ -526,17 +526,7 @@ function JobListings({ onSelectJob, selectedJob, initialJobId }: { onSelectJob: 
     return filtered;
   }, [jobs, filters]);
 
-  const orderedJobs = useMemo(() => {
-    let base = filteredJobs;
-    const sel = selectedJob ? jobs.find(j => String(j.id) === String(selectedJob)) : null;
-    if (sel && !base.some(j => String(j.id) === String(selectedJob))) {
-      base = [sel, ...base];
-    }
-    if (!selectedJob) return base;
-    const idx = base.findIndex(j => String(j.id) === String(selectedJob));
-    if (idx <= 0) return base;
-    return [base[idx], ...base.filter((_, i) => i !== idx)];
-  }, [filteredJobs, selectedJob, jobs]);
+  const orderedJobs = useMemo(() => filteredJobs, [filteredJobs]);
 
   useEffect(() => {
     if (selectedJob && initialJobId) {

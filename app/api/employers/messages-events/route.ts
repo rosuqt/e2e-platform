@@ -10,7 +10,6 @@ export async function GET() {
       supabase.from("registered_employers").select("id, first_name, last_name"),
       supabase.from("registered_admins").select("id, first_name, last_name"),
     ]);
-    
 
     // Check for errors
     if (studentsRes.error || employersRes.error || adminsRes.error) {
@@ -27,18 +26,20 @@ export async function GET() {
       employers: employersRes.data,
       admins: adminsRes.data,
     })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
-export async function POST(req: any) {
+export async function POST(req: Request) {
   try {
-    //Get User ID
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const user1_id = (session.user as any).employerId ?? session.user.employerId;
+    type UserType = { employerId?: string }
+    const user = session.user as UserType
+    const user1_id = user.employerId ?? (session.user as { employerId?: string }).employerId;
 
     const { user2_id } = await req.json()
     if (!user2_id)
@@ -69,11 +70,11 @@ export async function POST(req: any) {
     if (error) throw error
 
     return new Response(JSON.stringify({ success: true, data }), { status: 200 })
-  } catch (err: any) {
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err)
     console.error(err)
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return new Response(JSON.stringify({ error: errorMsg }), { status: 500 })
   }
-
 }
 
 

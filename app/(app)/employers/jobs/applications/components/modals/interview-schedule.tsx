@@ -102,7 +102,7 @@ function InterviewScheduleModal({
           if (data.company_name) setCompanyName(data.company_name)
         })
     }
-  }, [initial?.company_name, initial?.employer_id])
+  }, [initial?.company_name, initial?.employer_id, companyName])
 
   useEffect(() => {
     if (!open) return
@@ -202,7 +202,17 @@ function InterviewScheduleModal({
     setTime(initial?.time || "")
     setNotes(initial?.notes || "")
     setSummary(initial?.summary || "")
-  }, [open])
+  }, [
+    open,
+    initial?.mode,
+    initial?.platform,
+    initial?.address,
+    initial?.team,
+    initial?.date,
+    initial?.time,
+    initial?.notes,
+    initial?.summary
+  ])
 
   const validateDateTime = (d: string, t: string) => {
     if (!d) {

@@ -11,7 +11,9 @@ export async function GET() {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const user_id = (session.user as any).employerId ?? session.user.adminID;
+    type UserType = { employerId?: string; adminID?: string }
+    const user = session.user as UserType
+    const user_id = user.employerId ?? user.adminID;
 
     // Fetch from multiple tables in parallel
     const [activityRes, accessRes, offerRes] = await Promise.all([
@@ -36,8 +38,9 @@ export async function GET() {
       offer: offerRes.data,
     })
 
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
 

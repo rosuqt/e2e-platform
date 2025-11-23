@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { StarIcon, Search, ChevronDown, Loader2 } from "lucide-react"
 import axios from "axios"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { RatingsModal } from "../modals/ratings-modal"
+import Image from "next/image"
 
 interface Review {
   id: number
@@ -31,7 +31,7 @@ export default function RatingsTab() {
   const [sortBy, setSortBy] = useState("Newest first")
   const [search, setSearch] = useState("")
   const [modalOpen, setModalOpen] = useState(false)
-  const [selectedReview, setSelectedReview] = useState<any>(null)
+  const [selectedReview, setSelectedReview] = useState<Review | null>(null)
   const [recruiterImgUrl, setRecruiterImgUrl] = useState<string | null>(null)
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null)
 
@@ -39,26 +39,45 @@ export default function RatingsTab() {
     const fetchReviews = async () => {
       try {
         const response = await axios.get("/api/students/ratings");
-        const reviewsData: Review[] = (response.data || []).map((rating: any) => ({
-          id: rating.id,
-          company: {
-            company_name: rating.company?.company_name || "Unknown Company",
-            company_logo_url: rating.company?.company_logo_url || null,
-          },
-          employer: {
-            name: rating.employer?.name || "Unknown Employer",
-            profile_img_url: rating.employer?.profile_img || null,
-          },
-          position: rating.job_postings?.job_title || "Unknown Position",
-          rating: rating.overall_rating || 0,
-          date: rating.created_at ? new Date(rating.created_at).toLocaleDateString() : "",
-          overall_comment: rating.overall_comment || "",
-          recruiter_comment: rating.recruiter_comment || "",
-          company_comment: rating.company_comment || "",
+        type RawRating = {
+          id?: number | string
+          company?: { company_name?: string; company_logo_url?: string | null }
+          employer?: { name?: string; profile_img?: string | null }
+          job_postings?: { job_title?: string }
+          overall_rating?: number
+          created_at?: string | number | Date
+          overall_comment?: string
+          recruiter_comment?: string
+          company_comment?: string
+          recruiter_rating?: number
+          company_rating?: number
+        }
+        const reviewsData: Review[] = (response.data || []).map((rating: RawRating) => ({
+          id: Number(rating.id),
+          company: rating.company && typeof rating.company === "object"
+            ? {
+                company_name: typeof rating.company.company_name === "string" ? rating.company.company_name : "Unknown Company",
+                company_logo_url: typeof rating.company.company_logo_url === "string" ? rating.company.company_logo_url : null,
+              }
+            : { company_name: "Unknown Company", company_logo_url: null },
+          employer: rating.employer && typeof rating.employer === "object"
+            ? {
+                name: typeof rating.employer.name === "string" ? rating.employer.name : "Unknown Employer",
+                profile_img_url: typeof rating.employer.profile_img === "string" ? rating.employer.profile_img : null,
+              }
+            : { name: "Unknown Employer", profile_img_url: null },
+          position: rating.job_postings && typeof rating.job_postings === "object" && typeof rating.job_postings.job_title === "string"
+            ? rating.job_postings.job_title
+            : "Unknown Position",
+          rating: typeof rating.overall_rating === "number" ? rating.overall_rating : 0,
+          date: rating.created_at ? new Date(String(rating.created_at)).toLocaleDateString() : "",
+          overall_comment: typeof rating.overall_comment === "string" ? rating.overall_comment : "",
+          recruiter_comment: typeof rating.recruiter_comment === "string" ? rating.recruiter_comment : "",
+          company_comment: typeof rating.company_comment === "string" ? rating.company_comment : "",
           metrics: {
-            professionalism: rating.recruiter_rating || 0,
-            communication: rating.overall_rating || 0,
-            environment: rating.company_rating || 0,
+            professionalism: typeof rating.recruiter_rating === "number" ? rating.recruiter_rating : 0,
+            communication: typeof rating.overall_rating === "number" ? rating.overall_rating : 0,
+            environment: typeof rating.company_rating === "number" ? rating.company_rating : 0,
           },
         }));
         setReviews(reviewsData);
@@ -92,7 +111,7 @@ export default function RatingsTab() {
     return filtered
   }, [reviews, sortBy, search])
 
-  const handleViewMore = async (review: any) => {
+  const handleViewMore = async (review: Review) => {
     setSelectedReview(review)
     setModalOpen(true)
     let recruiterImgUrl = null
@@ -250,9 +269,6 @@ export default function RatingsTab() {
                 <p>No reviews submitted yet.</p>
               ) : (
                 filteredReviews.map((review, index) => {
-                  if (review.company?.company_logo_url) {
-                    console.log("Company Logo URL:", review.company.company_logo_url);
-                  }
                   return (
                     <div
                       key={review.id}
@@ -261,12 +277,12 @@ export default function RatingsTab() {
                       <div className="flex gap-4">
                         <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
                           {review.company?.company_logo_url ? (
-                            <img
+                            <Image
                               src={review.company.company_logo_url}
                               alt={review.company?.company_name || "Company"}
                               width={48}
                               height={48}
-                              style={{ objectFit: "cover", width: "48px", height: "48px", borderRadius: "9999px" }}
+                              style={{ objectFit: "cover", borderRadius: "9999px" }}
                             />
                           ) : (
                             <div className="flex items-center justify-center w-12 h-12 bg-gray-200 text-gray-600 text-sm font-medium rounded-full">
@@ -352,7 +368,7 @@ export default function RatingsTab() {
                 recruiter_comment: selectedReview?.recruiter_comment ?? "",
                 company_rating: selectedReview?.metrics?.environment ?? 0,
                 company_comment: selectedReview?.company_comment ?? "",
-                employer: selectedReview?.employer,
+                employer: selectedReview?.employer ?? undefined,
                 company: selectedReview?.company
                   ? {
                       company_name: selectedReview.company.company_name,

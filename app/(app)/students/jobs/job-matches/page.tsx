@@ -4,11 +4,6 @@ import { useState, useRef, useEffect } from "react"
 import {
   Search,
   ChevronDown,
-  CheckCircle,
-  Clock,
-  Mail,
-  Bookmark,
-  Wifi,
   X,
 } from "lucide-react"
 import { motion } from "framer-motion"
@@ -40,7 +35,7 @@ export default function JobListingPage() {
     window.scrollTo(0, 0)
   }, [])
 
-  const [selectedJob, setSelectedJob] = useState<number | null>(null)
+  const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
   const [showProfileColumn, setShowProfileColumn] = useState(true) 
   const router = useRouter();
@@ -49,7 +44,8 @@ export default function JobListingPage() {
   const leftSectionRef = useRef<HTMLDivElement | null>(null)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100">
+
       {/* Mobile Navigation */}
       <div className="flex items-center justify-between p-4 bg-white shadow-sm md:hidden">
         <Drawer
@@ -81,7 +77,7 @@ export default function JobListingPage() {
       >
         {/* Left Column - User Profile - Hidden on mobile, visible on md and up */}
         {showProfileColumn && (
-          <div className="hidden md:block w-80 flex-shrink-0 overflow-y-auto border-r border-blue-200 relative">
+          <div className="hidden md:block w-80 flex-shrink-0 border-r border-blue-200 relative">
             {/* Go Back Button */}
             <button
               className="absolute right-2 z-20 bg-white border border-blue-200 rounded-full p-1 shadow hover:bg-blue-50 transition-colors"
@@ -152,7 +148,10 @@ export default function JobListingPage() {
               w-[35%] max-w-[600px]
             `}
           >
-            <JobDetails onClose={() => setSelectedJob(null)} jobId={String(selectedJob)} />
+            <JobDetails
+              onClose={() => setSelectedJob(null)}
+              jobId={selectedJob || ""}
+            />
           </div>
         )}
       </div>
@@ -205,22 +204,45 @@ function UserProfile({ router }: { router?: ReturnType<typeof useRouter> }) {
 }
 
 // Job Listings Component
-function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | null) => void; selectedJob: number | null }) {
+function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | null) => void; selectedJob: string | null }) {
   const [jobIds, setJobIds] = useState<(string | number)[]>([])
-  const [jobs, setJobs] = useState<any[]>([])
+
+  type Job = {
+    id: string | number
+    job_id?: string | number
+    title?: string
+    job_title?: string
+    company?: string
+    registered_employers?: { company_name?: string }
+    employers?: { company_name?: string; first_name?: string; last_name?: string }
+    posted_at?: string
+    gpt_score?: number
+    location?: string
+    type?: string
+    salary?: number
+    error?: boolean
+    [key: string]: unknown
+  }
+  const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [showQuickApply, setShowQuickApply] = useState(false)
   const [currentJobId, setCurrentJobId] = useState<number | null>(null)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState("recommended")
+  const [activeTab] = useState("recommended")
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [searchInput, setSearchInput] = useState("")
-  const [filters, setFilters] = useState<any>({})
+
+  type Filters = {
+    location?: string
+    type?: string
+    salaryMin?: number
+    salaryMax?: number
+  }
+  const [filters, setFilters] = useState<Filters>({})
   const [sortBy, setSortBy] = useState("relevant")
   const [page, setPage] = useState(1)
   const [limit] = useState(10)
-  const [totalJobs, setTotalJobs] = useState<number>(0)
   const [totalPagesState, setTotalPagesState] = useState<number>(1)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -230,14 +252,13 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
     fetch("/api/match-booster/fetchJobMatches", { method: "POST" })
       .then(res => res.json())
       .then(data => {
-        const ids = Array.isArray(data.jobs) ? data.jobs.map((j: any) => j.id || j.job_id) : []
+        const ids = Array.isArray(data.jobs) ? data.jobs.map((j: Job) => j.id || j.job_id) : []
         setJobIds(ids)
-        setTotalJobs(ids.length)
         setTotalPagesState(Math.max(1, Math.ceil(ids.length / limit)))
         setLoading(false)
       })
       .catch(() => setLoading(false))
-  }, [])
+  }, [limit])
 
   useEffect(() => {
     if (jobIds.length === 0) {
@@ -253,7 +274,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
       )
     ).then(results => {
       let filteredSortedJobs = results
-        .filter(j => j && !j.error)
+        .filter((j: Job | null): j is Job => !!j && !j.error)
       if (sortBy === "score-desc") {
         filteredSortedJobs = filteredSortedJobs.slice().sort((a, b) => {
           const aScore = typeof a.gpt_score === "number" ? a.gpt_score : -Infinity;
@@ -303,9 +324,9 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
   }, [isHeaderCollapsed])
 
   type TabKey = "recommended" | "recent"
-  const tabFilters: Record<TabKey, (job: any) => boolean> = {
-    recommended: (job: any) => true,
-    recent: (job: any) => {
+  const tabFilters: Record<TabKey, (job: Job) => boolean> = {
+    recommended: () => true,
+    recent: (job: Job) => {
       if (!job.posted_at) return false
       const postedDate = new Date(job.posted_at)
       const now = new Date()
@@ -313,7 +334,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
     },
   }
 
-  const applyFilters = (jobList: any[]) => {
+  const applyFilters = (jobList: Job[]) => {
     let filtered = jobList
     if (activeTab && tabFilters[activeTab as TabKey]) {
       filtered = filtered.filter(tabFilters[activeTab as TabKey])
@@ -321,30 +342,34 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
     if (searchTerm.trim()) {
       const term = searchTerm.trim().toLowerCase()
       filtered = filtered.filter(
-        (job) => {
+        job => {
           const title =
             (job.title || job.job_title || "").toString().trim().toLowerCase()
           const company =
             (job.company ||
               job.registered_employers?.company_name ||
               job.employers?.company_name ||
-              job.employers?.first_name + " " + job.employers?.last_name ||
+              (job.employers?.first_name ? job.employers?.first_name + " " + job.employers?.last_name : "") ||
               "").toString().trim().toLowerCase()
           return title.includes(term) || company.includes(term)
         }
       )
     }
-    if (filters.location) {
-      filtered = filtered.filter(job => job.location && job.location.toLowerCase().includes(filters.location.toLowerCase()))
+    if (filters.location !== undefined) {
+      filtered = filtered.filter(
+        job =>
+          job.location !== undefined &&
+          job.location.toLowerCase().includes(filters.location!.toLowerCase())
+      )
     }
     if (filters.type) {
       filtered = filtered.filter(job => job.type && job.type === filters.type)
     }
-    if (filters.salaryMin) {
-      filtered = filtered.filter(job => job.salary && job.salary >= filters.salaryMin)
+    if (filters.salaryMin !== undefined) {
+      filtered = filtered.filter(job => job.salary !== undefined && filters.salaryMin !== undefined && job.salary >= filters.salaryMin)
     }
-    if (filters.salaryMax) {
-      filtered = filtered.filter(job => job.salary && job.salary <= filters.salaryMax)
+    if (typeof filters.salaryMax === "number") {
+      filtered = filtered.filter(job => job.salary !== undefined && job.salary <= filters.salaryMax!)
     }
     return filtered
   }
@@ -363,7 +388,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
 
   return (
     <div className="flex flex-col h-full">
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto h-full">
         <div className="sticky top-0 z-30 pt-2 pb-4 bg-gradient-to-br from-blue-50 to-sky-100 mx-2 -mb-6">
           <motion.div
             className=" mt-3 bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-400 rounded-2xl shadow-xl text-white  relative overflow-hidden"
@@ -451,7 +476,14 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
                 {loading ? (
                   <span className="h-5 w-48 bg-white/30 rounded animate-pulse inline-block" />
                 ) : (
-                  matchMessage
+                  <motion.span
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: selectedJob === null ? 1 : 0 }}
+                    transition={{ duration: 0.4 }}
+                    style={{ display: "inline-block" }}
+                  >
+                    {matchMessage}
+                  </motion.span>
                 )}
               </motion.div>
               <div className="flex items-center gap-4">
@@ -513,19 +545,25 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
               </span>
             </div>
           ) : (
-            paginatedJobs.map((job) => (
-              <JobCard
-                key={job.id}
-                id={job.id}
-                job={{ ...job, match_percentage: job.gpt_score }}
-                isSelected={selectedJob === job.id}
-                onSelect={() => onSelectJob(selectedJob === job.id ? null : job.id)}
-                onQuickApply={() => {
-                  setCurrentJobId(job.id)
-                  setShowQuickApply(true)
-                }}
-              />
-            ))
+            paginatedJobs.map(
+              ({
+                id,
+                gpt_score,
+                ...rest
+              }) => (
+                <JobCard
+                  key={id}
+                  id={id}
+                  job={{ ...rest, id, gpt_score }}
+                  isSelected={selectedJob === String(id)}
+                  onSelect={() => onSelectJob(selectedJob === String(id) ? null : String(id))}
+                  onQuickApply={() => {
+                    setCurrentJobId(typeof id === "number" ? id : Number(id))
+                    setShowQuickApply(true)
+                  }}
+                />
+              )
+            )
           ) }
         </div>
         {!loading && filteredJobs.length > 0 && totalPagesState > 1 && (
@@ -540,7 +578,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
         createPortal(
           <FilterModal
             onClose={() => setIsFilterOpen(false)}
-            onApply={(newFilters: any) => {
+            onApply={(newFilters: Filters) => {
               setFilters(newFilters)
               setIsFilterOpen(false)
             }}
@@ -610,8 +648,8 @@ function Pagination({
           <span className="text-sm font-medium">Previous</span>
         </button>
         <div className="flex items-center relative mx-4">
-          {visiblePages.map((page, index) => (
-            <div key={`${page}-${index}`} className="relative">
+          {visiblePages.map((page) => (
+            <div key={page} className="relative">
               {page === "…" ? (
                 <span className="px-3 py-2 text-gray-400 text-sm">…</span>
               ) : (

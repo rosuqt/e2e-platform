@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../lib/authOptions";
 import supabase from "../../../../src/lib/supabase";
-import { extractSkillsFromJob, buildJobText } from "../../../../src/lib/ai";
+import { extractSkillsFromJob, buildJobText, getSkillDetails } from "../../../../src/lib/ai";
 
 interface ApplicationQuestion {
     question: string;
@@ -171,10 +171,33 @@ export async function POST(request: Request) {
                 });
                 try {
                     skillsToInsert = await extractSkillsFromJob(jobText);
-                    console.log("AI-extracted skills:", skillsToInsert);
                 } catch (aiErr) {
                     console.error("AI skill extraction failed:", aiErr);
                 }
+            }
+
+            for (const skill of skillsToInsert) {
+                try {
+                    const { data: existingSkill } = await supabase
+                        .from("skills_match_booster")
+                        .select("id")
+                        .eq("name", skill)
+                        .limit(1)
+                        .single();
+                    if (!existingSkill) {
+                        const details = await getSkillDetails(skill);
+                        await supabase
+                            .from("skills_match_booster")
+                            .insert({
+                                name: skill,
+                                description: details.description,
+                                course: details.course,
+                                resource_titles: details.resource_titles,
+                                resource_urls: details.resource_urls,
+                                resource_levels: details.resource_levels
+                            });
+                    }
+                } catch (err) {}
             }
 
             const jobInsertResult = await supabase

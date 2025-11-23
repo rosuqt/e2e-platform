@@ -8,7 +8,6 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
-//import { FaWandMagicSparkles } from "react-icons/fa6";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -44,7 +43,7 @@ export type Job = {
   deadline?: string;
   application_deadline?: string;
   skills?: string[];
-  match_percentage?: number;
+  gpt_score?: number;
   employers?: Employer;
   registered_employers?: { company_name?: string };
   responsibilities?: string;
@@ -185,26 +184,17 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   }
 
   useEffect(() => {
-    if (!jobId) return;
-    setLoading(true);
-    const cacheKey = `jobDetails:${jobId}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      setJob(parsed.job);
-      let logoUrlVal = parsed.logoUrl;
-      if (logoUrlVal && typeof logoUrlVal === "object" && logoUrlVal.url) {
-        logoUrlVal = logoUrlVal.url;
-      }
-      setLogoUrl(typeof logoUrlVal === "string" ? logoUrlVal : null);
-      setEmployerProfileImgUrl(parsed.employerProfileImgUrl);
-      setCompanyEmployees(parsed.companyEmployees);
+    if (!jobId || jobId === "") {
+      setJob(null);
       setLoading(false);
-      trackJobClick(jobId);
       return;
     }
+    setLoading(true);
+
     fetch(`/api/students/job-listings/${jobId}`)
-      .then(res => res.json())
+      .then(res => {
+        return res.json();
+      })
       .then(async data => {
         setJob(data && !data.error ? data : null);
         if (data && !data.error && jobId) {
@@ -318,18 +308,8 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         }
 
         setLoading(false);
-
-        sessionStorage.setItem(
-          cacheKey,
-          JSON.stringify({
-            job: data && !data.error ? data : null,
-            logoUrl: logoUrlVal,
-            employerProfileImgUrl: employerProfileImgUrlVal,
-            companyEmployees: companyEmployeesVal,
-          })
-        );
       })
-      .catch(() => {
+      .catch((err) => {
         setLoading(false);
       });
   }, [jobId]);
@@ -463,12 +443,15 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
 
   useEffect(() => {
     if (studentSkills.length || jobSkills.length) {
-      console.log("Student skills:", studentSkills);
-      console.log("Job skills:", jobSkills);
     }
   }, [studentSkills, jobSkills]);
 
-  const skillsMatchPercentRaw = studentSkills.length > 0 ? calculateSkillsMatch(studentSkills, jobSkills) : null;
+  const skillsMatchPercentRaw =
+    typeof job?.gpt_score === "number"
+      ? job.gpt_score
+      : null;
+  console.log("JobDetails job object:", job);
+  console.log("JobDetails gpt_score:", job?.gpt_score);
   const skillsMatchPercent = skillsMatchPercentRaw !== null ? Math.max(10, skillsMatchPercentRaw) : null;
   const matchedSkillsCount = jobSkills.filter(
     skill => studentSkills.map(s => s.trim().toLowerCase()).includes(skill.trim().toLowerCase())
@@ -499,28 +482,28 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   }
 
   const company =
-    job.registered_employers?.company_name ||
-    job.employers?.company_name ||
-    [job.employers?.first_name ?? "", job.employers?.last_name ?? ""].filter(Boolean).join(" ") ||
+    job?.registered_employers?.company_name ||
+    job?.employers?.company_name ||
+    [job?.employers?.first_name ?? "", job?.employers?.last_name ?? ""].filter(Boolean).join(" ") ||
     "Unknown Company";
 
-  const title = job.job_title || job.title || "Untitled Position";
-  const description = job.description || "";
-  const location = extractCityRegionCountry(job.location);
-  const vacancies = job.vacancies;
-  const deadline = job.deadline || job.application_deadline || "";
+  const title = job?.job_title || job?.title || "Untitled Position";
+  const description = job?.description || "";
+  const location = extractCityRegionCountry(job?.location);
+  const vacancies = job?.vacancies;
+  const deadline = job?.deadline || job?.application_deadline || "";
 
-  const responsibilities = job.responsibilities || [];
-  const mustHaves = job.must_haves || [];
-  const niceToHaves = job.nice_to_haves || [];
-  const perks = job.perks || [];
+  const responsibilities = job?.responsibilities || [];
+  const mustHaves = job?.must_haves || [];
+  const niceToHaves = job?.nice_to_haves || [];
+  const perks = job?.perks || [];
 
-  const remoteOptions = job.remote_options || "Not specified";
-  const workType = job.work_type || "Not specified";
-  const payType = job.pay_type || "";
-  const payAmount = job.pay_amount || "";
-  const jobSummary = job.job_summary || "";
-  const verificationTier = job.verification_tier || "basic";
+  const remoteOptions = job?.remote_options || "Not specified";
+  const workType = job?.work_type || "Not specified";
+  const payType = job?.pay_type || "";
+  const payAmount = job?.pay_amount || "";
+  const jobSummary = job?.job_summary || "";
+  const verificationTier = job?.verification_tier || "basic";
 
   function formatIndustry(industry?: string) {
     if (!industry) return "";
@@ -536,11 +519,11 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
     return parts.join(", ");
   }
 
-  const companyIndustry = job.registered_companies?.company_industry
-    ? formatIndustry(job.registered_companies.company_industry)
+  const companyIndustry = job?.registered_companies?.company_industry
+    ? formatIndustry(job?.registered_companies?.company_industry)
     : "";
-  const companyAddress = job.registered_companies?.address
-    ? formatAddress(job.registered_companies.address)
+  const companyAddress = job?.registered_companies?.address
+    ? formatAddress(job?.registered_companies?.address)
     : "";
 
 
@@ -689,7 +672,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         </p>
         <div className="flex items-center gap-2 mt-2">
           <Calendar className="h-4 w-4 text-gray-400" />
-          <span className="text-gray-500 text-sm">{formatPostedDate(job.created_at)}</span>
+          <span className="text-gray-500 text-sm">{formatPostedDate(job?.created_at)}</span>
         </div>
       </div>
 
@@ -697,7 +680,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
 
       <div className="p-6">
         <div className="flex items-start gap-4">
-          {studentSkills.length > 0 ? (
+          {skillsMatchPercent !== null ? (
             <>
               <div className="relative w-20 h-20">
                 <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -714,9 +697,9 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                     cy="50"
                     r="40"
                     stroke={
-                      skillsMatchPercent !== null && skillsMatchPercent >= 70
+                      skillsMatchPercent >= 70
                         ? "#22c55e"
-                        : skillsMatchPercent !== null && skillsMatchPercent >= 40
+                        : skillsMatchPercent >= 40
                         ? "#f97316"
                         : "#ef4444"
                     }
@@ -738,9 +721,9 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                 <h3
                   style={{
                     color:
-                      skillsMatchPercent !== null && skillsMatchPercent >= 70
+                      skillsMatchPercent >= 70
                         ? "#22c55e"
-                        : skillsMatchPercent !== null && skillsMatchPercent >= 40
+                        : skillsMatchPercent >= 40
                         ? "#f59e42"
                         : "#ef4444",
                     fontWeight: 600,
@@ -748,22 +731,19 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                   }}
                   className={`font-semibold ${showText ? "opacity-100 transition-opacity duration-500" : "opacity-0"}`}
                 >
-                  {skillsMatchPercent !== null && skillsMatchPercent >= 70
+                  {skillsMatchPercent >= 70
                     ? "This Job Is a Strong Match for You"
-                    : skillsMatchPercent !== null && skillsMatchPercent >= 40
+                    : skillsMatchPercent >= 40
                     ? "This Job Is a Partial Match for You"
                     : "This Job Isn’t a Strong Match for You"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {skillsMatchPercent !== null && skillsMatchPercent >= 70
+                  {skillsMatchPercent >= 70
                     ? "Your background and skills closely match what this role is looking for — it could be a great fit!"
-                    : skillsMatchPercent !== null && skillsMatchPercent >= 40
+                    : skillsMatchPercent >= 40
                     ? "You match some key aspects of this role. With a bit of alignment, it could be a solid opportunity."
                     : "Your profile doesn’t closely match the main requirements for this role, but other opportunities may suit you better."}
                 </p>
-                <Button variant="link" className="p-0 h-auto text-primary mt-2">
-                  View Details
-                </Button>
               </div>
             </>
           ) : (
@@ -816,20 +796,20 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         <h3 className="font-semibold mb-2">Recommended Course(s)</h3>
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
           {(() => {
-            if (!job.recommended_course) return <li>No recommended course listed.</li>;
+            if (!job?.recommended_course) return <li>No recommended course listed.</li>;
             let courses: string[] = [];
-            if (Array.isArray(job.recommended_course)) {
-              courses = job.recommended_course;
-            } else if (typeof job.recommended_course === "string") {
+            if (Array.isArray(job?.recommended_course)) {
+              courses = job?.recommended_course;
+            } else if (typeof job?.recommended_course === "string") {
               try {
-                const parsed = JSON.parse(job.recommended_course);
+                const parsed = JSON.parse(job?.recommended_course);
                 if (Array.isArray(parsed)) {
                   courses = parsed.filter((v) => typeof v === "string");
                 } else {
-                  courses = job.recommended_course.split(",").map(s => s.trim());
+                  courses = job?.recommended_course.split(",").map(s => s.trim());
                 }
               } catch {
-                const cleaned = job.recommended_course
+                const cleaned = job?.recommended_course
                   .replace(/^\{|\}$/g, "")
                   .replace(/^\[|\]$/g, "")
                   .replace(/"/g, "");
@@ -885,7 +865,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         </ul>
         <div className="mt-4">
           <div className="text-sm text-muted-foreground font-semibold mb-1">Full Location</div>
-          <div className="text-sm">{job.location || "Unknown Location"}</div>
+          <div className="text-sm">{job?.location || "Unknown Location"}</div>
         </div>
 
       </div>
@@ -918,7 +898,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
               <div className="flex items-center gap-2">
                 
                 <span className="font-medium">
-                  {job.employers?.first_name || ""} {job.employers?.last_name || ""}
+                  {job?.employers?.first_name || ""} {job?.employers?.last_name || ""}
                 </span>
                 {verificationTier === "full" ? (
                   <CustomTooltip title="Fully verified and trusted company">
@@ -941,7 +921,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                 )}
               </div>
               <span className="text-xs text-muted-foreground">
-                {job.employers?.job_title || "N/A"}
+                {job?.employers?.job_title || "N/A"}
               </span>
             </div>
           </div>
@@ -959,7 +939,11 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         <div className="flex items-start gap-4">
           <div className="w-16 h-16 flex items-center justify-center bg-gray-100 rounded-md overflow-hidden">
             <div className="relative w-16 h-16">
-              {logoUrl && typeof logoUrl === "string" ? (
+              {logoUrl === undefined ? (
+                <div className="flex items-center justify-center w-full h-full">
+                  <CircularProgress size={32} />
+                </div>
+              ) : logoUrl && typeof logoUrl === "string" ? (
                 <Image
                   src={logoUrl}
                   alt="Company Logo"

@@ -37,6 +37,8 @@ import { motion } from "framer-motion"
 import TimelineTab from "./tabs/timeline-tab"
 import ResumeTab from "./tabs/resume-tab"
 
+type ApplicationAnswers = Record<string, string> | string | null
+
 type ApplicationData = {
   resume: string
   resumeUrl: string
@@ -88,7 +90,7 @@ type ApplicationData = {
   job_id?: string | number | null
   student_id?: string | number | null
   notes?: { note: string; date_added: string; isEmployer?: boolean }[] | string
-  application_answers?: any
+  application_answers?: ApplicationAnswers
 }
 
 interface ApplicationDetailsProps {
@@ -363,8 +365,8 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
         ? applicationData.notes.filter(n => !n.isEmployer)
         : (() => {
             try {
-              const arr = JSON.parse(applicationData.notes as string)
-              return Array.isArray(arr) ? arr.filter((n: any) => !n.isEmployer) : []
+              const arr: { note: string; date_added: string; isEmployer?: boolean }[] = JSON.parse(applicationData.notes as string)
+              return Array.isArray(arr) ? arr.filter((n) => !n.isEmployer) : []
             } catch {
               return []
             }
@@ -529,7 +531,7 @@ interface Application {
   portfolio?: string[]
   job_id?: string | number
   student_id?: string | number
-  application_answers?: any
+  application_answers?: ApplicationAnswers
 }
 
 const CustomTooltip = styled(Tooltip)(() => ({
@@ -635,7 +637,7 @@ function ApplicationDetailsContent({ application }: { application: Application }
         if (data.success) {
           if (Array.isArray(data.notes)) {
             setNotes(
-              data.notes.map((n: any) => ({
+              data.notes.map((n: { note?: string; date_added?: string }) => ({
                 note: n.note ?? "",
                 date_added: n.date_added || new Date().toISOString(),
               }))
@@ -684,14 +686,15 @@ function ApplicationDetailsContent({ application }: { application: Application }
   const [achievements, setAchievements] = useState<{ name: string; url: string }[]>([])
   const [portfolio, setPortfolio] = useState<{ name: string; url: string }[]>([])
 
+  const applicationQuestionsInitial: { id: string | number; question_text: string; answer?: string | null }[] = []
   const [applicationQuestions, setApplicationQuestions] = useState<
     { id: string | number; question_text: string; answer?: string | null }[]
-  >([])
+  >(applicationQuestionsInitial)
   const [questionsLoading, setQuestionsLoading] = useState(false)
   const [questionsError, setQuestionsError] = useState<string | null>(null)
 
   useEffect(() => {
-    const rawAnswers = (application as any).application_answers
+    const rawAnswers = (application as unknown as Record<string, unknown>).application_answers
     if (!rawAnswers) {
       setApplicationQuestions([])
       return
@@ -700,7 +703,7 @@ function ApplicationDetailsContent({ application }: { application: Application }
     const jobId =
       (application.job_postings as { id?: string | number } | undefined)?.id ??
       application.job_id ??
-      (application as any).job_id ??
+      (application as unknown as Record<string, unknown>).job_id ??
       null
 
     if (!jobId) {
@@ -719,12 +722,12 @@ function ApplicationDetailsContent({ application }: { application: Application }
         const questionsRes = await fetch(`/api/employers/applications/getQuestions?${params.toString()}`)
         if (!questionsRes.ok) throw new Error("questions_failed")
         const questionsJson = await questionsRes.json()
-        const rawQuestions: any[] = Array.isArray(questionsJson.questions) ? questionsJson.questions : []
+        const rawQuestions: { id?: string | number; question_text?: string; question?: string }[] = Array.isArray(questionsJson.questions) ? questionsJson.questions : []
 
         let answerMap: Record<string, string> = {}
         if (typeof rawAnswers === "string") {
           try {
-            answerMap = JSON.parse(rawAnswers)
+            answerMap = JSON.parse(rawAnswers as string)
           } catch {
             answerMap = {}
           }
@@ -732,13 +735,13 @@ function ApplicationDetailsContent({ application }: { application: Application }
           answerMap = rawAnswers as Record<string, string>
         }
 
-        const merged = rawQuestions.map((q: any) => {
-          const qid = q.id ?? q.question_id
+        const merged = rawQuestions.map((q) => {
+          const qid = q.id ?? (q as { question_id?: string | number }).question_id
           const key = qid != null ? String(qid) : ""
           const ans = key && answerMap[key] != null ? String(answerMap[key]) : ""
           return {
             id: qid ?? String(Math.random()),
-            question_text: q.question_text ?? q.question ?? "",
+            question_text: q.question_text ?? (q as { question?: string }).question ?? "",
             answer: ans,
           }
         })
@@ -752,7 +755,7 @@ function ApplicationDetailsContent({ application }: { application: Application }
     }
 
     loadQuestionsAndAnswers()
-  }, [application.id, application.job_postings, application.job_id, (application as any).application_answers])
+  }, [application.id, application.job_postings, application.job_id, (application as unknown as Record<string, unknown>).application_answers])
 
   useEffect(() => {
     const fetchAchievementPortfolio = async () => {
@@ -778,7 +781,7 @@ function ApplicationDetailsContent({ application }: { application: Application }
               path
             })
           })
-          const json = await res.json()
+          const json: { signedUrl?: string } = await res.json()
           return typeof json.signedUrl === "string" ? json.signedUrl : null
         } catch {
           return null
@@ -803,6 +806,7 @@ function ApplicationDetailsContent({ application }: { application: Application }
     }
     fetchAchievementPortfolio()
   }, [
+    application,
     application.achievements,
     application.portfolio,
     application.job_postings

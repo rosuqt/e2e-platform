@@ -234,7 +234,7 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
       {/* Render ApplicationModal */}
       {isModalOpen && (
         <ApplicationModal
-          jobId={0}
+          jobId={"0"}
           jobTitle="UI/UX Designer"
           onClose={() => setIsModalOpen(false)}
         />

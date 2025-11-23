@@ -97,6 +97,59 @@ export async function extractSkillsRaw(prompt: string) {
   return out.choices?.[0]?.text ?? '';
 }
 
+export async function getSkillDetails(skill: string): Promise<{
+  description: string;
+  course: string;
+  resource_titles: string[];
+  resource_urls: string[];
+  resource_levels: string[];
+}> {
+  const prompt = `
+For the skill "${skill}", provide:
+1. A short description (max 30 words).
+2. The most relevant course: BSIT, BSBA, BSHM, BSTM, or ALL.
+3. 3 resource titles (books, articles, videos, or websites) for learning this skill, with their URLs.
+
+Format your response as a JSON object:
+{
+  "description": "...",
+  "course": "...",
+  "resource_titles": ["...", "...", "..."],
+  "resource_urls": ["...", "...", "..."]
+}
+`;
+
+  const out = await togetherTextGeneration({
+    model: 'mistralai/Mistral-7B-Instruct-v0.2',
+    prompt,
+    max_tokens: 300,
+    temperature: 0.2,
+  });
+
+  const raw = out.choices?.[0]?.text ?? '';
+  try {
+    const jsonStart = raw.indexOf('{');
+    const jsonEnd = raw.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+      return {
+        description: parsed.description ?? '',
+        course: parsed.course ?? 'ALL',
+        resource_titles: parsed.resource_titles ?? [],
+        resource_urls: parsed.resource_urls ?? [],
+        resource_levels: ["Easy", "Medium", "Hard"]
+      };
+    }
+  } catch {}
+  return {
+    description: '',
+    course: 'ALL',
+    resource_titles: [],
+    resource_urls: [],
+    resource_levels: ["Easy", "Medium", "Hard"]
+  };
+}
+
 
 
 

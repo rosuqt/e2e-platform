@@ -34,6 +34,19 @@ interface RatingData {
   company: { rating: number; comment: string }
 }
 
+interface ExistingRating {
+  overall_rating: number
+  overall_comment: string
+  recruiter_rating: number
+  recruiter_comment: string
+  company_rating: number
+  company_comment: string
+  employer?: { name?: string; profile_img?: string }
+  company?: { name?: string; company_logo_url?: string }
+  job_postings?: { [key: string]: unknown }
+  created_at?: string
+}
+
 export function JobRatingModal({
   isOpen,
   onClose,
@@ -56,7 +69,7 @@ export function JobRatingModal({
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [viewRatingOpen, setViewRatingOpen] = useState(false)
-  const [existingRating, setExistingRating] = useState<any>(null)
+  const [existingRating, setExistingRating] = useState<ExistingRating | null>(null)
 
   useEffect(() => {
     async function checkIfRated() {

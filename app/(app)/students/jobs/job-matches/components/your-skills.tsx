@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Button } from "@/components/ui/button"
 import { Progress } from "../components/progress"
 import { Badge } from "../components/badge"
-import { Dialog } from "@mui/material"
 import ViewSkillsModal from "./view-skills"
 import { RiAddCircleLine } from "react-icons/ri"
 

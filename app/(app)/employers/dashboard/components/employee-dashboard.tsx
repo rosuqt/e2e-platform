@@ -410,7 +410,6 @@ export default function EmployeeDashboard() {
   const [agenda, setAgenda] = useState<InterviewSchedule[]>([])
   const [agendaLoading, setAgendaLoading] = useState(true)
   const { data: session } = useSession()
-  // @ts-expect-error employerId is added to the session.user by NextAuth callback
   const employerId = session?.user?.employerId
 
   const [selectedInterview, setSelectedInterview] = useState<InterviewSchedule | null>(null)

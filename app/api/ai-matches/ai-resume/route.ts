@@ -64,7 +64,7 @@ ${parsed_text}
     }
     if (Array.isArray(parsed.parsed_experience)) {
       parsed.parsed_experience = parsed.parsed_experience.filter(
-        (exp: any) =>
+        (exp: { years?: string; company?: string; jobType?: string; jobTitle?: string }) =>
           typeof exp === "object" &&
           exp !== null &&
           "jobTitle" in exp &&

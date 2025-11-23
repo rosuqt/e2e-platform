@@ -191,7 +191,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to fetch existing notes" }, { status: 500 })
   }
 
-  let notesArr: any[] = []
+  let notesArr: { note: string; date_added: string; isEmployer: boolean }[] = []
   if (app && app.notes) {
     try {
       notesArr = JSON.parse(app.notes as string)

@@ -8,24 +8,41 @@ import { Button } from "@/components/ui/button"
 import {
   ChevronDown,
   Mail,
-  User,
-  Bookmark,
-  FileText,
   Star,
-  CheckCircle,
-  Clock,
-  Calendar,
-  Gift,
-  BadgeCheck,
-  Send,
-  Pencil,
-  ThumbsUp,
   XCircle,
   Frown,
+  ThumbsUp,
+  Clock,
+  Calendar,
+  Pencil,
+  Gift,
+  Send,
+  FileText,
 } from "lucide-react"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
+
+type ActivityType =
+  | "shortlisted"
+  | "withdrawn"
+  | "new"
+  | "student_rating"
+  | "waitlisted"
+  | "interview"
+  | "offer_updated"
+  | "hired"
+  | "offer sent"
+  | "rejected"
+  | string
+
+interface Activity {
+  application_id: string
+  created_at: string
+  position?: string
+  type?: ActivityType
+  update?: string
+}
 
 const iconMap: Record<string, { icon: React.ReactNode; bg: string }> = {
   shortlisted: {
@@ -74,8 +91,8 @@ const iconMap: Record<string, { icon: React.ReactNode; bg: string }> = {
   },
 }
 
-function groupByDate(activities: any[]) {
-  const groups: { [date: string]: any[] } = {}
+function groupByDate(activities: Activity[]) {
+  const groups: { [date: string]: Activity[] } = {}
   activities.forEach((a) => {
     const date = new Date(a.created_at)
     const dateStr = date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
@@ -86,7 +103,7 @@ function groupByDate(activities: any[]) {
 }
 
 export default function ActivityLogPage() {
-  const [activity, setActivity] = useState<any[]>([])
+  const [activity, setActivity] = useState<Activity[]>([])
   const { data: session } = useSession()
   const studentId = session?.user?.studentId
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest")
@@ -104,7 +121,7 @@ export default function ActivityLogPage() {
       .finally(() => setLoading(false))
   }, [studentId])
 
-  function getActivityContent(activity: any) {
+  function getActivityContent(activity: Activity) {
     const jobTitle = activity.position || ""
     switch (activity.type?.toLowerCase()) {
       case "shortlisted":
@@ -165,7 +182,7 @@ export default function ActivityLogPage() {
     }
   }
 
-  const allTypes = [
+  const allTypes: ActivityType[] = [
     "shortlisted",
     "withdrawn",
     "new",
@@ -192,7 +209,7 @@ export default function ActivityLogPage() {
 
   const grouped = groupByDate(filteredActivity)
   const todayStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
-  let dateKeys = Object.keys(grouped)
+  const dateKeys = Object.keys(grouped)
   dateKeys.sort((a, b) =>
     sortOrder === "newest"
       ? new Date(b).getTime() - new Date(a).getTime()
@@ -207,7 +224,7 @@ export default function ActivityLogPage() {
       initial[date] = date === todayStr
     })
     setExpandedDates(initial)
-  }, [filteredActivity.length])
+  }, [filteredActivity.length, dateKeys, todayStr])
 
   return (
     <Card className="border-none shadow-none">

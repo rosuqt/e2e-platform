@@ -10,7 +10,10 @@ export async function GET() {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const user_id = (session.user as any).employerId ?? session.user.employerId;
+    const user_id =
+      typeof session.user === "object" && session.user !== null && "employerId" in session.user
+        ? (session.user as { employerId?: string }).employerId
+        : undefined;
 
     // Fetch from multiple tables in parallel
     const [activityRes, offerRes] = await Promise.all([
@@ -32,8 +35,12 @@ export async function GET() {
       offer: offerRes.data,
     })
 
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message =
+      typeof err === "object" && err !== null && "message" in err
+        ? (err as { message?: string }).message ?? ""
+        : "";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

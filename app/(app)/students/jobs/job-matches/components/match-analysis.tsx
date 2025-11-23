@@ -4,31 +4,20 @@ import { SiCodemagic } from "react-icons/si"
 import MatchBoosterPopup from "./match-booster"
 import { useSession } from "next-auth/react"
 
-type MatchTier = "low" | "mid" | "high"
-
 const size = 96
 const strokeWidth = 8
 const radius = (size - strokeWidth) / 2
 const circumference = 2 * Math.PI * radius
 
-function getTier(score: number): MatchTier {
-  if (score >= 70) return "high"
-  if (score >= 40) return "mid"
-  return "low"
-}
-
 export function MatchAnalysis() {
   const [isBoosterOpen, setIsBoosterOpen] = useState(false)
   const [skills, setSkills] = useState<{ name: string; count: number }[]>([])
-  const [loading, setLoading] = useState(false)
+  const [scoreLoading, setScoreLoading] = useState(false)
   const { data: session } = useSession()
   const [avgScore, setAvgScore] = useState<number | null>(null)
-  const [matchesFound, setMatchesFound] = useState<number>(0)
-  const [scoreLoading, setScoreLoading] = useState(false)
 
   useEffect(() => {
     async function fetchSkills() {
-      setLoading(true)
       try {
         const res = await fetch("/api/match-booster/checkSkills")
         if (!res.ok) throw new Error("Failed to fetch skills")
@@ -37,8 +26,6 @@ export function MatchAnalysis() {
         setSkills(data.skills || [])
       } catch (error) {
         console.error("Error fetching skills:", error)
-      } finally {
-        setLoading(false)
       }
     }
     fetchSkills()
@@ -67,15 +54,7 @@ export function MatchAnalysis() {
       )
       setScoreLoading(false)
     }
-    async function fetchMatchesCount() {
-      if (!session?.user?.studentId) return
-      const res = await fetch("/api/match-booster/checkSkills")
-      if (!res.ok) return
-      const data = await res.json()
-      setMatchesFound(Array.isArray(data.skills) ? data.skills.length : 0)
-    }
     fetchAvgScore()
-    fetchMatchesCount()
   }, [session?.user?.studentId])
 
   const score = avgScore ?? 0
@@ -84,9 +63,7 @@ export function MatchAnalysis() {
     title,
     description,
     accentColor,
-    subtleBg,
     ringColor,
-    dotColor,
   } = useMemo(() => {
     if (score >= 60) {
       return {
@@ -94,9 +71,7 @@ export function MatchAnalysis() {
         description:
           "You’re on the right track with your matches. With a few tweaks using our Match Guide, you can boost your score and unlock even better opportunities!",
         accentColor: "text-emerald-600",
-        subtleBg: "bg-emerald-50",
         ringColor: "#059669",
-        dotColor: "bg-emerald-500",
       }
     }
     if (score >= 25) {
@@ -105,9 +80,7 @@ export function MatchAnalysis() {
         description:
           "You’ve built a decent foundation with your matches. Use your Match Booster to fine-tune your skills and increase your compatibility — you’re closer than you think!",
         accentColor: "text-amber-600",
-        subtleBg: "bg-amber-50",
         ringColor: "#D97706",
-        dotColor: "bg-amber-500",
       }
     }
     return {
@@ -115,9 +88,7 @@ export function MatchAnalysis() {
       description:
         "Your current matches are still developing, but don’t worry — everyone starts here. Use your Match Guide to build stronger skills and start finding roles that truly match you!",
       accentColor: "text-rose-600",
-      subtleBg: "bg-rose-50",
       ringColor: "#DC2626",
-      dotColor: "bg-rose-500",
     }
   }, [score])
 

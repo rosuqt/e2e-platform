@@ -34,6 +34,7 @@ type Job = {
   application_deadline?: string;
   skills?: string[];
   match_percentage?: number;
+  gpt_score?: number;
   employers?: Employer;
   registered_employers?: { company_name?: string };
   registered_companies?: { company_logo_image_path?: string };
@@ -212,6 +213,15 @@ function JobCard({
       }
       if (!ignore) setMatchLoading(true);
       try {
+        const score =
+          typeof job.gpt_score === "number"
+            ? job.gpt_score
+            : null;
+        if (score !== null) {
+          setMatchPercent(Math.max(10, score));
+          setMatchLoading(false);
+          return;
+        }
         const res = await fetch("/api/ai-matches/fetch-current-matches", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -222,7 +232,11 @@ function JobCard({
           const match = Array.isArray(json.matches)
             ? json.matches.find((m: { job_id: string | number }) => String(m.job_id) === String(job.id))
             : null;
-          setMatchPercent(match ? Math.max(10, match.gpt_score) : null);
+          const apiScore =
+            typeof match?.gpt_score === "number"
+              ? match.gpt_score
+              : null;
+          setMatchPercent(apiScore !== null ? Math.max(10, apiScore) : null);
         }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
@@ -579,8 +593,6 @@ function JobCard({
                 whileTap={{ scale: 0.97 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  trackJobView();
-                  trackJobClick();
                   onSelect();
                 }}
               >
