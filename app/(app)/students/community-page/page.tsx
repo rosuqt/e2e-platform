@@ -1,20 +1,50 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Plus, Search, Flame, Clock, Bookmark } from "lucide-react"
-import Header from "./components/headers"
+import { useSession } from "next-auth/react"
 import CommunityWarningBanner from "./components/warning-banner"
 import CreateJobModal from "./components/community-job-modal"
 import CommunityJobCard from "./components/community-job-card"
 import TrendingSidebar from "./components/trending-sidebar"
-import { useCommunityJobs } from "../../../hooks/use-community-jobs"
 
 export default function CommunityPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [sortBy, setSortBy] = useState<"trending" | "recent" | "saved">("trending")
   const [searchQuery, setSearchQuery] = useState("")
-  const { jobs, loading, addJob, updateJobReaction, saveJob } = useCommunityJobs()
+  const [jobs, setJobs] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const { data: session } = useSession()
+  const studentId = session?.user?.studentId
+
+  useEffect(() => {
+    setLoading(true)
+    const url = studentId
+      ? `/api/community-page/displayJobs?studentId=${studentId}`
+      : "/api/community-page/displayJobs"
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) => {
+        setJobs(Array.isArray(data.jobs) ? data.jobs : [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [studentId])
+
+  const refreshJobs = () => {
+    setLoading(true)
+    const url = studentId
+      ? `/api/community-page/displayJobs?studentId=${studentId}`
+      : "/api/community-page/displayJobs"
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) => {
+        setJobs(Array.isArray(data.jobs) ? data.jobs : [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
 
   const filteredJobs = jobs
     .filter((job) =>
@@ -33,27 +63,51 @@ export default function CommunityPage() {
       }
     })
 
+  const updateJobReaction = async (jobId: string, type: string, action: "add" | "remove") => {
+    if (!studentId) return
+    await fetch("/api/community-page/metrics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_id: jobId,
+        student_id: studentId,
+        metric: type,
+        action,
+      }),
+    })
+    refreshJobs()
+  }
+
+  const saveJob = async (jobId: string, isSaved: boolean) => {
+    if (!studentId) return
+    await fetch("/api/community-page/saveJobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jobId,
+        studentId,
+        action: isSaved ? "save" : "unsave",
+      }),
+    })
+    setJobs((prevJobs) =>
+      prevJobs.map((job) => (job.id === jobId ? { ...job, saved: isSaved } : job)),
+    )
+  }
+
+  const addJob = () => {}
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-slate-50">
-      <Header />
-
-      {/* Warning Banner */}
       <CommunityWarningBanner />
-
-      {/* Main Layout */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar - Create Post + Trending */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Create Post Card - CHANGE: More engaging design with gradient and playful styling */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-blue-600 via-blue-500 to-sky-500 rounded-2xl shadow-lg p-6 sticky top-20 group hover:shadow-xl transition-all duration-300 overflow-hidden relative"
+              className="bg-gradient-to-br from-blue-600 via-blue-500 to-sky-500 rounded-2xl shadow-lg p-6 sticky top-20 group hover:shadow-xl transition-all duration-300 overflow-hidden relative z-20"
             >
-              {/* Decorative background element */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500" />
-
               <div className="relative z-10">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
@@ -62,12 +116,10 @@ export default function CommunityPage() {
                 >
                   <span className="text-2xl">✨</span>
                 </motion.div>
-
                 <h3 className="text-white font-bold text-lg mb-2">Share a Gem</h3>
                 <p className="text-white/80 text-sm mb-6 leading-relaxed">
                   Found an amazing job? Share it with the community and help others!
                 </p>
-
                 <motion.button
                   whileHover={{ scale: 1.05, translateY: -2 }}
                   whileTap={{ scale: 0.95 }}
@@ -79,16 +131,11 @@ export default function CommunityPage() {
                 </motion.button>
               </div>
             </motion.div>
-
-            {/* Trending Sidebar */}
             <div>
               <TrendingSidebar />
             </div>
           </div>
-
-          {/* Center Feed */}
           <div className="lg:col-span-3">
-            {/* Search and Filter - CHANGE: More playful and modern design */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -104,8 +151,6 @@ export default function CommunityPage() {
                   className="flex-1 bg-transparent outline-none text-base placeholder:text-gray-500 font-medium"
                 />
               </div>
-
-              {/* Sort Tabs - CHANGE: Enhanced visual design with icons and better hover states */}
               <div className="flex gap-2 flex-wrap">
                 {[
                   { id: "trending", label: "Trending 🔥", icon: Flame },
@@ -128,8 +173,6 @@ export default function CommunityPage() {
                 ))}
               </div>
             </motion.div>
-
-            {/* Jobs Feed */}
             <div className="space-y-4">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20">
@@ -153,7 +196,7 @@ export default function CommunityPage() {
               ) : (
                 filteredJobs.map((job, index) => (
                   <motion.div
-                    key={job.id}
+                    key={job.id ?? `job-${index}`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
@@ -166,13 +209,11 @@ export default function CommunityPage() {
           </div>
         </div>
       </div>
-
-      {/* Create Modal */}
       {isCreateModalOpen && (
         <CreateJobModal
           onClose={() => setIsCreateModalOpen(false)}
-          onSubmit={(jobData) => {
-            addJob(jobData)
+          onSubmit={() => {
+            addJob()
             setIsCreateModalOpen(false)
           }}
         />

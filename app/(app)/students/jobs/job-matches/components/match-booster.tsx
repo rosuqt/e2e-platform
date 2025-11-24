@@ -1,14 +1,17 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import dynamic from "next/dynamic"
 import { SiCodemagic, SiStarship } from "react-icons/si"
 import LiquidFillGauge from "react-liquid-gauge"
 import { GiBrokenShield } from "react-icons/gi"
+import { TbRestore } from "react-icons/tb"
+import { toast } from "sonner"
+
 import rocketLoaderAnimation from "../../../../../../public/animations/space.json"
 import skyAnimation from "../../../../../../public/animations/sky.json"
-import flyingAnimation from "../../../../../../public/animations/rocket_loader.json"
+import flyingAnimation from "../../../../../../public/animations/flying.json"
 import { useSession } from "next-auth/react"
 import Tooltip from "@mui/material/Tooltip"
 import SuccessMatch from "./success-match"
@@ -116,7 +119,19 @@ export function useResourcesForSkills(selectedSkills: string[]) {
 const steps = ["Intro", "Skills", "Learning", "Success", "Done"] as const
 type Step = 0 | 1 | 2 | 3 | 4
 
-function SaveProgressModal({ open, onSave, onClose, loading }: { open: boolean, onSave: () => void, onClose: () => void, loading: boolean }) {
+function SaveProgressModal({
+  open,
+  onSave,
+  onCloseWarning,
+  onNoThanks,
+  loading
+}: {
+  open: boolean,
+  onSave: () => void,
+  onCloseWarning: () => void,
+  onNoThanks: () => void,
+  loading: boolean
+}) {
   return (
     <AnimatePresence>
       {open && (
@@ -137,7 +152,7 @@ function SaveProgressModal({ open, onSave, onClose, loading }: { open: boolean, 
               <div className="bg-blue-600 h-12 flex items-center justify-between px-6 rounded-t-2xl">
                 <span className="text-white text-xs text-base">Closing Match Booster</span>
                 <button
-                  onClick={onClose}
+                  onClick={onCloseWarning}
                   className="absolute right-4 top-2 bg-white text-blue-600 rounded-full w-8 h-8 flex items-center justify-center hover:bg-blue-50"
                   aria-label="Close"
                   disabled={loading}
@@ -159,9 +174,7 @@ function SaveProgressModal({ open, onSave, onClose, loading }: { open: boolean, 
                 </p>
                 <div className="flex gap-3 justify-end mt-6">
                   <button
-                    onClick={() => {
-                      onClose()
-                    }}
+                    onClick={onNoThanks}
                     className="px-4 py-2 rounded-full border border-blue-600 bg-white text-blue-600 text-sm font-medium hover:bg-blue-50"
                     disabled={loading}
                   >
@@ -410,14 +423,35 @@ export function MatchBoosterPopup({
     if (open) checkDbProgress()
   }, [session?.user?.studentId, open, resources, dynamicResources])
 
+  const [showRestoreBanner, setShowRestoreBanner] = useState(false)
+  const restoredOnce = useRef(false)
+
   useEffect(() => {
-    if (open && Object.keys(dbResourceCompletion).length > 0) {
+    if (!open) {
+      restoredOnce.current = false
+      return
+    }
+    if (
+      open &&
+      Object.keys(dbResourceCompletion).length > 0 &&
+      Object.keys(dbResourceCompletion).length > Object.keys(resourceCompletion).length &&
+      !restoredOnce.current &&
+      step !== 0 // Only trigger when not on Intro
+    ) {
       setResourceCompletion(prev => {
         const merged = { ...dbResourceCompletion, ...prev }
         return merged
       })
+      toast(
+        <span className="flex items-center gap-2">
+          <TbRestore className="text-blue-600 w-5 h-5" />
+          <span>We’ve restored your old progress.</span>
+        </span>,
+        { duration: 4000 }
+      )
+      restoredOnce.current = true
     }
-  }, [dbResourceCompletion, open])
+  }, [dbResourceCompletion, open, step])
 
   const effectiveResources: Resource[] = useMemo(() => {
     const allResources = resources && resources.length > 0 ? resources : dynamicResources || []
@@ -516,6 +550,8 @@ export function MatchBoosterPopup({
   const [resetting, setResetting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [profileImgUrl, setProfileImgUrl] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   useEffect(() => {
     async function fetchProfileImg() {
       if (step !== 3) return
@@ -529,21 +565,28 @@ export function MatchBoosterPopup({
   }, [step])
 
   const resetBoosterState = async () => {
-    localStorage.setItem("openMatchBooster", "1")
-    window.location.reload()
+    setStep(0)
+    setProgressSkillNames([])
+    setProgressData({})
+    setSkills([])
+    setResourceCompletion({})
+    setDbResourceCompletion({})
+    setProfileImgUrl(null)
   }
 
   const handleClose = () => {
     if (hasUnsavedProgress) setShowSaveModal(true)
     else {
-      resetBoosterState()
+      setShowSaveModal(false)
+      if (!hasDbProgress) resetBoosterState()
       onClose()
     }
   }
   const handleCancel = () => {
     if (hasUnsavedProgress) setShowSaveModal(true)
     else {
-      resetBoosterState()
+      setShowSaveModal(false)
+      if (!hasDbProgress) resetBoosterState()
       onClose()
     }
   }
@@ -554,8 +597,10 @@ export function MatchBoosterPopup({
   }
   const handleModalNoThanks = () => {
     setShowSaveModal(false)
-    resetBoosterState()
     onClose()
+  }
+  const handleModalCloseWarning = () => {
+    setShowSaveModal(false)
   }
 
   const handleResetProgress = async () => {
@@ -614,8 +659,14 @@ export function MatchBoosterPopup({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ progress: progressDataArr })
-    }).then(() => {
+    }).then(async res => {
+      if (!res.ok) {
+        const json = await res.json()
+        setSaveError(json.error || "Failed to save progress")
+        return
+      }
       setShowSaveModal(false)
+      setSaveError(null)
       onClose()
     })
   }
@@ -654,6 +705,12 @@ export function MatchBoosterPopup({
   const noSkillsLeft = useMemo(() => {
     return effectiveTopSkills.length === 0
   }, [effectiveTopSkills])
+
+  useEffect(() => {
+    if (open) {
+      setStep(0)
+    }
+  }, [open])
 
   return (
     <>
@@ -748,11 +805,15 @@ export function MatchBoosterPopup({
                 {noSkillsLeft ? (
                   <div className="flex items-center justify-center min-h-[400px] bg-white rounded-2xl p-8 gap-8">
                     <div className="w-56 h-56 flex items-center justify-center">
-                      <Lottie
-                        animationData={flyingAnimation}
-                        loop
-                        autoplay
-                      />
+                      {!flyingAnimation ? (
+                        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Lottie
+                          animationData={flyingAnimation}
+                          loop
+                          autoplay
+                        />
+                      )}
                     </div>
                     <div className="flex flex-col items-start justify-center gap-4">
                       <p className="text-2xl font-extrabold text-blue-700">You’ve Mastered Every Skill in Sight!</p>
@@ -783,18 +844,20 @@ export function MatchBoosterPopup({
                             transition={{ duration: 0.25, ease: "easeOut" }}
                             className="grid md:grid-cols-[1fr,1.15fr] gap-6 items-center"
                           >
-                            {/* LEFT: Lottie animation */}
                             <div className="flex flex-col items-center justify-center">
                               <div className="w-68 h-68 mb-4">
-                                <Lottie
-                                  animationData={flyingAnimation}
-                                  loop
-                                  autoplay
-                                />
+                                {!flyingAnimation ? (
+                                  <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <Lottie
+                                    animationData={flyingAnimation}
+                                    loop
+                                    autoplay
+                                  />
+                                )}
                               </div>
                             </div>
 
-                            {/* RIGHT: score + copy */}
                             <div className="flex flex-col items-center md:items-start gap-4">
                               <div className="space-y-4 w-full">
                                 <p className="text-sm font-semibold text-blue-700 text-center md:text-left">
@@ -1006,13 +1069,22 @@ export function MatchBoosterPopup({
                               >
                                 Cancel
                               </button>
-                              <button
-                                onClick={() => setStep(2)}
-                                disabled={skills.length === 0}
-                                className="px-4 py-1.5 rounded-full bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                              <Tooltip
+                                title={selectedSkillsList.length === 0 ? "Select at least one skill to continue." : ""}
+                                placement="top"
+                                arrow
+                                disableHoverListener={selectedSkillsList.length > 0}
                               >
-                                Next
-                              </button>
+                                <span>
+                                  <button
+                                    onClick={() => setStep(2)}
+                                    disabled={selectedSkillsList.length === 0}
+                                    className="px-4 py-1.5 rounded-full bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                                  >
+                                    Next
+                                  </button>
+                                </span>
+                              </Tooltip>
                             </div>
                           </div>
                         </motion.div>
@@ -1222,7 +1294,21 @@ export function MatchBoosterPopup({
                         </motion.div>
                       )}
 
-                      {step === 3 && (
+                      {step === 3 && !profileImgUrl && (
+                        <motion.div
+                          key="step-success-loading"
+                          variants={stepVariants}
+                          initial="initial"
+                          animate="center"
+                          exit="exit"
+                          transition={{ duration: 0.25, ease: "easeOut" }}
+                          className="flex flex-col items-center justify-center min-h-[380px] bg-white"
+                        >
+                          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+                          <span className="text-blue-600 font-semibold text-base">Loading profile...</span>
+                        </motion.div>
+                      )}
+                      {step === 3 && profileImgUrl && (
                         <motion.div
                           key="step-success"
                           variants={stepVariants}
@@ -1326,7 +1412,8 @@ export function MatchBoosterPopup({
       <SaveProgressModal
         open={showSaveModal && hasUnsavedProgress}
         onSave={handleModalSave}
-        onClose={handleModalNoThanks}
+        onCloseWarning={handleModalCloseWarning}
+        onNoThanks={handleModalNoThanks}
         loading={saving}
       />
       <ResetProgressModal
@@ -1335,6 +1422,11 @@ export function MatchBoosterPopup({
         onClose={() => setShowResetModal(false)}
         loading={resetting}
       />
+      {saveError && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded shadow-lg z-[100] text-sm">
+          {saveError}
+        </div>
+      )}
     </>
   )
 }

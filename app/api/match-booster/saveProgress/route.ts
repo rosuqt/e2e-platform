@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const supabase = getAdminSupabase()
   for (const item of progress) {
     if (!item.skill_id) continue
-    if (!Array.isArray(item.completed_levels) || item.completed_levels.length === 0) continue
+    if (!Array.isArray(item.completed_levels)) continue
     await supabase
       .from("student_skill_progress")
       .upsert({

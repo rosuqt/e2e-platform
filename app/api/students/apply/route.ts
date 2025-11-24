@@ -209,6 +209,13 @@ export async function POST(req: NextRequest) {
             }])
         }
       }
+
+      if (body.saveAddress === true && student_id && addressArr[0] && addressArr[1]) {
+        await supabase
+          .from("registered_students")
+          .update({ address: addressArr })
+          .eq("id", student_id)
+      }
     }
     
     return NextResponse.json({ success: true })

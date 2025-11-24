@@ -220,7 +220,7 @@ export default function SettingsPage() {
     setEditPersonalEmail(e.target.value)
   }
   const handleCountryChange = (_: any, value: { code: string; name: string } | null) => {
-    setEditCountry(value ? value.name : "")
+    setEditCountry(value ? value.code : "")
     setEditCity("")
   }
   const handleCityChange = (_: any, value: { id: string; name: string } | null) => {
@@ -490,7 +490,7 @@ export default function SettingsPage() {
                           <Autocomplete
                             options={countriesList}
                             getOptionLabel={(option) => option.name}
-                            value={countriesList.find(c => c.name === editCountry) || null}
+                            value={countriesList.find(c => c.code === editCountry) || null}
                             onChange={handleCountryChange}
                             renderInput={(params) => (
                               <TextField
@@ -519,7 +519,7 @@ export default function SettingsPage() {
                                 }}
                               />
                             )}
-                            isOptionEqualToValue={(option, value) => option.name === value.name}
+                            isOptionEqualToValue={(option, value) => option.code === value.code}
                           />
                           {fieldErrors.country && (
                             <div className="text-red-500 text-xs mt-1">{fieldErrors.country}</div>

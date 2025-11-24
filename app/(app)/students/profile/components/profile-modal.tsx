@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronRight, LogOut, Settings, User, AlertCircle } from "lucide-react"
+import { ChevronRight, LogOut, Settings, User, AlertCircle, Calendar } from "lucide-react"
 import { Avatar } from "@mui/material"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
@@ -287,6 +287,15 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     router.push("/students/profile?tab=activity-tab")
     onClose()
   }
+  const handleCalendarClick = async () => {
+    const calendarPath =
+      userType === "employer"
+        ? "/employers/calendar"
+        : "/students/calendar"
+    await router.prefetch(calendarPath)
+    router.push(calendarPath)
+    onClose()
+  }
 
   const handleLogoutClick = async () => {
     sessionStorage.clear()
@@ -300,7 +309,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   }
 
   const menuItems = [
-    { id: "profile", label: "Profile", icon: User, onClick: handleProfileClick },
+    { id: "calendar", label: "Calendar", icon: Calendar, onClick: handleCalendarClick },
     { id: "settings", label: "Settings", icon: Settings, onClick: handleSettingsClick },
     { id: "theme", label: "Activity Log", icon: LuSquareActivity , onClick: handleActivityLogClick },
     { id: "report", label: "Report a bug", icon: AlertCircle },
@@ -328,7 +337,11 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               <h3 className="text-lg font-medium text-gray-800">Account</h3>
             </div>
 
-            <div className="p-4 flex items-center space-x-3 border-b border-gray-100">
+            <div
+              className="p-4 flex items-center space-x-3 border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition"
+              onClick={loading ? undefined : handleProfileClick}
+              style={loading ? { cursor: "default", opacity: 0.7 } : undefined}
+            >
               {loading ? (
                 <div className="animate-pulse flex items-center space-x-3 w-full">
                   <div className="rounded-full bg-gray-200" style={{ width: 48, height: 48 }} />
