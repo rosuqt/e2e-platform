@@ -106,14 +106,7 @@ export default function TrendingSidebar({ onTagClick }: { onTagClick?: (tag: str
       </div>
 
       <div className="p-5 bg-gradient-to-r from-blue-600 via-blue-500 to-sky-500 border-t border-blue-400/30">
-        <motion.button
-          whileHover={{ scale: 1.05, translateY: -2 }}
-          whileTap={{ scale: 0.95 }}
-          className="w-full text-white font-bold text-sm hover:text-blue-50 transition-colors flex items-center justify-center gap-2"
-        >
-          ✨ Explore all trending topics
-          <ArrowRight className="w-4 h-4" />
-        </motion.button>
+
       </div>
     </motion.div>
   )
