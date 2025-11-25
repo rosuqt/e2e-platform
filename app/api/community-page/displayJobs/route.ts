@@ -3,7 +3,7 @@ import supabase from "@/lib/supabase"
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_BASE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+  (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
   "http://localhost:3000"
 
 async function getAvatarUrl(student_id: string) {
