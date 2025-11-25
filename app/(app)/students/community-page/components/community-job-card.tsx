@@ -110,7 +110,19 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
   )
   const [activeTried, setActiveTried] = useState(job.userTried)
   const [activeNotRecommended, setActiveNotRecommended] = useState(job.notRecommended)
-  const [comments, setComments] = useState<any[]>([])
+  const [comments, setComments] = useState<
+    {
+      id: string
+      job_id: string
+      student_id: string
+      comment_text: string
+      created_at?: string
+      postedBy?: {
+        name?: string
+        avatar?: string
+      }
+    }[]
+  >([])
   const [commentsLoading, setCommentsLoading] = useState(false)
   const [commentSubmitting, setCommentSubmitting] = useState(false)
   const [editCommentId, setEditCommentId] = useState<string | null>(null)
@@ -128,7 +140,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
   const { data: session } = useSession()
   const studentId = session?.user?.studentId
 
-  const handleLikeDialogEnter = (e?: React.MouseEvent) => {
+  const handleLikeDialogEnter = () => {
     if (likeDialogTimeout.current) clearTimeout(likeDialogTimeout.current)
     setLikeDialogOpen(true)
     if (buttonRef.current) {
@@ -181,6 +193,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
     )
   }
 
+  // NOTE: Consider using <Image /> from next/image for optimization.
   function getProfileImg(avatar?: string) {
     if (!avatar) return (
       <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
@@ -586,7 +599,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
               activeColor: "bg-blue-100 text-blue-700",
               color: "text-gray-600",
             },
-          ].map(({ id, icon: Icon, label, isActive, onClick, activeColor, color, custom }) => {
+          ].map(({ id, icon: Icon, label, isActive, onClick, activeColor, color }) => {
             let renderedIcon
             if (id === "tried" || id === "not-recommended") {
               renderedIcon = <Icon />
@@ -726,7 +739,8 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   {userAvatar ? (
-                    <img src={userAvatar} className="w-8 h-8 rounded-full object-cover" />
+                    // NOTE: Consider using <Image /> from next/image for optimization.
+                    <img src={userAvatar} alt="User avatar" className="w-8 h-8 rounded-full object-cover" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
                       {(job.company?.charAt(0) ?? "?").toUpperCase()}
@@ -806,10 +820,11 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                   ) : comments.length === 0 ? (
                     <div className="text-sm text-gray-500">No comments yet.</div>
                   ) : (
-                    comments.map((c: any) => (
+                    comments.map((c) => (
                       <div key={c.id} className="flex items-start gap-3">
                         {c.postedBy && c.postedBy.avatar ? (
-                          <img src={c.postedBy.avatar} className="w-8 h-8 rounded-full object-cover" />
+                          // NOTE: Consider using <Image /> from next/image for optimization.
+                          <img src={c.postedBy.avatar} alt="Commenter avatar" className="w-8 h-8 rounded-full object-cover" />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
                             {(c.postedBy?.name?.charAt(0) ?? "?").toUpperCase()}

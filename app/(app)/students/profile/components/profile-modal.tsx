@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronRight, LogOut, Settings, User, AlertCircle, Calendar } from "lucide-react"
+import { ChevronRight, LogOut, Settings,  AlertCircle, Calendar } from "lucide-react"
 import { Avatar } from "@mui/material"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"

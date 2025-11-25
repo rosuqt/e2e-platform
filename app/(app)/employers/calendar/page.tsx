@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, JSX } from "react"
+import { useState, useEffect } from "react"
 import { Calendar, Clock, MapPin, ChevronLeft, ChevronRight, Cloud, Plus, Edit, Trash2, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -23,12 +23,10 @@ type CalendarEvent = {
   event_end: string
 }
 
-function EventModal({ open, onClose, onSave, initialEvent, date }: {
+function EventModal({ open, onClose, initialEvent }: {
   open: boolean
   onClose: () => void
-  onSave: (event: Omit<CalendarEvent, "id"> | CalendarEvent) => void
   initialEvent?: CalendarEvent
-  date: Date
 }) {
   const [eventTitle, setEventTitle] = useState("");
   const [eventLocation, setEventLocation] = useState("");
@@ -38,57 +36,55 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault();
-  setLoading(true);
-  setMessage(null);
-  if(eventStart <= eventEnd){
-  try {
-    const isEditing = Boolean(initialEvent?.id); 
-    const method = isEditing ? "PUT" : "POST";
-    const url = isEditing
-      ? "/api/employers/calendar-set-event" 
-      : "/api/employers/calendar-set-event";
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    if(eventStart <= eventEnd){
+      try {
+        const isEditing = Boolean(initialEvent?.id); 
+        const method = isEditing ? "PUT" : "POST";
+        const url = "/api/employers/calendar-set-event";
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: initialEvent?.id, 
-        eventTitle,
-        eventLocation,
-        eventDate,
-        eventStart,
-        eventEnd,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || "Failed to save event");
-    }
-    setMessage(
-      isEditing
-        ? "✏️ Event updated successfully!"
-        : "✅ Event created successfully!"
-    );
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: initialEvent?.id, 
+            eventTitle,
+            eventLocation,
+            eventDate,
+            eventStart,
+            eventEnd,
+          }),
+        });
+        const data: { error?: string } = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to save event");
+        }
+        setMessage(
+          isEditing
+            ? "✏️ Event updated successfully!"
+            : "✅ Event created successfully!"
+        );
 
-    // clear form only on new event 
-    if (!isEditing) {
-      setEventTitle("");
-      setEventLocation("");
-      setEventStart("");
-      setEventEnd("");
+        if (!isEditing) {
+          setEventTitle("");
+          setEventLocation("");
+          setEventStart("");
+          setEventEnd("");
+        }
+      } catch (err) {
+        const error = err as Error;
+        setMessage(`❌ Error saving event: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    } else{
+      setMessage(`❌ Start time must be before end time`)
+      setLoading(false);
     }
-  } catch (err: any) {
-    setMessage(`❌ Error saving event: ${err.message}`);
-  } finally {
-    setLoading(false);
   }
-  } else{
-    setMessage(`❌ Start time must be before end time`)
-    setLoading(false);
-  }
-}
 
   return (
     <AnimatePresence>
@@ -110,74 +106,72 @@ async function handleSubmit(e: React.FormEvent) {
             </button>
             <h2 className="text-xl font-semibold mb-4">{initialEvent ? "Edit Event" : "Add Event"}</h2>
 
-    <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg shadow-md max-w-md">
-      <h2 className="text-xl font-semibold">Create Calendar Event</h2>
+            <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg shadow-md max-w-md">
+              <div>
+                <label className="block text-sm font-medium">Event Title</label>
+                <input
+                  type="text"
+                  value={eventTitle}
+                  onChange={(e) => setEventTitle(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
 
-      <div>
-        <label className="block text-sm font-medium">Event Title</label>
-        <input
-          type="text"
-          value={eventTitle}
-          onChange={(e) => setEventTitle(e.target.value)}
-          required
-          className="w-full p-2 border rounded-md"
-        />
-      </div>
+              <div>
+                <label className="block text-sm font-medium">Location</label>
+                <input
+                  type="text"
+                  value={eventLocation}
+                  onChange={(e) => setEventLocation(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
 
-      <div>
-        <label className="block text-sm font-medium">Location</label>
-        <input
-          type="text"
-          value={eventLocation}
-          onChange={(e) => setEventLocation(e.target.value)}
-          className="w-full p-2 border rounded-md"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium">Date</label>
-        <input
-          type="date"
-          value={eventDate}
-          onChange={(e) => setEventDate(e.target.value)}
-          required
-          className="w-full p-2 border rounded-md"
-        />
-      </div>
+              <div>
+                <label className="block text-sm font-medium">Date</label>
+                <input
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
 
 
-      <div>
-        <label className="block text-sm font-medium">Start</label>
-        <input
-          type="time"
-          value={eventStart}
-          onChange={(e) => setEventStart(e.target.value)}
-          required
-          className="w-full p-2 border rounded-md"
-        />
-      </div>
+              <div>
+                <label className="block text-sm font-medium">Start</label>
+                <input
+                  type="time"
+                  value={eventStart}
+                  onChange={(e) => setEventStart(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
 
-      <div>
-        <label className="block text-sm font-medium">End</label>
-        <input
-          type="time"
-          value={eventEnd}
-          onChange={(e) => setEventEnd(e.target.value)}
-          required
-          className="w-full p-2 border rounded-md"
-        />
-      </div>
+              <div>
+                <label className="block text-sm font-medium">End</label>
+                <input
+                  type="time"
+                  value={eventEnd}
+                  onChange={(e) => setEventEnd(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50"
-      >
-        {loading ? "Saving..." : "Save Event"}
-      </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50"
+              >
+                {loading ? "Saving..." : "Save Event"}
+              </button>
 
-      {message && <p className="mt-2 text-sm">{message}</p>}
-    </form>
+              {message && <p className="mt-2 text-sm">{message}</p>}
+            </form>
           </motion.div>
         </motion.div>
       )}
@@ -188,83 +182,65 @@ async function handleSubmit(e: React.FormEvent) {
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [time, setTime] = useState(new Date());
   // Fetch events from API
   useEffect(() => {
-  const fetchEvents = async () => {
-  const interval = setInterval(async () => {
-    try {
-      const res = await fetch("/api/employers/calendar-set-event");
-      if (!res.ok) throw new Error("Failed to fetch events");
-      const { events } = await res.json();
-      setEvents(events);
-    } catch (err) {
-      console.error("Error fetching events:", err);
-    }
-  }, 5000);
-  }; fetchEvents();
+    const fetchEvents = async () => {
+      setInterval(async () => {
+        try {
+          const res = await fetch("/api/employers/calendar-set-event");
+          if (!res.ok) throw new Error("Failed to fetch events");
+          const { events } = await res.json();
+          setEvents(events);
+        } catch (err) {
+          console.error("Error fetching events:", err);
+        }
+      }, 5000);
+    }; 
+    fetchEvents();
   }, []);
 
   async function handleDeleteEvent(id: number) {
-  try {
-    const res = await fetch("/api/employers/calendar-set-event", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: id }),
-    });
+    try {
+      const res = await fetch("/api/employers/calendar-set-event", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: id }),
+      });
 
-    const data = await res.json();
+      const data: { error?: string } = await res.json();
 
-    if (!res.ok) {
-      throw new Error(data.error || "Failed to delete event");
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete event");
+      }
+      setEvents(events => events.filter(e => e.id !== id))
+      alert("🗑️ Event deleted successfully!");
+    } catch (err) {
+      const error = err as Error;
+      alert(`❌ Error deleting event: ${error.message}`);
     }
-    setEvents(events => events.filter(e => e.id !== id))
-    alert("🗑️ Event deleted successfully!");
-  } catch (err: any) {
-    alert(`❌ Error deleting event: ${err.message}`);
   }
-}
 
-const [events, setEvents] = useState<CalendarEvent[]>(() => {
-    let sampleTitles: string | any[] = [];
-    let sampleLocations: string | any[] = [];
-    const monthStart = startOfMonth(new Date());
-    const monthEnd = endOfMonth(new Date());
-    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const [events, setEvents] = useState<CalendarEvent[]>(() => {
+    // const monthStart = startOfMonth(new Date());
+    // const monthEnd = endOfMonth(new Date());
     const arr: CalendarEvent[] = [];
-    daysInMonth.forEach((day, index) => {
-    });
     return arr;
   })
   console.log(events);
   
   const [modalOpen, setModalOpen] = useState(false)
-  const [modalDate, setModalDate] = useState<Date | null>(null)
   const [editEvent, setEditEvent] = useState<CalendarEvent | undefined>(undefined)
 
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1))
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1))
 
-  const handleAddEvent = (date: Date) => {
+  const handleAddEvent = () => {
     setEditEvent(undefined)
-    setModalDate(date)
     setModalOpen(true)
   }
   const handleEditEvent = (event: CalendarEvent) => {
     setEditEvent(event)
-    setModalDate(event.event_date)
     setModalOpen(true)
-  }
-
-  const handleSaveEvent = (event: Omit<CalendarEvent, "id"> | CalendarEvent) => {
-    if ("id" in event && event.id) {
-      setEvents(events => events.map(e => e.id === event.id ? { ...event, id: event.id } : e))
-    } else {
-      setEvents(events => [
-        ...events,
-        { ...event, id: Math.max(0, ...events.map(e => e.id)) + 1 }
-      ])
-    }
   }
 
   const monthStart = startOfMonth(currentDate)
@@ -281,9 +257,7 @@ const [events, setEvents] = useState<CalendarEvent[]>(() => {
       <EventModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSave={handleSaveEvent}
         initialEvent={editEvent}
-        date={modalDate || selectedDate}
       />
       <div className="max-w-6xl w-full mx-auto p-4 md:p-8">
         <div className="rounded-3xl bg-gradient-to-br from-blue-50 to-sky-100">
@@ -310,7 +284,7 @@ const [events, setEvents] = useState<CalendarEvent[]>(() => {
                 <h2 className="text-lg font-semibold text-blue-700">{format(currentDate, "MMMM yyyy")} Events</h2>
                 <button
                   className="ml-auto flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                  onClick={() => handleAddEvent(selectedDate)}
+                  onClick={handleAddEvent}
                 >
                   <Plus className="w-4 h-4" /> Add Event
                 </button>
@@ -420,7 +394,7 @@ const [events, setEvents] = useState<CalendarEvent[]>(() => {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setSelectedDate(day)}
-                        onDoubleClick={() => handleAddEvent(day)}
+                        onDoubleClick={() => handleAddEvent()}
                       >
                         {format(day, "d")}
                       </motion.button>
@@ -434,7 +408,7 @@ const [events, setEvents] = useState<CalendarEvent[]>(() => {
                   <span className="font-semibold text-blue-700 mr-2">{format(selectedDate, "MMMM d, yyyy")}</span>
                   <button
                     className="ml-auto flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs"
-                    onClick={() => handleAddEvent(selectedDate)}
+                    onClick={handleAddEvent}
                   >
                     <Plus className="w-3 h-3" /> Add Event
                   </button>

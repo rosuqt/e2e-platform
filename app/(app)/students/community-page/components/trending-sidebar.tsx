@@ -32,7 +32,7 @@ export default function TrendingSidebar() {
 
       {/* CHANGE: Improved trending items with better visual design and interactions */}
       <div className="divide-y divide-blue-100/30">
-        {trendingTags.map((item, index) => (
+        {trendingTags.map((item) => (
           <motion.button
             key={item.tag}
             whileHover={{ backgroundColor: "rgba(59, 130, 246, 0.05)", paddingLeft: "24px" }}

@@ -1,14 +1,11 @@
 "use client"
 
-import { useMemo, useState, useEffect, useRef } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import dynamic from "next/dynamic"
 import { SiCodemagic, SiStarship } from "react-icons/si"
 import LiquidFillGauge from "react-liquid-gauge"
 import { GiBrokenShield } from "react-icons/gi"
-import { TbRestore } from "react-icons/tb"
-import { toast } from "sonner"
-
 import rocketLoaderAnimation from "../../../../../../public/animations/space.json"
 import skyAnimation from "../../../../../../public/animations/sky.json"
 import flyingAnimation from "../../../../../../public/animations/flying.json"
@@ -422,36 +419,6 @@ export function MatchBoosterPopup({
     }
     if (open) checkDbProgress()
   }, [session?.user?.studentId, open, resources, dynamicResources])
-
-  const [showRestoreBanner, setShowRestoreBanner] = useState(false)
-  const restoredOnce = useRef(false)
-
-  useEffect(() => {
-    if (!open) {
-      restoredOnce.current = false
-      return
-    }
-    if (
-      open &&
-      Object.keys(dbResourceCompletion).length > 0 &&
-      Object.keys(dbResourceCompletion).length > Object.keys(resourceCompletion).length &&
-      !restoredOnce.current &&
-      step !== 0 // Only trigger when not on Intro
-    ) {
-      setResourceCompletion(prev => {
-        const merged = { ...dbResourceCompletion, ...prev }
-        return merged
-      })
-      toast(
-        <span className="flex items-center gap-2">
-          <TbRestore className="text-blue-600 w-5 h-5" />
-          <span>We’ve restored your old progress.</span>
-        </span>,
-        { duration: 4000 }
-      )
-      restoredOnce.current = true
-    }
-  }, [dbResourceCompletion, open, step])
 
   const effectiveResources: Resource[] = useMemo(() => {
     const allResources = resources && resources.length > 0 ? resources : dynamicResources || []

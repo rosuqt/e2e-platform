@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Plus, Search, Flame, Clock, Bookmark } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 import { useSession } from "next-auth/react"
 import CommunityWarningBanner from "./components/warning-banner"
 import CreateJobModal from "./components/community-job-modal"
@@ -10,12 +10,28 @@ import CommunityJobCard from "./components/community-job-card"
 import TrendingSidebar from "./components/trending-sidebar"
 import Lottie from "lottie-react"
 import blueLoader from "../../../../public/animations/blue_loader.json"
+import type { CommunityJob } from "../../../../app/hooks/use-community-jobs"
+
+type APIJob = CommunityJob & {
+  student?: {
+    first_name?: string
+    last_name?: string
+    course?: string
+    avatar?: string
+  }
+  createdAt?: string
+  postedBy?: {
+    name?: string
+    role?: string
+    avatar?: string
+  }
+}
 
 export default function CommunityPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [sortBy, setSortBy] = useState<"trending" | "recent" | "saved">("trending")
   const [searchQuery, setSearchQuery] = useState("")
-  const [jobs, setJobs] = useState<any[]>([])
+  const [jobs, setJobs] = useState<CommunityJob[]>([])
   const [loading, setLoading] = useState(true)
   const { data: session } = useSession()
   const studentId = session?.user?.studentId
@@ -32,7 +48,27 @@ export default function CommunityPage() {
     fetch(url)
       .then((res) => res.json())
       .then((data) => {
-        setJobs(Array.isArray(data.jobs) ? data.jobs : [])
+        const jobsArr = Array.isArray(data.jobs) ? data.jobs : []
+        setJobs(
+          jobsArr.map((job: APIJob) => {
+            const hasStudent = job.student !== undefined
+            const student = hasStudent ? job.student : undefined
+            const hasPostedBy = job.postedBy !== undefined
+            const postedBy = hasPostedBy ? job.postedBy : undefined
+            return {
+              ...job,
+              created_at: job.created_at ?? job.createdAt ?? "",
+              postedBy: postedBy ?? {
+                name:
+                  student?.first_name && student?.last_name
+                    ? `${student.first_name} ${student.last_name}`
+                    : "Unknown",
+                role: student?.course ?? "Unknown",
+                avatar: student?.avatar ?? undefined,
+              },
+            }
+          }),
+        )
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -46,7 +82,27 @@ export default function CommunityPage() {
     fetch(url)
       .then((res) => res.json())
       .then((data) => {
-        setJobs(Array.isArray(data.jobs) ? data.jobs : [])
+        const jobsArr = Array.isArray(data.jobs) ? data.jobs : []
+        setJobs(
+          jobsArr.map((job: APIJob) => {
+            const hasStudent = job.student !== undefined
+            const student = hasStudent ? job.student : undefined
+            const hasPostedBy = job.postedBy !== undefined
+            const postedBy = hasPostedBy ? job.postedBy : undefined
+            return {
+              ...job,
+              created_at: job.created_at ?? job.createdAt ?? "",
+              postedBy: postedBy ?? {
+                name:
+                  student?.first_name && student?.last_name
+                    ? `${student.first_name} ${student.last_name}`
+                    : "Unknown",
+                role: student?.course ?? "Unknown",
+                avatar: student?.avatar ?? undefined,
+              },
+            }
+          }),
+        )
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -63,7 +119,7 @@ export default function CommunityPage() {
       if (sortBy === "trending") {
         return b.upvotes + b.triedCount - (a.upvotes + a.triedCount)
       } else if (sortBy === "recent") {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       } else {
         return (b.saved ? 1 : 0) - (a.saved ? 1 : 0)
       }
@@ -159,15 +215,15 @@ export default function CommunityPage() {
               </div>
               <div className="flex gap-2 flex-wrap">
                 {[
-                  { id: "trending", label: "Trending 🔥", icon: Flame },
-                  { id: "recent", label: "Fresh ✨", icon: Clock },
-                  { id: "saved", label: "Saved ⭐", icon: Bookmark },
-                ].map(({ id, label, icon: Icon }) => (
+                  { id: "trending", label: "Trending 🔥" },
+                  { id: "recent", label: "Fresh ✨" },
+                  { id: "saved", label: "Saved ⭐" },
+                ].map(({ id, label }) => (
                   <motion.button
                     key={id}
                     whileHover={{ scale: 1.08, translateY: -2 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setSortBy(id as any)}
+                    onClick={() => setSortBy(id as "trending" | "recent" | "saved")}
                     className={`px-5 py-2.5 rounded-full font-semibold text-sm transition-all ${
                       sortBy === id
                         ? "bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-400/30"

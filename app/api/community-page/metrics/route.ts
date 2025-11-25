@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     const value = action === "add"
-    let updateObj: Record<string, boolean | null> = {}
+    const updateObj: Record<string, boolean | null> = {}
 
     if (reactionMetrics.includes(metricKey)) {
       reactionMetrics.forEach(r => updateObj[r] = false)
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({ success: true, inserted: true })
     }
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Unknown error" }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 })
   }
 }

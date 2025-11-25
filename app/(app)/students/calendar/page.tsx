@@ -17,7 +17,6 @@ import AddressAutocomplete from "@/components/AddressAutocomplete"
 import { TimePicker, DatePicker } from '@mui/x-date-pickers'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
-import TextField from '@mui/material/TextField'
 import dayjs from 'dayjs'
 import { RiSave3Line } from "react-icons/ri"
 import Lottie from "lottie-react"
@@ -46,7 +45,6 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
   const [startTime, setStartTime] = useState<Date | null>(null)
   const [endTime, setEndTime] = useState<Date | null>(null)
   const [eventDate, setEventDate] = useState<Date>(date || new Date())
-  const [timeError, setTimeError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [desc, setDesc] = useState("")
 
@@ -60,17 +58,20 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
   }, [initialEvent, date, open])
 
   function parseTime(str: string) {
-    const d = new Date()
-    const [time, period] = str.split(' ')
-    if (!time || !period) return null
-    let [h, m] = time.split(':')
-    if (!h || !m) return null
-    h = period === 'PM' ? String((parseInt(h) % 12) + 12) : h
-    d.setHours(Number(h))
-    d.setMinutes(Number(m))
-    d.setSeconds(0)
-    return d
-  }
+        const d = new Date()
+        const [time, period] = str.split(' ')
+        if (!time || !period) return null
+        const parts = time.split(':')
+        if (parts.length !== 2) return null
+        let h = parts[0]
+        const m = parts[1]
+        h = period === 'PM' ? String((parseInt(h) % 12) + 12) : h
+        d.setHours(Number(h))
+        const min = Number(m)
+        d.setMinutes(min)
+        d.setSeconds(0)
+        return d
+    }
 
   function formatTime(date: Date | null) {
     if (!date) return ''
@@ -86,7 +87,6 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
     setSubmitted(true)
     if (!title.trim()) return
     if (!eventDate) return
-    setTimeError(null)
     onSave({
       ...initialEvent,
       title,
@@ -152,7 +152,7 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
                       textField: {
                         required: true,
                         className: "w-full border border-blue-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300",
-                      } as any
+                      } as Record<string, unknown>
                     }}
                   />
                   {submitted && !eventDate && (
@@ -168,7 +168,7 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
                       slotProps={{
                         textField: {
                           className: "w-full border border-blue-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300",
-                        } as any
+                        } as Record<string, unknown>
                       }}
                     />
                   </div>
@@ -180,7 +180,7 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
                       slotProps={{
                         textField: {
                           className: "w-full border border-blue-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300",
-                        } as any
+                        } as Record<string, unknown>
                       }}
                     />
                   </div>
@@ -256,7 +256,15 @@ export default function CalendarPage() {
     if (res.ok) {
       const data = await res.json()
       setEvents(
-        data.map((e: any) => ({
+        data.map((e: {
+          id: number
+          title: string
+          event_date: string
+          location: string
+          time_start: string
+          time_end: string
+          desc?: string
+        }) => ({
           id: e.id,
           title: e.title,
           date: new Date(e.event_date),

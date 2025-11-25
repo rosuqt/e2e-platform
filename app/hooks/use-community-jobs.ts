@@ -24,6 +24,7 @@ export interface CommunityJob {
     role: string
   }
   createdAt: string
+  created_at: string
 }
 
 // Mock data for demonstration
@@ -49,6 +50,7 @@ const mockJobs: CommunityJob[] = [
       role: "Product Manager",
     },
     createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "2",
@@ -71,6 +73,7 @@ const mockJobs: CommunityJob[] = [
       role: "Software Engineer",
     },
     createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "3",
@@ -92,12 +95,13 @@ const mockJobs: CommunityJob[] = [
       role: "Designer",
     },
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ]
 
 export function useCommunityJobs() {
   const [jobs, setJobs] = useState<CommunityJob[]>(mockJobs)
-  const [loading, setLoading] = useState(false)
+  const [loading] = useState(false) 
 
   const addJob = (jobData: {
     title: string
@@ -106,6 +110,7 @@ export function useCommunityJobs() {
     status: "applied" | "found" | "interesting"
     description?: string
   }) => {
+    const now = new Date().toISOString()
     const newJob: CommunityJob = {
       id: Date.now().toString(),
       ...jobData,
@@ -122,7 +127,8 @@ export function useCommunityJobs() {
         name: "You",
         role: "Student",
       },
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      created_at: now,
     }
     setJobs([newJob, ...jobs])
   }

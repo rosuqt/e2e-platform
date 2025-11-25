@@ -26,6 +26,29 @@ async function getAvatarUrl(student_id: string) {
   return signedUrl || null
 }
 
+interface MetricRow {
+  job_id: string
+  upvote?: boolean
+  heart?: boolean
+  haha?: boolean
+  wow?: boolean
+  dislike?: boolean
+  approved?: boolean
+  not_recommended?: boolean
+  shared?: boolean
+}
+
+interface JobRow {
+  id: string
+  student?: {
+    first_name?: string
+    last_name?: string
+    course?: string
+    id?: string
+  }
+  // ...other job fields...
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const studentId = url.searchParams.get("studentId")
@@ -35,27 +58,27 @@ export async function GET(req: Request) {
   if (error) {
     return NextResponse.json({ error }, { status: 400 })
   }
-  let metricsMap: Record<string, any> = {}
+  let metricsMap: Record<string, MetricRow> = {}
   if (studentId) {
     const { data: metrics } = await supabase
       .from("metrics_community_jobs")
       .select("*")
       .eq("student_id", studentId)
     metricsMap = Object.fromEntries(
-      (metrics ?? []).map((m: any) => [m.job_id, m])
+      (metrics ?? []).map((m: MetricRow) => [m.job_id, m])
     )
   }
 
-  const jobIds = (jobs ?? []).map((job: any) => job.id)
-  let viewCounts: Record<string, number> = {}
-  let shareCounts: Record<string, number> = {}
+  const jobIds = (jobs ?? []).map((job: JobRow) => job.id)
+  const viewCounts: Record<string, number> = {}
+  const shareCounts: Record<string, number> = {}
   if (jobIds.length > 0) {
     const { data: viewsData } = await supabase
       .from("metrics_community_jobs")
       .select("job_id")
       .in("job_id", jobIds)
     if (viewsData) {
-      viewsData.forEach((row: any) => {
+      viewsData.forEach((row: MetricRow) => {
         viewCounts[row.job_id] = (viewCounts[row.job_id] || 0) + 1
       })
     }
@@ -65,14 +88,14 @@ export async function GET(req: Request) {
       .in("job_id", jobIds)
       .eq("shared", true)
     if (sharesData) {
-      sharesData.forEach((row: any) => {
+      sharesData.forEach((row: MetricRow) => {
         shareCounts[row.job_id] = (shareCounts[row.job_id] || 0) + 1
       })
     }
   }
 
   const jobsWithPostedBy = await Promise.all(
-    (jobs ?? []).map(async (job: any) => {
+    (jobs ?? []).map(async (job: JobRow) => {
       let avatarUrl = null
       if (job.student?.id) {
         avatarUrl = await getAvatarUrl(job.student.id)

@@ -20,37 +20,82 @@ export async function GET(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+  function isCommentRow(
+    comment: unknown
+  ): comment is {
+    id: string
+    job_id: string
+    student_id: string
+    comment_text: string
+    created_at: string
+    updated_at?: string
+    student?: {
+      first_name?: string
+      last_name?: string
+      course?: string
+      id?: string
+      profile?: { profile_img?: string }[]
+    }
+  } {
+    return (
+      typeof comment === "object" &&
+      comment !== null &&
+      typeof (comment as { id: unknown }).id === "string" &&
+      typeof (comment as { job_id: unknown }).job_id === "string" &&
+      typeof (comment as { student_id: unknown }).student_id === "string" &&
+      typeof (comment as { comment_text: unknown }).comment_text === "string" &&
+      typeof (comment as { created_at: unknown }).created_at === "string"
+    )
+  }
+
   const comments = await Promise.all(
-    (data ?? []).map(async (comment: any) => {
-      let avatarUrl = null
-      const profileImg =
-        Array.isArray(comment.student?.profile) && comment.student.profile.length > 0
-          ? comment.student.profile[0].profile_img
-          : undefined
-      if (profileImg) {
-        const apiUrl = `${BASE_URL}/api/students/get-signed-url`
-        const res = await fetch(apiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bucket: "user.avatars", path: profileImg }),
-        })
-        if (res.ok) {
-          const json = await res.json()
-          avatarUrl = json.signedUrl || null
+    (data ?? [])
+      .filter(isCommentRow)
+      .map(async (comment) => {
+        let avatarUrl = null
+
+        let studentObj: unknown = comment.student
+        if (Array.isArray(studentObj)) {
+          studentObj = studentObj[0]
         }
-      }
-      return {
-        ...comment,
-        postedBy: {
-          name: comment.student
-            ? [comment.student.first_name, comment.student.last_name].filter(Boolean).join(" ")
-            : "Unknown",
-          role: comment.student?.course ?? "Unknown",
-          course: comment.student?.course,
-          avatar: avatarUrl ?? null,
-        },
-      }
-    })
+
+        const profileImg =
+          studentObj && typeof studentObj === "object" &&
+          Array.isArray((studentObj as { profile?: { profile_img?: string }[] }).profile) &&
+          (studentObj as { profile?: { profile_img?: string }[] }).profile!.length > 0
+            ? (studentObj as { profile?: { profile_img?: string }[] }).profile![0].profile_img
+            : undefined
+        if (profileImg) {
+          const apiUrl = `${BASE_URL}/api/students/get-signed-url`
+          const res = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bucket: "user.avatars", path: profileImg }),
+          })
+          if (res.ok) {
+            const json = await res.json()
+            avatarUrl = json.signedUrl || null
+          }
+        }
+        return {
+          ...comment,
+          postedBy: {
+            name: studentObj && typeof studentObj === "object"
+              ? [
+                  (studentObj as { first_name?: string }).first_name,
+                  (studentObj as { last_name?: string }).last_name,
+                ].filter(Boolean).join(" ")
+              : "Unknown",
+            role: studentObj && typeof studentObj === "object"
+              ? (studentObj as { course?: string }).course ?? "Unknown"
+              : "Unknown",
+            course: studentObj && typeof studentObj === "object"
+              ? (studentObj as { course?: string }).course
+              : undefined,
+            avatar: avatarUrl ?? null,
+          },
+        }
+      })
   )
   return NextResponse.json({ comments })
 }

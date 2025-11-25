@@ -240,7 +240,7 @@ export default function CreateJobModal({ onClose, onSubmit }: CreateJobModalProp
             <div className="space-y-5">
               <div>
                 <label className="block text-sm font-bold text-gray-900 mb-3.5 flex items-center gap-2">
-                  <span>📍</span> What's your status with this job? <span className="text-red-500">*</span>
+                  <span>📍</span> What&rsquo;s your status with this job? <span className="text-red-500">*</span>
                 </label>
                 <div className="space-y-2.5">
                   {statusOptions.map((option) => (
