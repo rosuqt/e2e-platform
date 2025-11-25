@@ -7,6 +7,7 @@ import { BsPersonAdd } from "react-icons/bs"
 import { MessageSquare } from "lucide-react"
 import { Loader2 } from "lucide-react"
 import { TbUserX } from "react-icons/tb"
+import Image from "next/image"
 
 interface Student {
   id: string
@@ -189,7 +190,14 @@ function StudentCard({
           className="absolute left-1/2 transform -translate-x-1/2 border-4 border-white -mb-11"
           style={{ width: 80, height: 80, top: -64 }}
         >
-          {student.name.charAt(0)}
+          <Image
+            src={student.avatar || "/placeholder.svg"}
+            alt={student.name}
+            fill
+            className="object-cover w-full h-full absolute inset-0 rounded-full"
+            style={{ width: "100%", height: "100%" }}
+            sizes="80px"
+          />
         </Avatar>
         <div className="text-center mb-2">
           <h3 className="font-medium text-gray-900 flex items-center justify-center">

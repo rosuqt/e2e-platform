@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
 
   let students: StudentRow[] = []
 
-  // 1. Match all three: course, year, section
   const { data: allMatch } = await supabase
     .from("registered_students")
     .select("id, first_name, last_name, course, year, section, user_id")
@@ -38,7 +37,6 @@ export async function POST(req: NextRequest) {
     .limit(12)
   students = (allMatch ?? []) as StudentRow[]
 
-  // 2. Match (course and year) OR (course and section), not already included
   if (students.length < 12) {
     const { data: partialMatch } = await supabase
       .from("registered_students")
@@ -54,7 +52,6 @@ export async function POST(req: NextRequest) {
     students = students.concat(filtered.slice(0, 12 - students.length))
   }
 
-  // 3. If still not enough, match only course
   if (students.length < 12) {
     const { data: courseMatch } = await supabase
       .from("registered_students")

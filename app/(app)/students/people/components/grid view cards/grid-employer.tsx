@@ -6,6 +6,7 @@ import { X, MoreHorizontal, Star, Trash2, MessageSquare, Loader2 } from "lucide-
 import { BsPersonAdd } from "react-icons/bs"
 import { LuBriefcase } from "react-icons/lu"
 import { TbUserX } from "react-icons/tb"
+import Image from "next/image"
 
 interface Employer {
   id: string
@@ -180,10 +181,17 @@ function EmployerCard({
         <Avatar
           src={employer.avatar || "/placeholder.svg"}
           alt={employer.name}
-          className="absolute left-1/2 transform -translate-x-1/2 -mb-11"
+          className="absolute left-1/2 transform -translate-x-1/2 border-4 border-white -mb-11"
           style={{ width: 80, height: 80, top: -64 }}
         >
-          {employer.name.charAt(0)}
+          <Image
+            src={employer.avatar || "/placeholder.svg"}
+            alt={employer.name}
+            fill
+            className="object-cover w-full h-full absolute inset-0 rounded-full"
+            style={{ width: "100%", height: "100%" }}
+            sizes="80px"
+          />
         </Avatar>
 
         <div className="text-center mb-2">
