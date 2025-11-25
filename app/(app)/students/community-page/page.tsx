@@ -8,6 +8,8 @@ import CommunityWarningBanner from "./components/warning-banner"
 import CreateJobModal from "./components/community-job-modal"
 import CommunityJobCard from "./components/community-job-card"
 import TrendingSidebar from "./components/trending-sidebar"
+import Lottie from "lottie-react"
+import blueLoader from "../../../../public/animations/blue_loader.json"
 
 export default function CommunityPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -17,6 +19,10 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true)
   const { data: session } = useSession()
   const studentId = session?.user?.studentId
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -176,12 +182,9 @@ export default function CommunityPage() {
             <div className="space-y-4">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-                    className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full"
-                  />
-                  <p className="mt-4 text-gray-600 font-medium">Loading community gems...</p>
+                  <div className="w-32 h-32">
+                    <Lottie animationData={blueLoader} loop={true} />
+                  </div>
                 </div>
               ) : filteredJobs.length === 0 ? (
                 <motion.div

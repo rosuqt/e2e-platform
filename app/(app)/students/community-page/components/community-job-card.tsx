@@ -7,10 +7,8 @@ import {
   Bookmark,
   Eye,
   ExternalLink,
-  CheckCircle,
   MessageCircle,
   MoreHorizontal,
-  Sparkles,
   Share2,
 } from "lucide-react"
 import { FaGraduationCap, FaLaughSquint } from "react-icons/fa"
@@ -57,6 +55,7 @@ interface CommunityJob {
     course?: string
   }
   createdAt: string
+  hashtags?: string[]
 }
 
 interface CommunityJobCardProps {
@@ -99,7 +98,6 @@ const statusConfig = {
 export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJobCardProps) {
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState("")
-  const [liked, setLiked] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [likeDialogOpen, setLikeDialogOpen] = useState(false)
   const [likeDialogPos, setLikeDialogPos] = useState<{ x: number; y: number } | null>(null)
@@ -118,6 +116,13 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
   const [editCommentId, setEditCommentId] = useState<string | null>(null)
   const [editCommentText, setEditCommentText] = useState("")
   const [userAvatar, setUserAvatar] = useState<string | null>(null)
+  const [showAllTags, setShowAllTags] = useState(false)
+  const [showAllDescription, setShowAllDescription] = useState(false)
+  const descriptionLimit = 180
+
+  const [expandedComments, setExpandedComments] = useState<{ [id: string]: boolean }>({})
+  const commentLimit = 120
+
   const likeDialogTimeout = useRef<NodeJS.Timeout | null>(null)
   const buttonRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
@@ -309,6 +314,21 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
     fetchUserAvatar()
   }, [fetchUserAvatar])
 
+  const hashtags = Array.isArray(job.hashtags) ? job.hashtags : []
+  const maxTags = 5
+  const displayedTags = showAllTags ? hashtags : hashtags.slice(0, maxTags)
+
+  const tagColors = [
+    "bg-blue-100 text-blue-700",
+    "bg-green-100 text-green-700",
+    "bg-yellow-100 text-yellow-700",
+    "bg-purple-100 text-purple-700",
+    "bg-pink-100 text-pink-700",
+    "bg-orange-100 text-orange-700",
+    "bg-indigo-100 text-indigo-700",
+    "bg-red-100 text-red-700",
+  ]
+
   return (
     <>
       <motion.div
@@ -333,6 +353,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <motion.button
+                  type="button"
                   whileHover={{ scale: 1.2, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
                   className="p-2 hover:bg-blue-100 rounded-full transition-colors"
@@ -382,7 +403,59 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
         {/* Card Body */}
         <div className="p-5 border-b border-blue-50/50">
           {job.description && (
-            <p className="text-sm text-gray-700 leading-relaxed mb-4 line-clamp-2">{job.description}</p>
+            <div>
+              <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                {showAllDescription || job.description.length <= descriptionLimit
+                  ? job.description
+                  : <>
+                      {job.description.slice(0, descriptionLimit)}
+                      ...{' '}
+                      <button
+                        type="button"
+                        className="text-xs text-blue-600"
+                        onClick={() => setShowAllDescription(v => !v)}
+                      >
+                        Show more
+                      </button>
+                    </>
+                }
+                {showAllDescription && job.description.length > descriptionLimit && (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      className="text-xs text-blue-600"
+                      onClick={() => setShowAllDescription(v => !v)}
+                    >
+                      Show less
+                    </button>
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+          {hashtags.length > 0 && (
+            <div className="flex flex-wrap gap-2 justify-end mb-2">
+              {displayedTags.map((tag, idx) => (
+                <motion.span
+                  key={tag + idx}
+                  whileHover={{ scale: 1.15 }}
+                  className={`${tagColors[idx % tagColors.length]} px-2 py-1 rounded-full text-xs font-semibold shadow-sm`}
+                  style={{ pointerEvents: "none" }}
+                >
+                  {tag}
+                </motion.span>
+              ))}
+              {hashtags.length > maxTags && (
+                <button
+                  type="button"
+                  className="text-xs text-blue-600 underline ml-2"
+                  onClick={() => setShowAllTags(v => !v)}
+                >
+                  {showAllTags ? "View less" : "View more"}
+                </button>
+              )}
+            </div>
           )}
 
           {/* Engagement Metrics */}
@@ -532,6 +605,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                 style={{ minWidth: 0 }}
               >
                 <motion.button
+                  type="button"
                   whileHover={{ scale: 1.08 }}
                   whileTap={{ scale: 0.92 }}
                   onClick={onClick}
@@ -574,6 +648,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                       onMouseLeave={handleLikeDialogLeave}
                     >
                       <motion.button
+                        type="button"
                         whileHover={{ scale: 1.2 }}
                         className="flex flex-col items-center gap-1"
                         onClick={() => handleReactionChange("like")}
@@ -582,6 +657,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                         <span className="text-xs text-blue-700 font-bold">Like</span>
                       </motion.button>
                       <motion.button
+                        type="button"
                         whileHover={{ scale: 1.2 }}
                         className="flex flex-col items-center gap-1"
                         onClick={() => handleReactionChange("heart")}
@@ -590,6 +666,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                         <span className="text-xs text-red-600 font-bold">Heart</span>
                       </motion.button>
                       <motion.button
+                        type="button"
                         whileHover={{ scale: 1.2 }}
                         className="flex flex-col items-center gap-1"
                         onClick={() => handleReactionChange("dislike")}
@@ -598,6 +675,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                         <span className="text-xs text-[#47413cff] font-bold">Dislike</span>
                       </motion.button>
                       <motion.button
+                        type="button"
                         whileHover={{ scale: 1.2 }}
                         className="flex flex-col items-center gap-1"
                         onClick={() => handleReactionChange("haha")}
@@ -606,6 +684,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                         <span className="text-xs text-yellow-600 font-bold">Haha</span>
                       </motion.button>
                       <motion.button
+                        type="button"
                         whileHover={{ scale: 1.2 }}
                         className="flex flex-col items-center gap-1"
                         onClick={() => handleReactionChange("wow")}
@@ -621,6 +700,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
             ) : (
               <motion.button
                 key={id}
+                type="button"
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.92 }}
                 onClick={onClick}
@@ -663,6 +743,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                           className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
                         />
                         <motion.button
+                          type="button"
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
                           onClick={handleEditComment}
@@ -672,6 +753,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                           Save
                         </motion.button>
                         <motion.button
+                          type="button"
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
                           onClick={() => setEditCommentId(null)}
@@ -691,6 +773,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                         />
                         {commentText && (
                           <motion.button
+                            type="button"
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             onClick={handlePostComment}
@@ -706,7 +789,20 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                 </div>
                 <div className="space-y-3 mt-4 bg-white rounded-lg p-3 border border-blue-100">
                   {commentsLoading ? (
-                    <div className="text-sm text-gray-500">Loading comments...</div>
+                    <div className="space-y-3">
+                      {[...Array(2)].map((_, i) => (
+                        <div key={i} className="flex items-start gap-3 animate-pulse">
+                          <div className="w-8 h-8 rounded-full bg-blue-100" />
+                          <div className="flex-1">
+                            <div className="bg-blue-50 rounded-lg px-3 py-2">
+                              <div className="h-3 w-24 bg-blue-100 rounded mb-2" />
+                              <div className="h-4 w-full bg-blue-100 rounded" />
+                            </div>
+                            <div className="h-3 w-20 bg-blue-100 rounded mt-2" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   ) : comments.length === 0 ? (
                     <div className="text-sm text-gray-500">No comments yet.</div>
                   ) : (
@@ -722,13 +818,53 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                         <div className="flex-1">
                           <div className="bg-blue-50 rounded-lg px-3 py-2">
                             <p className="text-xs font-bold text-gray-900">{c.postedBy?.name ?? "Community Member"}</p>
-                            <p className="text-sm text-gray-700 mt-1">{c.comment_text}</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              {expandedComments[c.id] || (c.comment_text?.length ?? 0) <= commentLimit
+                                ? <>
+                                    {c.comment_text}
+                                    {(c.comment_text?.length ?? 0) > commentLimit && expandedComments[c.id] && (
+                                      <>
+                                        {' '}
+                                        <button
+                                          type="button"
+                                          className="text-xs text-blue-600"
+                                          onClick={() =>
+                                            setExpandedComments(prev => ({
+                                              ...prev,
+                                              [c.id]: !prev[c.id]
+                                            }))
+                                          }
+                                        >
+                                          Show less
+                                        </button>
+                                      </>
+                                    )}
+                                  </>
+                                : <>
+                                    {c.comment_text.slice(0, commentLimit)}
+                                    ...{' '}
+                                    <button
+                                      type="button"
+                                      className="text-xs text-blue-600"
+                                      onClick={() =>
+                                        setExpandedComments(prev => ({
+                                          ...prev,
+                                          [c.id]: !prev[c.id]
+                                        }))
+                                      }
+                                    >
+                                      Show more
+                                    </button>
+                                  </>
+                              }
+                            </p>
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
                             {c.created_at ? formatDate(c.created_at) : ""}
                             {studentId === c.student_id && (
                               <>
                                 <button
+                                  type="button"
                                   className="ml-2 text-xs text-blue-600 hover:underline"
                                   onClick={() => {
                                     setEditCommentId(c.id)
@@ -738,6 +874,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                                   Edit
                                 </button>
                                 <button
+                                  type="button"
                                   className="ml-2 text-xs text-red-600 hover:underline"
                                   onClick={() => handleDeleteComment(c.id)}
                                 >

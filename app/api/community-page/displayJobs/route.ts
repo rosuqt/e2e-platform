@@ -46,7 +46,6 @@ export async function GET(req: Request) {
     )
   }
 
-  // Fetch view counts for all jobs
   const jobIds = (jobs ?? []).map((job: any) => job.id)
   let viewCounts: Record<string, number> = {}
   let shareCounts: Record<string, number> = {}

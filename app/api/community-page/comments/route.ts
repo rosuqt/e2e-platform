@@ -23,12 +23,10 @@ export async function GET(req: Request) {
   const comments = await Promise.all(
     (data ?? []).map(async (comment: any) => {
       let avatarUrl = null
-      console.log("Comment student object:", comment.student)
       const profileImg =
         Array.isArray(comment.student?.profile) && comment.student.profile.length > 0
           ? comment.student.profile[0].profile_img
           : undefined
-      console.log("Comment profileImg:", profileImg)
       if (profileImg) {
         const apiUrl = `${BASE_URL}/api/students/get-signed-url`
         const res = await fetch(apiUrl, {
@@ -36,14 +34,11 @@ export async function GET(req: Request) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ bucket: "user.avatars", path: profileImg }),
         })
-        console.log("Signed URL fetch status:", res.status)
         if (res.ok) {
           const json = await res.json()
-          console.log("Signed URL response:", json)
           avatarUrl = json.signedUrl || null
         }
       }
-      console.log("Comment avatarUrl:", avatarUrl)
       return {
         ...comment,
         postedBy: {
