@@ -8,6 +8,7 @@ const allowedMetrics = [
   "shared",
   "approved",
   "not_recommended",
+  "view",
 ]
 
 export async function POST(req: NextRequest) {
@@ -22,22 +23,32 @@ export async function POST(req: NextRequest) {
       !job_id ||
       !student_id ||
       !metricKey ||
-      !["add", "remove"].includes(action) ||
+      (metric !== "view" && !["add", "remove"].includes(action)) ||
       !allowedMetrics.includes(metricKey)
     ) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 })
     }
 
     const supabase = getAdminSupabase()
-    const { data: existing, error } = await supabase
+    const { data: existing } = await supabase
       .from("metrics_community_jobs")
-      .select("id")
+      .select("id, views")
       .eq("job_id", job_id)
       .eq("student_id", student_id)
-      .maybeSingle()
+      .maybeSingle();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (metric === "view") {
+      if (!existing) {
+        await supabase
+          .from("metrics_community_jobs")
+          .insert([{ job_id, student_id, views: 1 }]);
+      } else if (existing.views === 0 || existing.views == null) {
+        await supabase
+          .from("metrics_community_jobs")
+          .update({ views: 1 })
+          .eq("id", existing.id);
+      }
+      return NextResponse.json({ success: true, view: true })
     }
 
     const value = action === "add"

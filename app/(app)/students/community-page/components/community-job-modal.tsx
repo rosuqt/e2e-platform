@@ -1,11 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Sparkles, X, LinkIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
 type JobStatus = "applied" | "found" | "interesting" | "hired"
+type HashtagSuggestion = { emoji: string; tag: string; label: string }
+type TopHashtag = { tag: string; count: number }
+type HashtagItem = HashtagSuggestion | TopHashtag
 
 interface CreateJobModalProps {
   onClose: () => void
@@ -16,26 +19,63 @@ interface CreateJobModalProps {
     status: JobStatus
     description?: string
     hashtags?: string[]
+    id?: string
   }) => void
+  jobToEdit?: {
+    id: string
+    title: string
+    company: string
+    link: string
+    status: JobStatus
+    description?: string
+    hashtags?: string[]
+  }
+  editMode?: boolean
 }
 
-export default function CreateJobModal({ onClose, onSubmit }: CreateJobModalProps) {
+export default function CreateJobModal({ onClose, onSubmit, jobToEdit, editMode }: CreateJobModalProps) {
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState({
-    title: "",
-    company: "",
-    link: "",
-    status: "found" as JobStatus,
-    description: "",
-    hashtags: [] as string[],
+    title: jobToEdit?.title || "",
+    company: jobToEdit?.company || "",
+    link: jobToEdit?.link || "",
+    status: jobToEdit?.status || "found",
+    description: jobToEdit?.description || "",
+    hashtags: jobToEdit?.hashtags || [],
+    id: jobToEdit?.id,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [customHashtag, setCustomHashtag] = useState("")
   const [showCustomInput, setShowCustomInput] = useState(false)
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState("")
+  const [hashtagCounts, setHashtagCounts] = useState<Record<string, number>>({})
+  const [topHashtags, setTopHashtags] = useState<{ tag: string; count: number }[]>([])
+  const [hotTags, setHotTags] = useState<string[]>([])
 
   const totalSteps = 3
+
+  useEffect(() => {
+    fetch("/api/community-page/hashtagCounter")
+      .then(res => res.json())
+      .then(data => {
+        const parsed: Record<string, number> = {}
+        Object.entries(data).forEach(([tag, count]) => {
+          parsed[tag] = typeof count === "number" ? count : typeof count === "string" ? parseInt(count) : 0
+        })
+        setHashtagCounts(parsed)
+        const arr = Object.entries(parsed)
+          .map(([tag, count]) => ({ tag, count }))
+          .sort((a, b) => b.count - a.count)
+        setTopHashtags(arr.slice(0, 10))
+        setHotTags(arr.slice(0, 3).map(t => t.tag))
+      })
+      .catch(() => {
+        setHashtagCounts({})
+        setTopHashtags([])
+        setHotTags([])
+      })
+  }, [])
 
   const validateStep = () => {
     const newErrors: Record<string, string> = {}
@@ -79,7 +119,10 @@ export default function CreateJobModal({ onClose, onSubmit }: CreateJobModalProp
     setLoading(true)
     setApiError("")
     try {
-      const res = await fetch("/api/community-page/addJob", {
+      const url = editMode && jobToEdit?.id
+        ? `/api/community-page/editJob`
+        : `/api/community-page/addJob`
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -137,14 +180,27 @@ export default function CreateJobModal({ onClose, onSubmit }: CreateJobModalProp
   ]
 
   const hashtagSuggestions = [
-    { emoji: "🔥", tag: "#TrendingNow", label: "Hot opportunities this week", hot: true, count: "1,240" },
-    { emoji: "💻", tag: "#TechJobs", label: "Tech Jobs", hot: true, count: "1,240" },
-    { emoji: "🎓", tag: "#Internship", label: "Internship", hot: true, count: "856" },
-    { emoji: "🚀", tag: "#StartupLife", label: "Startup Life", hot: false, count: "642" },
-    { emoji: "🏠", tag: "#RemoteWork", label: "Remote Work", hot: false, count: "521" },
-    { emoji: "📊", tag: "#DataScience", label: "Data Science", hot: true, count: "438" },
-    { emoji: "🌐", tag: "#WebDevelopment", label: "Web Development", hot: false, count: "" },
+    { emoji: "🔥", tag: "#TrendingNow", label: "Hot opportunities this week" },
+    { emoji: "💻", tag: "#TechJobs", label: "Tech Jobs" },
+    { emoji: "🎓", tag: "#Internship", label: "Internship" },
+    { emoji: "🚀", tag: "#StartupLife", label: "Startup Life" },
+    { emoji: "🏠", tag: "#RemoteWork", label: "Remote Work" },
+    { emoji: "📊", tag: "#DataScience", label: "Data Science" },
+    { emoji: "🌐", tag: "#WebDevelopment", label: "Web Development" },
   ]
+
+  const emojiList = [
+    "🔥", "💻", "🎓", "🚀", "🏠", "📊", "🌐", "🦄", "🧠", "🎉", "💡", "🏆", "⭐", "🛠️", "📈", "🧑‍💻", "🕹️", "🗺️", "🧳", "🪐"
+  ]
+
+  function getRandomEmoji(tag: string) {
+    let hash = 0
+    for (let i = 0; i < tag.length; i++) {
+      hash = tag.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    const idx = Math.abs(hash) % emojiList.length
+    return emojiList[idx]
+  }
 
   return (
     <motion.div
@@ -166,9 +222,13 @@ export default function CreateJobModal({ onClose, onSubmit }: CreateJobModalProp
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-5 h-5" />
-              <h2 className="text-2xl font-bold">Share a Gem</h2>
+              <h2 className="text-2xl font-bold">
+                {editMode ? "Edit Modal" : "Share a Gem"}
+              </h2>
             </div>
-            <p className="text-blue-100 text-sm">Help the community find their next opportunity</p>
+            <p className="text-blue-100 text-sm">
+              {editMode ? "Edit your job post details" : "Help the community find their next opportunity"}
+            </p>
           </div>
           <motion.button
             whileHover={{ scale: 1.1, rotate: 90 }}
@@ -210,7 +270,7 @@ export default function CreateJobModal({ onClose, onSubmit }: CreateJobModalProp
                   <span>🏢</span> Company Name <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  placeholder="e.g., Vercel"
+                  placeholder="e.g., Triumph"
                   value={formData.company}
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                   className={`rounded-lg ${errors.company ? "border-red-500" : "border-blue-200 focus:border-blue-400"}`}
@@ -290,23 +350,27 @@ export default function CreateJobModal({ onClose, onSubmit }: CreateJobModalProp
                   ))}
                 </div>
                 <div className="grid grid-cols-2 gap-2 mb-2">
-                  {hashtagSuggestions.map((h) => (
-                    <button
-                      key={h.tag}
-                      type="button"
-                      onClick={() => handleHashtagToggle(h.tag)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-left text-xs font-semibold
-                        ${formData.hashtags.includes(h.tag)
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/30"}
-                      `}
-                    >
-                      <span className="text-lg">{h.emoji}</span>
-                      <span>{h.tag}</span>
-                      {h.hot && <span className="text-red-500 font-bold ml-1">Hot</span>}
-                      {h.count && <span className="ml-auto text-gray-400">{h.count}</span>}
-                    </button>
-                  ))}
+                  {[...topHashtags, ...hashtagSuggestions.filter(s => !topHashtags.some(h => h.tag === s.tag))]
+                    .slice(0, 6)
+                    .map((h: HashtagItem) => (
+                      <button
+                        key={h.tag}
+                        type="button"
+                        onClick={() => handleHashtagToggle(h.tag)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-left text-xs font-semibold
+                          {formData.hashtags.includes(h.tag)
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/30"}
+                        `}
+                      >
+                        <span className="text-lg">{("emoji" in h ? h.emoji : getRandomEmoji(h.tag))}</span>
+                        <span>{h.tag}</span>
+                        {hotTags.includes(h.tag) && <span className="text-red-500 font-bold ml-1">Hot</span>}
+                        {hashtagCounts[h.tag] !== undefined && (
+                          <span className="ml-auto text-gray-400">{hashtagCounts[h.tag]}</span>
+                        )}
+                      </button>
+                    ))}
                 </div>
                 {!showCustomInput ? (
                   <button
@@ -414,7 +478,7 @@ export default function CreateJobModal({ onClose, onSubmit }: CreateJobModalProp
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Share Gem
+                    {editMode ? "Save Changes" : "Share Gem"}
                   </>
                 )}
               </motion.button>

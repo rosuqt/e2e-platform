@@ -1,11 +1,26 @@
 "use client"
 
 import { X, Shield } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
 export default function CommunityWarningBanner() {
   const [isVisible, setIsVisible] = useState(true)
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (sessionStorage.getItem("communityWarningBannerHidden") === "true") {
+        setIsVisible(false)
+      }
+    }
+  }, [])
+
+  const handleDontShowAgain = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("communityWarningBannerHidden", "true")
+      setIsVisible(false)
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -60,6 +75,14 @@ export default function CommunityWarningBanner() {
             >
               <X className="w-6 h-6" />
             </motion.button>
+          </div>
+          <div className="absolute bottom-3 right-4 z-20">
+            <button
+              onClick={handleDontShowAgain}
+              className="text-xs text-amber-700 bg-amber-100 px-3 py-1 rounded-full border border-amber-200 hover:bg-amber-200 transition"
+            >
+              Don&apos;t show again
+            </button>
           </div>
         </motion.div>
       )}

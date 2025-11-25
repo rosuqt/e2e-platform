@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { icon: TbFileStar, text: "Job Matches", href: "/students/jobs/job-matches" },
     { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/students/jobs/applications" },
     { icon: TbUsers, text: "Connections", href: "/students/people/connections" },
-    { icon: FaEarthAmericas , text: "Community", href: "/students/community-page" },
+    { icon: FaEarthAmericas , text: "Community Jobs", href: "/students/community-page" },
   ];
 
   useEffect(() => {

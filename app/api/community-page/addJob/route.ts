@@ -10,6 +10,10 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json()
   const { title, company, link, status, description, hashtags } = body
+  const allowedStatus = ["applied", "found", "interesting", "hired"]
+  if (!allowedStatus.includes(status)) {
+    return NextResponse.json({ error: "Invalid status value" }, { status: 400 })
+  }
   const { error } = await supabase
     .from("community_jobs")
     .insert({

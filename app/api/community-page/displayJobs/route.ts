@@ -46,7 +46,7 @@ interface JobRow {
     course?: string
     id?: string
   }
-  // ...other job fields...
+
 }
 
 export async function GET(req: Request) {
@@ -71,17 +71,20 @@ export async function GET(req: Request) {
 
   const jobIds = (jobs ?? []).map((job: JobRow) => job.id)
   const viewCounts: Record<string, number> = {}
-  const shareCounts: Record<string, number> = {}
+
   if (jobIds.length > 0) {
     const { data: viewsData } = await supabase
       .from("metrics_community_jobs")
-      .select("job_id")
+      .select("job_id, views")
       .in("job_id", jobIds)
     if (viewsData) {
-      viewsData.forEach((row: MetricRow) => {
-        viewCounts[row.job_id] = (viewCounts[row.job_id] || 0) + 1
+      viewsData.forEach((row: { job_id: string; views: number }) => {
+        viewCounts[row.job_id] = (viewCounts[row.job_id] || 0) + (row.views || 0)
       })
     }
+  }
+  const shareCounts: Record<string, number> = {}
+  if (jobIds.length > 0) {
     const { data: sharesData } = await supabase
       .from("metrics_community_jobs")
       .select("job_id, shared")
@@ -122,6 +125,7 @@ export async function GET(req: Request) {
           role: job.student?.course ?? "Unknown",
           course: job.student?.course,
           avatar: avatarUrl,
+          studentId: job.student?.id,
         },
         userUpvoted: !!metric.upvote,
         userLiked: !!metric.heart,

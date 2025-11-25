@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Plus, Search } from "lucide-react"
+import { Plus, Search, RefreshCw } from "lucide-react"
 import { useSession } from "next-auth/react"
 import CommunityWarningBanner from "./components/warning-banner"
 import CreateJobModal from "./components/community-job-modal"
 import CommunityJobCard from "./components/community-job-card"
-import TrendingSidebar from "./components/trending-sidebar"
 import Lottie from "lottie-react"
 import blueLoader from "../../../../public/animations/blue_loader.json"
+import TrendingSidebar from "./components/trending-sidebar"
 
 type CommunityJob = {
   created_at: string
@@ -17,7 +17,7 @@ type CommunityJob = {
   title: string
   company: string
   link: string
-  status: "applied" | "found" | "interesting"
+  status: "applied" | "found" | "interesting" | "hired"
   description?: string
   upvotes: number
   triedCount: number
@@ -67,12 +67,16 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true)
   const { data: session } = useSession()
   const studentId = session?.user?.studentId
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [jobToEdit, setJobToEdit] = useState<CommunityJob | null>(null)
+  const [selectedTag, setSelectedTag] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [])
 
-  useEffect(() => {
+  const fetchJobs = () => {
     setLoading(true)
     const url = studentId
       ? `/api/community-page/displayJobs?studentId=${studentId}`
@@ -102,24 +106,40 @@ export default function CommunityPage() {
           }),
         )
         setLoading(false)
+        setRefreshing(false)
       })
-      .catch(() => setLoading(false))
+      .catch(() => {
+        setLoading(false)
+        setRefreshing(false)
+      })
+  }
+
+  useEffect(() => {
+    fetchJobs()
   }, [studentId])
 
   const filteredJobs = jobs
     .filter((job) =>
-      searchQuery === ""
+      selectedTag
+        ? job.hashtags?.includes(selectedTag)
+        : searchQuery === ""
         ? true
         : job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           job.company.toLowerCase().includes(searchQuery.toLowerCase()),
     )
+    .filter((job) => {
+      if (sortBy === "saved") {
+        return job.saved
+      }
+      return true
+    })
     .sort((a, b) => {
       if (sortBy === "trending") {
         return b.upvotes + b.triedCount - (a.upvotes + a.triedCount)
       } else if (sortBy === "recent") {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       } else {
-        return (b.saved ? 1 : 0) - (a.saved ? 1 : 0)
+        return 0
       }
     })
 
@@ -169,6 +189,53 @@ export default function CommunityPage() {
 
   const addJob = () => {}
 
+  const handleEditJob = (job: CommunityJob) => {
+    setJobToEdit(job)
+    setEditModalOpen(true)
+  }
+
+  const handleDeleteJob = async (jobId: string) => {
+    await fetch("/api/community-page/deleteJob", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId }),
+    })
+    setJobs((prevJobs) => prevJobs.filter((job) => job.id !== jobId))
+  }
+
+  const handleEditSubmit = async (data: {
+    title: string
+    company: string
+    link: string
+    status: "applied" | "found" | "interesting" | "hired"
+    description?: string
+    hashtags?: string[]
+    id?: string
+  }) => {
+    await fetch("/api/community-page/editJob", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+    setJobs((prevJobs) =>
+      prevJobs.map((job) =>
+        job.id === data.id
+          ? {
+              ...job,
+              ...data,
+            }
+          : job
+      ),
+    )
+    setEditModalOpen(false)
+    setJobToEdit(null)
+  }
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchJobs()
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-slate-50">
       <CommunityWarningBanner />
@@ -205,7 +272,7 @@ export default function CommunityPage() {
               </div>
             </motion.div>
             <div>
-              <TrendingSidebar />
+              <TrendingSidebar onTagClick={(tag) => setSelectedTag(tag)} />
             </div>
           </div>
           <div className="lg:col-span-3">
@@ -220,16 +287,25 @@ export default function CommunityPage() {
                   type="text"
                   placeholder="Search jobs, companies, keywords..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setSelectedTag(null)
+                  }}
                   className="flex-1 bg-transparent outline-none text-base placeholder:text-gray-500 font-medium"
                 />
+                {selectedTag && (
+                  <button
+                    type="button"
+                    className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full"
+                    onClick={() => setSelectedTag(null)}
+                  >
+                    Clear tag: {selectedTag}
+                  </button>
+                )}
               </div>
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  { id: "trending", label: "Trending 🔥" },
-                  { id: "recent", label: "Fresh ✨" },
-                  { id: "saved", label: "Saved ⭐" },
-                ].map(({ id, label }) => (
+              <div className="flex gap-2 flex-wrap items-center">
+
+                {["trending", "recent", "saved"].map((id) => (
                   <motion.button
                     key={id}
                     whileHover={{ scale: 1.08, translateY: -2 }}
@@ -241,9 +317,20 @@ export default function CommunityPage() {
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                     }`}
                   >
-                    {label}
+                    {id.charAt(0).toUpperCase() + id.slice(1)}{" "}
+                    {id === "trending" ? "🔥" : id === "recent" ? "✨" : "⭐"}
                   </motion.button>
                 ))}
+                <button
+                  type="button"
+                  className="ml-auto p-2 rounded-full bg-blue-100 hover:bg-blue-200 transition-colors"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  aria-label="Refresh jobs"
+                  style={{ marginLeft: "auto" }}
+                >
+                  <RefreshCw className={`w-5 h-5 text-blue-600 ${refreshing ? "animate-spin" : ""}`} />
+                </button>
               </div>
             </motion.div>
             <div className="space-y-4">
@@ -253,6 +340,16 @@ export default function CommunityPage() {
                     <Lottie animationData={blueLoader} loop={true} />
                   </div>
                 </div>
+              ) : filteredJobs.length === 0 && sortBy === "saved" ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-2xl p-16 text-center shadow-sm border border-yellow-100"
+                >
+                  <div className="text-6xl mb-4">⭐</div>
+                  <p className="text-gray-700 text-lg font-semibold mb-2">No saved jobs yet!</p>
+                  <p className="text-gray-600">Save jobs to see them here.</p>
+                </motion.div>
               ) : filteredJobs.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -271,7 +368,13 @@ export default function CommunityPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                   >
-                    <CommunityJobCard job={job} onReaction={updateJobReaction} onSave={saveJob} />
+                    <CommunityJobCard
+                      job={job}
+                      onReaction={updateJobReaction}
+                      onSave={saveJob}
+                      onEdit={handleEditJob}
+                      onDelete={handleDeleteJob}
+                    />
                   </motion.div>
                 ))
               )}
@@ -286,6 +389,17 @@ export default function CommunityPage() {
             addJob()
             setIsCreateModalOpen(false)
           }}
+        />
+      )}
+      {editModalOpen && jobToEdit && (
+        <CreateJobModal
+          onClose={() => {
+            setEditModalOpen(false)
+            setJobToEdit(null)
+          }}
+          onSubmit={handleEditSubmit}
+          jobToEdit={jobToEdit}
+          editMode={true}
         />
       )}
     </div>

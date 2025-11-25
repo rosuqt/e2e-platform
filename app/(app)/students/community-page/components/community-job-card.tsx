@@ -10,6 +10,9 @@ import {
   MessageCircle,
   MoreHorizontal,
   Share2,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react"
 import { FaGraduationCap, FaLaughSquint } from "react-icons/fa"
 import { AiFillLike, AiFillDislike, AiOutlineLike } from "react-icons/ai"
@@ -26,6 +29,7 @@ import { ShareModal } from "../../../employers/jobs/post-a-job/components/share-
 import { createPortal } from "react-dom"
 import { BsCheckCircle, BsCheckCircleFill } from "react-icons/bs"
 import { useSession } from "next-auth/react"
+import { Dialog } from "@/components/ui/dialog"
 
 interface CommunityJob {
   created_at: string
@@ -33,7 +37,7 @@ interface CommunityJob {
   title: string
   company: string
   link: string
-  status: "applied" | "found" | "interesting"
+  status: "applied" | "found" | "interesting" | "hired"
   description?: string
   upvotes: number
   triedCount: number
@@ -53,6 +57,7 @@ interface CommunityJob {
     avatar?: string
     role: string
     course?: string
+    studentId?: string
   }
   createdAt?: string
   hashtags?: string[]
@@ -66,6 +71,8 @@ interface CommunityJobCardProps {
     action: "add" | "remove"
   ) => void
   onSave: (jobId: string, isSaved: boolean) => void
+  onEdit?: (job: CommunityJob) => void
+  onDelete?: (jobId: string) => void
 }
 
 const statusConfig = {
@@ -100,19 +107,13 @@ const BASE_URL =
   (typeof window === "undefined" && process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
   ""
 
-export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJobCardProps) {
+export default function CommunityJobCard({ job, onReaction, onSave, onEdit, onDelete }: CommunityJobCardProps) {
   const [showComments, setShowComments] = useState(false)
   const [commentText, setCommentText] = useState("")
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [likeDialogOpen, setLikeDialogOpen] = useState(false)
   const [likeDialogPos, setLikeDialogPos] = useState<{ x: number; y: number } | null>(null)
-  const [selectedReaction, setSelectedReaction] = useState<"" | "like" | "heart" | "dislike" | "haha" | "wow">(
-    job.userUpvoted ? "like" :
-    job.userLiked ? "heart" :
-    job.dislike ? "dislike" :
-    job.haha ? "haha" :
-    job.wow ? "wow" : ""
-  )
+  const [selectedReaction, setSelectedReaction] = useState<"" | "like" | "heart" | "dislike" | "haha" | "wow">("")
   const [activeTried, setActiveTried] = useState(job.userTried)
   const [activeNotRecommended, setActiveNotRecommended] = useState(job.notRecommended)
   const [comments, setComments] = useState<
@@ -144,6 +145,8 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
   const buttonRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
   const studentId = session?.user?.studentId
+
+  const [hasViewed, setHasViewed] = useState(false)
 
   const handleLikeDialogEnter = () => {
     if (likeDialogTimeout.current) clearTimeout(likeDialogTimeout.current)
@@ -354,6 +357,33 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
     "bg-red-100 text-red-700",
   ]
 
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleCardHover = async () => {
+    if (!hasViewed && studentId && job.id) {
+      setHasViewed(true)
+      await fetch("/api/community-page/metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          job_id: job.id,
+          student_id: studentId,
+          metric: "view",
+        }),
+      })
+    }
+  }
+
+  useEffect(() => {
+    if (job.userUpvoted) setSelectedReaction("like")
+    else if (job.userLiked) setSelectedReaction("heart")
+    else if (job.dislike) setSelectedReaction("dislike")
+    else if (job.haha) setSelectedReaction("haha")
+    else if (job.wow) setSelectedReaction("wow")
+    else setSelectedReaction("")
+  }, [job.userUpvoted, job.userLiked, job.dislike, job.haha, job.wow])
+
   return (
     <>
       <motion.div
@@ -361,6 +391,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="group bg-white/90 backdrop-blur-sm rounded-2xl shadow-md hover:shadow-xl border border-blue-100/50 overflow-hidden transition-all duration-300 hover:border-blue-200"
         whileHover={{ y: -4 }}
+        onMouseEnter={handleCardHover}
       >
         {/* Card Header */}
         <div className="p-5 border-b border-blue-50/50 bg-gradient-to-r from-white via-blue-50/30 to-white">
@@ -394,6 +425,26 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                   <Share2 className="w-4 h-4" />
                   Share
                 </DropdownMenuItem>
+                {job.postedBy?.studentId === studentId && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (onEdit) onEdit(job)
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteWarning(true)}
+                      className="flex items-center gap-2 text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -803,9 +854,13 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                             animate={{ opacity: 1, scale: 1 }}
                             onClick={handlePostComment}
                             disabled={commentSubmitting}
-                            className="mt-2 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-all shadow-md hover:shadow-lg"
+                            className="mt-2 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center min-w-[90px]"
                           >
-                            Post
+                            {commentSubmitting ? (
+                              <Loader2 className="animate-spin w-5 h-5" />
+                            ) : (
+                              "Post"
+                            )}
                           </motion.button>
                         )}
                       </>
@@ -924,6 +979,50 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
         shareUrl={job.link}
         jobId={job.id}
       />
+      {showDeleteWarning && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <Dialog open={showDeleteWarning} onOpenChange={setShowDeleteWarning}>
+            <div className="p-6 max-w-sm w-full bg-white rounded-xl shadow-xl flex flex-col items-center gap-4">
+              <Trash2 className="w-10 h-10 text-red-600" />
+              <div className="font-bold text-lg text-gray-900">Delete Job?</div>
+              <div className="text-gray-600 text-center">
+                Are you sure you want to delete this job? This action cannot be undone.
+              </div>
+              <div className="flex gap-3 mt-4">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200"
+                  onClick={() => setShowDeleteWarning(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 flex items-center justify-center min-w-[90px]"
+                  disabled={deleting}
+                  onClick={async () => {
+                    if (!onDelete) return
+                    setDeleting(true)
+                    try {
+                      await onDelete(job.id)
+                      setShowDeleteWarning(false)
+                    } finally {
+                      setDeleting(false)
+                    }
+                  }}
+                >
+                  {deleting ? (
+                    <Loader2 className="animate-spin w-5 h-5" />
+                  ) : (
+                    "Delete"
+                  )}
+                </button>
+              </div>
+            </div>
+          </Dialog>
+        </div>
+      )}
     </>
   )
 }
