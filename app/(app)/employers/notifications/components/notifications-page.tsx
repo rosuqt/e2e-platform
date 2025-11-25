@@ -68,37 +68,38 @@ type Offer = {
   created_at: Date;
   accept_status: string;
 }
+type Notif = {
+  id: string,
+  user_id: string,
+  source: string,
+  content: string,
+  created_at: Date,
+  updated_at: Date
+}
 
 
 export default function NotificationsPage() {
   const [selectedNotification, setSelectedNotification] = useState<number | null>(null)
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  
-  const [activity, setActivity] = useState<Activity[]>([]);
-  const [access, setAccess] = useState<Access[]>([]);
-  const [offer, setOffer] = useState<Offer[]>([]);
+  const [notif, setnotif] = useState<Notif>();
 
-  //FETCH NOTIFS
-  const getNotif = async () => {
-    async function loadNotif() {
-      try {
-        const res = await fetch("/api/employers/notifications");
-        const data = await res.json();
-        setActivity(data.activity);
-        setAccess(data.access);
-        setOffer(data.offer);
-        console.log(data.activity);
-        console.log(data.access);
-        console.log(data.offer);
-      } catch (err) {
-        console.error("Error fetching students:", err);
-      }
-    }
+  const fetchNotifications = async() => {
+  const res = await fetch("/api/employers/notifications", {
+    method: "GET",
+  });
 
-    loadNotif();
-  };
-  useEffect(() => { getNotif() }, []);
+ 
+
+  if (!res.ok) {
+    throw new Error("Failed to load notifications");
+  }
+
+  const data = await res.json();
+  setnotif(data);
+  console.log(data);
+  }
+  useEffect(() => { fetchNotifications() }, []);
 
   const handleNotificationClick = (id: number) => {
     setSelectedNotification(id)
@@ -134,7 +135,7 @@ export default function NotificationsPage() {
             </div>
             <div>
               <Tabs defaultValue="all" className="w-full">
-                <TabsList className="grid grid-cols-5 mb-4">
+                <TabsList className="grid grid-cols-4  mb-4">
                   <TabsTrigger value="all" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
                     All
                   </TabsTrigger>
@@ -149,9 +150,6 @@ export default function NotificationsPage() {
                     className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700"
                   >
                     Interactions
-                  </TabsTrigger>
-                  <TabsTrigger value="jobs" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
-                    Jobs
                   </TabsTrigger>
                   <TabsTrigger
                     value="account"
