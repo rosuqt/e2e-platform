@@ -10,7 +10,37 @@ import CommunityJobCard from "./components/community-job-card"
 import TrendingSidebar from "./components/trending-sidebar"
 import Lottie from "lottie-react"
 import blueLoader from "../../../../public/animations/blue_loader.json"
-import type { CommunityJob } from "../../../../app/hooks/use-community-jobs"
+
+type CommunityJob = {
+  created_at: string
+  id: string
+  title: string
+  company: string
+  link: string
+  status: "applied" | "found" | "interesting"
+  description?: string
+  upvotes: number
+  triedCount: number
+  viewCount: number
+  commentCount?: number
+  shareCount?: number
+  saved: boolean
+  userUpvoted?: boolean
+  userLiked?: boolean
+  dislike?: boolean
+  haha?: boolean
+  wow?: boolean
+  userTried?: boolean
+  notRecommended?: boolean
+  postedBy: {
+    name: string
+    avatar?: string
+    role: string
+    course?: string
+  }
+  createdAt?: string
+  hashtags?: string[]
+}
 
 type APIJob = CommunityJob & {
   student?: {
@@ -18,12 +48,14 @@ type APIJob = CommunityJob & {
     last_name?: string
     course?: string
     avatar?: string
+    id?: string
   }
   createdAt?: string
   postedBy?: {
     name?: string
     role?: string
     avatar?: string
+    course?: string
   }
 }
 
@@ -74,40 +106,6 @@ export default function CommunityPage() {
       .catch(() => setLoading(false))
   }, [studentId])
 
-  const refreshJobs = () => {
-    setLoading(true)
-    const url = studentId
-      ? `/api/community-page/displayJobs?studentId=${studentId}`
-      : "/api/community-page/displayJobs"
-    fetch(url)
-      .then((res) => res.json())
-      .then((data) => {
-        const jobsArr = Array.isArray(data.jobs) ? data.jobs : []
-        setJobs(
-          jobsArr.map((job: APIJob) => {
-            const hasStudent = job.student !== undefined
-            const student = hasStudent ? job.student : undefined
-            const hasPostedBy = job.postedBy !== undefined
-            const postedBy = hasPostedBy ? job.postedBy : undefined
-            return {
-              ...job,
-              created_at: job.created_at ?? job.createdAt ?? "",
-              postedBy: postedBy ?? {
-                name:
-                  student?.first_name && student?.last_name
-                    ? `${student.first_name} ${student.last_name}`
-                    : "Unknown",
-                role: student?.course ?? "Unknown",
-                avatar: student?.avatar ?? undefined,
-              },
-            }
-          }),
-        )
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }
-
   const filteredJobs = jobs
     .filter((job) =>
       searchQuery === ""
@@ -137,7 +135,20 @@ export default function CommunityPage() {
         action,
       }),
     })
-    refreshJobs()
+    setJobs((prevJobs) =>
+      prevJobs.map((job) => {
+        if (job.id !== jobId) return job
+        const updated = { ...job }
+        if (type === "upvote") updated.userUpvoted = action === "add"
+        if (type === "like") updated.userLiked = action === "add"
+        if (type === "dislike") updated.dislike = action === "add"
+        if (type === "haha") updated.haha = action === "add"
+        if (type === "wow") updated.wow = action === "add"
+        if (type === "tried") updated.userTried = action === "add"
+        if (type === "not_recommended") updated.notRecommended = action === "add"
+        return updated
+      }),
+    )
   }
 
   const saveJob = async (jobId: string, isSaved: boolean) => {

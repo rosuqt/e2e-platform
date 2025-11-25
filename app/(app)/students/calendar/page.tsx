@@ -100,6 +100,7 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
     onClose()
   }
 
+
   return (
     <AnimatePresence>
       {open && (

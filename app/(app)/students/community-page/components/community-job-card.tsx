@@ -54,7 +54,7 @@ interface CommunityJob {
     role: string
     course?: string
   }
-  createdAt: string
+  createdAt?: string
   hashtags?: string[]
 }
 
@@ -94,6 +94,11 @@ const statusConfig = {
     emoji: "🏆",
   },
 }
+
+const BASE_URL =
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  (typeof window === "undefined" && process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+  ""
 
 export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJobCardProps) {
   const [showComments, setShowComments] = useState(false)
@@ -193,16 +198,19 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
     )
   }
 
-  // NOTE: Consider using <Image /> from next/image for optimization.
   function getProfileImg(avatar?: string) {
-    if (!avatar) return (
+    let src = avatar
+    if (src && !/^https?:\/\//.test(src)) {
+      src = `${BASE_URL}${src.startsWith("/") ? "" : "/"}${src}`
+    }
+    if (!src) return (
       <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
         {(job.company?.charAt(0) ?? "?").toUpperCase()}
       </div>
     )
     return (
       <img
-        src={avatar}
+        src={src}
         alt="Profile"
         className="w-14 h-14 rounded-full object-cover shadow-lg border-2 border-blue-200"
       />
@@ -319,7 +327,11 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
     const res = await fetch(`/api/community-page/getStudentProfileImg?studentId=${studentId}`)
     if (res.ok) {
       const { avatar } = await res.json()
-      setUserAvatar(avatar || null)
+      let src = avatar
+      if (src && !/^https?:\/\//.test(src)) {
+        src = `${BASE_URL}${src.startsWith("/") ? "" : "/"}${src}`
+      }
+      setUserAvatar(src || null)
     }
   }, [studentId])
 
@@ -739,7 +751,6 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   {userAvatar ? (
-                    // NOTE: Consider using <Image /> from next/image for optimization.
                     <img src={userAvatar} alt="User avatar" className="w-8 h-8 rounded-full object-cover" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
@@ -823,8 +834,7 @@ export default function CommunityJobCard({ job, onReaction, onSave }: CommunityJ
                     comments.map((c) => (
                       <div key={c.id} className="flex items-start gap-3">
                         {c.postedBy && c.postedBy.avatar ? (
-                          // NOTE: Consider using <Image /> from next/image for optimization.
-                          <img src={c.postedBy.avatar} alt="Commenter avatar" className="w-8 h-8 rounded-full object-cover" />
+                          <img src={/^https?:\/\//.test(c.postedBy.avatar) ? c.postedBy.avatar : `${BASE_URL}${c.postedBy.avatar.startsWith("/") ? "" : "/"}${c.postedBy.avatar}`} alt="Commenter avatar" className="w-8 h-8 rounded-full object-cover" />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
                             {(c.postedBy?.name?.charAt(0) ?? "?").toUpperCase()}
