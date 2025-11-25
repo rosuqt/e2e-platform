@@ -163,6 +163,8 @@ export default function PeopleSuggestions() {
         industry: c.company_industry,
         location: c.address ?? "",
         avatar: c.logoUrl ?? "/placeholder.svg?height=100&width=100",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        cover: (c as any).coverUrl ?? "",
       }))
       setSuggestedCompanies(mapped)
 
@@ -377,6 +379,7 @@ export default function PeopleSuggestions() {
                         industry: c.industry,
                         location: c.location,
                         avatar: c.avatar,
+                        cover: c.cover,
                       }))}
                       connectionStates={connectionStates}
                       onConnect={handleFollowCompany}
@@ -705,6 +708,7 @@ interface Company {
   industry: string
   avatar: string
   location: string
+  cover?: string
 }
 
 interface StudentApiRow {
@@ -877,6 +881,7 @@ function getCompanies(count: number): Company[] {
       industry: "Tech & IT",
       location: "Alabang",
       avatar: "/placeholder.svg?height=100&width=100",
+      cover: "",
     },
     {
       id: "c2",
@@ -884,6 +889,7 @@ function getCompanies(count: number): Company[] {
       industry: "Business & Finance",
       location: "Makati",
       avatar: "/placeholder.svg?height=100&width=100",
+      cover: "",
     },
     {
       id: "c3",
@@ -891,6 +897,7 @@ function getCompanies(count: number): Company[] {
       industry: "Hospitality & Tourism",
       location: "Pasay",
       avatar: "/placeholder.svg?height=100&width=100",
+      cover: "",
     },
     {
       id: "c4",
@@ -898,6 +905,7 @@ function getCompanies(count: number): Company[] {
       location: "San Juan",
       industry: "Food & Beverage",
       avatar: "/placeholder.svg?height=100&width=100",
+      cover: "",
     },
     {
       id: "c5",
@@ -905,6 +913,7 @@ function getCompanies(count: number): Company[] {
       location: "Alabang",
       industry: "Tech & IT",
       avatar: "/placeholder.svg?height=100&width=100",
+      cover: "",
     },
     {
       id: "c6",
@@ -912,6 +921,7 @@ function getCompanies(count: number): Company[] {
       industry: "Business & Finance",
       location: "Makati",
       avatar: "/placeholder.svg?height=100&width=100",
+      cover: "",
     },
     {
       id: "c7",
@@ -919,6 +929,7 @@ function getCompanies(count: number): Company[] {
       industry: "Hospitality & Tourism",
       location: "Pasay",
       avatar: "/placeholder.svg?height=100&width=100",
+      cover: "",
     },
     {
       id: "c8",
@@ -926,6 +937,7 @@ function getCompanies(count: number): Company[] {
       industry: "Food & Beverage",
       location: "San Juan",
       avatar: "/placeholder.svg?height=100&width=100",
+      cover: "",
     },
   ]
 

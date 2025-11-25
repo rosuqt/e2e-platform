@@ -22,6 +22,20 @@ const courseIndustryMap: Record<string, string[]> = {
   ]
 };
 
+async function getCompanyCoverUrl(companyId: string): Promise<string | null> {
+  const { data: profile, error } = await supabase
+    .from('company_profile')
+    .select('cover_img')
+    .eq('company_id', companyId)
+    .single();
+  if (error || !profile?.cover_img) return null;
+  const { data, error: urlError } = await supabase.storage
+    .from('company.images')
+    .createSignedUrl(profile.cover_img, 60 * 10);
+  if (urlError || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
+
 export async function GET() {
   const session = await getServerSession(authOptions);
   const studentId = session?.user?.studentId;
@@ -76,13 +90,17 @@ export async function GET() {
       ? `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/company.logo/${path}`
       : null;
 
-  const companies = [
-    ...matched,
-    ...remaining
-  ].map(company => ({
-    ...company,
-    logoUrl: getLogoUrl(company.company_logo_image_path)
-  }));
+  const allCompanies = [...matched, ...remaining];
+  const companies = await Promise.all(
+    allCompanies.map(async company => {
+      const coverUrl = await getCompanyCoverUrl(company.id);
+      return {
+        ...company,
+        logoUrl: getLogoUrl(company.company_logo_image_path),
+        coverUrl,
+      };
+    })
+  );
 
   return NextResponse.json({ companies });
 }

@@ -45,7 +45,7 @@ interface Friend {
   program: string
   avatar: string
   isFavorite: boolean
-  requestId: string // add this property
+  requestId: string 
 }
 
 interface SuggestedPerson {
@@ -54,6 +54,7 @@ interface SuggestedPerson {
   yearSection: string
   program: string
   avatar: string
+  cover?: string
 }
 
 type ApiFriendRequest = {
@@ -163,7 +164,7 @@ export default function ConnectionsPage() {
             avatar: conn.other?.avatar || "/placeholder.svg?height=100&width=100",
             isFavorite: !!conn.favorite,
             cover: conn.other?.cover || undefined,
-            requestId: conn.id // store the friend_requests row id
+            requestId: conn.id 
           }))
         )
       }
@@ -193,10 +194,16 @@ export default function ConnectionsPage() {
         const mapped = await Promise.all(
           filtered.map(async s => {
             let avatar = ""
+            let cover = ""
             try {
               const avatarRes = await fetch(`/api/students/people/suggestions/students?id=${s.id}&type=avatar`)
               const avatarData = await avatarRes.json()
               if (avatarData.signedUrl) avatar = avatarData.signedUrl
+            } catch {}
+            try {
+              const coverRes = await fetch(`/api/students/people/suggestions/students?id=${s.id}&type=cover`)
+              const coverData = await coverRes.json()
+              if (coverData.signedUrl) cover = coverData.signedUrl
             } catch {}
             return {
               id: s.id,
@@ -204,6 +211,7 @@ export default function ConnectionsPage() {
               yearSection: `${s.year || ""} yr${s.section ? " - " + s.section : ""}`,
               program: s.course || "",
               avatar,
+              cover,
             }
           })
         )
@@ -256,7 +264,7 @@ export default function ConnectionsPage() {
           program: request.program,
           avatar: request.avatar,
           isFavorite: false,
-          requestId: requestId // add this property
+          requestId: requestId
         },
       ])
       setFriendRequests((prev) => prev.filter((req) => req.id !== requestId))
@@ -291,12 +299,14 @@ export default function ConnectionsPage() {
   }
 
   const handleUnfriend = async (friendId: string) => {
+    const friend = friends.find(f => f.id === friendId)
+    if (!friend) return
     await fetch("/api/students/people/actionRequest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "unfriend", requestId: friendId }),
+      body: JSON.stringify({ action: "unfriend", requestId: friend.requestId }),
     })
-    setFriends((prev) => prev.filter((friend) => friend.id !== friendId))
+    setFriends((prev) => prev.filter((f) => f.id !== friendId))
   }
 
   const handleSearch = (params: { firstName: string; lastName: string }) => {
@@ -475,127 +485,6 @@ export default function ConnectionsPage() {
           </div>
         )}
 
-        {/* Suggested People Section - always shown */}
-        <div className="bg-white rounded-xl shadow-md overflow-hidden border border-blue-200">
-          <div className="flex justify-between items-center p-4 border-b border-blue-100">
-            <h2 className="text-blue-700 font-medium flex items-center">
-              Suggested People for you
-              <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 ml-2 text-xs">
-                {suggestedLoading ? <Loader2 className="animate-spin h-4 w-4" /> : suggestedPeople.length}
-              </Badge>
-            </h2>
-            <button
-              className="text-blue-600 font-medium hover:underline"
-              onClick={() => router.push("/students/people/suggestions")}
-            >
-              View All
-            </button>
-          </div>
-          <div className="p-4">
-            {suggestedLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm flex flex-col animate-pulse">
-                    <div className="bg-blue-100 h-16 w-full" />
-                    <div className="px-4 pt-10 pb-4 flex-1 flex flex-col">
-                      <div className="absolute left-1/2 transform -translate-x-1/2 -mb-11" style={{ width: 80, height: 80, top: -64 }}>
-                        <div className="rounded-full bg-blue-100 w-20 h-20 mx-auto" />
-                      </div>
-                      <div className="text-center mb-2 mt-2">
-                        <div className="h-4 bg-blue-100 rounded w-32 mx-auto mb-2" />
-                        <div className="h-3 bg-blue-50 rounded w-24 mx-auto mb-1" />
-                        <div className="h-3 bg-blue-50 rounded w-20 mx-auto" />
-                      </div>
-                      <div className="flex items-center justify-center mb-3">
-                        <div className="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-1 rounded mr-1 w-10 h-4" />
-                        <div className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs w-24 h-4 rounded" />
-                      </div>
-                      <div className="flex gap-2 mt-auto">
-                        <div className="flex-1 h-8 bg-blue-100 rounded" />
-                        <div className="flex-1 h-8 bg-blue-100 rounded" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : suggestedPeople.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <UserPlus className="w-12 h-12 text-gray-300 mb-4" />
-                <div className="text-gray-400 text-base font-base">No new people to suggest right now.<br />Check back soon for more classmates!</div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {suggestedPeople.map(person => (
-                  <div key={person.id} className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
-                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-16 relative" />
-                    <div className="px-4 pt-10 pb-4 relative flex-1 flex flex-col">
-                      <Avatar
-                        className="absolute left-1/2 transform -translate-x-1/2 -mb-11"
-                        style={{
-                          width: 80,
-                          height: 80,
-                          top: -64,
-                          border: "4px solid white",
-                          boxSizing: "border-box",
-                          background: "#fff",
-                        }}
-                      >
-                        {person.avatar ? (
-                          <Image
-                            src={person.avatar}
-                            alt={person.name}
-                            fill
-                            className="object-cover w-full h-full absolute inset-0 rounded-full"
-                            style={{ width: "100%", height: "100%" }}
-                            sizes="80px"
-                          />
-                        ) : (
-                          <span style={{
-                            width: "100%",
-                            height: "100%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 32,
-                            fontWeight: 600,
-                            color: "#888",
-                            backgroundColor: "#e6e7eaff",
-                          }}>
-                            {getInitials(person.name)}
-                          </span>
-                        )}
-                      </Avatar>
-                      <div className="text-center mb-2 mt-2">
-                        <h3 className="font-medium text-gray-900">{person.name}</h3>
-                        <p className="text-sm text-gray-500 line-clamp-1">{person.yearSection}</p>
-                      </div>
-                      <div className="flex items-center justify-center mb-3">
-                        <div className="bg-yellow-400 text-blue-800 text-xs font-bold px-1 py-0.5 rounded mr-1 flex items-center justify-center">
-                          STI
-                        </div>
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                          {person.program}
-                        </Badge>
-                      </div>
-                      <div className="flex mt-auto">
-                        <Button
-                          className={`flex-1 ${suggestedConnectionStates[person.id] === "Requested"
-                            ? "bg-gray-200 text-gray-600 cursor-default"
-                            : "bg-blue-500 hover:bg-blue-600 text-white"} flex items-center justify-center`}
-                          onClick={() => handleSuggestedConnect(person.id)}
-                          disabled={suggestedConnectionStates[person.id] === "Requested"}
-                        >
-                          {suggestedConnectionStates[person.id] === "Requested" ? "Requested" : "Connect"}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
         {!showNoFriendsFallback && (
           <>
             {/* Friend Requests Section */}
@@ -767,6 +656,132 @@ export default function ConnectionsPage() {
             </div>
           </>
         )}
+
+        {/* Suggested People Section - always shown at the bottom */}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden border border-blue-200">
+          <div className="flex justify-between items-center p-4 border-b border-blue-100">
+            <h2 className="text-blue-700 font-medium flex items-center">
+              Suggested People for you
+              <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 ml-2 text-xs">
+                {suggestedLoading ? <Loader2 className="animate-spin h-4 w-4" /> : suggestedPeople.length}
+              </Badge>
+            </h2>
+            <button
+              className="text-blue-600 font-medium hover:underline"
+              onClick={() => router.push("/students/people/suggestions")}
+            >
+              View All
+            </button>
+          </div>
+          <div className="p-4">
+            {suggestedLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm flex flex-col animate-pulse">
+                    <div className="bg-blue-100 h-16 w-full" />
+                    <div className="px-4 pt-10 pb-4 flex-1 flex flex-col">
+                      <div className="absolute left-1/2 transform -translate-x-1/2 -mb-11" style={{ width: 80, height: 80, top: -64 }}>
+                        <div className="rounded-full bg-blue-100 w-20 h-20 mx-auto" />
+                      </div>
+                      <div className="text-center mb-2 mt-2">
+                        <div className="h-4 bg-blue-100 rounded w-32 mx-auto mb-2" />
+                        <div className="h-3 bg-blue-50 rounded w-24 mx-auto mb-1" />
+                        <div className="h-3 bg-blue-50 rounded w-20 mx-auto" />
+                      </div>
+                      <div className="flex items-center justify-center mb-3">
+                        <div className="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-1 rounded mr-1 w-10 h-4" />
+                        <div className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs w-24 h-4 rounded" />
+                      </div>
+                      <div className="flex gap-2 mt-auto">
+                        <div className="flex-1 h-8 bg-blue-100 rounded" />
+                        <div className="flex-1 h-8 bg-blue-100 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : suggestedPeople.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <UserPlus className="w-12 h-12 text-gray-300 mb-4" />
+                <div className="text-gray-400 text-base font-base">No new people to suggest right now.<br />Check back soon for more classmates!</div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {suggestedPeople.map(person => (
+                  <div key={person.id} className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
+                    <div
+                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-16 relative"
+                      style={person.cover ? { backgroundImage: `url(${person.cover})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+                    />
+                    <div className="px-4 pt-10 pb-4 relative flex-1 flex flex-col">
+                      <Avatar
+                        className="absolute left-1/2 transform -translate-x-1/2 -mb-11"
+                        style={{
+                          width: 80,
+                          height: 80,
+                          top: -64,
+                          border: "4px solid white",
+                          boxSizing: "border-box",
+                          background: "#fff",
+                        }}
+                      >
+                        {person.avatar ? (
+                          <Image
+                            src={person.avatar}
+                            alt={person.name}
+                            fill
+                            className="object-cover w-full h-full absolute inset-0 rounded-full"
+                            style={{ width: "100%", height: "100%" }}
+                            sizes="80px"
+                          />
+                        ) : (
+                          <span style={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 32,
+                            fontWeight: 600,
+                            color: "#888",
+                            backgroundColor: "#e6e7eaff",
+                          }}>
+                            {getInitials(person.name)}
+                          </span>
+                        )}
+                      </Avatar>
+                      <div className="text-center mb-2 mt-2">
+                        <h3 className="font-medium text-gray-900">{person.name}</h3>
+                        <p className="text-sm text-gray-500 line-clamp-1">{person.yearSection}</p>
+                      </div>
+                      <div className="flex items-center justify-center mb-3">
+                        <div className="bg-yellow-400 text-blue-800 text-xs font-bold px-1 py-0.5 rounded mr-1 flex items-center justify-center">
+                          STI
+                        </div>
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
+                          {person.program}
+                        </Badge>
+                      </div>
+                      <div className="flex mt-auto">
+                        <Button
+                          className={`flex-1 rounded-full px-4 py-2 font-medium transition-colors duration-150 ${
+                            suggestedConnectionStates[person.id] === "Requested"
+                              ? "bg-gray-100 text-gray-500 border border-gray-200 cursor-default"
+                              : "bg-blue-600 hover:bg-blue-700 text-white"
+                          }`}
+                          onClick={() => handleSuggestedConnect(person.id)}
+                          disabled={suggestedConnectionStates[person.id] === "Requested"}
+                        >
+                          {suggestedConnectionStates[person.id] === "Requested" ? "Requested" : "Connect"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

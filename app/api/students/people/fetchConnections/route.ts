@@ -46,6 +46,7 @@ export async function GET() {
     let otherStudent = null
     let avatarUrl = null
     let coverUrl = null
+    let isFavorite = false
     if (otherId) {
       const { data: student } = await supabase
         .from("registered_students")
@@ -58,12 +59,13 @@ export async function GET() {
         avatarUrl = urls.avatarUrl
         coverUrl = urls.coverUrl
       }
+      isFavorite = !!row.favorite
     }
     return {
       id: row.id,
       status: row.status,
       created_at: row.created_at,
-      favorite: row.favorite,
+      favorite: isFavorite,
       other: otherStudent
         ? {
             id: otherStudent.id,
@@ -75,6 +77,7 @@ export async function GET() {
             email: otherStudent.email,
             avatar: avatarUrl,
             cover: coverUrl,
+            favorite: isFavorite
           }
         : null,
     }

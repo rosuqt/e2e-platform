@@ -128,15 +128,16 @@ function EmployerCard({
 
   const isFollowed = connectionState === "Followed" || connectionState === "Connected" || connectionState === "Following"
 
+  const coverStyle =
+    employer.cover && employer.cover !== "gradient-blue-indigo-purple"
+      ? { backgroundImage: `url(${employer.cover})`, backgroundSize: "cover", backgroundPosition: "center" }
+      : { background: "linear-gradient(90deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)" }
+
   return (
     <div className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
       <div
         className="h-16 relative"
-        style={
-          employer.cover
-            ? { backgroundImage: `url(${employer.cover})`, backgroundSize: "cover", backgroundPosition: "center" }
-            : { background: "linear-gradient(to right, #3b82f6, #8b5cf6)" }
-        }
+        style={coverStyle}
       >
         {isFollowed ? (
           <>

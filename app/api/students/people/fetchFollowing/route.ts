@@ -1,15 +1,36 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminSupabase } from "@/lib/supabase"
 import { getServerSession } from "next-auth/next"
-import { authOptions } from "../../../../../../lib/authOptions"
+import { authOptions } from "../../../../../lib/authOptions"
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function POST(_req: NextRequest) {
+export async function GET(_req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  const studentId = session?.user?.studentId
+  if (!studentId) return NextResponse.json({ employers: [] })
+
   const supabase = getAdminSupabase()
-  const { data: employers, error } = await supabase
+  const { data: follows, error: followsError } = await supabase
+    .from("student_follows_employers")
+    .select("employer_id, favorite")
+    .eq("student_id", studentId)
+
+  if (followsError || !follows || follows.length === 0) {
+    return NextResponse.json({ employers: [] })
+  }
+
+  const employerIds = follows.map(f => f.employer_id)
+  const favoriteMap = new Map<string, boolean>()
+  follows.forEach(f => favoriteMap.set(f.employer_id, !!f.favorite))
+
+  const { data: employers, error: employersError } = await supabase
     .from("registered_employers")
     .select("id, first_name, last_name, company_name, job_title, user_id, employer_profile(profile_img, cover_image)")
-    .limit(48)
-  if (error || !employers) return NextResponse.json({ employers: [] })
+    .in("id", employerIds)
+
+  if (employersError || !employers) {
+    return NextResponse.json({ employers: [] })
+  }
 
   type EmployerRow = {
     id: string
@@ -22,13 +43,16 @@ export async function POST(_req: NextRequest) {
   }
 
   const sorted = [...employers as EmployerRow[]].sort((a, b) => {
+    const favA = favoriteMap.get(a.id) ? 1 : 0
+    const favB = favoriteMap.get(b.id) ? 1 : 0
+    if (favB !== favA) return favB - favA
     const hasA = a.employer_profile?.profile_img ? 1 : 0
     const hasB = b.employer_profile?.profile_img ? 1 : 0
     return hasB - hasA
   })
 
   const mapped = await Promise.all(
-    sorted.slice(0, 24).map(async (e) => {
+    sorted.map(async (e) => {
       let avatar = "/placeholder.svg?height=100&width=100"
       let cover = ""
       const profileImg = e.employer_profile?.profile_img
@@ -43,18 +67,7 @@ export async function POST(_req: NextRequest) {
         const { data, error } = await supabase.storage
           .from("user.covers")
           .createSignedUrl(coverImg, 60 * 60)
-        if (!error && data?.signedUrl) {
-          cover = data.signedUrl
-        }
-      }
-      // fallback to default_cover.jpg if no cover or failed to get signed URL
-      if (!cover) {
-        const { data: fallbackData, error: fallbackError } = await supabase.storage
-          .from("app.images")
-          .createSignedUrl("default_cover.jpg", 60 * 60)
-        if (!fallbackError && fallbackData?.signedUrl) {
-          cover = fallbackData.signedUrl
-        }
+        if (!error && data?.signedUrl) cover = data.signedUrl
       }
       return {
         id: e.id,
@@ -65,28 +78,10 @@ export async function POST(_req: NextRequest) {
         user_id: e.user_id,
         avatar,
         cover,
+        favorite: favoriteMap.get(e.id) ?? false
       }
     })
   )
 
   return NextResponse.json({ employers: mapped })
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function GET(_req: NextRequest) {
-  const employerId = _req.nextUrl.searchParams.get("employerId")
-  const session = await getServerSession(authOptions)
-  const studentId = session?.user?.studentId
-  if (studentId && employerId) {
-    const supabase = getAdminSupabase()
-    const { data, error } = await supabase
-      .from("student_follows_employers")
-      .select("id")
-      .eq("student_id", studentId)
-      .eq("employer_id", employerId)
-      .single()
-    if (error || !data) return NextResponse.json({ status: null })
-    return NextResponse.json({ status: "Following" })
-  }
-  return NextResponse.json({ status: null })
 }
