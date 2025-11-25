@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
-
-import { useState } from "react"
-import { List, Star,  ChevronDown } from "lucide-react"
+import { useEffect, useState } from "react"
+import { List, Star, ChevronDown } from "lucide-react"
 import { LuLayoutGrid } from "react-icons/lu"
 import { Button } from "@/components/ui/button"
 import { MenuItem, FormControl, Select } from "@mui/material"
@@ -10,107 +10,115 @@ import SearchSection from "../../components/search-section"
 import { TbUserCheck } from "react-icons/tb"
 import { GridCompanies } from "../../components/grid view cards/grid-companies"
 import { ListCompanies } from "../../components/list view items/list-companies"
+import { useSession } from "next-auth/react"
 
 interface Company {
   id: string
   name: string
   industry: string
+  logo: string
+  favorite: boolean
   location: string
-  avatar: string
-  isFavorite: boolean
 }
 
 export default function CompaniesFollowingPage() {
-  const [companies, setCompanies] = useState<Company[]>([
-    {
-      id: "c1",
-      name: "TechCorp",
-      industry: "Software",
-      location: "San Francisco, CA",
-      avatar: "/placeholder.svg?height=100&width=100",
-      isFavorite: false,
-    },
-    {
-      id: "c2",
-      name: "Innovatech",
-      industry: "Product Design",
-      location: "New York, NY",
-      avatar: "/placeholder.svg?height=100&width=100",
-      isFavorite: true,
-    },
-    {
-      id: "c3",
-      name: "DevWorks",
-      industry: "Consulting",
-      location: "Austin, TX",
-      avatar: "/placeholder.svg?height=100&width=100",
-      isFavorite: false,
-    },
-    {
-      id: "c4",
-      name: "CodeWorks",
-      industry: "Backend Services",
-      location: "Seattle, WA",
-      avatar: "/placeholder.svg?height=100&width=100",
-      isFavorite: false,
-    },
-  ])
-
+  const [companies, setCompanies] = useState<Company[]>([])
   const [isGridView, setIsGridView] = useState(false)
   const [sortBy, setSortBy] = useState<"relevant" | "alphabetical" | "industry" | "location">("relevant")
   const [isFavoritesExpanded, setIsFavoritesExpanded] = useState(true)
   const [searchResults, setSearchResults] = useState<Company[] | null>(null)
+  const [loadingCompanies, setLoadingCompanies] = useState(true)
+  const [suggestedCompanies, setSuggestedCompanies] = useState<Company[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true)
+  const { data: session } = useSession()
+  const studentId = session?.user?.studentId
 
-  const handleToggleFavorite = (companyId: string) => {
-    setCompanies((prev) =>
-      prev.map((company) => (company.id === companyId ? { ...company, isFavorite: !company.isFavorite } : company)),
+  useEffect(() => {
+    setLoadingCompanies(true)
+    fetch("/api/students/people/fetchCompanies")
+      .then(res => res.json())
+      .then(data => {
+        setCompanies(
+          (data.companies || []).map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            industry: c.industry,
+            logo: c.logo,
+            favorite: c.favorite,
+            location: c.location ?? "",
+          }))
+        )
+        setLoadingCompanies(false)
+      })
+  }, [])
+
+  useEffect(() => {
+    setLoadingSuggestions(true)
+    fetch("/api/students/people/suggestions/companies")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data.companies)) {
+          setSuggestedCompanies(
+            data.companies.map((c: any) => ({
+              id: c.id,
+              name: c.company_name || c.name || "",
+              industry: c.company_industry || c.industry || "",
+              logo: c.logoUrl || c.logo || "/placeholder.svg?height=100&width=100",
+              favorite: false,
+              location: c.location ?? "",
+            }))
+          )
+        }
+        setLoadingSuggestions(false)
+      })
+  }, [])
+
+  const handleToggleFavorite = async (companyId: string) => {
+    setCompanies(prev =>
+      prev.map(company =>
+        company.id === companyId ? { ...company, favorite: !company.favorite } : company
+      )
     )
+    if (!studentId) return
+    const company = companies.find(c => c.id === companyId)
+    const action = company?.favorite ? "unfavorite" : "favorite"
+    await fetch("/api/students/people/actionCompanies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, studentId, companyId }),
+    })
   }
 
-  const handleUnfollow = (companyId: string) => {
-    setCompanies((prev) => prev.filter((company) => company.id !== companyId))
+  const handleUnfollow = async (companyId: string) => {
+    if (!studentId) return
+    await fetch("/api/students/people/actionCompanies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "unfollow", studentId, companyId }),
+    })
+    setCompanies(prev => prev.filter(company => company.id !== companyId))
   }
 
   const handleSearch = (params: { firstName: string; lastName: string }) => {
     const { firstName, lastName } = params
-    const filterByName = (name: string) =>
+    const filterByNameOrIndustry = (company: Company) =>
       (!firstName && !lastName) ||
-      (firstName && name.toLowerCase().includes(firstName.toLowerCase())) ||
-      (lastName && name.toLowerCase().includes(lastName.toLowerCase()))
-    const results = companies.filter(c => filterByName(c.name))
+      (firstName && (
+        company.name.toLowerCase().includes(firstName.toLowerCase()) ||
+        company.industry.toLowerCase().includes(firstName.toLowerCase())
+      )) ||
+      (lastName && (
+        company.name.toLowerCase().includes(lastName.toLowerCase()) ||
+        company.industry.toLowerCase().includes(lastName.toLowerCase())
+      ))
+    const results = companies.filter(filterByNameOrIndustry)
     setSearchResults(results)
   }
 
   const handleCloseSearchResults = () => setSearchResults(null)
 
-  const favoriteCompanies = companies.filter((company) => company.isFavorite)
-
-  const suggestedCompanies: Company[] = [
-    {
-      id: "sc1",
-      name: "Dunder Mifflin",
-      industry: "Paper",
-      location: "Scranton, PA",
-      avatar: "/placeholder.svg?height=100&width=100",
-      isFavorite: false,
-    },
-    {
-      id: "sc2",
-      name: "Acme Corp",
-      industry: "Manufacturing",
-      location: "Los Angeles, CA",
-      avatar: "/placeholder.svg?height=100&width=100",
-      isFavorite: false,
-    },
-    {
-      id: "sc3",
-      name: "Globex",
-      industry: "Technology",
-      location: "Chicago, IL",
-      avatar: "/placeholder.svg?height=100&width=100",
-      isFavorite: false,
-    },
-  ]
+  const favoriteCompanies = companies.filter(company => company.favorite)
+  const followedCompanyIds = new Set(companies.map(c => c.id))
 
   function sortCompanies(arr: Company[]) {
     if (sortBy === "alphabetical") {
@@ -119,19 +127,15 @@ export default function CompaniesFollowingPage() {
     if (sortBy === "industry") {
       return [...arr].sort((a, b) => a.industry.localeCompare(b.industry))
     }
-    if (sortBy === "location") {
-      return [...arr].sort((a, b) => a.location.localeCompare(b.location))
-    }
     return arr
   }
 
   const connectionStates = Object.fromEntries(companies.map(c => [c.id, "Followed"]))
-  const favoriteIds = companies.filter(c => c.isFavorite).map(c => c.id)
+  const favoriteIds = companies.filter(c => c.favorite).map(c => c.id)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 p-4">
       <div className="max-w-6xl mx-auto space-y-6 mt-4">
-        {/* SearchSection */}
         <div className="pt-2 pb-1">
           <SearchSection
             title="Find companies you follow"
@@ -140,7 +144,6 @@ export default function CompaniesFollowingPage() {
             icon={<TbUserCheck className="h-6 w-6 text-blue-300" />}
             onSearch={handleSearch}
           />
-          {/* Show search results if present */}
           {searchResults && (
             <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200 mt-4">
               <div className="border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100 flex justify-between items-center">
@@ -165,14 +168,14 @@ export default function CompaniesFollowingPage() {
                         id: c.id,
                         name: c.name,
                         industry: c.industry,
-                        location: c.location,
-                        avatar: c.avatar,
+                        avatar: c.logo,
+                        location: c.location ?? "",
                       }))}
                       connectionStates={Object.fromEntries(searchResults.map(c => [c.id, "Followed"]))}
                       onConnect={() => {}}
                       onUnfollow={handleUnfollow}
                       onToggleFavorite={handleToggleFavorite}
-                      favoriteIds={searchResults.filter(c => c.isFavorite).map(c => c.id)}
+                      favoriteIds={searchResults.filter(c => c.favorite).map(c => c.id)}
                     />
                   ) : (
                     <ListCompanies
@@ -180,13 +183,13 @@ export default function CompaniesFollowingPage() {
                         id: c.id,
                         name: c.name,
                         industry: c.industry,
-                        location: c.location,
-                        avatar: c.avatar,
-                        isFavorite: c.isFavorite,
+                        avatar: c.logo,
+                        isFavorite: c.favorite,
+                        location: c.location ?? "",
                       }))}
                       onToggleFavorite={handleToggleFavorite}
                       onUnfollow={handleUnfollow}
-                      favoriteIds={searchResults.filter(c => c.isFavorite).map(c => c.id)}
+                      favoriteIds={searchResults.filter(c => c.favorite).map(c => c.id)}
                     />
                   )
                 ) : (
@@ -195,9 +198,7 @@ export default function CompaniesFollowingPage() {
               </div>
             </div>
           )}
-          {/* Controls row below SearchSection */}
           <div className="flex items-center gap-4 mt-2">
-            {/* Sort By Dropdown */}
             <div className="flex items-center">
               <span className="mr-2 text-sm text-gray-600">Sort by</span>
               <FormControl size="small" variant="outlined">
@@ -209,11 +210,9 @@ export default function CompaniesFollowingPage() {
                   <MenuItem value="relevant">Relevant</MenuItem>
                   <MenuItem value="alphabetical">Alphabetical</MenuItem>
                   <MenuItem value="industry">Industry</MenuItem>
-                  <MenuItem value="location">Location</MenuItem>
                 </Select>
               </FormControl>
             </div>
-            {/* Grid/List Toggle */}
             <Button
               variant="outline"
               size="icon"
@@ -225,8 +224,6 @@ export default function CompaniesFollowingPage() {
             </Button>
           </div>
         </div>
-
-        {/* Companies Section */}
         <div className="space-y-6">
           {/* Favorites Section */}
           {favoriteCompanies.length > 0 && (
@@ -259,14 +256,14 @@ export default function CompaniesFollowingPage() {
                         id: c.id,
                         name: c.name,
                         industry: c.industry,
-                        location: c.location,
-                        avatar: c.avatar,
+                        avatar: c.logo,
+                        location: c.location ?? "",
                       }))}
                       connectionStates={Object.fromEntries(favoriteCompanies.map(c => [c.id, "Followed"]))}
                       onConnect={() => {}}
                       onUnfollow={handleUnfollow}
                       onToggleFavorite={handleToggleFavorite}
-                      favoriteIds={favoriteCompanies.filter(c => c.isFavorite).map(c => c.id)}
+                      favoriteIds={favoriteCompanies.filter(c => c.favorite).map(c => c.id)}
                     />
                   ) : (
                     <ListCompanies
@@ -274,21 +271,19 @@ export default function CompaniesFollowingPage() {
                         id: c.id,
                         name: c.name,
                         industry: c.industry,
-                        location: c.location,
-                        avatar: c.avatar,
-                        isFavorite: c.isFavorite,
+                        avatar: c.logo,
+                        isFavorite: c.favorite,
+                        location: c.location ?? "",
                       }))}
                       onToggleFavorite={handleToggleFavorite}
                       onUnfollow={handleUnfollow}
-                      favoriteIds={favoriteCompanies.filter(c => c.isFavorite).map(c => c.id)}
+                      favoriteIds={favoriteCompanies.filter(c => c.favorite).map(c => c.id)}
                     />
                   )}
                 </div>
               )}
             </div>
           )}
-
-          {/* All Companies Section */}
           <div className="bg-white rounded-xl shadow-md overflow-hidden border border-blue-200">
             <div className="flex justify-between items-center p-4 border-b border-blue-100">
               <h3 className="text-blue-700 font-medium flex items-center text-base">
@@ -299,14 +294,43 @@ export default function CompaniesFollowingPage() {
               </h3>
             </div>
             <div className="p-4">
-              {isGridView ? (
+              {loadingCompanies ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between border-b border-gray-100 pb-4 animate-pulse">
+                      <div className="flex items-center">
+                        <div className="h-12 w-12 mr-3 rounded-full bg-blue-100" />
+                        <div>
+                          <div className="h-4 bg-blue-100 rounded w-32 mb-2" />
+                          <div className="h-3 bg-blue-50 rounded w-24 mb-1" />
+                          <div className="h-3 bg-blue-50 rounded w-20" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-20 bg-blue-100 rounded" />
+                        <div className="h-8 w-24 bg-blue-100 rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : companies.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="w-48 h-36 mb-4">
+                    {/* Use same loader as employers if available */}
+                  </div>
+                  <div className="text-lg font-semibold text-blue-700 mb-2">No companies followed yet 🏢</div>
+                  <div className="text-gray-500 text-base text-center max-w-md">
+                    Start following companies to keep up with their latest updates and opportunities!
+                  </div>
+                </div>
+              ) : isGridView ? (
                 <GridCompanies
                   companies={sortCompanies(companies).map(c => ({
                     id: c.id,
                     name: c.name,
                     industry: c.industry,
-                    location: c.location,
-                    avatar: c.avatar,
+                    avatar: c.logo,
+                    location: c.location ?? "",
                   }))}
                   connectionStates={connectionStates}
                   onConnect={() => {}}
@@ -320,9 +344,9 @@ export default function CompaniesFollowingPage() {
                     id: c.id,
                     name: c.name,
                     industry: c.industry,
-                    location: c.location,
-                    avatar: c.avatar,
-                    isFavorite: c.isFavorite,
+                    avatar: c.logo,
+                    isFavorite: c.favorite,
+                    location: c.location ?? "",
                   }))}
                   onToggleFavorite={handleToggleFavorite}
                   onUnfollow={handleUnfollow}
@@ -331,25 +355,59 @@ export default function CompaniesFollowingPage() {
               )}
             </div>
           </div>
-
-          {/* Suggested Companies Section */}
           <div className="bg-white rounded-xl shadow-md overflow-hidden border border-blue-200">
             <div className="flex justify-between items-center p-4 border-b border-blue-100">
               <h2 className="text-blue-700 font-medium text-base">Suggested Companies for You</h2>
               <button className="text-blue-600 font-medium hover:underline text-base">View All</button>
             </div>
             <div className="p-4">
-              <GridCompanies
-                companies={suggestedCompanies.map(c => ({
-                  id: c.id,
-                  name: c.name,
-                  industry: c.industry,
-                  location: c.location,
-                  avatar: c.avatar,
-                }))}
-                connectionStates={Object.fromEntries(suggestedCompanies.map(c => [c.id, "Follow"]))}
-                onConnect={() => {}}
-              />
+              {loadingSuggestions ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm flex flex-col animate-pulse">
+                      <div className="bg-blue-100 h-16 w-full" />
+                      <div className="px-4 pt-10 pb-4 flex-1 flex flex-col">
+                        <div className="absolute left-1/2 transform -translate-x-1/2 -mb-11" style={{ width: 80, height: 80, top: -64 }}>
+                          <div className="rounded-full bg-blue-100 w-20 h-20 mx-auto" />
+                        </div>
+                        <div className="text-center mb-2 mt-2">
+                          <div className="h-4 bg-blue-100 rounded w-32 mx-auto mb-2" />
+                          <div className="h-3 bg-blue-50 rounded w-24 mx-auto mb-1" />
+                          <div className="h-3 bg-blue-50 rounded w-20 mx-auto" />
+                        </div>
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-1 rounded mr-1 w-10 h-4" />
+                          <div className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs w-24 h-4 rounded" />
+                        </div>
+                        <div className="flex gap-2 mt-auto">
+                          <div className="flex-1 h-8 bg-blue-100 rounded" />
+                          <div className="flex-1 h-8 bg-blue-100 rounded" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <GridCompanies
+                  companies={suggestedCompanies
+                    .filter(c => !followedCompanyIds.has(c.id))
+                    .slice(0, 4)
+                    .map(c => ({
+                      id: c.id,
+                      name: c.name,
+                      industry: c.industry,
+                      avatar: c.logo,
+                      location: c.location ?? "",
+                    }))}
+                  connectionStates={Object.fromEntries(
+                    suggestedCompanies
+                      .filter(c => !followedCompanyIds.has(c.id))
+                      .slice(0, 4)
+                      .map(c => [c.id, "Follow"])
+                  )}
+                  onConnect={() => {}}
+                />
+              )}
             </div>
           </div>
         </div>

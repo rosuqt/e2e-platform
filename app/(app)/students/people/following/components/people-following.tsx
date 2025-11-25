@@ -139,11 +139,17 @@ export default function FollowingPage() {
 
   const handleSearch = (params: { firstName: string; lastName: string }) => {
     const { firstName, lastName } = params
-    const filterByName = (name: string) =>
+    const filterByNameOrCompany = (employer: Employer) =>
       (!firstName && !lastName) ||
-      (firstName && name.toLowerCase().includes(firstName.toLowerCase())) ||
-      (lastName && name.toLowerCase().includes(lastName.toLowerCase()))
-    const results = employers.filter(e => filterByName(e.name))
+      (firstName && (
+        employer.name.toLowerCase().includes(firstName.toLowerCase()) ||
+        employer.company.toLowerCase().includes(firstName.toLowerCase())
+      )) ||
+      (lastName && (
+        employer.name.toLowerCase().includes(lastName.toLowerCase()) ||
+        employer.company.toLowerCase().includes(lastName.toLowerCase())
+      ))
+    const results = employers.filter(filterByNameOrCompany)
     setSearchResults(results)
   }
 
@@ -508,14 +514,23 @@ export default function FollowingPage() {
                 </div>
               ) : (
                 <GridEmployer
-                  employers={suggestedEmployers.slice(0, 4).map(e => ({
-                    id: e.id,
-                    name: e.name,
-                    company: e.company,
-                    job_title: e.position,
-                    avatar: e.avatar,
-                    cover: e.cover,
-                  }))}
+                  employers={
+                    suggestedEmployers
+                      .slice(0, 4)
+                      .sort((a, b) => {
+                        const aFollowed = connectionStates[a.id] === "Following";
+                        const bFollowed = connectionStates[b.id] === "Following";
+                        if (aFollowed === bFollowed) return 0;
+                        return aFollowed ? 1 : -1;
+                      })
+                      .map(e => ({
+                        id: e.id,
+                        name: e.name,
+                        company: e.company,
+                        job_title: e.position,
+                        avatar: e.avatar,
+                        cover: e.cover,
+                      }))}
                   connectionStates={connectionStates}
                   onConnect={handleConnect}
                 />
