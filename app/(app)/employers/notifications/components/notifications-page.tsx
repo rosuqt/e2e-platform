@@ -46,43 +46,22 @@ const notifications = [
   },
 ]
 
-type Activity = {
-  id: string;
-  employer_id: string;
-  student_id: string;
-  job_id: string;
-  type: string;
-  message: string;
-  created_at: Date;
-};
-
-type Access = {
-  id: string;
-  employer_id: string;
-  role: string;
-  updated_at: Date;
-};
-
-type Offer = {
-  id: string;
-  created_at: Date;
-  accept_status: string;
-}
 type Notif = {
-  id: string,
-  user_id: string,
-  source: string,
-  content: string,
-  created_at: Date,
-  updated_at: Date
+  content: string;
+  created_at: Date;
+  external_id: string;
+  source: string;
+  title: string;
+  updated_at: Date;
+  user_id: string;
 }
 
 
 export default function NotificationsPage() {
-  const [selectedNotification, setSelectedNotification] = useState<number | null>(null)
+  const [selectedNotification, setSelectedNotification] = useState<string | null>(null)
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  const [notif, setnotif] = useState<Notif>();
+  const [notif, setnotif] = useState<Notif[]>();
 
   const fetchNotifications = async() => {
   const res = await fetch("/api/employers/notifications", {
@@ -96,12 +75,13 @@ export default function NotificationsPage() {
   }
 
   const data = await res.json();
-  setnotif(data);
+  setnotif(data.notifications);
   console.log(data);
+  
   }
   useEffect(() => { fetchNotifications() }, []);
 
-  const handleNotificationClick = (id: number) => {
+  const handleNotificationClick = (id: string) => {
     setSelectedNotification(id)
     setIsOverlayOpen(true)
   }
@@ -159,80 +139,69 @@ export default function NotificationsPage() {
                   </TabsTrigger>
                 </TabsList>
 
-                <div className="flex items-center justify-between mb-6 gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input placeholder="Search messages" className="pl-10 border-blue-200 focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <MUIButton
-                      variant="outlined"
-                      onClick={handleMenuOpen}
-                      className="flex items-center gap-2 border-blue-200"
-                    >
-                      Sort by: Newest First
-                      <ChevronDown className="h-4 w-4" />
-                    </MUIButton>
-                    <Menu
-                      anchorEl={anchorEl}
-                      open={Boolean(anchorEl)}
-                      onClose={handleMenuClose}
-                      anchorOrigin={{
-                        vertical: "bottom",
-                        horizontal: "right",
-                      }}
-                      transformOrigin={{
-                        vertical: "top",
-                        horizontal: "right",
-                      }}
-                    >
-                      <MenuItem onClick={handleMenuClose}>Newest First</MenuItem>
-                      <MenuItem onClick={handleMenuClose}>Oldest First</MenuItem>
-                      <MenuItem onClick={handleMenuClose}>Unread</MenuItem>
-                    </Menu>
-                  </div>
-                </div>
+             
                 
                 {/* NOTIF STARTS HERE */}
                 <TabsContent value="all" className="mt-0 min-h-[400px]">
                   <h3 className="text-lg font-semibold mb-4 text-blue-800">Latest Notifications</h3>
                   <div className="space-y-3">
-                    {notifications.map((notification) => (
-                      <NotificationItem
-                        key={notification.id}
+                    {notif?.map((notification) => (
+                      <NotificationItem 
+                        key={notification.external_id}
                         notification={notification}
-                        onClick={() => handleNotificationClick(notification.id)}
+                        onClick={() => handleNotificationClick(notification.external_id)}
                       />
                     ))}
                   </div>
                   <div className="mt-6 text-center">
-                    <Button variant="ghost" className="text-blue-600 hover:text-blue-800 hover:bg-blue-50">
-                      Load more
-                    </Button>
                   </div>
                 </TabsContent>
 
-                <TabsContent value="applications" className="min-h-[400px]">
-                  <div className="p-8 text-center text-gray-500">
-                    <p>Application notifications will appear here</p>
+                <TabsContent value="applications" className="mt-0 min-h-[400px]">
+                  <div className="text-lg font-semibold mb-4 text-blue-800">
+                    <div className="space-y-3">
+                      {notif
+                        ?.filter((notification) => notification.source === "applications") 
+                        .map((notification) => (
+                          <NotificationItem
+                            key={notification.external_id}
+                            notification={notification}
+                            onClick={() => handleNotificationClick(notification.external_id)}
+                          />
+                        ))}
+                    </div>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="interactions" className="min-h-[400px]">
-                  <div className="p-8 text-center text-gray-500">
-                    <p>Interaction notifications will appear here</p>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="jobs" className="min-h-[400px]">
-                  <div className="p-8 text-center text-gray-500">
-                    <p>Job notifications will appear here</p>
+                  <div className="text-lg font-semibold mb-4 text-blue-800">
+                    <div className="space-y-3">
+                      {notif
+                        ?.filter((notification) => notification.source === "job_offers") 
+                        .map((notification) => (
+                          <NotificationItem
+                            key={notification.external_id}
+                            notification={notification}
+                            onClick={() => handleNotificationClick(notification.external_id)}
+                          />
+                        ))}
+                    </div>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="account" className="min-h-[400px]">
-                  <div className="p-8 text-center text-gray-500">
-                    <p>Account notifications will appear here</p>
+                  <div className="text-lg font-semibold mb-4 text-blue-800">
+                    <div className="space-y-3">
+                      {notif
+                        ?.filter((notification) => notification.source === "job_team_access") 
+                        .map((notification) => (
+                          <NotificationItem
+                            key={notification.external_id}
+                            notification={notification}
+                            onClick={() => handleNotificationClick(notification.external_id)}
+                          />
+                        ))}
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -241,12 +210,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      {isOverlayOpen && selectedNotification && (
-        <NotificationOverlay
-          notification={notifications.find((n) => n.id === selectedNotification)!}
-          onClose={closeOverlay}
-        />
-      )}
+      
     </main>
   )
 }

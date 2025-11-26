@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     const [activityRes, accessRes, offerRes] = await Promise.all([
       supabase
         .from("applications")
-        .select("application_id, job_id, first_name, last_name, status, applied_at, job_postings!inner(id, employer_id)")
+        .select("application_id, job_id, first_name, last_name, status, applied_at, job_postings!inner(id, job_title, employer_id)")
         .eq("job_postings.employer_id", user_id),
 
       supabase
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
         source: "applications",
         external_id: item.application_id,
         user_id,
-        title: `${item.first_name} ${item.last_name}'s application.`,
+        title: `${item.first_name} ${item.last_name}'s application for ${item.job_postings.job_title}.`,
         content: `Status: ${item.status}`,
         created_at: item.applied_at,
         updated_at: item.applied_at,
@@ -55,14 +55,18 @@ export async function GET(req: Request) {
         source: "job_offers",
         external_id: item.id,
         user_id,
-        title: `The Job Offer for ${item.applicant_name}`,
-        content: `Is currently: ${item.job_title}`,
+        title: `The Job Offer of ${item.job_title} for ${item.applicant_name}`,
+        content: `Is currently: ${item.accept_status === "accepted" ? "Accepted" : item.accept_status === "rejected" ? "Rejected": "Pending"}`,
         created_at: item.created_at,
         updated_at: item.updated_at,
       })),
       
     ];
 
+    combined.sort(
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
     // GET EXISTING NOTIFICATIONS
     const { data: existing, error: existingError } = await supabase
       .from("notifications")
