@@ -1,5 +1,6 @@
-import ProfileLayout from "./layout"
+import ProfilePersonalPage from "./profile-personal-page";
 
 export default function Page() {
-  return <ProfileLayout />
+  // No params needed for personal profile
+  return <ProfilePersonalPage />;
 }
