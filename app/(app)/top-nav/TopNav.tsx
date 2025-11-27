@@ -73,7 +73,7 @@ const TopNav: React.FC<TopNavProps> = ({
       { path: '/students/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
       ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
       { path: '/students/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
-      { path: '/students/profile', label: 'Me', icon: User, onClick: handleProfileClick },
+      { path: '/students/profile/profile-personal-page', label: 'Me', icon: User, onClick: handleProfileClick },
     ];
   }, [session, showFeedback]);
 
