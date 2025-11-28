@@ -20,10 +20,36 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
     startDate: "",
     externalApplication: false,
   })
+  const [loading, setLoading] = useState(false)
+  const [seekrJobs, setSeekrJobs] = useState<any[]>([])
+  const [seekrSelected, setSeekrSelected] = useState<any | null>(null)
 
-  const handleChoice = (isExternal: boolean) => {
-    setFormData((prev) => ({ ...prev, externalApplication: isExternal }))
+  const handleChoice = async (isExternal: boolean) => {
+    if (!isExternal) {
+      setLoading(true)
+      const res = await fetch("/api/students/dtr/checkApplications")
+      const jobs = await res.json()
+      console.log("Fetched Seekr jobs:", jobs)
+      setSeekrJobs(jobs)
+      setSeekrSelected(null)
+      setLoading(false)
+    } else {
+      setFormData((prev) => ({ ...prev, externalApplication: true }))
+      setSeekrSelected(null)
+    }
     setStep("form")
+  }
+
+  const handleSelectSeekrJob = (job: any) => {
+    console.log("Selected Seekr job:", job)
+    setSeekrSelected(job)
+    setFormData({
+      jobTitle: job.job_title || "",
+      company: job.company_name || "",
+      totalHours: "",
+      startDate: "",
+      externalApplication: false,
+    })
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,7 +118,7 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
                     <span className="text-2xl">📱</span>
                   </div>
                   <div>
-                    <p className="font-bold text-gray-900 text-lg">Applied Through Our App</p>
+                    <p className="font-bold text-gray-900 text-lg">Applied Through Seekr</p>
                     <p className="text-gray-600 text-sm">We have your job details on record</p>
                   </div>
                 </div>
@@ -116,7 +142,61 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
               </motion.button>
             </div>
           </>
-        ) : (
+        ) : step === "form" && loading ? (
+          <div className="flex items-center justify-center h-40">
+            <span className="text-blue-600 font-semibold">Loading Seekr jobs...</span>
+          </div>
+        ) : step === "form" && !formData.externalApplication && seekrJobs.length > 0 && !seekrSelected ? (
+          <>
+            {console.log("Rendering Seekr job cards:", seekrJobs)}
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Select a job for your DTR</h2>
+              <div className="grid gap-4">
+                {seekrJobs.map((job) => (
+                  <motion.button
+                    key={job.job_id}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleSelectSeekrJob(job)}
+                    className="w-full bg-white border-2 border-blue-200 rounded-xl p-4 text-left hover:border-blue-500 hover:shadow-lg transition-all"
+                  >
+                    <div className="flex flex-col gap-2">
+                      <span className="font-bold text-blue-700 text-lg">{job.job_title}</span>
+                      <span className="text-gray-700">{job.company_name}</span>
+                      <span className="text-sm text-gray-500">
+                        {job.work_type} | {job.remote_options}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        Applied: {new Date(job.applied_at).toLocaleDateString()} | Status: {job.status}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        Employer: {job.employer_first_name} {job.employer_last_name}
+                      </span>
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("choice")
+                  setSeekrJobs([])
+                  setSeekrSelected(null)
+                  setFormData({
+                    jobTitle: "",
+                    company: "",
+                    totalHours: "",
+                    startDate: "",
+                    externalApplication: false,
+                  })
+                }}
+                className="mt-4 px-6 py-3 rounded-lg border border-gray-300 text-gray-900 font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Back
+              </button>
+            </div>
+          </>
+        ) : step === "form" && (formData.externalApplication || seekrSelected) ? (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Job Information</h2>
@@ -140,6 +220,7 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
                   onChange={handleInputChange}
                   placeholder="e.g., Software Developer"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                  disabled={seekrSelected !== null}
                 />
               </div>
 
@@ -152,6 +233,7 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
                   onChange={handleInputChange}
                   placeholder="e.g., Tech Corp"
                   className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                  disabled={seekrSelected !== null}
                 />
               </div>
 
@@ -208,7 +290,7 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
               </motion.button>
             </div>
           </form>
-        )}
+        ) : null}
       </motion.div>
     </div>
   )

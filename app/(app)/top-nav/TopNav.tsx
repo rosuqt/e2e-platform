@@ -59,6 +59,7 @@ const TopNav: React.FC<TopNavProps> = ({
       return [
         { path: '/employers/dashboard', label: 'Home', icon: Home },
         { path: '/employers/jobs/job-listings', label: 'Jobs', icon: Briefcase },
+        { path: '/employers/people/candidate-matches', label: 'People', icon: Users },
         { path: '/employers/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
         ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
         { path: '/employers/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
@@ -171,21 +172,14 @@ const TopNav: React.FC<TopNavProps> = ({
       )}
       {isNotificationsModalOpen && (
         <NotificationsModal
-          notifications={[
-            { id: '1', title: 'New Message', message: 'You got a message from Vivi', timestamp: '2 hours ago', avatarUrl: '/images/avatar1.png', isUnread: true },
-            { id: '2', title: 'Application Approved', message: 'Your application was approved', timestamp: '1 day ago', avatarUrl: '/images/avatar2.png', isUnread: false },
-          ]}
+          notifications={[]}
           onClose={() => setNotificationsModalOpen(false)}
           positionRef={messagesRef}
         />
       )}
       {isMessagesModalOpen && (
         <MessagesModal
-          messages={[
-            { id: '1', sender: 'Kemly Rose', content: 'Hey, how are you?', timestamp: '2 hours ago', avatarUrl: '/images/avatar3.png', isUnread: true },
-            { id: '2', sender: 'Zeyners', content: 'Meeting at 3 PM', timestamp: '1 day ago', avatarUrl: '/images/avatar4.png', isUnread: false },
-            { id: '3', sender: 'John Doe', content: 'Can we reschedule?', timestamp: '3 days ago', avatarUrl: '/images/avatar5.png', isUnread: true },
-          ]}
+          messages={[]}
           onClose={() => setMessagesModalOpen(false)}
           positionRef={messagesRef}
         />

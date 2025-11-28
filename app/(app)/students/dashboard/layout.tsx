@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/students/jobs/applications" },
     { icon: TbUsers, text: "Connections", href: "/students/people/connections" },
     { icon: FaEarthAmericas , text: "Community Jobs", href: "/students/community-page" },
-    { icon: MdAccessTime, text: "DTR", href: "/students/dtr" },
+    { icon: MdAccessTime, text: "DTR", href: "/students/jobs/dtr" },
   ];
 
   useEffect(() => {
