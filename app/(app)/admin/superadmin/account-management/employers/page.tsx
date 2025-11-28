@@ -245,7 +245,14 @@ export default function EmployersManagement() {
     setIsDeleteDialogOpen(true)
   }
 
-  const confirmDeleteEmployer = () => {
+  const confirmDeleteEmployer = async () => {
+    if (!selectedEmployer) return
+    await fetch("/api/superadmin/actions/deleteUsers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: selectedEmployer.employerId, table: "registered_employers" }),
+    })
+    setEmployers(employers.filter((employer) => employer.employerId !== selectedEmployer.employerId))
     setIsDeleteDialogOpen(false)
   }
 

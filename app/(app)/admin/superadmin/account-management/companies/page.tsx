@@ -185,7 +185,14 @@ export default function CompaniesManagement() {
     setIsDeleteDialogOpen(true)
   }
 
-  const confirmDeleteCompany = () => {
+  const confirmDeleteCompany = async () => {
+    if (!selectedCompany) return
+    await fetch("/api/superadmin/actions/deleteUsers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: selectedCompany.companyId, table: "registered_companies" }),
+    })
+    setCompanies(companies.filter((company) => company.companyId !== selectedCompany.companyId))
     setIsDeleteDialogOpen(false)
   }
 

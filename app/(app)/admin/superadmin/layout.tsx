@@ -8,7 +8,7 @@ import {
   Users,
   LogOut,
   ChevronDown,
-  Bell,
+
   Briefcase,
   Settings,
   Shield,
@@ -186,7 +186,7 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
 
   const handleLogout = () => {
     console.log("Logging out...")
-    router.push("/login")
+    router.push("/admin/login")
   }
 
   return (
@@ -440,23 +440,6 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
                   <Menu className="w-5 h-5" />
                 </Button>
 
-
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <Button variant="ghost" size="icon" className="relative rounded-xl hover:bg-gray-100 transition-colors">
-                  <Bell className="w-5 h-5 text-gray-600" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-white"></span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="hidden md:flex items-center space-x-2 rounded-xl border-gray-200 hover:bg-gray-50"
-                >
-                  <Settings className="w-4 h-4" />
-                  <span>Settings</span>
-                </Button>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

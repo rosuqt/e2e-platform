@@ -9,7 +9,6 @@ import { useState } from "react"
 import { countries } from "../../sign-up/data/countries"
 import { Toaster, toast } from "react-hot-toast"
 import { parsePhoneNumberFromString, CountryCode } from "libphonenumber-js"
-import { createClient } from "@supabase/supabase-js"
 
 type JobModalProps = {
   job: {
@@ -64,27 +63,6 @@ const suffixes = [
   "Esq."
 ]
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-
-async function uploadToSupabase(file: File, careerId: string, type: "resume" | "cover_letter", firstName: string, lastName: string) {
-  const ext = file.name.split(".").pop()
-  const safeFirst = firstName.replace(/[^a-zA-Z0-9]/g, "")
-  const safeLast = lastName.replace(/[^a-zA-Z0-9]/g, "")
-  const filename = `${safeFirst}_${safeLast}_${type === "resume" ? "RESUME" : "COVERLETTER"}.${ext}`
-  const folder = type === "resume" ? "resume" : "cover_letter"
-  const path = `sti-careers/${careerId}/${folder}/${filename}`
-
-  const { error } = await supabase.storage.from("application.records").upload(path, file, {
-    upsert: true,
-    cacheControl: "3600"
-  })
-  if (error) {
-    toast.error(error.message || "Upload failed")
-    throw error
-  }
-  return path
-}
-
 export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
   const [activeTab, setActiveTab] = useState<"details" | "apply">("details")
   const [formData, setFormData] = useState<FormData>({
@@ -102,6 +80,7 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isLoadingCareers, setIsLoadingCareers] = useState(false)
+  const [alreadyApplied, setAlreadyApplied] = useState(false)
 
   React.useEffect(() => {
     if (isOpen) {
@@ -121,8 +100,11 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
       setIsSubmitting(false)
       setIsSubmitted(false)
       setIsLoadingCareers(true)
+      setAlreadyApplied(false)
       if (typeof window !== "undefined") {
         setTimeout(() => setIsLoadingCareers(false), 1000)
+        const appliedJobs = JSON.parse(sessionStorage.getItem("appliedJobs") || "[]")
+        if (appliedJobs.includes(job.raw?.id)) setAlreadyApplied(true)
       } else {
         setIsLoadingCareers(false)
       }
@@ -237,36 +219,14 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (alreadyApplied) {
+      toast.error("You have already applied for this job in this session.")
+      return
+    }
     const errors = validate(formData)
     setFormErrors(errors)
     if (Object.keys(errors).length > 0) return
     setIsSubmitting(true)
-    let resumePath = ""
-    let coverLetterPath = ""
-    try {
-      if (formData.resume) {
-        resumePath = await uploadToSupabase(
-          formData.resume,
-          job.raw?.id || "",
-          "resume",
-          formData.firstName,
-          formData.lastName
-        )
-      }
-      if (formData.coverLetter) {
-        coverLetterPath = await uploadToSupabase(
-          formData.coverLetter,
-          job.raw?.id || "",
-          "cover_letter",
-          formData.firstName,
-          formData.lastName
-        )
-      }
-    } catch {
-      toast.error("Failed to upload files.")
-      setIsSubmitting(false)
-      return
-    }
     const fd = new FormData()
     fd.append("career_id", job.raw?.id || "")
     fd.append("first_name", formData.firstName)
@@ -276,8 +236,8 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
     fd.append("email", formData.email)
     fd.append("country_code", formData.countryCode)
     fd.append("phone", formData.phone)
-    if (resumePath) fd.append("resume_path", resumePath)
-    if (coverLetterPath) fd.append("cover_letter_path", coverLetterPath)
+    if (formData.resume) fd.append("resume", formData.resume)
+    if (formData.coverLetter) fd.append("coverLetter", formData.coverLetter)
     try {
       const res = await fetch("/api/superadmin/careers/applications", {
         method: "POST",
@@ -287,6 +247,14 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
         toast.success("Application submitted successfully!")
         setIsSubmitting(false)
         setIsSubmitted(true)
+        if (typeof window !== "undefined") {
+          const appliedJobs = JSON.parse(sessionStorage.getItem("appliedJobs") || "[]")
+          if (!appliedJobs.includes(job.raw?.id)) {
+            appliedJobs.push(job.raw?.id)
+            sessionStorage.setItem("appliedJobs", JSON.stringify(appliedJobs))
+          }
+        }
+        setAlreadyApplied(true)
       } else {
         const err = await res.json()
         toast.error(err?.error || "Failed to submit application.")
@@ -478,7 +446,24 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                       </div>
                     ) : (
                       <div>
-                        {isSubmitted ? (
+                        {alreadyApplied ? (
+                          <div className="text-center py-8">
+                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                              <CheckCircle className="h-6 w-6 text-yellow-600" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">Already Applied</h3>
+                            <p className="text-gray-600 mb-6">
+                              You have already applied for this job in this session.
+                            </p>
+                            <Button
+                              variant="outline"
+                              className="border-blue-700 text-blue-700 hover:bg-blue-50"
+                              onClick={onClose}
+                            >
+                              Close
+                            </Button>
+                          </div>
+                        ) : isSubmitted ? (
                           <div className="text-center py-8">
                             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
                               <CheckCircle className="h-6 w-6 text-green-600" />

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import {
   Plus,
   Search,
-  Filter,
   MoreHorizontal,
   Edit,
   Trash,
@@ -105,7 +104,7 @@ export default function CareerOpportunities() {
           status: "active",
           postedAt: typeof item.posted_date === "string" ? new Date(item.posted_date).toISOString().split("T")[0] : "",
           closingDate: "",
-          applicants: 0,
+          applicants: typeof item.application_count === "number" ? item.application_count : 0,
           description: typeof item.job_description === "string" ? item.job_description : "",
           requirements: Array.isArray(item.requirements) ? item.requirements as string[] : [],
           responsibilities: Array.isArray(item.responsibilities) ? item.responsibilities as string[] : [],
@@ -263,6 +262,44 @@ export default function CareerOpportunities() {
       fetchOpportunities()
     } else {
       toast.error('Failed to update career opportunity.', {
+        position: 'bottom-right',
+        duration: 5000,
+        style: {
+          border: '1px solid #dc2626',
+          padding: '16px',
+          color: '#dc2626',
+        },
+        iconTheme: {
+          primary: '#dc2626',
+          secondary: '#FEF2F2',
+        },
+      })
+    }
+  }
+
+  async function handleDeleteOpportunity(opportunity: CareerOpportunity) {
+    const res = await fetch("/api/superadmin/careers", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: opportunity.id }),
+    })
+    if (res.ok) {
+      toast.success('Career opportunity deleted!', {
+        position: 'bottom-right',
+        duration: 5000,
+        style: {
+          border: '1px solid #2563eb',
+          padding: '16px',
+          color: '#2563eb',
+        },
+        iconTheme: {
+          primary: '#2563eb',
+          secondary: '#EFF6FF',
+        },
+      })
+      fetchOpportunities()
+    } else {
+      toast.error('Failed to delete career opportunity.', {
         position: 'bottom-right',
         duration: 5000,
         style: {
@@ -459,13 +496,6 @@ export default function CareerOpportunities() {
                         onChange={(e) => setSearchQuery(e.target.value)}
                       />
                     </div>
-                    <Button
-                      variant="outline"
-                      className="flex items-center gap-2 rounded-2xl border-gray-200 h-12 text-base"
-                    >
-                      <Filter className="h-4 w-4" />
-                      Filter
-                    </Button>
                   </div>
                 </div>
                 <Tabs defaultValue="active" onValueChange={setActiveTab}>
@@ -500,6 +530,7 @@ export default function CareerOpportunities() {
                       opportunities={filteredOpportunities}
                       onViewOpportunity={handleViewOpportunity}
                       onEditOpportunity={handleEditOpportunity}
+                      onDeleteOpportunity={handleDeleteOpportunity}
                     />
                   </TabsContent>
                   <TabsContent value="active" className="mt-4">
@@ -507,6 +538,7 @@ export default function CareerOpportunities() {
                       opportunities={filteredOpportunities}
                       onViewOpportunity={handleViewOpportunity}
                       onEditOpportunity={handleEditOpportunity}
+                      onDeleteOpportunity={handleDeleteOpportunity}
                     />
                   </TabsContent>
                   <TabsContent value="closed" className="mt-4">
@@ -514,6 +546,7 @@ export default function CareerOpportunities() {
                       opportunities={filteredOpportunities}
                       onViewOpportunity={handleViewOpportunity}
                       onEditOpportunity={handleEditOpportunity}
+                      onDeleteOpportunity={handleDeleteOpportunity}
                     />
                   </TabsContent>
                   <TabsContent value="draft" className="mt-4">
@@ -521,6 +554,7 @@ export default function CareerOpportunities() {
                       opportunities={filteredOpportunities}
                       onViewOpportunity={handleViewOpportunity}
                       onEditOpportunity={handleEditOpportunity}
+                      onDeleteOpportunity={handleDeleteOpportunity}
                     />
                   </TabsContent>
                 </Tabs>
@@ -791,10 +825,12 @@ function OpportunitiesTable({
   opportunities,
   onViewOpportunity,
   onEditOpportunity,
+  onDeleteOpportunity,
 }: {
   opportunities: CareerOpportunity[]
   onViewOpportunity: (opportunity: CareerOpportunity) => void
   onEditOpportunity: (opportunity: CareerOpportunity) => void
+  onDeleteOpportunity: (opportunity: CareerOpportunity) => void
 }) {
   const [anchorEls, setAnchorEls] = useState<{ [key: number]: HTMLElement | null }>({})
 
@@ -815,7 +851,6 @@ function OpportunitiesTable({
             <MuiTableCell>Department</MuiTableCell>
             <MuiTableCell>Location</MuiTableCell>
             <MuiTableCell>Type</MuiTableCell>
-            <MuiTableCell>Status</MuiTableCell>
             <MuiTableCell>Posted Date</MuiTableCell>
             <MuiTableCell>Applicants</MuiTableCell>
             <MuiTableCell align="right">Actions</MuiTableCell>
@@ -824,7 +859,7 @@ function OpportunitiesTable({
         <MuiTableBody>
           {opportunities.length === 0 ? (
             <MuiTableRow>
-              <MuiTableCell colSpan={8} align="center" className="py-16 text-muted-foreground">
+              <MuiTableCell colSpan={7} align="center" className="py-16 text-muted-foreground">
                 <div className="flex flex-col items-center space-y-4">
                   <Briefcase className="w-16 h-16 text-gray-300" />
                   <p className="text-gray-500 font-semibold text-lg">No career opportunities found</p>
@@ -845,9 +880,6 @@ function OpportunitiesTable({
                 <MuiTableCell>{opportunity.department}</MuiTableCell>
                 <MuiTableCell>{opportunity.location}</MuiTableCell>
                 <MuiTableCell>{getJobTypeLabel(opportunity.type)}</MuiTableCell>
-                <MuiTableCell>
-                  <StatusBadge status={opportunity.status} />
-                </MuiTableCell>
                 <MuiTableCell>{opportunity.postedAt || "Not posted"}</MuiTableCell>
                 <MuiTableCell>{opportunity.applicants}</MuiTableCell>
                 <MuiTableCell align="right">
@@ -893,7 +925,10 @@ function OpportunitiesTable({
                       Edit
                     </MuiMenuItem>
                     <MuiMenuItem
-                      onClick={() => handleMenuClose(opportunity.id)}
+                      onClick={() => {
+                        handleMenuClose(opportunity.id)
+                        onDeleteOpportunity(opportunity)
+                      }}
                       sx={{ color: "#dc2626" }}
                     >
                       <Trash className="mr-2 h-4 w-4" />

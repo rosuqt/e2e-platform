@@ -25,7 +25,7 @@ export async function GET() {
   }
 
   const { data: jobs, error: jobsError } = await supabase
-    .from("registered_jobs")
+    .from("job_postings")
     .select("id, company_id")
     .in("id", jobIds)
 

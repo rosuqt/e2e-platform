@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Search, Filter, Download, MoreHorizontal, Edit, Trash, Archive, Eye, User } from "lucide-react"
+import { Plus, Search,  Download, MoreHorizontal, Edit, Trash, Archive, Eye, User } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -107,7 +107,7 @@ export default function AdminsManagement() {
       const { coordinators } = await res.json()
       if (Array.isArray(coordinators)) {
         setAdminList(
-          coordinators.map((c: Coordinator) => ({
+          coordinators.map((c: Coordinator & { is_archived?: boolean }) => ({
             id: c.id,
             username: c.username,
             name: {
@@ -116,7 +116,7 @@ export default function AdminsManagement() {
               last: c.last_name + (c.suffix && c.suffix !== "none" ? `, ${c.suffix}` : ""),
             },
             department: c.department,
-            status: c.status,
+            status: c.is_archived ? "archived" : c.status,
             createdAt: c.created_at ? c.created_at.split("T")[0] : "",
           }))
         )
@@ -181,19 +181,34 @@ export default function AdminsManagement() {
 
   const handleArchiveAdmin = async (admin: Admin) => {
     const isArchived = admin.status === "archived"
-    const newStatus = isArchived ? "active" : "archived"
+   
     await toast.promise(
-      fetch("/api/superadmin/actions", {
+      fetch("/api/superadmin/actions/isArchived", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: admin.id, status: newStatus }),
-      }).then(res => {
+        body: JSON.stringify({ id: admin.id }),
+      }).then(async res => {
         if (!res.ok) throw new Error()
-        setAdminList(list =>
-          list.map(item =>
-            item.id === admin.id ? { ...item, status: newStatus } : item
-          )
-        )
+        const refreshRes = await fetch("/api/superadmin/fetchUsers")
+        if (refreshRes.ok) {
+          const { coordinators } = await refreshRes.json()
+          if (Array.isArray(coordinators)) {
+            setAdminList(
+              coordinators.map((c: Coordinator & { is_archived?: boolean }) => ({
+                id: c.id,
+                username: c.username,
+                name: {
+                  first: c.first_name,
+                  middle: c.middle_name,
+                  last: c.last_name + (c.suffix && c.suffix !== "none" ? `, ${c.suffix}` : ""),
+                },
+                department: c.department,
+                status: c.is_archived ? "archived" : c.status,
+                createdAt: c.created_at ? c.created_at.split("T")[0] : "",
+              }))
+            )
+          }
+        }
       }),
       {
         loading: isArchived ? "Unarchiving..." : "Archiving...",
@@ -339,8 +354,13 @@ export default function AdminsManagement() {
     setIsEditDialogOpen(false)
   }
 
-  const confirmDeleteAdmin = () => {
+  const confirmDeleteAdmin = async () => {
     if (!selectedAdmin) return
+    await fetch("/api/superadmin/actions/deleteUsers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: selectedAdmin.id, table: "registered_admins" }),
+    })
     const updatedAdmins = adminList.filter((admin) => admin.id !== selectedAdmin.id)
     setAdminList(updatedAdmins)
     setIsDeleteDialogOpen(false)
@@ -600,10 +620,6 @@ export default function AdminsManagement() {
                         onChange={(e) => setSearchQuery(e.target.value)}
                       />
                     </div>
-                    <Button variant="outline" className="flex items-center space-x-2 rounded-2xl border-gray-200 h-12 px-6">
-                      <Filter className="w-5 h-5" />
-                      <span>Filter</span>
-                    </Button>
                   </div>
                   <Button
                     variant="outline"

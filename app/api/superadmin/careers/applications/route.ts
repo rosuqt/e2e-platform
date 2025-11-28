@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Pool } from 'pg'
-import { promises as fs } from 'fs'
-import path from 'path'
+import { getAdminSupabase } from '@/../src/lib/supabase'
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -17,18 +16,44 @@ export async function POST(req: NextRequest) {
   const email = form.get('email') as string
   const country_code = form.get('country_code') as string
   const phone = form.get('phone') as string
-  const cover_letter = form.get('cover_letter') as string
 
-  let resumeUrl: string | null = null
+  let resume_path: string | null = null
+  let cover_letter_path: string | null = null
+
+  const supabase = getAdminSupabase()
+
   const resume = form.get('resume')
   if (resume && typeof resume === 'object' && 'arrayBuffer' in resume) {
     const buffer = Buffer.from(await resume.arrayBuffer())
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'resumes')
-    await fs.mkdir(uploadsDir, { recursive: true })
-    const filename = `${Date.now()}-${resume.name}`
-    const filepath = path.join(uploadsDir, filename)
-    await fs.writeFile(filepath, buffer)
-    resumeUrl = `/uploads/resumes/${filename}`
+    const ext = resume.name.split('.').pop()
+    const safeFirst = first_name.replace(/[^a-zA-Z0-9]/g, "")
+    const safeLast = last_name.replace(/[^a-zA-Z0-9]/g, "")
+    const filename = `${safeFirst}_${safeLast}_RESUME.${ext}`
+    const path = `sti-hiring/${career_id}/resume/${filename}`
+    const { error } = await supabase.storage.from("application.records").upload(path, buffer, {
+      upsert: true,
+      cacheControl: "3600",
+      contentType: resume.type
+    })
+    if (error) throw new Error(error.message)
+    resume_path = filename
+  }
+
+  const coverLetter = form.get('coverLetter')
+  if (coverLetter && typeof coverLetter === 'object' && 'arrayBuffer' in coverLetter) {
+    const buffer = Buffer.from(await coverLetter.arrayBuffer())
+    const ext = coverLetter.name.split('.').pop()
+    const safeFirst = first_name.replace(/[^a-zA-Z0-9]/g, "")
+    const safeLast = last_name.replace(/[^a-zA-Z0-9]/g, "")
+    const filename = `${safeFirst}_${safeLast}_COVERLETTER.${ext}`
+    const path = `sti-hiring/${career_id}/cover_letter/${filename}`
+    const { error } = await supabase.storage.from("application.records").upload(path, buffer, {
+      upsert: true,
+      cacheControl: "3600",
+      contentType: coverLetter.type
+    })
+    if (error) throw new Error(error.message)
+    cover_letter_path = filename
   }
 
   try {
@@ -46,8 +71,8 @@ export async function POST(req: NextRequest) {
         email,
         country_code,
         phone,
-        resumeUrl,
-        cover_letter,
+        resume_path,
+        cover_letter_path,
       ]
     )
     return NextResponse.json({ success: true, application: result.rows[0] }, { status: 201 })

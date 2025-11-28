@@ -206,7 +206,14 @@ export default function StudentsManagement() {
     setIsDeleteDialogOpen(true)
   }
 
-  const confirmDeleteStudent = () => {
+  const confirmDeleteStudent = async () => {
+    if (!selectedStudent) return
+    await fetch("/api/superadmin/actions/deleteUsers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: selectedStudent.id, table: "registered_students" }),
+    })
+    setStudents(students.filter((student) => student.id !== selectedStudent.id))
     setIsDeleteDialogOpen(false)
   }
 

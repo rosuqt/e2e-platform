@@ -65,3 +65,28 @@ export async function PUT(req: NextRequest) {
 
   return NextResponse.json({ success: true })
 }
+
+export async function DELETE(req: NextRequest) {
+  const { id } = await req.json()
+  const { data: rows, error: fetchError } = await supabase
+    .from("sti_careers")
+    .select("id")
+    .order("posted_date", { ascending: false })
+
+  if (fetchError || !rows || !rows[id - 1]) {
+    return NextResponse.json({ error: "Career opportunity not found." }, { status: 404 })
+  }
+
+  const uuid = rows[id - 1].id
+
+  const { error } = await supabase
+    .from("sti_careers")
+    .delete()
+    .eq("id", uuid)
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 })
+  }
+
+  return NextResponse.json({ success: true })
+}
