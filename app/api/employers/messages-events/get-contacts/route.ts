@@ -3,13 +3,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../lib/authOptions";
 import supabase from "@/lib/supabase";
 
+type UserType = { employerId?: string }
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = (session.user as any).employerId ?? session.user.employerId;
+    const user = session.user as UserType
+    const userId = user.employerId ?? (session.user as { employerId?: string }).employerId;
 
     // Fetch only conversations involving the current user
     const { data: conversations, error } = await supabase
@@ -83,9 +86,10 @@ export async function GET() {
     }
 
     return NextResponse.json({ conversations: formatted });
-  } catch (err: any) {
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err)
     console.error("❌ Error fetching conversations:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
 
@@ -96,7 +100,8 @@ export async function POST(req: Request) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = (session.user as any).employerId ?? session.user.employerId;
+    const user = session.user as UserType
+    const userId = user.employerId ?? (session.user as { employerId?: string }).employerId;
 
     if (!conversationId || !content) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
@@ -131,10 +136,11 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, message: newMessage });
-  } catch (err: any) {
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : "Failed to update messages"
     console.error("API Error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to update messages" },
+      { error: errorMsg },
       { status: 500 }
     );
   }

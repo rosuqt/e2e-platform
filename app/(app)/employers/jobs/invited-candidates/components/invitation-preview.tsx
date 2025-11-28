@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useState } from "react"
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Edit3, Send, Building2, User, Star, Mail, Calendar, CheckCircle, XCircle } from "lucide-react"
+import { Edit3, Building2, User, Star, Mail, Calendar, CheckCircle, XCircle } from "lucide-react"
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden"
 import StudentInvitationView from "./student-invitation"
 
@@ -23,6 +24,9 @@ type SentInvitation = {
   companyLogo?: string
   employerName: string
   employerAvatar?: string
+  course?: string
+  year?: string
+  jobTitleRaw?: string
 }
 
 type ViewInviteModalProps = {
@@ -31,10 +35,14 @@ type ViewInviteModalProps = {
   invitation: SentInvitation
   onEdit: () => void
   onResend: () => void
+  onRefresh?: () => void
 }
 
-export default function ViewInviteModal({ open, onClose, invitation, onEdit, onResend }: ViewInviteModalProps) {
+export default function ViewInviteModal({ open, onClose, invitation, onEdit, onRefresh }: ViewInviteModalProps) {
   const [showStudentModal, setShowStudentModal] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
 
   if (!invitation) {
     return null
@@ -62,46 +70,49 @@ export default function ViewInviteModal({ open, onClose, invitation, onEdit, onR
     }
   }
 
-  const mockStudentInvitation = {
-    id: "mock-id",
-    companyName: "Acme Corp",
-    companyLogo: "",
-    employerName: "Jane Doe",
-    employerAvatar: "",
-    employerTitle: "HR Manager",
-    jobTitle: "Frontend Developer",
-    jobLocation: "Remote",
-    jobType: "Full-time",
-    salary: "$80,000 - $100,000",
-    matchScore: 92,
-    message: "We think you'd be a great fit for our team! Looking forward to your application.",
-    companySize: "201-500 employees",
-    benefits: ["Health Insurance", "Remote Work", "Stock Options"],
-    requirements: ["React", "TypeScript", "3+ years experience"],
-    receivedDate: "2024-06-01",
+  const studentInvitation = {
+    id: invitation.id,
+    companyName: invitation.companyName,
+    companyLogo: invitation.companyLogo,
+    employerName: invitation.employerName,
+    employerAvatar: invitation.employerAvatar,
+    employerTitle: "",
+    jobTitle: invitation.jobTitle,
+    jobLocation: "",
+    jobType: "",
+    salary: undefined,
+    matchScore: invitation.matchScore,
+    message: invitation.message, 
+    companySize: "",
+    benefits: [],
+    requirements: [],
+    receivedDate: invitation.sentDate,
   }
 
-  const studentInvitation =
-    invitation && invitation.id
-      ? {
-          id: invitation.id,
-          companyName: invitation.companyName,
-          companyLogo: invitation.companyLogo,
-          employerName: invitation.employerName,
-          employerAvatar: invitation.employerAvatar,
-          employerTitle: "",
-          jobTitle: invitation.jobTitle,
-          jobLocation: "",
-          jobType: "",
-          salary: undefined,
-          matchScore: invitation.matchScore,
-          message: invitation.message,
-          companySize: "",
-          benefits: [],
-          requirements: [],
-          receivedDate: invitation.sentDate,
-        }
-      : mockStudentInvitation
+  async function handleCancelInvitation() {
+    setIsCancelling(true)
+    setCancelError(null)
+    try {
+      const res = await fetch("/api/employers/invitedCandidates/actionsInvites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "remove", invitationId: invitation.id }),
+      })
+      const result = await res.json()
+      if (!result.success) {
+        setCancelError(result.error || "Failed to cancel invitation")
+        setIsCancelling(false)
+        return
+      }
+      setIsCancelling(false)
+      setShowCancelModal(false)
+      onClose()
+      if (onRefresh) onRefresh()
+    } catch (e: any) {
+      setCancelError(e.message || "Failed to cancel invitation")
+      setIsCancelling(false)
+    }
+  }
 
   return (
     <>
@@ -120,16 +131,7 @@ export default function ViewInviteModal({ open, onClose, invitation, onEdit, onR
                     <h2 className="text-2xl font-bold text-gray-900">Invitation Details</h2>
                     <p className="text-gray-600">Manage your sent invitation</p>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowStudentModal(true)}
-                    >
-                      <Mail className="h-4 w-4 mr-1" />
-                      Preview as Student
-                    </Button>
-                  </div>
+ 
                 </div>
 
                 <Card>
@@ -168,6 +170,15 @@ export default function ViewInviteModal({ open, onClose, invitation, onEdit, onR
                           <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                           <span className="text-sm text-green-600 font-medium">{invitation.matchScore}% match</span>
                         </div>
+                        {/* Show course and year here */}
+                        <div className="mt-2">
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Course:</span> {invitation.course || ""}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Year:</span> {invitation.year || ""}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -182,11 +193,7 @@ export default function ViewInviteModal({ open, onClose, invitation, onEdit, onR
                     <div className="space-y-2">
                       <div>
                         <label className="text-sm text-gray-600">Job Title</label>
-                        <p className="font-medium">{invitation.jobTitle}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-600">Company</label>
-                        <p className="font-medium">{invitation.companyName}</p>
+                        <p className="font-medium">{invitation.jobTitle || invitation.jobTitleRaw || ""}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -206,9 +213,12 @@ export default function ViewInviteModal({ open, onClose, invitation, onEdit, onR
                     <Edit3 className="h-4 w-4 mr-2" />
                     Edit & Resend
                   </Button>
-                  <Button onClick={onResend} className="flex-1">
-                    <Send className="h-4 w-4 mr-2" />
-                    Resend Invitation
+                  <Button
+                    onClick={() => setShowCancelModal(true)}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancel Invitation
                   </Button>
                 </div>
               </div>
@@ -284,6 +294,36 @@ export default function ViewInviteModal({ open, onClose, invitation, onEdit, onR
             </button>
           </div>
         </div>
+      )}
+      {showCancelModal && (
+        <Dialog open={showCancelModal} onOpenChange={() => setShowCancelModal(false)}>
+          <DialogContent className="max-w-md">
+            <DialogTitle>Cancel Invitation</DialogTitle>
+            <div className="mt-2 text-gray-700">
+              Are you sure you want to cancel this invitation? This action cannot be undone.
+            </div>
+            {cancelError && (
+              <div className="mt-2 text-red-600 text-sm">{cancelError}</div>
+            )}
+            <div className="flex gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowCancelModal(false)}
+                disabled={isCancelling}
+                className="flex-1"
+              >
+                Keep Invitation
+              </Button>
+              <Button
+                onClick={handleCancelInvitation}
+                disabled={isCancelling}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isCancelling ? "Cancelling..." : "Cancel Invitation"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   )

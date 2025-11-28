@@ -76,6 +76,7 @@ type Applicant = {
   work_type?: string
   remote_options?: string
   perks_and_benefits?: string[]
+  gpt_score?: number
 }
 
 type InterviewSchedule = {
@@ -135,14 +136,43 @@ export default function EmployeeDashboard() {
   const [sortBy, setSortBy] = useState<"date" | "match" | "job" | "year" | "course">("date")
 
 
-  const candidateMatches = [
-    { name: "Alice Brown", position: "Backend Developer", match: 96 },
-    { name: "John Doe", position: "UI/UX Designer", match: 92 },
-    { name: "Jane Smith", position: "DevOps Engineer", match: 89 },
-    { name: "Linda Lee", position: "Mobile Developer", match: 88 },
-    { name: "Tom White", position: "Cloud Architect", match: 91 },
-    { name: "Nina Gupta", position: "Data Scientist", match: 93 },
-  ]
+  const [candidateMatches, setCandidateMatches] = useState<
+    { name: string; position: string; match: number; profile_img_url?: string }[]
+  >([]);
+
+  const { data: session } = useSession()
+  const employerId = session?.user?.employerId
+
+  useEffect(() => {
+    async function fetchCandidateMatches() {
+      if (!employerId) {
+        setCandidateMatches([]);
+        return;
+      }
+      const res = await fetch("/api/ai-matches/fetch-current-candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employer_id: employerId }),
+      });
+      const data = await res.json();
+      const truncate = (str: string, n = 32) =>
+        typeof str === "string" && str.length > n ? str.slice(0, n - 1) + "…" : str;
+      if (Array.isArray(data.candidates)) {
+        setCandidateMatches(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          data.candidates.map((c: any) => ({
+            name: `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Unknown",
+            position: truncate(c.job_title ?? "", 32),
+            match: typeof c.gpt_score === "number" ? Math.round(c.gpt_score) : 0,
+            profile_img_url: c.profile_img_url,
+          }))
+        );
+      } else {
+        setCandidateMatches([]);
+      }
+    }
+    fetchCandidateMatches();
+  }, [employerId])
 
   const fetchApplicants = async () => {
     setLoadingApplicants(true)
@@ -224,7 +254,9 @@ export default function EmployeeDashboard() {
                   : app.applied_at
                     ? new Date(app.applied_at as string).toLocaleDateString()
                     : "",
-              match: (app.match_score as number) || 90,
+              match: typeof app.gpt_score === "number"
+                ? Math.round(app.gpt_score)
+                : (app.match_score as number) || 90,
               email: (app.email as string) || "",
               phone: (app.phone as string) || "",
               education: Array.isArray(app.education)
@@ -265,6 +297,7 @@ export default function EmployeeDashboard() {
               work_type: app.work_type as string | undefined,
               remote_options: app.remote_options as string | undefined,
               perks_and_benefits: Array.isArray(app.perks_and_benefits) ? app.perks_and_benefits : undefined,
+              gpt_score: app.gpt_score as number | undefined,
             }
           })
         )
@@ -409,9 +442,6 @@ export default function EmployeeDashboard() {
 
   const [agenda, setAgenda] = useState<InterviewSchedule[]>([])
   const [agendaLoading, setAgendaLoading] = useState(true)
-  const { data: session } = useSession()
-  // @ts-expect-error employerId is added to the session.user by NextAuth callback
-  const employerId = session?.user?.employerId
 
   const [selectedInterview, setSelectedInterview] = useState<InterviewSchedule | null>(null)
   const [interviewModalOpen, setInterviewModalOpen] = useState(false)
@@ -1004,25 +1034,45 @@ export default function EmployeeDashboard() {
                   <div className="flex flex-col items-center">
                     <h3 className="text-lg font-medium text-white mb-4">Candidate Matches for You</h3>
                     <div className="grid grid-cols-3 gap-3 justify-center">
-                      {candidateMatches.slice(0, 6).map((candidate, index) => (
-                        <motion.div
-                          key={index}
-                          className="flex flex-col justify-between p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-colors min-h-[72px]"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.3, delay: 0.05 * index }}
-                        >
-                          <div>
-                            <h4 className="text-sm font-medium text-white">{candidate.name}</h4>
-                            <p className="text-xs text-blue-200">{candidate.position}</p>
-                          </div>
-                          <div className="text-sm font-medium text-yellow-400 mt-2">{candidate.match}%</div>
-                        </motion.div>
-                      ))}
+                      {candidateMatches.length === 0 ? (
+                        <div className="col-span-3 flex flex-col items-center justify-center py-8">
+                          <RiUserSearchFill className="h-10 w-10 text-blue-300 mb-2" />
+                          <span className="text-blue-200 text-sm font-medium">No candidate matches found</span>
+                        </div>
+                      ) : (
+                        candidateMatches.slice(0, 6).map((candidate, index) => (
+                          <motion.div
+                            key={index}
+                            className="flex flex-col justify-between p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-colors min-h-[72px]"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: 0.05 * index }}
+                          >
+                            <div className="flex items-center gap-2">
+                              {candidate.profile_img_url ? (
+                                <Avatar
+                                  src={candidate.profile_img_url}
+                                  className="h-8 w-8"
+                                />
+                              ) : (
+                                <Avatar className="h-8 w-8" />
+                              )}
+                              <div>
+                                <h4 className="text-sm font-medium text-white">{candidate.name}</h4>
+                                <p className="text-xs text-blue-200">
+                                  Matched to {candidate.position || "Unknown Job"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-sm font-medium text-yellow-400 mt-2">{candidate.match}%</div>
+                          </motion.div>
+                        ))
+                      )}
                     </div>
                     <div className="flex justify-end w-full mt-3">
-                      <button type="button" className="text-blue-200 hover:text-white text-sm font-medium px-2 py-1 bg-transparent border-none cursor-pointer">
+                      <button type="button" onClick={() => router.push("/employers/jobs/candidate-matches")} className="text-blue-200 hover:text-white text-sm font-medium px-2 py-1 bg-transparent border-none cursor-pointer">
                         View More
+                        
                       </button>
                     </div>
                   </div>

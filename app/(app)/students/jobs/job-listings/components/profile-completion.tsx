@@ -10,7 +10,6 @@ import { Progress } from "@/components/ui/progress"
 
 export default function ProfileCompletion() {
   const [studentName, setStudentName] = useState<string | null>(null)
-  const [course, setCourse] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [completion, setCompletion] = useState({
     basic: false,
@@ -27,7 +26,6 @@ export default function ProfileCompletion() {
       setLoading(true)
       let first_name: string | null = null
       let last_name: string | null = null
-      let course: string | null = null
       try {
         const detailsRes = await fetch("/api/students/get-student-details", {
           credentials: "include",
@@ -36,16 +34,13 @@ export default function ProfileCompletion() {
           const details = await detailsRes.json()
           first_name = details.first_name ?? null
           last_name = details.last_name ?? null
-          course = details.course ?? null
           setStudentName(
             first_name && last_name
               ? `${first_name} ${last_name}`
               : first_name || last_name || null
           )
-          setCourse(course || null)
         } else {
           setStudentName(null)
-          setCourse(null)
         }
 
         const profileRes = await fetch("/api/students/student-profile/getHandlers", {
@@ -80,7 +75,6 @@ export default function ProfileCompletion() {
         }
       } catch {
         setStudentName(null)
-        setCourse(null)
         setCompletion({ basic: false, achievements: false, resume: false, skills: false, portfolio: false, percent: 0 })
       }
       setLoading(false)

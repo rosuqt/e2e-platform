@@ -85,7 +85,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, created: true, application: inserted }, { status: 201 })
-  } catch (e: any) {
-    return NextResponse.json({ success: false, message: "Invalid request", details: e?.message ?? "" }, { status: 400 })
+  } catch (e: unknown) {
+    const message = typeof e === "object" && e !== null && "message" in e ? (e as { message?: string }).message ?? "" : ""
+    return NextResponse.json({ success: false, message: "Invalid request", details: message }, { status: 400 })
   }
 }

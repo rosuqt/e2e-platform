@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronRight, LogOut, Settings, User, Palette, AlertCircle } from "lucide-react"
+import { ChevronRight, LogOut, Settings,  AlertCircle, Calendar } from "lucide-react"
 import { Avatar } from "@mui/material"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { HiBadgeCheck } from "react-icons/hi"
-import { LuBadgeCheck } from "react-icons/lu"
+import { LuBadgeCheck, LuSquareActivity } from "react-icons/lu"
 import { PiWarningFill } from "react-icons/pi"
 import Tooltip from "@mui/material/Tooltip"
 
@@ -118,7 +118,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem(sessionAvatarKey)
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem(sessionAvatarKey)
           }
           setLoading(false)
@@ -132,7 +133,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           const name =
             first_name && last_name
               ? `${first_name} ${last_name}`
-              : ""
+              : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
           setUserType("student")
@@ -160,7 +161,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem(sessionAvatarKey)
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem(sessionAvatarKey)
           }
           setLoading(false)
@@ -213,7 +215,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem("profileModalUserAvatar")
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem("profileModalUserAvatar")
           }
           setLoading(false)
@@ -227,7 +230,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           const name =
             first_name && last_name
               ? `${first_name} ${last_name}`
-              : ""
+              : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
           setUserType("student")
@@ -255,7 +258,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem("profileModalUserAvatar")
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem("profileModalUserAvatar")
           }
           setLoading(false)
@@ -282,6 +286,20 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     router.push("/students/settings")
     onClose()
   }
+  const handleActivityLogClick = async () => {
+    await router.prefetch("/students/profile?tab=activity-tab")
+    router.push("/students/profile?tab=activity-tab")
+    onClose()
+  }
+  const handleCalendarClick = async () => {
+    const calendarPath =
+      userType === "employer"
+        ? "/employers/calendar"
+        : "/students/calendar"
+    await router.prefetch(calendarPath)
+    router.push(calendarPath)
+    onClose()
+  }
 
   const handleLogoutClick = async () => {
     sessionStorage.clear()
@@ -295,9 +313,9 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   }
 
   const menuItems = [
-    { id: "profile", label: "Profile", icon: User, onClick: handleProfileClick },
+    { id: "calendar", label: "Calendar", icon: Calendar, onClick: handleCalendarClick },
     { id: "settings", label: "Settings", icon: Settings, onClick: handleSettingsClick },
-    { id: "theme", label: "Theme", icon: Palette, badge: "7" },
+    { id: "theme", label: "Activity Log", icon: LuSquareActivity , onClick: handleActivityLogClick },
     { id: "report", label: "Report a bug", icon: AlertCircle },
   ]
 
@@ -323,7 +341,11 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               <h3 className="text-lg font-medium text-gray-800">Account</h3>
             </div>
 
-            <div className="p-4 flex items-center space-x-3 border-b border-gray-100">
+            <div
+              className="p-4 flex items-center space-x-3 border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition"
+              onClick={loading ? undefined : handleProfileClick}
+              style={loading ? { cursor: "default", opacity: 0.7 } : undefined}
+            >
               {loading ? (
                 <div className="animate-pulse flex items-center space-x-3 w-full">
                   <div className="rounded-full bg-gray-200" style={{ width: 48, height: 48 }} />
@@ -335,7 +357,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               ) : (
                 <>
                   <Avatar
-                    src={dbAvatar || "/placeholder.svg"}
+                    src={dbAvatar || (userType === "student" ? user.avatarUrl : undefined) || "/placeholder.svg"}
                     alt={dbName}
                     sx={{ width: 48, height: 48, border: "2px solid #bbdefb" }}
                   >
@@ -424,11 +446,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                       </div>
                       <span className="ml-3 text-gray-700">{item.label}</span>
                     </div>
-                    {item.badge ? (
-                      <span className="bg-blue-100 text-blue-600 text-xs rounded-full px-2 py-0.5">{item.badge}</span>
-                    ) : (
-                      <ChevronRight size={16} className="text-gray-400" />
-                    )}
+                    <ChevronRight size={16} className="text-gray-400" />
                   </button>
                 )
               })}

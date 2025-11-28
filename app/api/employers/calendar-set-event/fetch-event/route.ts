@@ -12,8 +12,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const employerId =
-      (session.user as any).employerId ?? (session.user as any).id;
+    type EmployerUser = { employerId?: string; id?: string };
+    const user = session.user as EmployerUser;
+    const employerId = user.employerId ?? user.id;
 
     const { data, error } = await supabase
       .from("employer_calendar")
@@ -24,7 +25,10 @@ export async function GET() {
     if (error) throw error;
 
     return NextResponse.json({ success: true, events: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 }
+    );
   }
 }

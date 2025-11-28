@@ -118,12 +118,12 @@ export const authOptions: NextAuthOptions = {
           let lastName = ""
           if (u.name) {
             const nameNoParen = u.name.replace(/\(.*?\)/g, "").trim()
-            const parts = nameNoParen.split(",")
-            if (parts.length === 2) {
-              lastName = parts[0].trim()
-              firstName = parts[1].trim()
+            if (nameNoParen.includes(",")) {
+              const [last, ...firstParts] = nameNoParen.split(",")
+              firstName = firstParts.join(",").trim()
+              lastName = last.trim()
             } else {
-              firstName = nameNoParen.trim()
+              firstName = nameNoParen
               lastName = ""
             }
           }

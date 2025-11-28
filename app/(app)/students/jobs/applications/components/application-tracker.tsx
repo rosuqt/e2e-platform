@@ -250,13 +250,8 @@ export default function ApplicationTrackerNoSidebar() {
     toast.info("View company for application " + menuCardId)
     handleMenuClose()
   }
-  const handleCopyLink = () => {
-    if (menuCardId) {
-      navigator.clipboard.writeText(window.location.href + "?application=" + menuCardId)
-      toast.success("Link copied!")
-    }
-    handleMenuClose()
-  }
+
+
 
   const menuIsPending = useMemo(() => {
     if (!menuCardId || !applicationsData) return false
@@ -1927,7 +1922,6 @@ function generateApplicationCards(
             {shouldHighlight && (
               <motion.div
                 className="absolute inset-0 pointer-events-none"
-               
                 initial={{
                   x: "-100%",
                   background:
@@ -1938,7 +1932,6 @@ function generateApplicationCards(
               />
             )}
 
-            {/* header section */}
             <div className="flex justify-between items-start relative">
               <div className="flex gap-3">
                 <div
@@ -1946,7 +1939,9 @@ function generateApplicationCards(
                     index % 2 === 0 ? "bg-blue-600" : index % 3 ===  0 ? "bg-green-600" : "bg-purple-600"
                   }`}
                 >
-                  {logoUrls && logoUrls[logicalIdForCard] ? (
+                  {logoUrls && logoUrls[logicalIdForCard] === undefined ? (
+                    <span className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></span>
+                  ) : logoUrls && logoUrls[logicalIdForCard] ? (
                     <Image
                       src={logoUrls[logicalIdForCard] as string}
                       alt="Company logo"

@@ -52,7 +52,7 @@ interface Conversation {
   userID: string
 }
 
-export default function MessageInterface({conversationId, messages}: any) {
+export default function MessageInterface() {
   const [active, setActive] = useState<"contacts" | "messages">("messages");
   const [students, setStudents] = useState<Contacts[]>([]);
   const [employers, setEmployers] = useState<Contacts[]>([]);
@@ -79,10 +79,7 @@ export default function MessageInterface({conversationId, messages}: any) {
   }, []);
 
   //STARTING CONVO
-  const [loading, setLoading] = useState(false)
-  const handleClick = async (chosenUserId: any) => {
-      setLoading(true)
-
+  const handleClick = async (chosenUserId: number) => {
       const res = await fetch('/api/employers/messages-events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,11 +95,9 @@ export default function MessageInterface({conversationId, messages}: any) {
         console.log(result.data)
       } else {
         setActive("messages");
-        setActiveConversation(chosenUserId);
+        setActiveConversation(chosenUserId.toString());
         getConversations();
       }
-
-      setLoading(false)
     }
 
   //FETCH CONVERSATIONS
@@ -119,8 +114,6 @@ export default function MessageInterface({conversationId, messages}: any) {
         console.log(data);
       } catch (err) {
         console.error("❌ Error fetching conversations:", err);
-      } finally {
-        setLoading(false);
       }
     }
     fetchConversations();
@@ -128,14 +121,13 @@ export default function MessageInterface({conversationId, messages}: any) {
 
   useEffect(() => { getConversations() }, []);
 
-  const [activeConversation, setActiveConversation] = useState<any>(null);
+  const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const activeConvo = conversations.find((c) => c.id === activeConversation);
   
   //SENDING MESSAGE
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const [chatMessages, setChatMessages] = useState(messages || []);
-  const handleSendMessage = async (conversationId: string) => {
+  const handleSendMessage = async (convId: string) => {
     if (!message.trim()) return;
     setSending(true);
 
@@ -143,12 +135,11 @@ export default function MessageInterface({conversationId, messages}: any) {
       const res = await fetch("/api/employers/messages-events/get-contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId, content: message }),
+        body: JSON.stringify({ conversationId: convId, content: message }),
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
-        setChatMessages((prev: any) => [...prev, data.message]);
         setMessage("");
       } else {
         console.error("❌ API Error:", data.error);
@@ -261,7 +252,7 @@ export default function MessageInterface({conversationId, messages}: any) {
             {/* Collapsible Content */}
             {isOpenS && (
               <div className="mt-1 space-y-1">
-              {students.map((s: any) => (
+              {students.map((s) => (
             <div
               key={s.id}
               className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}
@@ -306,7 +297,7 @@ export default function MessageInterface({conversationId, messages}: any) {
             {isOpenE && (
               <div className="mt-1 space-y-1">
                 
-              {employers.map((e: any) => (
+              {employers.map((e) => (
             <div
               key={e.id}
               className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}
@@ -350,7 +341,7 @@ export default function MessageInterface({conversationId, messages}: any) {
             {/* Collapsible Content */}
             {isOpenA && (
               <div className="mt-1 space-y-1">
-              {admins.map((a: any) => (
+              {admins.map((a) => (
             <div
               key={a.id}
               className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}

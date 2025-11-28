@@ -82,7 +82,7 @@ export default function UploadFileModal({
     if (!file) return;
     if (uploadedFiles.length >= MAX_FILES) return;
     setUploading(true);
-    const studentId = (session?.user as { studentId?: string })?.studentId;
+    const studentId = (session?.user as { studentId?: string })?.studentId || "student_001";
     const fileType = header?.toLowerCase().includes("cover") ? "cover_letter" : "resume";
 
     if (studentId) {
@@ -98,6 +98,11 @@ export default function UploadFileModal({
       if (response.ok) {
         onUpload?.(file);
         await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        });
+        await fetch("/api/ai-matches/rescore", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ student_id: studentId }),

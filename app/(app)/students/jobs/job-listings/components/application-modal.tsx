@@ -92,11 +92,13 @@ import { TbFileLike } from "react-icons/tb"
 export function ApplicationModal({
   onClose,
   jobId,
-  
+  jobTitle,
+  gpt_score
 }: {
   onClose: () => void;
   jobId: string;
   jobTitle: string;
+  gpt_score: number;
 }) {
   console.log("ApplicationModal initialized for jobId:", jobId)
 
@@ -153,12 +155,14 @@ export function ApplicationModal({
   const [writingCover, setWritingCover] = useState(false)
   const [coverText, setCoverText] = useState("")
   const [rememberDetails, setRememberDetails] = useState(false)
+  const [saveAddress, setSaveAddress] = useState(false)
+  const [savePhone, setSavePhone] = useState(false)
 
   useEffect(() => {
     setLoadingStudent(true)
     fetch("/api/students/get-student-details")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: StudentDetails & { address?: string[] | string }) => {
+      .then((data: StudentDetails & { address?: string[] | string, country?: string, city?: string }) => {
         let addressArr: string[] = []
         if (Array.isArray(data?.address)) {
           addressArr = data.address
@@ -169,6 +173,69 @@ export function ApplicationModal({
             addressArr = []
           }
         }
+        const countryMap: Record<string, string> = {
+          "Philippines": "PH",
+          "United States": "US",
+          "Canada": "CA",
+          "Australia": "AU",
+          "United Kingdom": "GB",
+          "Germany": "DE",
+          "France": "FR",
+          "Japan": "JP",
+          "China": "CN",
+          "India": "IN",
+          "Singapore": "SG",
+          "South Korea": "KR",
+          "Italy": "IT",
+          "Spain": "ES",
+          "Brazil": "BR",
+          "Mexico": "MX",
+          "Russia": "RU",
+          "Netherlands": "NL",
+          "Sweden": "SE",
+          "Norway": "NO",
+          "Denmark": "DK",
+          "Finland": "FI",
+          "Switzerland": "CH",
+          "New Zealand": "NZ",
+          "South Africa": "ZA",
+          "Ireland": "IE",
+          "Belgium": "BE",
+          "Austria": "AT",
+          "Turkey": "TR",
+          "Indonesia": "ID",
+          "Malaysia": "MY",
+          "Thailand": "TH",
+          "Vietnam": "VN",
+          "Saudi Arabia": "SA",
+          "United Arab Emirates": "AE",
+          "Pakistan": "PK",
+          "Bangladesh": "BD",
+          "Egypt": "EG",
+          "Argentina": "AR",
+          "Chile": "CL",
+          "Colombia": "CO",
+          "Poland": "PL",
+          "Portugal": "PT",
+          "Greece": "GR",
+          "Czech Republic": "CZ",
+          "Hungary": "HU",
+          "Romania": "RO",
+          "Israel": "IL",
+          "Ukraine": "UA"
+        }
+        let countryValue = ""
+        if (typeof data.country === "string" && data.country) {
+          countryValue = data.country
+        } else if (addressArr[0]) {
+          countryValue = countryMap[addressArr[0]] || addressArr[0]
+        }
+        let cityValue = ""
+        if (typeof data.city === "string" && data.city) {
+          cityValue = data.city
+        } else if (addressArr[1]) {
+          cityValue = addressArr[1]
+        }
         if (data) {
           setStudent(data)
           let formattedPhone = ""
@@ -176,8 +243,12 @@ export function ApplicationModal({
             if (data.contact_info.phone.length > 1) {
               formattedPhone = `+${data.contact_info.phone[0]} ${data.contact_info.phone[1]}`
             } else if (data.contact_info.phone.length === 1) {
-              formattedPhone = data.contact_info.phone[0]
+              formattedPhone = `+${data.contact_info.phone[0]}`
             }
+          } else if (typeof data.contact_info?.phone === "string" && data.contact_info.phone) {
+            formattedPhone = data.contact_info.phone
+          } else {
+            formattedPhone = "+63 "
           }
           setForm((prev: ApplicationForm) => ({
             ...prev,
@@ -185,8 +256,8 @@ export function ApplicationModal({
             last_name: data.last_name || "",
             email: data.email || (Array.isArray(data.contact_info?.email) ? data.contact_info.email[0] ?? "" : ""),
             phone: formattedPhone,
-            country: addressArr[0] || "",
-            city: addressArr[1] || "",
+            country: countryValue,
+            city: cityValue,
           }))
         }
         setLoadingStudent(false)
@@ -213,8 +284,12 @@ export function ApplicationModal({
         if (student.contact_info.phone.length > 1) {
           formattedPhone = `+${student.contact_info.phone[0]} ${student.contact_info.phone[1]}`
         } else if (student.contact_info.phone.length === 1) {
-          formattedPhone = student.contact_info.phone[0]
+          formattedPhone = `+${student.contact_info.phone[0]}`
         }
+      } else if (typeof student.contact_info?.phone === "string" && student.contact_info.phone) {
+        formattedPhone = student.contact_info.phone
+      } else {
+        formattedPhone = "+63 "
       }
       setForm((prev: ApplicationForm) => ({
         ...prev,
@@ -353,8 +428,29 @@ export function ApplicationModal({
         portfolio: form.portfolio,
         achievements: form.achievements,
         rememberDetails,
+        saveAddress,
       }),
     });
+    if (saveAddress && student?.id && form.country && form.city) {
+      await fetch("/api/students/update-address", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: student.id,
+          address: [form.country, form.city],
+        }),
+      });
+    }
+    if (savePhone && student?.id && form.phone) {
+      await fetch("/api/students/update-phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: student.id,
+          phone: form.phone,
+        }),
+      });
+    }
     setSubmitting(false);
     setShowSuccess(true);
     setTimeout(() => {
@@ -612,7 +708,7 @@ export function ApplicationModal({
               </div>
               <h2 className="text-2xl font-bold text-blue-700 mb-2">Application Submitted!</h2>
               <p className="text-gray-600 text-sm text-center mb-6 max-w-xs">
-                Wow you applied for  ! Your application has been successfully submitted. You can view the status of your applications at any time.
+                Wow you applied for {jobTitle} ! Your application has been successfully submitted. You can view the status of your applications at any time.
               </p>
               <div className="flex gap-3">
                 <Button
@@ -644,17 +740,45 @@ export function ApplicationModal({
             <>
               {step === 1 && (
                 <div className="space-y-4">
-                  <div className="rounded-lg border p-4 bg-green-50">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-green-700">Your profile is a good match!</p>
-                        <p className="text-xs text-green-600 mt-1">
-                          Based on your skills and experience, you appear to be a strong candidate for this position.
-                        </p>
+                  {gpt_score >= 60 && (
+                    <div className="rounded-lg border p-4 bg-green-50">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-green-700">Your profile is a good match!</p>
+                          <p className="text-xs text-green-600 mt-1">
+                            Based on your skills and experience, you appear to be a strong candidate for this position.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
+                  {gpt_score >= 25 && gpt_score < 60 && (
+                    <div className="rounded-lg border p-4 bg-orange-50">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-orange-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-orange-700">Your profile is a partial match.</p>
+                          <p className="text-xs text-orange-600 mt-1">
+                            You meet some of the requirements for this position. Consider highlighting relevant skills and experience in your application.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {gpt_score < 25 && (
+                    <div className="rounded-lg border p-4 bg-red-50">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-red-700">Your profile is not a strong match.</p>
+                          <p className="text-xs text-red-600 mt-1">
+                            You do not meet most requirements for this position. You can still apply, but consider updating your profile or gaining more relevant experience.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <h4 className="font-medium text-lg text-blue-700">Personal Information</h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -713,26 +837,34 @@ export function ApplicationModal({
                         Phone <span className="text-red-500">*</span>
                       </label>
                       <div className="flex items-center gap-2">
-                        {Array.isArray(student?.contact_info?.phone) && student.contact_info.phone.length > 1 ? (
+                        {true ? (
                           <>
                             <TextField
                               label="Country Code"
                               variant="outlined"
                               size="small"
-                              value={`+${student.contact_info.phone[0]}`}
-                              disabled
+                              value={form.phone.startsWith("+") ? form.phone.split(" ")[0] : "+63"}
+                              onChange={e => {
+                                const code = e.target.value.replace(/[^+\d]/g, "")
+                                const rest = form.phone.replace(/^(\+\d+\s*)/, "")
+                                setForm(prev => ({
+                                  ...prev,
+                                  phone: `${code} ${rest}`
+                                }))
+                              }}
                               sx={{ width: 80 }}
                             />
                             <TextField
                               label=""
                               variant="outlined"
                               size="small"
-                              value={student.contact_info.phone[1]}
-                              onChange={(e) => {
-                                const newPhone = e.target.value
-                                setForm((prev) => ({
+                              value={form.phone.replace(/^(\+\d+\s*)/, "")}
+                              onChange={e => {
+                                const newPhone = e.target.value.replace(/[^\d]/g, "")
+                                const code = form.phone.startsWith("+") ? form.phone.split(" ")[0] : "+63"
+                                setForm(prev => ({
                                   ...prev,
-                                  phone: `+${student.contact_info!.phone![0]} ${newPhone}`
+                                  phone: `${code} ${newPhone}`
                                 }))
                               }}
                               fullWidth
@@ -750,42 +882,60 @@ export function ApplicationModal({
                           />
                         )}
                       </div>
+                      <div className="flex items-center mt-2">
+                        <Switch
+                          checked={savePhone}
+                          onChange={(_, checked) => setSavePhone(checked)}
+                          size="small"
+                          color="primary"
+                        />
+                        <span className="ml-2 text-xs">Save for next time</span>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Country <span className="text-red-500">*</span>
+                        Country
                       </label>
-                      <Select
-                        label="Country"
-                        value={form.country}
-                        onChange={e => {
-                          handleChange("country", e.target.value)
-                          handleChange("city", "")
-                          setCityInput("")
-                        }}
-                        fullWidth
-                        size="small"
-                        disabled={loadingCountries}
-                        sx={{ mb: 1, fontSize: 14 }}
-                        MenuProps={{
-                          PaperProps: {
-                            style: {
-                              maxHeight: 400,
-                              overflowY: 'auto',
+                      <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+                        <Select
+                          label="Country"
+                          value={form.country}
+                          onChange={e => {
+                            handleChange("country", e.target.value)
+                            handleChange("city", "")
+                            setCityInput("")
+                          }}
+                          fullWidth
+                          size="small"
+                          disabled={loadingCountries}
+                          sx={{ fontSize: 14 }}
+                          MenuProps={{
+                            PaperProps: {
+                              style: {
+                                maxHeight: 600,
+                                overflowY: 'auto',
+                              },
                             },
-                          },
-                          disablePortal: false,
-                        }}
-                      >
-                        <MenuItem value="" disabled>Select country...</MenuItem>
-                        {countries.map(c => (
-                          <MenuItem key={c.code} value={c.name}>{c.name}</MenuItem>
-                        ))}
-                      </Select>
+                            anchorOrigin: {
+                              vertical: "bottom",
+                              horizontal: "left"
+                            },
+                            transformOrigin: {
+                              vertical: "top",
+                              horizontal: "left"
+                            }
+                          }}
+                        >
+                          <MenuItem value="" disabled>Select country...</MenuItem>
+                          {countries.map(c => (
+                            <MenuItem key={c.code} value={c.code}>{c.name}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        City <span className="text-red-500">*</span>
+                        City
                       </label>
                       <div ref={cityFieldRef}>
                         <TextField
@@ -834,6 +984,15 @@ export function ApplicationModal({
                         )}
                       </div>
                     </div>
+                  </div>
+                  <div className="flex items-center mt-2">
+                    <Switch
+                      checked={saveAddress}
+                      onChange={(_, checked) => setSaveAddress(checked)}
+                      size="small"
+                      color="primary"
+                    />
+                    <span className="ml-2 text-xs">Save for next time</span>
                   </div>
                 </div>
               )}
@@ -1565,9 +1724,7 @@ export function ApplicationModal({
                           !form.first_name.trim() ||
                           !form.last_name.trim() ||
                           !form.email.trim() ||
-                          !form.phone.trim() ||
-                          !form.country.trim() ||
-                          !form.city.trim()
+                          !form.phone.trim()
                         )
                       ) ||
                       (step === 2 &&

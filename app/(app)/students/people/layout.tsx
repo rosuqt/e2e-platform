@@ -11,11 +11,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const [friendRequestCount, setFriendRequestCount] = useState<number>(0);
+
+  useEffect(() => {
+    async function fetchCount() {
+      try {
+        const res = await fetch("/api/students/people/fetchRequest");
+        if (res.ok) {
+          const data = await res.json();
+          setFriendRequestCount(Array.isArray(data) ? data.length : data.length ?? 0);
+        }
+      } catch {}
+    }
+    fetchCount();
+  }, []);
 
   const menuItems = useMemo(
     () => [
       { icon: TbUserStar, text: "Suggestions", href: "/students/people/suggestions" },
-      { icon: TbUserHeart, text: "Connections", href: "/students/people/connections" },
+      {
+        icon: TbUserHeart,
+        text: "Connections",
+        href: "/students/people/connections",
+      },
       { icon: TbUserCheck, text: "Following", href: "/students/people/following" },
       { icon: BsBuildingCheck, text: "Companies", href: "/students/people/companies" },
     ],
@@ -53,6 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ...item,
             isActive: pathname === item.href,
           }))}
+          friendRequestCount={friendRequestCount}
         />
       }
       isSidebarMinimized={isSidebarMinimized}

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { useState, forwardRef } from "react";
 import {
@@ -7,17 +8,15 @@ import {
   Box,
   Avatar,
   Slide,
-  FormControl,
-  Select,
-  MenuItem,
   TextField,
   Typography,
   Card,
   CardContent
 } from "@mui/material";
 import type { SlideProps } from "@mui/material";
-import { Mail, Star, Briefcase, GraduationCap, Sparkles, Send } from "lucide-react";
+import { Mail,  Briefcase, GraduationCap, Sparkles, Send } from "lucide-react";
 import { Confetti } from "@/components/magicui/confetti";
+import CircularProgress from "@mui/material/CircularProgress";
 
 type Candidate = {
   name: string;
@@ -26,9 +25,11 @@ type Candidate = {
   yearSection?: string;
   avatar?: string;
   skills?: string[];
+  id?: string; 
 };
 
 type Job = {
+  id?: string;
   title: string;
   matchScore: number;
   department?: string;
@@ -42,6 +43,8 @@ type InvitationModalProps = {
   jobTitles?: string[];
   jobMatchScores?: Record<string, number>;
   jobs?: Job[];
+  studentId?: string;
+  jobId?: string;
 };
 
 const SlideUp = forwardRef(function Transition(
@@ -51,49 +54,78 @@ const SlideUp = forwardRef(function Transition(
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
-const JOB_TITLES = [
-  "Frontend Developer",
-  "Backend Developer",
-  "UI/UX Designer",
-  "QA Tester",
-  "Project Intern"
-];
-
 export default function InvitationModal({
   open,
   onClose,
-  onSend,
   candidate,
   jobTitles,
   jobMatchScores,
-  jobs
+  jobs,
+  studentId,
+  jobId,
+  onSend
 }: InvitationModalProps) {
-  const jobsList: Job[] =
-    jobs && jobs.length > 0
-      ? jobs
-      : (jobTitles || JOB_TITLES).map((title) => ({
-          title,
-          matchScore:
-            jobMatchScores && jobMatchScores[title] !== undefined
-              ? jobMatchScores[title]
-              : candidate.matchScore ?? 0,
-          department: ""
-        }));
+  let jobsList: Job[] = [];
+  if (jobs && jobs.length > 0) {
+    jobsList = jobs.filter(j => j.matchScore > 0);
+  } else if (jobMatchScores) {
+    jobsList = Object.entries(jobMatchScores)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      .filter(([_, score]) => score > 0)
+      .map(([title, score]) => ({
+        title,
+        matchScore: score,
+        department: ""
+      }));
+  } else if (jobTitles) {
+    jobsList = jobTitles.map(title => ({
+      title,
+      matchScore: candidate.matchScore ?? 0,
+      department: ""
+    }));
+  }
 
-  const [selectedJob, setSelectedJob] = useState<string>(jobsList[0]?.title || "");
+  if (jobsList.length === 0) {
+    jobsList = [{
+      title: jobTitles?.[0] || "Job Position",
+      matchScore: candidate.matchScore ?? 0,
+      department: ""
+    }];
+  }
+  const [selectedJob] = useState<string>(jobsList[0]?.title || "");
   const [message, setMessage] = useState(
     `Hi ${candidate?.name},\n\nWe're excited to invite you to apply for this position! Your profile caught our attention, and we believe you'd be a fantastic addition to our team.\n\nWe'd love to discuss this opportunity with you further.\n\nBest regards,\nThe Hiring Team`
   );
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const selectedJobData = jobsList.find((job) => job.title === selectedJob);
 
-  const handleSend = () => {
-    setSent(true);
-    onSend?.(message, selectedJob);
-    setMessage(
-      `Hi ${candidate?.name},\n\nWe're excited to invite you to apply for this position! Your profile caught our attention, and we believe you'd be a fantastic addition to our team.\n\nWe'd love to discuss this opportunity with you further.\n\nBest regards,\nThe Hiring Team`
-    );
+  const handleSend = async () => {
+    setLoading(true);
+    try {
+      const jobObj = jobsList.find(j => j.title === selectedJob);
+      const resolvedJobId = jobId || jobObj?.id || selectedJob;
+      if (typeof onSend === "function") {
+        await onSend(message, selectedJob);
+      } else {
+        await fetch("/api/employers/invitedCandidates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentId: studentId || candidate.id,
+            jobId: resolvedJobId,
+            message
+          })
+        });
+      }
+      setSent(true);
+    } finally {
+      setLoading(false);
+      setMessage(
+        `Hi ${candidate?.name},\n\nWe're excited to invite you to apply for this position! Your profile caught our attention, and we believe you'd be a fantastic addition to our team.\n\nWe'd love to discuss this opportunity with you further.\n\nBest regards,\nThe Hiring Team`
+      );
+    }
   };
 
   const handleClose = () => {
@@ -298,14 +330,14 @@ export default function InvitationModal({
                 gap: 1,
                 px: 2,
                 py: 1,
-                bgcolor: "#dcfce7",
-                border: "1px solid #bbf7d0",
+                bgcolor: selectedJobData.matchScore >= 60 ? "#dcfce7" : "#fef3c7",
+                border: selectedJobData.matchScore >= 60 ? "1px solid #bbf7d0" : "1px solid #fde68a",
                 borderRadius: 2,
                 mb: 2
               }}
             >
-              <Sparkles size={18} style={{ color: "#16a34a" }} />
-              <Typography sx={{ fontSize: 14, color: "#166534" }}>
+              <Sparkles size={18} style={{ color: selectedJobData.matchScore >= 60 ? "#16a34a" : "#ea580c" }} />
+              <Typography sx={{ fontSize: 14, color: selectedJobData.matchScore >= 60 ? "#166534" : "#b45309" }}>
                 <b>{selectedJobData.matchScore}% match</b> - Great compatibility!
               </Typography>
             </Box>
@@ -408,10 +440,10 @@ export default function InvitationModal({
             </Box>
             <Box>
               <Typography sx={{ fontWeight: 600, fontSize: 22, color: "#fff" }}>
-                Send Job Invitation
+                {onSend ? "Edit Mode" : "Send Job Invitation"}
               </Typography>
               <Typography sx={{ color: "#dbeafe", fontSize: 15 }}>
-                Invite a talented candidate to join your team
+                {onSend ? "Resend Invitation" : "Invite a talented candidate to join your team"}
               </Typography>
             </Box>
           </Box>
@@ -491,38 +523,11 @@ export default function InvitationModal({
           <Box sx={{ mb: 3 }}>
             <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb", display: "flex", alignItems: "center", gap: 1 }}>
               <Briefcase size={16} style={{ marginRight: 4 }} />
-              Select Position
+              Position
             </Typography>
-            <FormControl fullWidth>
-              <Select
-                value={selectedJob}
-                onChange={e => setSelectedJob(e.target.value as string)}
-                sx={{
-                  background: "#fff",
-                  borderRadius: 2,
-                  mb: 1,
-                  fontSize: 15,
-                  "& .MuiOutlinedInput-notchedOutline": { borderColor: "#2563eb44" }
-                }}
-              >
-                {jobsList.map((job) => (
-                  <MenuItem key={job.title} value={job.title} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Box>
-                      <Typography sx={{ fontWeight: 500 }}>{job.title}</Typography>
-                      {job.department && (
-                        <Typography sx={{ fontSize: 12, color: "#64748b" }}>{job.department}</Typography>
-                      )}
-                    </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: 2 }}>
-                      <Star size={14} style={{ color: "#facc15", marginRight: 2 }} />
-                      <Typography sx={{ fontSize: 14, fontWeight: 500, color: "#16a34a" }}>
-                        {job.matchScore}%
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Typography sx={{ fontWeight: 500, fontSize: 16, color: "#334155", mb: 1 }}>
+              {selectedJobData?.title}
+            </Typography>
             {selectedJobData && (
               <Box
                 sx={{
@@ -531,14 +536,14 @@ export default function InvitationModal({
                   gap: 1,
                   px: 2,
                   py: 1,
-                  bgcolor: "#dcfce7",
-                  border: "1px solid #bbf7d0",
+                  bgcolor: selectedJobData.matchScore >= 60 ? "#dcfce7" : "#fef3c7",
+                  border: selectedJobData.matchScore >= 60 ? "1px solid #bbf7d0" : "1px solid #fde68a",
                   borderRadius: 2,
                   mt: 1
                 }}
               >
-                <Sparkles size={18} style={{ color: "#16a34a" }} />
-                <Typography sx={{ fontSize: 14, color: "#166534" }}>
+                <Sparkles size={18} style={{ color: selectedJobData.matchScore >= 60 ? "#16a34a" : "#ea580c" }} />
+                <Typography sx={{ fontSize: 14, color: selectedJobData.matchScore >= 60 ? "#166534" : "#b45309" }}>
                   <b>{selectedJobData.matchScore}% match</b> - Great compatibility!
                 </Typography>
               </Box>
@@ -586,7 +591,7 @@ export default function InvitationModal({
             </Button>
             <Button
               onClick={handleSend}
-              disabled={!selectedJob}
+              disabled={!selectedJob || loading}
               sx={{
                 flex: 1,
                 background: "#2563eb",
@@ -599,8 +604,14 @@ export default function InvitationModal({
                 "&:hover": { background: "#1e40af" }
               }}
             >
-              <Send size={18} style={{ marginRight: 8 }} />
-              Send Invitation
+              {loading ? (
+                <CircularProgress size={22} sx={{ color: "#fff", mr: 1 }} />
+              ) : (
+                <>
+                  <Send size={18} style={{ marginRight: 8 }} />
+                  {onSend ? "Resend Invitation" : "Send Invitation"}
+                </>
+              )}
             </Button>
           </Box>
         </Box>

@@ -2,20 +2,23 @@
 
 import { BriefcaseIcon } from "lucide-react"
 
-interface Notification {
-  id: number
-  title: string
-  description: string
-  time: string
-  read: boolean
+interface Notif {
+  company_name: string;
+  content: string;
+  created_at: Date;
+  external_id: string;
+  source: string;
+  title: string;
+  updated_at: Date;
+  user_id: string;
 }
 
 interface NotificationItemProps {
-  notification: Notification
+  notif: Notif
   onClick: () => void
 }
 
-export default function NotificationItem({ notification, onClick }: NotificationItemProps) {
+export default function NotificationItem({ notif, onClick }: NotificationItemProps) {
   return (
     <div
       className="flex items-start gap-3 p-3 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
@@ -25,10 +28,10 @@ export default function NotificationItem({ notification, onClick }: Notification
         <BriefcaseIcon className="h-5 w-5 text-blue-600" />
       </div>
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-blue-800">{notification.title}</h4>
-        <p className="text-sm text-gray-600 mt-0.5">{notification.description}</p>
+        <h4 className="font-medium text-blue-800">{notif.title}</h4>
+        <p className="text-sm text-gray-600 mt-0.5">{notif.content}</p>
       </div>
-      <div className="text-xs text-gray-500 whitespace-nowrap">{notification.time}</div>
+      <div className="text-xs text-gray-500 whitespace-nowrap">{new Date(notif.updated_at).toLocaleString()}</div>
     </div>
   )
 }

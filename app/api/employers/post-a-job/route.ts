@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../lib/authOptions";
 import supabase from "../../../../src/lib/supabase";
-import { extractSkillsFromJob, buildJobText } from "../../../../src/lib/ai";
+import { extractSkillsFromJob, buildJobText, getSkillDetails } from "../../../../src/lib/ai";
 
 interface ApplicationQuestion {
     question: string;
@@ -171,9 +171,34 @@ export async function POST(request: Request) {
                 });
                 try {
                     skillsToInsert = await extractSkillsFromJob(jobText);
-                    console.log("AI-extracted skills:", skillsToInsert);
                 } catch (aiErr) {
                     console.error("AI skill extraction failed:", aiErr);
+                }
+            }
+
+            for (const skill of skillsToInsert) {
+                try {
+                    const { data: existingSkill } = await supabase
+                        .from("skills_match_booster")
+                        .select("id")
+                        .eq("name", skill)
+                        .limit(1)
+                        .single();
+                    if (!existingSkill) {
+                        const details = await getSkillDetails(skill);
+                        await supabase
+                            .from("skills_match_booster")
+                            .insert({
+                                name: skill,
+                                description: details.description,
+                                course: details.course,
+                                resource_titles: details.resource_titles,
+                                resource_urls: details.resource_urls,
+                                resource_levels: details.resource_levels
+                            });
+                    }
+                } catch {
+                    // Swallow error, do nothing
                 }
             }
 
@@ -245,6 +270,18 @@ export async function POST(request: Request) {
                 if (metricsError) {
                     console.error("Error creating job metrics:", metricsError.message);
                 }
+
+                await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/ai-matches/embeddings/job`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ job_id: data.id })
+                });
+
+                await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/ai-matches/rescore`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ job_id: data.id })
+                });
             }
 
             if (formData.applicationQuestions && formData.applicationQuestions.length > 0 && data?.id) {
@@ -299,7 +336,7 @@ export async function POST(request: Request) {
 
             console.log("Job posted successfully");
             console.log("Returning response to frontend:", { message: "Job posted successfully", data });
-            return NextResponse.json({ message: "Job posted successfully", data });
+            return NextResponse.json({ message: "Job posted successfully", data, job_id: data?.id });
         } else if (action === "fetchVerificationStatus") {
             console.log("Fetching verification status...");
             const { data, error } = await supabase
@@ -320,8 +357,7 @@ export async function POST(request: Request) {
         console.log("Invalid action received");
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     } catch (error) {
-        const err = error as Error;
-        console.error("Error in API:", err.message);
-        return NextResponse.json({ error: "Internal Server Error", details: err.message }, { status: 500 });
+        console.error("Error in API:", (error as Error).message);
+        return NextResponse.json({ error: "Internal Server Error", details: (error as Error).message }, { status: 500 });
     }
 }

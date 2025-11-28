@@ -194,8 +194,8 @@ export default function JobPostingForm() {
       console.log("Result keys:", result && typeof result === "object" ? Object.keys(result) : [])
       console.log("Result.data:", result.data)
 
-      let createdJobId: string | undefined = undefined;
-      if (result.data) {
+      let createdJobId: string | undefined = result.job_id || undefined;
+      if (!createdJobId && result.data) {
         if (Array.isArray(result.data) && result.data.length > 0 && result.data[0].id) {
           createdJobId = result.data[0].id;
         } else if (typeof result.data === "object" && "id" in result.data) {
@@ -214,16 +214,12 @@ export default function JobPostingForm() {
       }
 
       console.log("Embeddings job_id:", createdJobId)
-      if (createdJobId) {
-        console.log("Calling embeddings API for job_id:", createdJobId)
-        const embeddingsRes = await fetch("/api/ai-matches/embeddings/job", {
+      if (createdJobId && employerId) {
+        fetch("/api/ai-matches/rescore", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ job_id: createdJobId }),
-        })
-        if (embeddingsRes.ok) {
-          console.log("Embeddings API called successfully")
-        }
+          body: JSON.stringify({ student_id: employerId })
+        });
       }
 
       setCurrentStep(6)

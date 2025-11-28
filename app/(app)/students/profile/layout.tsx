@@ -6,7 +6,7 @@ import Sidebar from "../../side-nav/sidebar";
 import BaseLayout from "../../base-layout";
 import { TbSettings, TbBug } from "react-icons/tb";
 import { FiCalendar } from "react-icons/fi";
-import { FaUser } from "react-icons/fa";
+import { FaUser, FaStar } from "react-icons/fa";
 import { Camera, Pencil } from "lucide-react";
 import AboutPage from "./components/profile-page";
 import SkillsPage from "./components/tabs/skills-tab";
@@ -15,13 +15,6 @@ import ActivityLogPage from "./components/tabs/activity-tab";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Box from "@mui/material/Box";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import Button from "@mui/material/Button";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
 import Skeleton from "@mui/material/Skeleton";
 import { motion } from "framer-motion";
 import Tooltip from "@mui/material/Tooltip";
@@ -41,8 +34,6 @@ export default function ProfileLayout() {
   const [bio, setBio] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [coverDialogOpen, setCoverDialogOpen] = useState(false);
-  const [coverMenuAnchor, setCoverMenuAnchor] = useState<null | HTMLElement>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [studentId, setStudentId] = useState<string | null>(null);
@@ -99,13 +90,6 @@ export default function ProfileLayout() {
     ],
     []
   );
-
-  const presetCovers = [
-    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80",
-    "https://plus.unsplash.com/premium_photo-1667680403630-014f531d9664?q=80&w=2021&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-  ];
 
   async function getSignedUrlIfNeeded(img: string | null, bucket: string): Promise<string | null> {
     if (!img) return null;
@@ -184,8 +168,14 @@ export default function ProfileLayout() {
       setYear(details.year ? String(details.year) : "");
       setSection(details.section ? String(details.section) : "");
       setCourse(details.course ? String(details.course) : "");
-      setProfileImage(details.profile_img || null);
-      setCoverImage(details.cover_image || null);
+      setProfileImage(
+        details.profile_img ||
+        "https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png"
+      );
+      setCoverImage(
+        details.cover_image ||
+        "https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default_cover.jpg"
+      );
       setStudentId(details.id || null);
       setBio(details.short_bio || "");
       setLoading(false);
@@ -226,20 +216,7 @@ export default function ProfileLayout() {
     setUploadingProfile(false);
   };
 
-  const closeCoverDialog = () => setCoverDialogOpen(false);
 
-  const handlePresetCover = async (url: string) => {
-    setCoverImage(url);
-    if (studentId) {
-      await fetch("/api/students/student-profile/postHandlers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ student_id: studentId, cover_image: url }),
-      });
-      if (profileCompletionRef.current) profileCompletionRef.current()
-    }
-    setCoverDialogOpen(false);
-  };
 
   const handleCoverImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -262,7 +239,6 @@ export default function ProfileLayout() {
       if (profileCompletionRef.current) profileCompletionRef.current()
     }
     setUploadingCover(false);
-    setCoverDialogOpen(false);
   };
 
   const triggerProfileInput = () => {
@@ -298,18 +274,7 @@ export default function ProfileLayout() {
     }
   };
 
-  const openCoverMenu = (e: React.MouseEvent<HTMLButtonElement>) => setCoverMenuAnchor(e.currentTarget);
-  const closeCoverMenu = () => setCoverMenuAnchor(null);
 
-  const handleCoverMenuUpload = () => {
-    closeCoverMenu();
-    triggerCoverInput();
-  };
-
-  const handleCoverMenuPreset = () => {
-    closeCoverMenu();
-    setCoverDialogOpen(true);
-  };
 
   const handleBioBlur = async () => {
     if (!studentId) return;
@@ -367,38 +332,6 @@ export default function ProfileLayout() {
         style={{ display: "none" }}
         onChange={handleCoverImageChange}
       />
-      <Menu
-        anchorEl={coverMenuAnchor}
-        open={Boolean(coverMenuAnchor)}
-        onClose={closeCoverMenu}
-      >
-        <MenuItem onClick={handleCoverMenuUpload}>Upload from device</MenuItem>
-        <MenuItem onClick={handleCoverMenuPreset}>Select preset</MenuItem>
-      </Menu>
-      <Dialog open={coverDialogOpen} onClose={closeCoverDialog}>
-        <DialogTitle>Choose a preset cover</DialogTitle>
-        <DialogContent>
-          <div className="mb-4">
-            <div className="flex flex-wrap gap-2">
-              {presetCovers.map((url, i) => (
-                <Image
-                  key={i}
-                  src={url}
-                  alt={`Preset ${i + 1}`}
-                  width={96}
-                  height={64}
-                  className="w-24 h-16 object-cover rounded cursor-pointer border-2 border-transparent hover:border-blue-500"
-                  onClick={() => handlePresetCover(url)}
-                  style={{ objectFit: "cover" }}
-                />
-              ))}
-            </div>
-          </div>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeCoverDialog}>Cancel</Button>
-        </DialogActions>
-      </Dialog>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
         <div className="container mx-auto px-4 py-8">
           <div className="bg-white rounded-xl shadow-md border border-blue-200 overflow-hidden mb-6">
@@ -432,7 +365,7 @@ export default function ProfileLayout() {
               )}
               <button
                 className="absolute top-4 right-4 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 rounded-full p-2"
-                onClick={openCoverMenu}
+                onClick={triggerCoverInput}
               >
                 <Camera className="h-5 w-5" />
               </button>
@@ -490,8 +423,10 @@ export default function ProfileLayout() {
                             <Skeleton variant="text" width={180} height={36} />
                           ) : (
                             <h1 className="text-2xl font-bold">
-                              {(firstName && lastName)
-                                ? `${firstName} ${lastName}`
+                              {firstName
+                                ? lastName
+                                  ? `${firstName} ${lastName}`
+                                  : firstName
                                 : "Full Name"}
                             </h1>
                           )}
@@ -509,8 +444,6 @@ export default function ProfileLayout() {
                             {getStatusIcon(applicationStatus || "Exploring Opportunities")}
                             {applicationStatus || "Available to work"}
                           </motion.span>
-                         
-                            
                           </Tooltip>
                         </div>
                         {loading ? (
@@ -520,11 +453,20 @@ export default function ProfileLayout() {
                             <p className="text-gray-600">
                               {course || "Course not specified"}
                             </p>
-                            <p className="text-gray-600">
-                              {(year || section)
-                                ? `${year || "Year"}${year && section ? " | " : ""}${section || "Section"}`
-                                : "Year and Section"}
-                            </p>
+                            {(year || section) ? (
+                              <p className="text-gray-600">
+                                {(year || section)
+                                  ? `${year || "Year"}${year && section ? " | " : ""}${section || "Section"}`
+                                  : "Year and Section"}
+                              </p>
+                            ) : (
+                              <Tooltip title="You’re one of our proud alumni!" arrow>
+                                <span className="text-gray-600 flex items-center gap-2">
+                                  <FaStar className="text-yellow-500" size={16} />
+                                  STI&apos;s Alumni
+                                </span>
+                              </Tooltip>
+                            )}
                           </>
                         )}
                       </div>

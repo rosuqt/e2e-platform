@@ -4,9 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { TbCards, TbFileStar, TbUsers } from "react-icons/tb";
 import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
-import { FiCalendar } from "react-icons/fi";
 import Sidebar from "../../side-nav/sidebar";
 import BaseLayout from "../../base-layout";
+import { FaEarthAmericas } from "react-icons/fa6";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { icon: HiOutlineClipboardDocumentList, text: "My Applications", href: "/students/jobs/applications" },
       { icon: TbFileStar, text: "Job Matches", href: "/students/jobs/job-matches" },
       { icon: TbUsers, text: "Interview Practice", href: "/students/jobs/interview-practice" },
-      { icon: FiCalendar, text: "Calendar", href: "/students/calendar" },
+      { icon: FaEarthAmericas , text: "Community Jobs", href: "/students/community-page" },
     ],
     []
   );

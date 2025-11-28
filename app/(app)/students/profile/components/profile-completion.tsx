@@ -3,6 +3,7 @@
 import LinearProgress from "@mui/material/LinearProgress"
 import { CheckCircle } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
+import Tooltip from "@mui/material/Tooltip"
 
 export default function ProfileCompletion({ onRefetch }: { onRefetch?: (refetch: () => void) => void } = {}) {
     const [completion, setCompletion] = useState({
@@ -78,26 +79,36 @@ export default function ProfileCompletion({ onRefetch }: { onRefetch?: (refetch:
                 className="h-2 mb-4"
             />
             <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className={`h-4 w-4 ${completion.basic ? "text-green-500" : "text-gray-300"}`} />
-                    <span className={completion.basic ? "text-gray-600" : "text-gray-400"}>Basic information</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className={`h-4 w-4 ${completion.skills ? "text-green-500" : "text-gray-300"}`} />
-                    <span className={completion.skills ? "text-gray-600" : "text-gray-400"}>Complete skills assessment</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className={`h-4 w-4 ${completion.resume ? "text-green-500" : "text-gray-300"}`} />
-                    <span className={completion.resume ? "text-gray-600" : "text-gray-400"}>Upload resume</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className={`h-4 w-4 ${completion.achievements ? "text-green-500" : "text-gray-300"}`} />
-                    <span className={completion.achievements ? "text-gray-600" : "text-gray-400"}>Add achievement(s)</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                    <CheckCircle className={`h-4 w-4 ${completion.portfolio ? "text-green-500" : "text-gray-300"}`} />
-                    <span className={completion.portfolio ? "text-gray-600" : "text-gray-400"}>Add portfolio project(s)</span>
-                </div>
+                <Tooltip title="Fill out introduction, career goals, contact info, and short bio" arrow>
+                    <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className={`h-4 w-4 ${completion.basic ? "text-green-500" : "text-gray-300"}`} />
+                        <span className={completion.basic ? "text-gray-600" : "text-gray-400"}>Basic information</span>
+                    </div>
+                </Tooltip>
+                <Tooltip title="Complete at least one skills or expertise assessment" arrow>
+                    <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className={`h-4 w-4 ${completion.skills ? "text-green-500" : "text-gray-300"}`} />
+                        <span className={completion.skills ? "text-gray-600" : "text-gray-400"}>Complete skills assessment</span>
+                    </div>
+                </Tooltip>
+                <Tooltip title="Upload your resume document" arrow>
+                    <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className={`h-4 w-4 ${completion.resume ? "text-green-500" : "text-gray-300"}`} />
+                        <span className={completion.resume ? "text-gray-600" : "text-gray-400"}>Upload resume</span>
+                    </div>
+                </Tooltip>
+                <Tooltip title="Add at least one certificate or achievement" arrow>
+                    <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className={`h-4 w-4 ${completion.achievements ? "text-green-500" : "text-gray-300"}`} />
+                        <span className={completion.achievements ? "text-gray-600" : "text-gray-400"}>Add achievement(s)</span>
+                    </div>
+                </Tooltip>
+                <Tooltip title="Add at least one portfolio project" arrow>
+                    <div className="flex items-center gap-2 text-sm">
+                        <CheckCircle className={`h-4 w-4 ${completion.portfolio ? "text-green-500" : "text-gray-300"}`} />
+                        <span className={completion.portfolio ? "text-gray-600" : "text-gray-400"}>Add portfolio project(s)</span>
+                    </div>
+                </Tooltip>
             </div>
         </>
     )

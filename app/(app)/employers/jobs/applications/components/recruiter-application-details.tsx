@@ -85,6 +85,7 @@ interface Applicant {
   portfolio?: string[]
   raw_achievements?: string | string[] | Record<string, unknown> | null | undefined
   raw_portfolio?: string | string[] | Record<string, unknown> | null | undefined
+  gpt_score?: number
 }
 
 interface RecruiterApplicationDetailsProps {
@@ -214,10 +215,12 @@ export function RecruiterApplicationDetailsModal({
 
   if (!applicant) return null
 
-  const matchScore = calculateSkillsMatch(
-    applicant?.skills || [],
-    jobSkills
-  )
+  const matchScore = typeof applicant?.gpt_score === "number"
+    ? Math.round(applicant.gpt_score)
+    : calculateSkillsMatch(
+        applicant?.skills || [],
+        jobSkills
+      )
 
   const contactInfo = applicant && typeof applicant.contactInfo === "object" && applicant.contactInfo !== null
     ? (applicant.contactInfo as {

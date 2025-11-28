@@ -3,11 +3,13 @@ import { useRef, useState } from "react";
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Facebook, Twitter, Send, Copy, Link as LinkIcon, Mail } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 type ShareModalProps = {
   open: boolean;
   onClose: () => void;
   shareUrl: string;
+  jobId?: string;
 };
 
 type Social = {
@@ -59,14 +61,31 @@ const socials: Social[] = [
   },
 ];
 
-export function ShareModal({ open, onClose, shareUrl }: ShareModalProps) {
+export function ShareModal({ open, onClose, shareUrl, jobId }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { data: session } = useSession()
+  const studentId = session?.user?.studentId
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
+    await handleShared();
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const handleShared = async () => {
+    if (!jobId || !studentId) return;
+    await fetch("/api/community-page/metrics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job_id: jobId,
+        student_id: studentId,
+        metric: "shared",
+        action: "add",
+      }),
+    });
   };
 
   return (
@@ -92,7 +111,7 @@ export function ShareModal({ open, onClose, shareUrl }: ShareModalProps) {
             >
               <X size={20} />
             </button>
-            <h2 className="text-2xl font-bold mb-2">Share Modal</h2>
+            <h2 className="text-2xl font-bold mb-2">Share</h2>
             <hr className="my-4 border-gray-200" />
             <div className="mb-4">
               <div className="text-gray-700 font-medium mb-3">Share this link via</div>
@@ -112,6 +131,7 @@ export function ShareModal({ open, onClose, shareUrl }: ShareModalProps) {
                       background: "white",
                     }}
                     aria-label={s.name}
+                    onClick={handleShared}
                   >
                     {s.icon}
                   </a>

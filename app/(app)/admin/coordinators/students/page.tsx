@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 import Image from "next/image"
 import type React from "react"
@@ -49,6 +50,7 @@ import Tooltip from "@mui/material/Tooltip"
 import StudentDetailsModalContent from "./components/studentDetails"
 import { PiWarningCircleBold } from "react-icons/pi"
 import { LuGraduationCap } from "react-icons/lu"
+import Papa from "papaparse"
 
 interface Student {
   id: number
@@ -70,9 +72,10 @@ interface Student {
 interface BulkUploadPreviewData {
   studentId: string
   name: string
-  course: string
-  year: number
-  status: string
+  email: string
+  course?: string
+  year?: number
+  status?: string
   isValid: boolean
   errors?: string[]
 }
@@ -98,6 +101,7 @@ export default function StudentManagement() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [students, setStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [parsedRows, setParsedRows] = useState<any[]>([])
 
   useEffect(() => {
     setIsLoading(true)
@@ -187,54 +191,34 @@ export default function StudentManagement() {
     const file = e.target.files?.[0]
     if (file) {
       setSelectedFile(file)
-      setTimeout(() => {
-        const mockPreviewData: BulkUploadPreviewData[] = [
-          {
-            studentId: "2023-IT-0010",
-            name: "John Doe",
-            course: "BSIT",
-            year: 3,
-            status: "not_hired",
-            isValid: true,
-          },
-          {
-            studentId: "2023-IT-0011",
-            name: "Jane Smith",
-            course: "BSIT",
-            year: 4,
-            status: "in_progress",
-            isValid: true,
-          },
-          {
-            studentId: "2023-IT-0012",
-            name: "Michael Johnson",
-            course: "BSCS",
-            year: 2,
-            status: "not_hired",
-            isValid: true,
-          },
-          {
-            studentId: "2023-IT-0013",
-            name: "Sarah Williams",
-            course: "BSIT",
-            year: 3,
-            status: "invalid_status",
-            isValid: false,
-            errors: ["Invalid status value"],
-          },
-          {
-            studentId: "",
-            name: "David Brown",
-            course: "BSIT",
-            year: 4,
-            status: "not_hired",
-            isValid: false,
-            errors: ["Student ID is required"],
-          },
-        ]
-        setPreviewData(mockPreviewData)
-        setUploadStep("preview")
-      }, 1000)
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results: any) => {
+          setParsedRows(results.data)
+          const preview: BulkUploadPreviewData[] = results.data.map((row: any) => {
+            const studentId = row["Student ID"] || row.studentId || ""
+            const name = row["Full Name"] || row.name || ""
+            let email = row.Email || row.email || ""
+            if (!email && Array.isArray(row.__parsed_extra) && row.__parsed_extra.length > 0) {
+              email = row.__parsed_extra[0]
+            }
+            const errors: string[] = []
+            if (!studentId) errors.push("Student ID is required")
+            if (!name) errors.push("Name is required")
+            if (!email) errors.push("Email is required")
+            return {
+              studentId,
+              name,
+              email,
+              isValid: errors.length === 0,
+              errors,
+            }
+          })
+          setPreviewData(preview)
+          setUploadStep("preview")
+        }
+      })
     }
   }
 
@@ -246,60 +230,39 @@ export default function StudentManagement() {
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
-
     const files = e.dataTransfer.files
     if (files.length > 0) {
       const file = files[0]
       if (file.type === "text/csv" || file.name.endsWith(".csv")) {
         setSelectedFile(file)
-        setTimeout(() => {
-          const mockPreviewData: BulkUploadPreviewData[] = [
-            {
-              studentId: "2023-IT-0010",
-              name: "John Doe",
-              course: "BSIT",
-              year: 3,
-              status: "not_hired",
-              isValid: true,
-            },
-            {
-              studentId: "2023-IT-0011",
-              name: "Jane Smith",
-              course: "BSIT",
-              year: 4,
-              status: "in_progress",
-              isValid: true,
-            },
-            {
-              studentId: "2023-IT-0012",
-              name: "Michael Johnson",
-              course: "BSCS",
-              year: 2,
-              status: "not_hired",
-              isValid: true,
-            },
-            {
-              studentId: "2023-IT-0013",
-              name: "Sarah Williams",
-              course: "BSIT",
-              year: 3,
-              status: "invalid_status",
-              isValid: false,
-              errors: ["Invalid status value"],
-            },
-            {
-              studentId: "",
-              name: "David Brown",
-              course: "BSIT",
-              year: 4,
-              status: "not_hired",
-              isValid: false,
-              errors: ["Student ID is required"],
-            },
-          ]
-          setPreviewData(mockPreviewData)
-          setUploadStep("preview")
-        }, 1000)
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results: any) => {
+            setParsedRows(results.data)
+            const preview: BulkUploadPreviewData[] = results.data.map((row: any) => {
+              const studentId = row["Student ID"] || row.studentId || ""
+              const name = row["Full Name"] || row.name || ""
+              let email = row.Email || row.email || ""
+              if (!email && Array.isArray(row.__parsed_extra) && row.__parsed_extra.length > 0) {
+                email = row.__parsed_extra[0]
+              }
+              const errors: string[] = []
+              if (!studentId) errors.push("Student ID is required")
+              if (!name) errors.push("Name is required")
+              if (!email) errors.push("Email is required")
+              return {
+                studentId,
+                name,
+                email,
+                isValid: errors.length === 0,
+                errors,
+              }
+            })
+            setPreviewData(preview)
+            setUploadStep("preview")
+          }
+        })
       } else {
         alert("Please upload a CSV file")
       }
@@ -346,8 +309,7 @@ export default function StudentManagement() {
   }
 
   const downloadTemplate = () => {
-    const csvContent = "studentId,name,course,year,status\n2023-IT-XXXX,Student Name,BSIT,3,not_hired"
-
+    const csvContent = "studentId,name,email\n2023-IT-XXXX,Student Name,student@alabang.sti.edu.ph"
     const blob = new Blob([csvContent], { type: "text/csv" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -619,7 +581,7 @@ export default function StudentManagement() {
                   <>
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
-                        <Image src="/placeholder.svg?height=48&width=48" alt="Student" width={48} height={48} />
+                        <ProfileImage profile_img={selectedStudent.profile_img} name={selectedStudent.name} />
                       </Avatar>
                       <div>
                         <h3 className="font-medium">{selectedStudent.name}</h3>
@@ -692,7 +654,7 @@ export default function StudentManagement() {
                     <Info className="h-4 w-4" />
                     <AlertTitle>CSV Format</AlertTitle>
                     <AlertDescription>
-                      Your CSV file should include the following columns: studentId, name, course, year, status.
+                      Your CSV file should include the following columns: <b>studentId, name, email</b>.
                       <Button
                         variant="link"
                         className="p-0 h-auto text-blue-600 hover:text-blue-800"
@@ -707,6 +669,11 @@ export default function StudentManagement() {
 
               {uploadStep === "preview" && (
                 <div className="grid gap-6 py-4">
+                  {/* Debug: Show parsed rows */}
+                  <div className="mb-4">
+                    <pre className="bg-gray-50 p-2 rounded text-xs max-h-32 overflow-auto">{JSON.stringify(parsedRows, null, 2)}</pre>
+                  </div>
+
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-medium">File Preview</h3>
@@ -735,40 +702,44 @@ export default function StudentManagement() {
                         <TableRow>
                           <TableHead className="w-[100px]">Student ID</TableHead>
                           <TableHead>Name</TableHead>
-                          <TableHead>Course</TableHead>
-                          <TableHead>Year</TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>Email</TableHead>
                           <TableHead className="w-[100px]">Valid</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {previewData.map((record, index) => (
-                          <TableRow key={index} className={!record.isValid ? "bg-red-50" : ""}>
-                            <TableCell className="font-medium">{record.studentId || "-"}</TableCell>
-                            <TableCell>{record.name}</TableCell>
-                            <TableCell>{record.course}</TableCell>
-                            <TableCell>{record.year}</TableCell>
-                            <TableCell>{record.status}</TableCell>
-                            <TableCell>
-                              {record.isValid ? (
-                                <Check className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <div className="group relative">
-                                  <X className="h-4 w-4 text-red-500" />
-                                  {record.errors && record.errors.length > 0 && (
-                                    <div className="absolute left-6 top-0 hidden group-hover:block bg-white p-2 rounded shadow-md border z-10 w-48">
-                                      <ul className="text-xs text-red-600 list-disc pl-4">
-                                        {record.errors.map((error, i) => (
-                                          <li key={i}>{error}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+                        {previewData.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                              No data found in CSV file
                             </TableCell>
                           </TableRow>
-                        ))}
+                        ) : (
+                          previewData.map((record, index) => (
+                            <TableRow key={index} className={!record.isValid ? "bg-red-50" : ""}>
+                              <TableCell className="font-medium">{record.studentId || "-"}</TableCell>
+                              <TableCell>{record.name}</TableCell>
+                              <TableCell>{record.email || "-"}</TableCell>
+                              <TableCell>
+                                {record.isValid ? (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <div className="group relative">
+                                    <X className="h-4 w-4 text-red-500" />
+                                    {record.errors && record.errors.length > 0 && (
+                                      <div className="absolute left-6 top-0 hidden group-hover:block bg-white p-2 rounded shadow-md border z-10 w-48">
+                                        <ul className="text-xs text-red-600 list-disc pl-4">
+                                          {record.errors.map((error, i) => (
+                                            <li key={i}>{error}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </div>

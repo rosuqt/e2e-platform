@@ -17,6 +17,7 @@ import {
   Shield,
   User,
   X,
+  MessageCircle,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -53,6 +54,11 @@ const navItems: NavItem[] = [
     href: "/admin/coordinators/students",
     icon: Users,
     badge: 3,
+  },
+  {
+    title: "Messaging",
+    href: "/admin/coordinators/messages",
+    icon: MessageCircle
   },
   {
     title: "Report Management",

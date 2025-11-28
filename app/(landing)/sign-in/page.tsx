@@ -6,10 +6,11 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Sparkles } from "lucide-react";
-import { TextField, IconButton, InputAdornment, Checkbox, FormControlLabel } from "@mui/material";
+import { TextField, IconButton, InputAdornment, Checkbox, FormControlLabel   } from "@mui/material";
 import Image from "next/image";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import LegalModal from "../../../components/legal";
+import { IoEnterOutline } from "react-icons/io5";
 
 export default function SignInPage() {
   const [isVisible, setIsVisible] = useState(false);
@@ -20,17 +21,34 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [adminMode] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showSuccess, setShowSuccess] = useState(false);
+  const [adminRedirecting, setAdminRedirecting] = useState(false);
+  const { data: session, status } = useSession();
 
   const handleMicrosoftLogin = async () => {
-    await signIn("azure-ad", {
-      callbackUrl: "/students/after-login"
+    await signIn(adminMode ? "azure-ad-admin" : "azure-ad", {
+      callbackUrl: adminMode ? "/admin/dashboard" : "/students/after-login"
     });
   };
 
   useEffect(() => {
+    if (status === "loading") return;
+    if (session?.user?.role === "employer") {
+      router.replace("/employers/dashboard");
+      return;
+    }
+    if (session?.user?.role === "student") {
+      router.replace("/students/after-login");
+      return;
+    }
+    if (session?.user?.role === "admin" || session?.user?.role === "superadmin") {
+      router.replace("/admin/dashboard");
+      return;
+    }
+
     setIsVisible(true);
 
     if (searchParams?.get("error")) {
@@ -62,7 +80,7 @@ export default function SignInPage() {
     return () => {
       document.removeEventListener("dblclick", handleDoubleClick);
     };
-  }, [searchParams]);
+  }, [searchParams, session, status]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,7 +230,9 @@ export default function SignInPage() {
           </Link>
         </motion.p>
 
-       
+        <div className="flex items-center justify-end mb-2">
+        </div>
+
         <div className="flex items-center my-4">
           <div className="flex-1 h-px bg-blue-200"></div>
           <span className="mx-3 text-gray-700">or</span>
@@ -225,7 +245,7 @@ export default function SignInPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5, duration: 0.5 }}
         >
-          For Student Login
+          {adminMode ? "For Admin Login" : "For Student Login"}
         </motion.p>
 
         <motion.button
@@ -242,7 +262,7 @@ export default function SignInPage() {
             height={20}
             className="w-5 h-5 mr-2"
           />
-          Continue with Microsoft
+          {adminMode ? "Continue as Admin" : "Continue with Microsoft"}
         </motion.button>
 
         <motion.p
@@ -277,9 +297,28 @@ export default function SignInPage() {
           </button>
           .
         </motion.p>
-     
+
+        <button
+          type="button"
+          className="absolute bottom-2 right-4 flex items-center px-2 py-1 rounded cursor-pointer bg-transparent border-none text-sm font-medium text-blue-500 hover:text-purple-600 transition-colors"
+          onClick={() => {
+            setAdminRedirecting(true);
+            router.push("/admin/login");
+          }}
+          style={{ outline: "none", display: adminRedirecting ? "none" : "flex" }}
+          disabled={adminRedirecting}
+        >
+          <span className="mr-1">Admin Login</span>
+          <IoEnterOutline size={20} />
+        </button>
+        {adminRedirecting && (
+          <div className="absolute bottom-2 right-4 flex items-center px-2 py-1">
+            <span className="mr-2 text-purple-600 text-sm">Redirecting</span>
+            <span className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></span>
+          </div>
+        )}
       </motion.div>
-      <div className="absolute bottom-4 text-center text-gray-600 text-sm">
+      <div className="absolute bottom-4 text-center text-gray-600 text-sm w-full">
         © {new Date().getFullYear()} Seekr. All rights reserved.
       </div>
       <LegalModal

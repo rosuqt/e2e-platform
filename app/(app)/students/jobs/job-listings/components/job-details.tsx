@@ -8,7 +8,6 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
-//import { FaWandMagicSparkles } from "react-icons/fa6";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -16,7 +15,6 @@ import { useRouter } from "next/navigation";
 import { ApplicationModal } from "./application-modal";
 import dynamic from "next/dynamic";
 import { FaMoneyBill } from "react-icons/fa";
-import { calculateSkillsMatch } from "../../../../../../lib/match-utils";
 import { SiStarship } from "react-icons/si";
 import { PiBuildingsFill } from "react-icons/pi";
 import { Calendar } from "lucide-react";
@@ -28,6 +26,7 @@ import notFoundAnimation from "../../../../../../public/animations/not-found.jso
 import { BsPersonAdd } from "react-icons/bs";
 
 type Employer = {
+  id?: string;
   first_name?: string;
   last_name?: string;
   company_name?: string;
@@ -44,7 +43,7 @@ export type Job = {
   deadline?: string;
   application_deadline?: string;
   skills?: string[];
-  match_percentage?: number;
+  gpt_score?: number;
   employers?: Employer;
   registered_employers?: { company_name?: string };
   responsibilities?: string;
@@ -150,9 +149,13 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   const [viewTracked, setViewTracked] = useState(false)
   const [hasApplied, setHasApplied] = useState(false);
   const [loadingApply, setLoadingApply] = useState(false);
+  const [followState, setFollowState] = useState<"Follow" | "Following">("Follow");
+  const [followLoading, setFollowLoading] = useState(false);
   const { data: session } = useSession();
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const router = useRouter();
+  const [applicantsCount, setApplicantsCount] = useState<number | undefined>(undefined);
+  const [matchedSkillsCount] = useState<number>(0);
 
   const trackJobView = async (jobId: string) => {
     if (viewTracked) return
@@ -185,26 +188,17 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   }
 
   useEffect(() => {
-    if (!jobId) return;
-    setLoading(true);
-    const cacheKey = `jobDetails:${jobId}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      setJob(parsed.job);
-      let logoUrlVal = parsed.logoUrl;
-      if (logoUrlVal && typeof logoUrlVal === "object" && logoUrlVal.url) {
-        logoUrlVal = logoUrlVal.url;
-      }
-      setLogoUrl(typeof logoUrlVal === "string" ? logoUrlVal : null);
-      setEmployerProfileImgUrl(parsed.employerProfileImgUrl);
-      setCompanyEmployees(parsed.companyEmployees);
+    if (!jobId || jobId === "") {
+      setJob(null);
       setLoading(false);
-      trackJobClick(jobId);
       return;
     }
+    setLoading(true);
+
     fetch(`/api/students/job-listings/${jobId}`)
-      .then(res => res.json())
+      .then(res => {
+        return res.json();
+      })
       .then(async data => {
         setJob(data && !data.error ? data : null);
         if (data && !data.error && jobId) {
@@ -212,7 +206,6 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
           await trackJobClick(jobId);
         }
         const logoPath = getCompanyLogoPath(data);
-        let logoUrlVal: string | null = null;
         if (logoPath) {
           const logoCacheKey = `companyLogoUrl:${logoPath}`;
           const cachedLogo = sessionStorage.getItem(logoCacheKey);
@@ -225,7 +218,6 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
               }
             } catch {}
             setLogoUrl(parsedLogo);
-            logoUrlVal = parsedLogo;
           } else {
             const res = await fetch("/api/employers/get-signed-url", {
               method: "POST",
@@ -238,19 +230,15 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
             if (res.ok) {
               const { signedUrl } = await res.json();
               setLogoUrl(signedUrl || null);
-              logoUrlVal = signedUrl || null;
               if (signedUrl) sessionStorage.setItem(logoCacheKey, JSON.stringify({ url: signedUrl }));
             } else {
               setLogoUrl(null);
-              logoUrlVal = null;
             }
           }
         } else {
           setLogoUrl(null);
-          logoUrlVal = null;
         }
 
-        let employerProfileImgUrlVal: string | null = null;
         if (typeof data?.employer_profile_img === "string" && data.employer_profile_img.trim() !== "") {
           const res = await fetch("/api/employers/get-signed-url", {
             method: "POST",
@@ -263,17 +251,13 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
           if (res.ok) {
             const { signedUrl } = await res.json();
             setEmployerProfileImgUrl(signedUrl || null);
-            employerProfileImgUrlVal = signedUrl || null;
           } else {
             setEmployerProfileImgUrl(null);
-            employerProfileImgUrlVal = null;
           }
         } else {
           setEmployerProfileImgUrl(null);
-          employerProfileImgUrlVal = null;
         }
 
-        let companyEmployeesVal: CompanyEmployee[] = [];
         const companyName =
           data?.registered_companies?.company_name ||
           data?.registered_employers?.company_name ||
@@ -303,31 +287,17 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                 })
               );
               setCompanyEmployees(employeesWithSignedUrl);
-              companyEmployeesVal = employeesWithSignedUrl;
             } else {
               setCompanyEmployees([]);
-              companyEmployeesVal = [];
             }
           } catch {
             setCompanyEmployees([]);
-            companyEmployeesVal = [];
           }
         } else {
           setCompanyEmployees([]);
-          companyEmployeesVal = [];
         }
 
         setLoading(false);
-
-        sessionStorage.setItem(
-          cacheKey,
-          JSON.stringify({
-            job: data && !data.error ? data : null,
-            logoUrl: logoUrlVal,
-            employerProfileImgUrl: employerProfileImgUrlVal,
-            companyEmployees: companyEmployeesVal,
-          })
-        );
       })
       .catch(() => {
         setLoading(false);
@@ -463,16 +433,53 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
 
   useEffect(() => {
     if (studentSkills.length || jobSkills.length) {
-      console.log("Student skills:", studentSkills);
-      console.log("Job skills:", jobSkills);
     }
   }, [studentSkills, jobSkills]);
 
-  const skillsMatchPercentRaw = studentSkills.length > 0 ? calculateSkillsMatch(studentSkills, jobSkills) : null;
+  const skillsMatchPercentRaw =
+    typeof job?.gpt_score === "number"
+      ? job.gpt_score
+      : null;
+  console.log("JobDetails job object:", job);
+  console.log("JobDetails gpt_score:", job?.gpt_score);
   const skillsMatchPercent = skillsMatchPercentRaw !== null ? Math.max(10, skillsMatchPercentRaw) : null;
-  const matchedSkillsCount = jobSkills.filter(
-    skill => studentSkills.map(s => s.trim().toLowerCase()).includes(skill.trim().toLowerCase())
-  ).length;
+
+  function getSavedJobStatus(job: Job | null, applicantsCount?: number) {
+    if (!job) return null
+    const applicationDeadline = job.application_deadline || job.deadline
+    const paused = job.paused
+    const isArchived = (job as { is_archived?: boolean }).is_archived
+    const maxApplicants = job.max_applicants
+    const now = new Date()
+    if (paused) return { label: "Closed", class: "bg-red-100 text-red-700" }
+    if (isArchived) return { label: "Archived", class: "bg-gray-200 text-gray-700" }
+    if (applicationDeadline) {
+      const deadlineDate = new Date(applicationDeadline)
+      if (deadlineDate.getTime() < now.getTime()) return { label: "Closed", class: "bg-red-100 text-red-700" }
+    }
+    if (
+      typeof maxApplicants === "number" &&
+      typeof applicantsCount === "number" &&
+      maxApplicants > 0 &&
+      applicantsCount >= maxApplicants
+    ) {
+      return { label: "No more available applicant slots", class: "bg-orange-100 text-orange-700" }
+    }
+    return null
+  }
+
+  useEffect(() => {
+    if (!jobId) return
+    fetch(`/api/applications/count?jobId=${jobId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.count === "number") setApplicantsCount(data.count)
+        else setApplicantsCount(undefined)
+      })
+      .catch(() => setApplicantsCount(undefined))
+  }, [jobId])
+
+  const savedJobStatus = getSavedJobStatus(job, applicantsCount)
 
   if (loading) {
     return (
@@ -499,28 +506,28 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   }
 
   const company =
-    job.registered_employers?.company_name ||
-    job.employers?.company_name ||
-    [job.employers?.first_name ?? "", job.employers?.last_name ?? ""].filter(Boolean).join(" ") ||
+    job?.registered_employers?.company_name ||
+    job?.employers?.company_name ||
+    [job?.employers?.first_name ?? "", job?.employers?.last_name ?? ""].filter(Boolean).join(" ") ||
     "Unknown Company";
 
-  const title = job.job_title || job.title || "Untitled Position";
-  const description = job.description || "";
-  const location = extractCityRegionCountry(job.location);
-  const vacancies = job.vacancies;
-  const deadline = job.deadline || job.application_deadline || "";
+  const title = job?.job_title || job?.title || "Untitled Position";
+  const description = job?.description || "";
+  const location = extractCityRegionCountry(job?.location);
+  const vacancies = job?.vacancies;
+  const deadline = job?.deadline || job?.application_deadline || "";
 
-  const responsibilities = job.responsibilities || [];
-  const mustHaves = job.must_haves || [];
-  const niceToHaves = job.nice_to_haves || [];
-  const perks = job.perks || [];
+  const responsibilities = job?.responsibilities || [];
+  const mustHaves = job?.must_haves || [];
+  const niceToHaves = job?.nice_to_haves || [];
+  const perks = job?.perks || [];
 
-  const remoteOptions = job.remote_options || "Not specified";
-  const workType = job.work_type || "Not specified";
-  const payType = job.pay_type || "";
-  const payAmount = job.pay_amount || "";
-  const jobSummary = job.job_summary || "";
-  const verificationTier = job.verification_tier || "basic";
+  const remoteOptions = job?.remote_options || "Not specified";
+  const workType = job?.work_type || "Not specified";
+  const payType = job?.pay_type || "";
+  const payAmount = job?.pay_amount || "";
+  const jobSummary = job?.job_summary || "";
+  const verificationTier = job?.verification_tier || "basic";
 
   function formatIndustry(industry?: string) {
     if (!industry) return "";
@@ -536,11 +543,11 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
     return parts.join(", ");
   }
 
-  const companyIndustry = job.registered_companies?.company_industry
-    ? formatIndustry(job.registered_companies.company_industry)
+  const companyIndustry = job?.registered_companies?.company_industry
+    ? formatIndustry(job?.registered_companies?.company_industry)
     : "";
-  const companyAddress = job.registered_companies?.address
-    ? formatAddress(job.registered_companies.address)
+  const companyAddress = job?.registered_companies?.address
+    ? formatAddress(job?.registered_companies?.address)
     : "";
 
 
@@ -645,12 +652,15 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
           {!hasApplied && (
             <Button
               className={`gap-2 rounded-full ${
-                loadingApply
+                loadingApply || savedJobStatus
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                   : "bg-blue-600 hover:bg-blue-700 text-white"
               }`}
-              onClick={() => setIsModalOpen(true)}
-              disabled={loadingApply}
+              onClick={() => {
+                if (loadingApply || savedJobStatus) return
+                setIsModalOpen(true)
+              }}
+              disabled={loadingApply || !!savedJobStatus}
             >
               {loadingApply ? (
                 <CircularProgress size={20} color="inherit" />
@@ -683,13 +693,17 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
             <span>{saved ? "Saved" : "Save"}</span>
           </Button>
         </div>
-
+        {savedJobStatus && (
+          <div className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${savedJobStatus.class}`}>
+            {savedJobStatus.label}
+          </div>
+        )}
         <p className="mt-4 text-sm text-muted-foreground">
           {description}
         </p>
         <div className="flex items-center gap-2 mt-2">
           <Calendar className="h-4 w-4 text-gray-400" />
-          <span className="text-gray-500 text-sm">{formatPostedDate(job.created_at)}</span>
+          <span className="text-gray-500 text-sm">{formatPostedDate(job?.created_at)}</span>
         </div>
       </div>
 
@@ -697,7 +711,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
 
       <div className="p-6">
         <div className="flex items-start gap-4">
-          {studentSkills.length > 0 ? (
+          {skillsMatchPercent !== null ? (
             <>
               <div className="relative w-20 h-20">
                 <svg viewBox="0 0 100 100" className="w-full h-full">
@@ -714,9 +728,9 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                     cy="50"
                     r="40"
                     stroke={
-                      skillsMatchPercent !== null && skillsMatchPercent >= 70
+                      skillsMatchPercent >= 70
                         ? "#22c55e"
-                        : skillsMatchPercent !== null && skillsMatchPercent >= 40
+                        : skillsMatchPercent >= 40
                         ? "#f97316"
                         : "#ef4444"
                     }
@@ -738,9 +752,9 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                 <h3
                   style={{
                     color:
-                      skillsMatchPercent !== null && skillsMatchPercent >= 70
+                      skillsMatchPercent >= 70
                         ? "#22c55e"
-                        : skillsMatchPercent !== null && skillsMatchPercent >= 40
+                        : skillsMatchPercent >= 40
                         ? "#f59e42"
                         : "#ef4444",
                     fontWeight: 600,
@@ -748,22 +762,19 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                   }}
                   className={`font-semibold ${showText ? "opacity-100 transition-opacity duration-500" : "opacity-0"}`}
                 >
-                  {skillsMatchPercent !== null && skillsMatchPercent >= 70
+                  {skillsMatchPercent >= 70
                     ? "This Job Is a Strong Match for You"
-                    : skillsMatchPercent !== null && skillsMatchPercent >= 40
+                    : skillsMatchPercent >= 40
                     ? "This Job Is a Partial Match for You"
                     : "This Job Isn’t a Strong Match for You"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {skillsMatchPercent !== null && skillsMatchPercent >= 70
+                  {skillsMatchPercent >= 70
                     ? "Your background and skills closely match what this role is looking for — it could be a great fit!"
-                    : skillsMatchPercent !== null && skillsMatchPercent >= 40
+                    : skillsMatchPercent >= 40
                     ? "You match some key aspects of this role. With a bit of alignment, it could be a solid opportunity."
                     : "Your profile doesn’t closely match the main requirements for this role, but other opportunities may suit you better."}
                 </p>
-                <Button variant="link" className="p-0 h-auto text-primary mt-2">
-                  View Details
-                </Button>
               </div>
             </>
           ) : (
@@ -816,20 +827,20 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         <h3 className="font-semibold mb-2">Recommended Course(s)</h3>
         <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-5">
           {(() => {
-            if (!job.recommended_course) return <li>No recommended course listed.</li>;
+            if (!job?.recommended_course) return <li>No recommended course listed.</li>;
             let courses: string[] = [];
-            if (Array.isArray(job.recommended_course)) {
-              courses = job.recommended_course;
-            } else if (typeof job.recommended_course === "string") {
+            if (Array.isArray(job?.recommended_course)) {
+              courses = job?.recommended_course;
+            } else if (typeof job?.recommended_course === "string") {
               try {
-                const parsed = JSON.parse(job.recommended_course);
+                const parsed = JSON.parse(job?.recommended_course);
                 if (Array.isArray(parsed)) {
                   courses = parsed.filter((v) => typeof v === "string");
                 } else {
-                  courses = job.recommended_course.split(",").map(s => s.trim());
+                  courses = job?.recommended_course.split(",").map(s => s.trim());
                 }
               } catch {
-                const cleaned = job.recommended_course
+                const cleaned = job?.recommended_course
                   .replace(/^\{|\}$/g, "")
                   .replace(/^\[|\]$/g, "")
                   .replace(/"/g, "");
@@ -885,7 +896,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         </ul>
         <div className="mt-4">
           <div className="text-sm text-muted-foreground font-semibold mb-1">Full Location</div>
-          <div className="text-sm">{job.location || "Unknown Location"}</div>
+          <div className="text-sm">{job?.location || "Unknown Location"}</div>
         </div>
 
       </div>
@@ -918,7 +929,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
               <div className="flex items-center gap-2">
                 
                 <span className="font-medium">
-                  {job.employers?.first_name || ""} {job.employers?.last_name || ""}
+                  {job?.employers?.first_name || ""} {job?.employers?.last_name || ""}
                 </span>
                 {verificationTier === "full" ? (
                   <CustomTooltip title="Fully verified and trusted company">
@@ -941,13 +952,18 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                 )}
               </div>
               <span className="text-xs text-muted-foreground">
-                {job.employers?.job_title || "N/A"}
+                {job?.employers?.job_title || "N/A"}
               </span>
             </div>
           </div>
-          <Button variant="outline" className="rounded-full text-blue-500 border-blue-500 flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full text-blue-500 border-blue-500 flex items-center gap-2"
+            onClick={handleFollowEmployer}
+            disabled={followLoading}
+          >
             <BsPersonAdd className="w-4 h-4" />
-            <span>Follow</span>
+            <span>{followLoading ? "..." : followState}</span>
           </Button>
         </div>
       </div>
@@ -959,7 +975,11 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         <div className="flex items-start gap-4">
           <div className="w-16 h-16 flex items-center justify-center bg-gray-100 rounded-md overflow-hidden">
             <div className="relative w-16 h-16">
-              {logoUrl && typeof logoUrl === "string" ? (
+              {logoUrl === undefined ? (
+                <div className="flex items-center justify-center w-full h-full">
+                  <CircularProgress size={32} />
+                </div>
+              ) : logoUrl && typeof logoUrl === "string" ? (
                 <Image
                   src={logoUrl}
                   alt="Company Logo"
@@ -1107,16 +1127,36 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
             job?.title?.trim() ||
             "Untitled Position"
           }
+          gpt_score={typeof job?.gpt_score === "number" ? job.gpt_score : 0}
           onClose={() => setIsModalOpen(false)}
         />
       )}
     </div>
   );
+
+
+  async function handleFollowEmployer() {
+    if (!job?.employers?.id || !session?.user?.studentId || followLoading) return;
+    setFollowLoading(true);
+    if (followState === "Following") {
+      await fetch("/api/students/people/sendFollow", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: session.user.studentId, employerId: job.employers.id }),
+      });
+      setFollowState("Follow");
+    } else {
+      await fetch("/api/students/people/sendFollow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: session.user.studentId, employerId: job.employers.id }),
+      });
+      setFollowState("Following");
+    }
+    setFollowLoading(false);
+  }
 };
 
-
-
 export default JobDetails;
-
 
 

@@ -9,6 +9,8 @@ function sanitizeName(name: string) {
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
+
+
     const file = formData.get("file") as File
     const type = formData.get("type") as string
     const student_id = formData.get("student_id") as string
@@ -16,8 +18,19 @@ export async function POST(req: NextRequest) {
     const last_name = formData.get("last_name") as string
     const application_upload = formData.get("application_upload") === "true"
 
-    if (!file || !(file instanceof File) || !student_id || !first_name || !last_name) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    // Check for missing fields and show which ones are missing
+    const missingFields = []
+    if (!file || !(file instanceof File)) missingFields.push("file")
+    if (!student_id) missingFields.push("student_id")
+    if (!first_name) missingFields.push("first_name")
+    // last_name is now optional
+
+    if (missingFields.length > 0) {
+      return NextResponse.json({
+        error: "Missing required fields",
+        missingFields,
+        details: { file, student_id, first_name, last_name }
+      }, { status: 400 })
     }
 
     const arrayBuffer = await file.arrayBuffer()

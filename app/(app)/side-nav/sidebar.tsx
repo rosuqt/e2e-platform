@@ -4,6 +4,7 @@ import { HiBadgeCheck } from "react-icons/hi";
 import { LuBadgeCheck } from "react-icons/lu";
 import { PiWarningFill } from "react-icons/pi";
 import Tooltip from "@mui/material/Tooltip";
+import Badge from "@mui/material/Badge";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -18,9 +19,10 @@ type Status = "active" | "idle" | "unavailable";
 interface SidebarProps {
   onToggle?: (expanded: boolean) => void;
   menuItems: { icon: React.ComponentType<{ className?: string }>; text: string; href: string; isActive?: boolean }[];
+  friendRequestCount?: number;
 }
 
-export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
+export default function Sidebar({ onToggle, menuItems, friendRequestCount }: SidebarProps) {
   const [expanded, setExpanded] = useState(true);
   const [status, setStatus] = useState<Status>("active");
   const [hoveredItem, setHoveredItem] = useState<number | null>(null);
@@ -81,7 +83,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
       u.searchParams.set("t", Date.now().toString());
       return u.toString();
     } catch {
-      // fallback for relative URLs or invalid URLs
+
       const [base, query = ""] = url.split("?");
       const params = new URLSearchParams(query);
       params.set("t", Date.now().toString());
@@ -97,7 +99,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
       setStudentName(data.studentName);
       setEmail(data.email);
       setJobTitle(data.jobTitle);
-      // Use cached profileImg as-is, do not append/update timestamp here
+  
       setProfileImg(data.profileImg);
       setCourse(data.course);
       setLoading(false);
@@ -132,30 +134,34 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
               });
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json();
-                imgUrl = appendOrUpdateTimestamp(signedUrl); // Only here
+                imgUrl = appendOrUpdateTimestamp(signedUrl);
                 setProfileImg(imgUrl);
+                sessionStorage.setItem(
+                  "sidebarUserData",
+                  JSON.stringify({
+                    role: "employer",
+                    studentName,
+                    email: email || null,
+                    jobTitle: job_title || null,
+                    profileImg: imgUrl,
+                    course: null,
+                    verify_status
+                  })
+                );
               } else {
                 setProfileImg(null);
+                sessionStorage.removeItem("sidebarUserData");
               }
             } catch {
               setProfileImg(null);
+              sessionStorage.removeItem("sidebarUserData");
             }
           } else {
-            setProfileImg(null);
+            imgUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`;
+            setProfileImg(imgUrl);
+            sessionStorage.removeItem("sidebarUserData");
           }
 
-          sessionStorage.setItem(
-            "sidebarUserData",
-            JSON.stringify({
-              role: "employer",
-              studentName,
-              email: email || null,
-              jobTitle: job_title || null,
-              profileImg: imgUrl,
-              course: null,
-              verify_status
-            })
-          );
           setLoading(false);
           return;
         }
@@ -166,8 +172,10 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
           setRole("student");
           const { first_name, last_name, course, profile_img } = await detailsRes.json();
           const studentName =
-            first_name && last_name
-              ? `${first_name} ${last_name}`
+            first_name
+              ? last_name
+                ? `${first_name} ${last_name}`
+                : first_name
               : null;
           setStudentName(studentName);
           setCourse(course || null);
@@ -186,28 +194,32 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
               });
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json();
-                imgUrl = appendOrUpdateTimestamp(signedUrl); // Only here
+                imgUrl = appendOrUpdateTimestamp(signedUrl); 
                 setProfileImg(imgUrl);
+                sessionStorage.setItem(
+                  "sidebarUserData",
+                  JSON.stringify({
+                    role: "student",
+                    studentName,
+                    email: null,
+                    jobTitle: null,
+                    profileImg: imgUrl,
+                    course: course || null,
+                  })
+                );
               } else {
                 setProfileImg(null);
+                sessionStorage.removeItem("sidebarUserData");
               }
             } catch {
               setProfileImg(null);
+              sessionStorage.removeItem("sidebarUserData");
             }
           } else {
-            setProfileImg(null);
+            imgUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`;
+            setProfileImg(imgUrl);
+            sessionStorage.removeItem("sidebarUserData");
           }
-          sessionStorage.setItem(
-            "sidebarUserData",
-            JSON.stringify({
-              role: "student",
-              studentName,
-              email: null,
-              jobTitle: null,
-              profileImg: imgUrl,
-              course: course || null,
-            })
-          );
           setLoading(false);
           return;
         }
@@ -469,6 +481,26 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                         )}
                       >
                         {item.text}
+                        {item.text === "Connections" && !!friendRequestCount && friendRequestCount > 0 && (
+                          <span className="ml-4">
+                            <Badge
+                              badgeContent={friendRequestCount}
+                              sx={{
+                                "& .MuiBadge-badge": {
+                                  background: "rgba(170, 194, 230, 0.7)",
+                                  color: "#eef2ffff",
+                                  fontWeight: 700,
+                                  minWidth: 16,
+                                  height: 16,
+                                  fontSize: "0.7rem",
+                                  marginLeft: "0px",
+                                  boxShadow: "0 2px 8px rgba(37,99,235,0.10)",
+                                  backdropFilter: "blur(6px)",
+                                },
+                              }}
+                            />
+                          </span>
+                        )}
                       </motion.span>
                     )}
                   </motion.div>
@@ -481,4 +513,3 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
     </div>
   );
 }
-   

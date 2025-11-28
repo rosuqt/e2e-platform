@@ -154,7 +154,7 @@ function FilterDropdown({
   );
 }
 
-function ApplicationModalWrapper({ jobId, jobTitle, onClose }: { jobId: number, jobTitle: string, onClose: () => void }) {
+function ApplicationModalWrapper({ jobId, jobTitle, onClose }: { jobId: string, jobTitle: string, onClose: () => void }) {
   useEffect(() => {
     const original = document.body.style.overflow
     document.body.style.overflow = "hidden"
@@ -166,7 +166,7 @@ function ApplicationModalWrapper({ jobId, jobTitle, onClose }: { jobId: number, 
 }
 
 export default function Home() {
-  const { data: session } = useSession()
+  const { data: session, update } = useSession()
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [jobDetails, setJobDetails] = useState<JobDetails | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -406,16 +406,21 @@ export default function Home() {
   }, [selectedJob])
 
   useEffect(() => {
-    const sessionKey = "aiMatchAndRescoreRun";
-    const studentId = session?.user?.studentId
-    if (typeof window !== "undefined" && studentId && !sessionStorage.getItem(sessionKey)) {
-      fetch("/api/ai-matches/match/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ student_id: studentId }) })
-        .then(() => fetch("/api/ai-matches/rescore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ student_id: studentId }) }))
-        .finally(() => {
-          sessionStorage.setItem(sessionKey, "1");
-        });
+    let refreshTimeout: NodeJS.Timeout | null = null
+    if (session?.expires) {
+      const exp = new Date(session.expires).getTime()
+      const now = Date.now()
+      const msUntilRefresh = exp - now - 60000
+      if (msUntilRefresh > 0) {
+        refreshTimeout = setTimeout(() => {
+          update?.()
+        }, msUntilRefresh)
+      }
     }
-  }, [session]);
+    return () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout)
+    }
+  }, [session, update])
 
   return (
     <div className="flex overflow-x-hidden bg-gradient-to-br from-blue-50 to-sky-100">
@@ -923,7 +928,7 @@ export default function Home() {
                                 {showQuickApply &&
                                   createPortal(
                                     <ApplicationModalWrapper
-                                      jobId={Number(jobDetails.id)}
+                                      jobId={jobDetails.id}
                                       jobTitle={jobDetails.job_title}
                                       onClose={() => setShowQuickApply(false)}
                                     />,

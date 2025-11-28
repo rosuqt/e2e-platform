@@ -220,7 +220,7 @@ export default function SettingsPage() {
     setEditPersonalEmail(e.target.value)
   }
   const handleCountryChange = (_: any, value: { code: string; name: string } | null) => {
-    setEditCountry(value ? value.name : "")
+    setEditCountry(value ? value.code : "")
     setEditCity("")
   }
   const handleCityChange = (_: any, value: { id: string; name: string } | null) => {
@@ -490,7 +490,7 @@ export default function SettingsPage() {
                           <Autocomplete
                             options={countriesList}
                             getOptionLabel={(option) => option.name}
-                            value={countriesList.find(c => c.name === editCountry) || null}
+                            value={countriesList.find(c => c.code === editCountry) || null}
                             onChange={handleCountryChange}
                             renderInput={(params) => (
                               <TextField
@@ -519,7 +519,7 @@ export default function SettingsPage() {
                                 }}
                               />
                             )}
-                            isOptionEqualToValue={(option, value) => option.name === value.name}
+                            isOptionEqualToValue={(option, value) => option.code === value.code}
                           />
                           {fieldErrors.country && (
                             <div className="text-red-500 text-xs mt-1">{fieldErrors.country}</div>
@@ -1000,34 +1000,6 @@ export default function SettingsPage() {
                           Would you like job recommendations unrelated to your course?
                         </span>
                       </Box>
-                    </div>
-                    <Separator className="my-6" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-blue-700 mb-2">Change Password</h3>
-                      <Separator className="mb-6" />
-                      <div className="space-y-4">
-                        <Input
-                          type="password"
-                          placeholder="Current Password"
-                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
-                        />
-                        <Input
-                          type="password"
-                          placeholder="New Password"
-                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
-                        />
-                        <Input
-                          type="password"
-                          placeholder="Confirm New Password"
-                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
-                        />
-                        <button
-                          type="button"
-                          className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition"
-                        >
-                          Update Password
-                        </button>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>

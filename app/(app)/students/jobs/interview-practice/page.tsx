@@ -172,12 +172,6 @@ export default function Home() {
                 >
                   Start Practicing <IoIosRocket className="w-4 h-4" />
                 </Link>
-                <Link
-                  href="#"
-                  className="inline-flex items-center gap-2 bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 font-medium px-6 py-3 rounded-xl transition-all"
-                >
-                  Watch Demo
-                </Link>
               </div>
             </div>
             <div className="relative bg-white">
