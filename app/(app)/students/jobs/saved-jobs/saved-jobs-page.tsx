@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import SavedJobsSearchSection from "./components/saved-job-search-section"
 import SavedJobsSidebar from "./components/saved-jobs-sidebar"
 import SavedJobCard from "./components/saved-job-card"
-import { useRouter } from "next/navigation"
+import { PiShootingStarFill } from "react-icons/pi"
+import JobDetails from "../job-listings/components/job-details"
 
 type SavedJob = {
   id: string
@@ -27,6 +28,15 @@ type SavedJob = {
   skills?: string[]
 }
 
+type JobFilters = {
+  type?: string
+  location?: string
+  salary?: string
+  match_score_min?: number
+  match_score_max?: number
+  company?: string
+}
+
 export default function SavedJobsPage() {
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [showProfileColumn, setShowProfileColumn] = useState(true)
@@ -36,10 +46,11 @@ export default function SavedJobsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [sortBy, setSortBy] = useState("recent")
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
+  const [filters] = useState<JobFilters>({})
   const jobsPerPage = 5
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const router = useRouter()
+
 
   useEffect(() => {
     document.documentElement.classList.add("overflow-hidden")
@@ -51,21 +62,96 @@ export default function SavedJobsPage() {
   useEffect(() => {
     fetch("/api/students/job-listings/saved-jobs")
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         if (Array.isArray(data.jobs)) {
+          const jobs = data.jobs.map((job: Record<string, unknown>) => ({
+            ...job,
+            savedDate: (job as { saved_at?: string; created_at?: string }).saved_at || (job as { created_at?: string }).created_at,
+            id: (job as { id?: string; job_id?: string; jobId?: string }).id || (job as { job_id?: string }).job_id || (job as { jobId?: string }).jobId,
+          }))
+          let matches: { job_id: string, gpt_score: number }[] = []
+          try {
+            const matchRes = await fetch("/api/ai-matches/fetch-current-matches", { method: "POST" })
+            const matchData = await matchRes.json()
+            if (Array.isArray(matchData.matches)) {
+              matches = matchData.matches
+            }
+          } catch {}
+          const matchMap = Object.fromEntries(matches.map((m: { job_id: string, gpt_score: number }) => [String(m.job_id), m.gpt_score]))
           setSavedJobs(
-            data.jobs.map((job: Record<string, unknown>) => ({
+            jobs.map((job: SavedJob) => ({
               ...job,
-              savedDate: (job as { saved_at?: string; created_at?: string }).saved_at || (job as { created_at?: string }).created_at,
-              id: (job as { id?: string; job_id?: string; jobId?: string }).id || (job as { job_id?: string }).job_id || (job as { jobId?: string }).jobId,
+              match_percentage: typeof matchMap[String(job.id)] === "number" ? matchMap[String(job.id)] : job.match_percentage,
             })),
           )
         }
       })
   }, [])
 
+  function getJobSalaryNumber(job: SavedJob): number | null {
+    const rawPay = job.pay_amount ?? job.pay_type ?? ""
+    if (rawPay === null || rawPay === undefined) return null
+    if (typeof rawPay === "number") return rawPay
+    if (typeof rawPay === "string") {
+      if (/unpaid|no pay/i.test(rawPay)) return null
+      const digits = rawPay.replace(/[^0-9]/g, "")
+      return digits ? Number(digits) : null
+    }
+    return null
+  }
+
+  function matchesFilter(job: SavedJob) {
+    if (filters.type && typeof filters.type === "string" && filters.type.trim() !== "") {
+      const wanted = filters.type.split(",").map(s => s.trim()).filter(Boolean)
+      const jobTypes = Array.isArray(job.type)
+        ? job.type
+        : String(job.type || "").split(",").map((s: string) => s.trim())
+      if (!wanted.some(w => jobTypes.includes(w))) return false
+    }
+    if (filters.location && typeof filters.location === "string" && filters.location.trim() !== "") {
+      const wantedLoc = filters.location.split(",").map(s => s.trim()).filter(Boolean)
+      const jobLocs = Array.isArray(job.location)
+        ? job.location
+        : String(job.location || "").split(",").map((s: string) => s.trim())
+      if (!wantedLoc.some(w => jobLocs.includes(w))) return false
+    }
+    if (filters.salary && typeof filters.salary === "string" && filters.salary.trim() !== "") {
+      const f = filters.salary
+      const jobSalaryNum = getJobSalaryNumber(job)
+      const isUnpaid = jobSalaryNum === null && typeof (job.pay_type || job.pay_amount) === "string"
+        ? /unpaid|no pay/i.test(String(job.pay_type ?? job.pay_amount))
+        : jobSalaryNum === null
+      if (f === "unpaid") {
+        if (!isUnpaid) return false
+      } else if (f.startsWith(">=")) {
+        const val = Number(f.replace(">=", "").replace(/[^0-9]/g, ""))
+        if (isNaN(val)) return false
+        if (jobSalaryNum === null) return false
+        if (jobSalaryNum < val) return false
+      } else {
+        const val = Number(f.replace(/[^0-9]/g, ""))
+        if (!isNaN(val)) {
+          if (jobSalaryNum === null) return false
+          if (jobSalaryNum < val) return false
+        }
+      }
+    }
+    if (filters.company && typeof filters.company === "string" && filters.company.trim() !== "") {
+      if (!(job.company || "").toLowerCase().includes(filters.company.toLowerCase())) return false
+    }
+    const min = typeof filters.match_score_min === "number" ? filters.match_score_min : null
+    const max = typeof filters.match_score_max === "number" ? filters.match_score_max : null
+    if (min !== null || max !== null) {
+      const jobScore = job.match_percentage
+      if (typeof jobScore !== "number") return false
+      if (min !== null && jobScore < min) return false
+      if (max !== null && jobScore > max) return false
+    }
+    return true
+  }
+
   useEffect(() => {
-    let filtered = [...savedJobs]
+    let filtered = savedJobs.filter(matchesFilter)
 
     if (searchQuery.trim()) {
       filtered = filtered.filter(
@@ -88,7 +174,7 @@ export default function SavedJobsPage() {
 
     setFilteredJobs(filtered)
     setCurrentPage(1)
-  }, [savedJobs, searchQuery, sortBy])
+  }, [savedJobs, searchQuery, sortBy, filters])
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
@@ -304,10 +390,15 @@ export default function SavedJobsPage() {
             {/* Jobs List */}
             <div className="space-y-4 mb-20">
               {currentJobs.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-gray-500 text-lg mb-2">No saved jobs found</div>
-                  <div className="text-gray-400 text-sm">
-                    {searchQuery ? "Try adjusting your search terms" : "Start saving jobs to see them here"}
+                <div className="text-center py-12 flex flex-col items-center">
+                  <div className="mb-4">
+                    <PiShootingStarFill className="text-gray-400 text-3xl" />
+                  </div>
+                  <div>
+                    <div className="text-gray-500 text-lg mb-2">No saved jobs found</div>
+                    <div className="text-gray-400 text-sm">
+                      {searchQuery ? "Try adjusting your search terms" : "Start saving jobs to see them here"}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -339,17 +430,10 @@ export default function SavedJobsPage() {
         {selectedJob && (
           <div className="hidden lg:block w-[35%] max-w-[600px] flex-shrink-0 overflow-y-auto border-l border-blue-200">
             <div className="p-6">
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-blue-600 mb-2">Job Details</h3>
-                <p className="text-gray-600 mb-4">Detailed view for selected job would appear here</p>
-                <Button
-                  onClick={() => router.push("/students/jobs/job-listings")}
-                  variant="outline"
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                >
-                  Close Details
-                </Button>
-              </div>
+              <JobDetails
+                jobId={selectedJob}
+                onClose={() => setSelectedJob(null)}
+              />
             </div>
           </div>
         )}

@@ -126,18 +126,18 @@ export default function AdminsManagement() {
   }, [])
 
   const filteredAdmins = adminList.filter((admin) => {
-    const search = searchQuery.trim().toLowerCase()
+    const search = (searchQuery ?? "").trim().toLowerCase()
     const nameParts = [
-      admin.name.first,
-      admin.name.middle,
-      admin.name.last,
-      `${admin.name.first} ${admin.name.last}`,
-      `${admin.name.first} ${admin.name.middle} ${admin.name.last}`,
-      `${admin.name.last} ${admin.name.first}`,
-    ].map(s => s.toLowerCase())
+      admin.name.first ?? "",
+      admin.name.middle ?? "",
+      admin.name.last ?? "",
+      `${admin.name.first ?? ""} ${admin.name.last ?? ""}`,
+      `${admin.name.first ?? ""} ${admin.name.middle ?? ""} ${admin.name.last ?? ""}`,
+      `${admin.name.last ?? ""} ${admin.name.first ?? ""}`,
+    ].map(s => (s ?? "").toLowerCase())
     const matchesSearch =
-      admin.username.toLowerCase().includes(search) ||
-      admin.department.toLowerCase().includes(search) ||
+      (admin.username ?? "").toLowerCase().includes(search) ||
+      (admin.department ?? "").toLowerCase().includes(search) ||
       nameParts.some(part => part.includes(search))
 
     const matchesTab =

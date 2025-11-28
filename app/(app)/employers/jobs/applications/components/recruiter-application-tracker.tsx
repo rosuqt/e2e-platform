@@ -93,6 +93,7 @@ type Applicant = {
   perks_and_benefits?: string[]
   location?: string
   is_invited?: boolean
+  gpt_score?: number
 }
 
 function Pagination({
@@ -1079,7 +1080,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1126,7 +1127,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1173,7 +1174,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1220,7 +1221,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1267,7 +1268,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1314,7 +1315,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1364,7 +1365,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1411,7 +1412,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1591,6 +1592,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                     socials: [],
                     countryCode: "",
                   },
+                  gpt_score: selectedApplicant.gpt_score
                 }
               : null
           }
@@ -1681,6 +1683,7 @@ function ApplicantCard({
 }) {
 
   const formattedLocation = applicant.address
+   
     ? applicant.address.split(",")[0].trim()
     : ""
 

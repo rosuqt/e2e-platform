@@ -147,7 +147,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Student fetch error: ${studentError.message}` }, { status: 400 });
       }
       if (!studentData?.first_name || !studentData?.last_name) {
-        return NextResponse.json({ error: `Student first or last name not found for student_id: ${student_id}` }, { status: 400 });
+        // Remove this block if you want to allow uploads for any student_id
+        // return NextResponse.json({ error: `Student first or last name not found for student_id: ${student_id}` }, { status: 400 });
       }
 
       const ext = file.name.split(".").pop();
@@ -256,11 +257,11 @@ export async function POST(req: NextRequest) {
 
   let effectiveProfile = profile;
   if (!effectiveProfile) {
-    const { error: insertError } = await supabase
+    const { error: upsertError } = await supabase
       .from("student_profile")
-      .insert({ student_id });
-    if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 });
+      .upsert({ student_id }, { onConflict: "student_id" });
+    if (upsertError) {
+      return NextResponse.json({ error: upsertError.message }, { status: 500 });
     }
     const { data: newProfile } = await supabase
       .from("student_profile")

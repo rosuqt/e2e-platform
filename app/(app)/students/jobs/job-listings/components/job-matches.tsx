@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { BriefcaseIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getSession } from "next-auth/react";
+import { PiShootingStarFill } from "react-icons/pi";
 
 export default function JobMatches() {
   const router = useRouter();
@@ -50,8 +51,14 @@ export default function JobMatches() {
         </button>
       </div>
       <div className="space-y-2">
-        {jobMatches.length === 0 ? (
-          <div className="text-xs text-gray-500">No matches found</div>
+        {(jobMatches.length === 0 ||
+          jobMatches.some((job) => job.gpt_score === 0 || job.gpt_score < 6)) ? (
+          <div className="flex flex-col items-center justify-center py-2">
+            <PiShootingStarFill className="text-gray-400 text-3xl mb-2" />
+            <div className="text-gray-500 text-sm">
+              Looks like we couldn’t find any matches. Maybe your profile needs a little tune-up?
+            </div>
+          </div>
         ) : (
           jobMatches.map((job) => (
             <div

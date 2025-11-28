@@ -69,46 +69,59 @@ export async function GET() {
     return []
   }
 
-  const applicantsWithJobTitle = (applicants || []).map(app => {
-    const achievementsArr = parseArrayField(app.achievements)
-    const portfolioArr = parseArrayField(app.portfolio)
-    const profile = profileMap[app.student_id] || {}
-    let contactInfo = { email: "", phone: "", socials: [], countryCode: "" }
-    if (profile.contact_info && typeof profile.contact_info === "object") {
-      contactInfo = {
-        email: profile.contact_info.email || "",
-        phone: profile.contact_info.phone || "",
-        socials: profile.contact_info.socials || [],
-        countryCode: profile.contact_info.countryCode || "",
+  const applicantsWithJobTitle = await Promise.all(
+    (applicants || []).map(async app => {
+      const achievementsArr = parseArrayField(app.achievements)
+      const portfolioArr = parseArrayField(app.portfolio)
+      const profile = profileMap[app.student_id] || {}
+      let contactInfo = { email: "", phone: "", socials: [], countryCode: "" }
+      if (profile.contact_info && typeof profile.contact_info === "object") {
+        contactInfo = {
+          email: profile.contact_info.email || "",
+          phone: profile.contact_info.phone || "",
+          socials: profile.contact_info.socials || [],
+          countryCode: profile.contact_info.countryCode || "",
+        }
+      } else {
+        contactInfo = {
+          email: app.personal_email || app.email || "",
+          phone: app.personal_phone || app.phone || "",
+          socials: [],
+          countryCode: app.country_code || "",
+        }
       }
-    } else {
-      contactInfo = {
-        email: app.personal_email || app.email || "",
-        phone: app.personal_phone || app.phone || "",
-        socials: [],
-        countryCode: app.country_code || "",
+      let gptScore = null
+      if (app.student_id && app.job_id) {
+        const { data: matchRow } = await supabase
+          .from("job_matches")
+          .select("gpt_score")
+          .eq("student_id", app.student_id)
+          .eq("job_id", app.job_id)
+          .single()
+        gptScore = matchRow?.gpt_score ?? null
       }
-    }
-    return {
-      ...app,
-      job_title: app.job_postings?.job_title,
-      company_name: app.job_postings?.registered_employers?.company_name,
-      company_logo_image_path: app.job_postings?.registered_employers?.company_logo_image_path,
-      remote_options: app.job_postings?.remote_options,
-      skills: profile.skills || [],
-      education: profile.educations || [],
-      expertise: profile.expertise || [],
-      achievements: achievementsArr.length > 0
-        ? achievementsArr
-        : parseArrayField(app.job_postings?.achievements),
-      portfolio: portfolioArr.length > 0
-        ? portfolioArr
-        : parseArrayField(app.job_postings?.portfolio),
-      raw_achievements: app.achievements as string | string[] | Record<string, unknown> | null | undefined,
-      raw_portfolio: app.portfolio as string | string[] | Record<string, unknown> | null | undefined,
-      contactInfo
-    }
-  })
+      return {
+        ...app,
+        job_title: app.job_postings?.job_title,
+        company_name: app.job_postings?.registered_employers?.company_name,
+        company_logo_image_path: app.job_postings?.registered_employers?.company_logo_image_path,
+        remote_options: app.job_postings?.remote_options,
+        skills: profile.skills || [],
+        education: profile.educations || [],
+        expertise: profile.expertise || [],
+        achievements: achievementsArr.length > 0
+          ? achievementsArr
+          : parseArrayField(app.job_postings?.achievements),
+        portfolio: portfolioArr.length > 0
+          ? portfolioArr
+          : parseArrayField(app.job_postings?.portfolio),
+        raw_achievements: app.achievements as string | string[] | Record<string, unknown> | null | undefined,
+        raw_portfolio: app.portfolio as string | string[] | Record<string, unknown> | null | undefined,
+        contactInfo,
+        gpt_score: gptScore
+      }
+    })
+  )
 
   return NextResponse.json({ applicants: applicantsWithJobTitle })
 }

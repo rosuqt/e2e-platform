@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../../../../lib/authOptions';
@@ -36,7 +36,14 @@ async function getCompanyCoverUrl(companyId: string): Promise<string | null> {
   return data.signedUrl;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const url = req.url || ""
+  const limitMatch = url.match(/limit=(\d+)/)
+  let limit = 24
+  if (limitMatch) {
+    limit = parseInt(limitMatch[1], 10)
+  }
+
   const session = await getServerSession(authOptions);
   const studentId = session?.user?.studentId;
   if (!studentId) {
@@ -65,7 +72,7 @@ export async function GET() {
     .from('registered_companies')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(limit);
 
   if (matchError) {
     console.error('Company fetch error:', matchError);

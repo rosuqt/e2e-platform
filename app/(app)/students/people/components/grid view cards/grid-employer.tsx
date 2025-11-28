@@ -6,7 +6,6 @@ import { X, MoreHorizontal, Star, Trash2, MessageSquare, Loader2 } from "lucide-
 import { BsPersonAdd } from "react-icons/bs"
 import { LuBriefcase } from "react-icons/lu"
 import { TbUserX } from "react-icons/tb"
-import Image from "next/image"
 
 interface Employer {
   id: string
@@ -25,6 +24,7 @@ interface GridEmployerProps {
   onToggleFavorite?: (id: string) => void
   favoriteIds?: string[]
   loading?: boolean
+  onHide?: (id: string) => void
 }
 
 export function GridEmployer({
@@ -35,6 +35,7 @@ export function GridEmployer({
   onToggleFavorite,
   favoriteIds = [],
   loading,
+  onHide,
 }: GridEmployerProps) {
   if (loading) {
     return (
@@ -73,6 +74,7 @@ export function GridEmployer({
           onUnfollow={onUnfollow}
           onToggleFavorite={onToggleFavorite}
           isFavorite={favoriteIds.includes(employer.id)}
+          onHide={onHide}
         />
       ))}
     </div>
@@ -86,6 +88,7 @@ interface EmployerCardProps {
   onUnfollow?: (id: string) => void
   onToggleFavorite?: (id: string) => void
   isFavorite?: boolean
+  onHide?: (id: string) => void
 }
 
 function EmployerCard({
@@ -95,6 +98,7 @@ function EmployerCard({
   onUnfollow,
   onToggleFavorite,
   isFavorite,
+  onHide,
 }: EmployerCardProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
@@ -173,26 +177,22 @@ function EmployerCard({
             </Dialog>
           </>
         ) : (
-          <button className="absolute top-2 right-2 text-white hover:bg-white/20 rounded-full p-1">
+          <button className="absolute top-2 right-2 text-white hover:bg-white/20 rounded-full p-1" onClick={() => onHide?.(employer.id)}>
             <X size={16} />
           </button>
         )}
       </div>
       <div className="px-4 pt-10 pb-4 relative">
         <Avatar
-          src={employer.avatar || "/placeholder.svg"}
+          src={employer.avatar && employer.avatar.trim() !== "" ? employer.avatar : undefined}
           alt={employer.name}
           className="absolute left-1/2 transform -translate-x-1/2 border-4 border-white -mb-11"
           style={{ width: 80, height: 80, top: -64 }}
         >
-          <Image
-            src={employer.avatar || "/placeholder.svg"}
-            alt={employer.name}
-            fill
-            className="object-cover w-full h-full absolute inset-0 rounded-full"
-            style={{ width: "100%", height: "100%" }}
-            sizes="80px"
-          />
+          {(!employer.avatar || employer.avatar.trim() === "") &&
+            employer.name &&
+            employer.name.trim().length > 0 &&
+            employer.name.trim()[0].toUpperCase()}
         </Avatar>
 
         <div className="text-center mb-2">

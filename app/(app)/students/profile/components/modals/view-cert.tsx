@@ -209,8 +209,14 @@ export default function ViewCertModal({
         </Box>
         <Box sx={{ p: 4, pt: 3 }}>
           {cert.description && (
-            <Typography sx={{ mb: 2, color: "#334155", fontSize: 15 }}>
-              {cert.description}
+            <Typography sx={{ mb: 2, color: "#334155", fontSize: 15, wordBreak: "break-word", whiteSpace: "pre-line" }}>
+              {cert.description.length > 120
+                ? <>
+                    {cert.description.slice(0, 120)}
+                    <br />
+                    {cert.description.slice(120)}
+                  </>
+                : cert.description}
             </Typography>
           )}
           {loadingPreview ? (

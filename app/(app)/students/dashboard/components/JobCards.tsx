@@ -229,7 +229,11 @@ const JobCards: React.FC<JobCardsProps> = ({
         const scores: Record<string, number | null> = {}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data.matches.forEach((m: any) => {
-          scores[m.job_id] = typeof m.gpt_score === "number" ? m.gpt_score : null
+          if (typeof m.gpt_score === "number" && m.gpt_score > 5) {
+            scores[m.job_id] = m.gpt_score;
+          } else {
+            scores[m.job_id] = null;
+          }
         })
         setMatchScores(scores)
       }

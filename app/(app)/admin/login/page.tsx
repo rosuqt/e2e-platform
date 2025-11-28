@@ -42,6 +42,12 @@ export default function LoginPage() {
       return
     }
 
+    if (!res?.ok) {
+      setError("Invalid credentials or unable to sign in. Please try again.")
+      setIsLoading(false)
+      return
+    }
+
     if (res?.ok) {
       const { getSession } = await import("next-auth/react")
       const session = await getSession()
@@ -345,6 +351,15 @@ export default function LoginPage() {
                   </div>
                 </div>
               </motion.div>
+              <div className="mt-6 flex justify-center">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-2xl bg-transparent border border-blue-300 text-blue-600 font-medium hover:bg-blue-50 transition-colors"
+                  onClick={() => router.push("/sign-in")}
+                >
+                  Switch back to normal login
+                </button>
+              </div>
             </CardContent>
           </Card>
 

@@ -4,13 +4,16 @@ import { useEffect, useState } from "react"
 import { List, Star, ChevronDown } from "lucide-react"
 import { LuLayoutGrid } from "react-icons/lu"
 import { Button } from "@/components/ui/button"
-import { MenuItem, FormControl, Select } from "@mui/material"
 import { Badge } from "@/components/ui/badge"
 import SearchSection from "../../components/search-section"
 import { TbUserCheck } from "react-icons/tb"
 import { GridCompanies } from "../../components/grid view cards/grid-companies"
 import { ListCompanies } from "../../components/list view items/list-companies"
 import { useSession } from "next-auth/react"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { Loader2 } from "lucide-react"
+import Lottie from "lottie-react"
+import catLoader from "../../../../../../public/animations/cat_loader.json"
 
 interface Company {
   id: string
@@ -32,42 +35,61 @@ export default function CompaniesFollowingPage() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(true)
   const { data: session } = useSession()
   const studentId = session?.user?.studentId
+  const [suggestedConnectionStates, setSuggestedConnectionStates] = useState<Record<string, string>>({})
+
+  const fetchCompanies = async () => {
+    setLoadingCompanies(true)
+    const res = await fetch("/api/students/people/fetchCompanies")
+    const data = await res.json()
+    setCompanies(
+      (data.companies || []).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        industry: c.industry,
+        logo: c.logo,
+        favorite: c.favorite,
+        location: c.location ?? "",
+      }))
+    )
+    setLoadingCompanies(false)
+  }
 
   useEffect(() => {
-    setLoadingCompanies(true)
-    fetch("/api/students/people/fetchCompanies")
-      .then(res => res.json())
-      .then(data => {
-        setCompanies(
-          (data.companies || []).map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            industry: c.industry,
-            logo: c.logo,
-            favorite: c.favorite,
-            location: c.location ?? "",
-          }))
-        )
-        setLoadingCompanies(false)
-      })
+    fetchCompanies()
   }, [])
 
   useEffect(() => {
     setLoadingSuggestions(true)
     fetch("/api/students/people/suggestions/companies")
       .then(res => res.json())
-      .then(data => {
+      .then(async data => {
         if (Array.isArray(data.companies)) {
-          setSuggestedCompanies(
-            data.companies.map((c: any) => ({
-              id: c.id,
-              name: c.company_name || c.name || "",
-              industry: c.company_industry || c.industry || "",
-              logo: c.logoUrl || c.logo || "/placeholder.svg?height=100&width=100",
-              favorite: false,
-              location: c.location ?? "",
-            }))
+          const mapped = data.companies.map((c: any) => ({
+            id: c.id,
+            name: c.company_name || c.name || "",
+            industry: c.company_industry || c.industry || "",
+            logo: c.logoUrl || c.logo || "/placeholder.svg?height=100&width=100",
+            favorite: false,
+            location: c.location ?? "",
+          }))
+          setSuggestedCompanies(mapped)
+          const states: Record<string, string> = {}
+          await Promise.all(
+            mapped.map(async (company: Company) => {
+              try {
+                const statusRes = await fetch(`/api/students/people/sendFollow/companies?companyId=${company.id}`)
+                const statusData = await statusRes.json()
+                if (statusData.status === "Following") {
+                  states[company.id] = "Following"
+                } else {
+                  states[company.id] = "Follow"
+                }
+              } catch {
+                states[company.id] = "Follow"
+              }
+            })
           )
+          setSuggestedConnectionStates(states)
         }
         setLoadingSuggestions(false)
       })
@@ -132,6 +154,27 @@ export default function CompaniesFollowingPage() {
 
   const connectionStates = Object.fromEntries(companies.map(c => [c.id, "Followed"]))
   const favoriteIds = companies.filter(c => c.favorite).map(c => c.id)
+
+  const handleConnectSuggestedCompany = async (companyId: string) => {
+    if (!studentId) return
+    const currentState = suggestedConnectionStates[companyId]
+    if (currentState === "Following") {
+      await fetch("/api/students/people/sendFollow/companies", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId }),
+      })
+      setSuggestedConnectionStates(prev => ({ ...prev, [companyId]: "Follow" }))
+    } else {
+      await fetch("/api/students/people/sendFollow/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId }),
+      })
+      setSuggestedConnectionStates(prev => ({ ...prev, [companyId]: "Following" }))
+    }
+    await fetchCompanies()
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 p-4">
@@ -201,17 +244,21 @@ export default function CompaniesFollowingPage() {
           <div className="flex items-center gap-4 mt-2">
             <div className="flex items-center">
               <span className="mr-2 text-sm text-gray-600">Sort by</span>
-              <FormControl size="small" variant="outlined">
-                <Select
-                  value={sortBy}
-                  onChange={e => setSortBy(e.target.value as typeof sortBy)}
-                  sx={{ minWidth: 140, backgroundColor: "white" }}
-                >
-                  <MenuItem value="relevant">Relevant</MenuItem>
-                  <MenuItem value="alphabetical">Alphabetical</MenuItem>
-                  <MenuItem value="industry">Industry</MenuItem>
-                </Select>
-              </FormControl>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="min-w-[140px] bg-white px-3 py-1 text-left font-normal">
+                    {sortBy === "relevant" && "Relevant"}
+                    {sortBy === "alphabetical" && "Alphabetical"}
+                    {sortBy === "industry" && "Industry"}
+                    {sortBy === "location" && "Location"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[140px]">
+                  <DropdownMenuItem onClick={() => setSortBy("relevant")}>Relevant</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("alphabetical")}>Alphabetical</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortBy("industry")}>Industry</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <Button
               variant="outline"
@@ -295,28 +342,16 @@ export default function CompaniesFollowingPage() {
             </div>
             <div className="p-4">
               {loadingCompanies ? (
-                <div className="space-y-4">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="flex items-center justify-between border-b border-gray-100 pb-4 animate-pulse">
-                      <div className="flex items-center">
-                        <div className="h-12 w-12 mr-3 rounded-full bg-blue-100" />
-                        <div>
-                          <div className="h-4 bg-blue-100 rounded w-32 mb-2" />
-                          <div className="h-3 bg-blue-50 rounded w-24 mb-1" />
-                          <div className="h-3 bg-blue-50 rounded w-20" />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-20 bg-blue-100 rounded" />
-                        <div className="h-8 w-24 bg-blue-100 rounded" />
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="w-48 h-36 mb-4">
+                    <Lottie animationData={catLoader} loop={true} />
+                  </div>
+                  <div className="text-lg font-semibold text-blue-700 mb-2">Loading companies...</div>
                 </div>
               ) : companies.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="w-48 h-36 mb-4">
-                    {/* Use same loader as employers if available */}
+                    <Lottie animationData={catLoader} loop={true} />
                   </div>
                   <div className="text-lg font-semibold text-blue-700 mb-2">No companies followed yet 🏢</div>
                   <div className="text-gray-500 text-base text-center max-w-md">
@@ -362,30 +397,9 @@ export default function CompaniesFollowingPage() {
             </div>
             <div className="p-4">
               {loadingSuggestions ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm flex flex-col animate-pulse">
-                      <div className="bg-blue-100 h-16 w-full" />
-                      <div className="px-4 pt-10 pb-4 flex-1 flex flex-col">
-                        <div className="absolute left-1/2 transform -translate-x-1/2 -mb-11" style={{ width: 80, height: 80, top: -64 }}>
-                          <div className="rounded-full bg-blue-100 w-20 h-20 mx-auto" />
-                        </div>
-                        <div className="text-center mb-2 mt-2">
-                          <div className="h-4 bg-blue-100 rounded w-32 mx-auto mb-2" />
-                          <div className="h-3 bg-blue-50 rounded w-24 mx-auto mb-1" />
-                          <div className="h-3 bg-blue-50 rounded w-20 mx-auto" />
-                        </div>
-                        <div className="flex items-center justify-center mb-3">
-                          <div className="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-1 rounded mr-1 w-10 h-4" />
-                          <div className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs w-24 h-4 rounded" />
-                        </div>
-                        <div className="flex gap-2 mt-auto">
-                          <div className="flex-1 h-8 bg-blue-100 rounded" />
-                          <div className="flex-1 h-8 bg-blue-100 rounded" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="animate-spin h-10 w-10 text-blue-400 mb-4" />
+                  <div className="text-lg font-semibold text-blue-700 mb-2">Loading suggestions...</div>
                 </div>
               ) : (
                 <GridCompanies
@@ -403,9 +417,9 @@ export default function CompaniesFollowingPage() {
                     suggestedCompanies
                       .filter(c => !followedCompanyIds.has(c.id))
                       .slice(0, 4)
-                      .map(c => [c.id, "Follow"])
+                      .map(c => [c.id, suggestedConnectionStates[c.id] || "Follow"])
                   )}
-                  onConnect={() => {}}
+                  onConnect={handleConnectSuggestedCompany}
                 />
               )}
             </div>

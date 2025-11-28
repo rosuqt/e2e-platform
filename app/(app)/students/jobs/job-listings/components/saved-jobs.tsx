@@ -3,6 +3,7 @@ import { Bookmark } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
+import { PiShootingStarFill } from "react-icons/pi"
 
 type SavedJob = {
   id: string
@@ -97,7 +98,10 @@ export default function SavedJobs({ }: { refreshKey?: unknown } = {}) {
             <span className="inline-block w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : jobs.length === 0 ? (
-          <div className="text-gray-500 text-sm">No saved jobs.</div>
+          <div className="flex flex-col items-center justify-center py-2">
+            <PiShootingStarFill className="text-gray-400 text-3xl mb-2" />
+         
+          <div className="text-gray-500 text-sm">Nothing saved for now — your dream job might be just a scroll away!</div> </div>
         ) : (
           jobs.map((job) => (
             <div

@@ -626,8 +626,7 @@ function JobCard({
         <ApplicationModal
           jobId={String(job.id)}
           jobTitle={title}
-          onClose={() => setShowApplicationModal(false)}
-        />
+          onClose={() => setShowApplicationModal(false)} gpt_score={0}        />
       )}
       {showApplicationModalQuickVersion && (
         <ApplicationModalQuickVersion

@@ -149,20 +149,43 @@ export async function GET(req: Request) {
     return [];
   }
 
+  async function isJobInactive(job: any): Promise<boolean> {
+    if (job.is_archived) return true;
+    if (job.application_deadline) {
+      const deadline = new Date(job.application_deadline);
+      if (!isNaN(deadline.getTime()) && deadline < new Date()) return true;
+    }
+    if (job.max_applicants && Number(job.max_applicants) > 0) {
+      const { data: appCountData } = await supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .eq("job_id", job.id);
+      if ((appCountData as any)?.count >= Number(job.max_applicants)) return true;
+    }
+    return false;
+  }
+
   let result = Array.isArray(data)
-    ? data.map(job => {
-        const mustHaves = normalizeArray(job.must_have_qualifications);
-        const niceToHaves = normalizeArray(job.nice_to_have_qualifications);
-        const perks = normalizeArray(job.perks_and_benefits);
-        return {
-          ...job,
-          responsibilities: normalizeArray(job.responsibilities),
-          must_haves: mustHaves,
-          nice_to_haves: niceToHaves,
-          perks: perks,
-        }
-      })
+    ? await Promise.all(
+        data.map(async job => {
+          const mustHaves = normalizeArray(job.must_have_qualifications);
+          const niceToHaves = normalizeArray(job.nice_to_have_qualifications);
+          const perks = normalizeArray(job.perks_and_benefits);
+          return {
+            ...job,
+            responsibilities: normalizeArray(job.responsibilities),
+            must_haves: mustHaves,
+            nice_to_haves: niceToHaves,
+            perks: perks,
+          }
+        })
+      )
     : [];
+
+  result = await Promise.all(
+    result.map(async job => (await isJobInactive(job) ? null : job))
+  );
+  result = result.filter(Boolean);
 
   let scoreMap: Record<string, number> = {};
   if (studentId) {

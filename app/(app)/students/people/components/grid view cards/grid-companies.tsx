@@ -22,6 +22,7 @@ interface GridCompaniesProps {
   onToggleFavorite?: (id: string) => void
   favoriteIds?: string[]
   loading?: boolean
+  onHide?: (id: string) => void
 }
 
 export function GridCompanies({
@@ -32,6 +33,7 @@ export function GridCompanies({
   onToggleFavorite,
   favoriteIds = [],
   loading,
+  onHide,
 }: GridCompaniesProps) {
   if (loading) {
     return (
@@ -70,6 +72,7 @@ export function GridCompanies({
           onUnfollow={onUnfollow}
           onToggleFavorite={onToggleFavorite}
           isFavorite={favoriteIds.includes(company.id)}
+          onHide={onHide}
         />
       ))}
     </div>
@@ -83,6 +86,7 @@ interface CompanyCardProps {
   onUnfollow?: (id: string) => void
   onToggleFavorite?: (id: string) => void
   isFavorite?: boolean
+  onHide?: (id: string) => void
 }
 
 function CompanyCard({
@@ -92,6 +96,7 @@ function CompanyCard({
   onUnfollow,
   onToggleFavorite,
   isFavorite,
+  onHide,
 }: CompanyCardProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
@@ -176,7 +181,7 @@ function CompanyCard({
             </Dialog>
           </>
         ) : (
-          <button className="absolute top-2 right-2 text-white hover:bg-white/20 rounded-full p-1">
+          <button className="absolute top-2 right-2 text-white hover:bg-white/20 rounded-full p-1" onClick={() => onHide?.(company.id)}>
             <X size={16} />
           </button>
         )}

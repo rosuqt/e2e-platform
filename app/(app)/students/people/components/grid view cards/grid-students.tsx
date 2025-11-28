@@ -7,7 +7,6 @@ import { BsPersonAdd } from "react-icons/bs"
 import { MessageSquare } from "lucide-react"
 import { Loader2 } from "lucide-react"
 import { TbUserX } from "react-icons/tb"
-import Image from "next/image"
 
 interface Student {
   id: string
@@ -28,6 +27,7 @@ interface GridStudentsProps {
   onToggleFavorite?: (id: string) => void
   favoriteIds?: string[]
   loading?: boolean
+  onHide?: (id: string) => void
 }
 
 export function GridStudents({
@@ -39,6 +39,7 @@ export function GridStudents({
   onToggleFavorite,
   favoriteIds = [],
   loading = false,
+  onHide,
 }: GridStudentsProps) {
   if (loading) {
     return (
@@ -68,7 +69,7 @@ export function GridStudents({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"> {/* was gap-4 */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       {students.map((student) => (
         <StudentCard
           key={student.id}
@@ -79,6 +80,7 @@ export function GridStudents({
           onUnfriend={onUnfriend}
           onToggleFavorite={onToggleFavorite}
           isFavorite={favoriteIds.includes(student.id)}
+          onHide={onHide}
         />
       ))}
     </div>
@@ -93,6 +95,7 @@ interface StudentCardProps {
   onUnfriend?: (id: string) => void
   onToggleFavorite?: (id: string) => void
   isFavorite?: boolean
+  onHide?: (id: string) => void
 }
 
 function StudentCard({
@@ -103,6 +106,7 @@ function StudentCard({
   onUnfriend,
   onToggleFavorite,
   isFavorite,
+  onHide,
 }: StudentCardProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
@@ -178,26 +182,22 @@ function StudentCard({
             </Dialog>
           </>
         ) : (
-          <button className="absolute top-2 right-2 text-white hover:bg-white/20 rounded-full p-1">
+          <button className="absolute top-2 right-2 text-white hover:bg-white/20 rounded-full p-1" onClick={() => onHide?.(student.id)}>
             <X size={16} />
           </button>
         )}
       </div>
       <div className="px-4 pt-10 pb-4 relative">
         <Avatar
-          src={student.avatar || "/placeholder.svg"}
+          src={student.avatar && student.avatar.trim() !== "" ? student.avatar : undefined}
           alt={student.name}
           className="absolute left-1/2 transform -translate-x-1/2 border-4 border-white -mb-11"
           style={{ width: 80, height: 80, top: -64 }}
         >
-          <Image
-            src={student.avatar || "/placeholder.svg"}
-            alt={student.name}
-            fill
-            className="object-cover w-full h-full absolute inset-0 rounded-full"
-            style={{ width: "100%", height: "100%" }}
-            sizes="80px"
-          />
+          {(!student.avatar || student.avatar.trim() === "") &&
+            student.name &&
+            student.name.trim().length > 0 &&
+            student.name.trim()[0].toUpperCase()}
         </Avatar>
         <div className="text-center mb-2">
           <h3 className="font-medium text-gray-900 flex items-center justify-center">

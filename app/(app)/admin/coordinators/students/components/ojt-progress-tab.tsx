@@ -187,6 +187,29 @@ export default function OJTProgressTab({
   const perPage = 5
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null)
 
+  // Calculate requiredHours before any usage
+  let requiredHours = 0
+  if (student && student.course && typeof student.course === "string") {
+    const course = student.course.toLowerCase()
+    if (
+      course.includes("information technology") ||
+      course.includes("abm") ||
+      course.includes("humss") ||
+      course.includes("it mobile app") ||
+      course.includes("web development")
+    ) {
+      requiredHours = 486
+    } else {
+      requiredHours = 600
+    }
+  }
+  requiredHours = requiredHours || 0
+
+  // Editable hours state
+  const [editableHoursCompleted, setEditableHoursCompleted] = useState<number>(student.hoursCompleted ?? 0)
+
+  let calculatedHoursCompleted = editableHoursCompleted
+
   const applications = student.applications || []
   const hasHired = applications.some((app) => app.status && app.status.toLowerCase() === "hired")
   const hiredApplication = applications.find((app) => app.status && app.status.toLowerCase() === "hired")
@@ -226,11 +249,9 @@ export default function OJTProgressTab({
     return count
   }
 
-  let calculatedHoursCompleted = student.hoursCompleted
-
   if (hasHired) {
     const appliedDateStr = hiredApplication?.dateApplied || student.startDate
-    if (appliedDateStr) {
+    if (appliedDateStr && !student.hoursCompleted) {
       const startDate = new Date(appliedDateStr)
       const today = new Date()
       const weekdays = calculateWeekdaysBetween(startDate, today)
@@ -238,23 +259,10 @@ export default function OJTProgressTab({
     }
   }
 
-  let requiredHours = 0
-  if (student && student.course && typeof student.course === "string") {
-    const course = student.course.toLowerCase()
-    if (
-      course.includes("information technology") ||
-      course.includes("abm") ||
-      course.includes("humss") ||
-      course.includes("it mobile app") ||
-      course.includes("web development")
-    ) {
-      requiredHours = 486
-    } else {
-      requiredHours = 600
-    }
-  }
+  // Clamp hours to requiredHours
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  calculatedHoursCompleted = Math.min(calculatedHoursCompleted, requiredHours)
 
-  requiredHours = requiredHours || 0
   const totalPages = Math.ceil(applications.length / perPage)
   const pagedApplications = applications.slice((page - 1) * perPage, page * perPage)
 
@@ -285,8 +293,6 @@ export default function OJTProgressTab({
   }
 
   const visiblePages = getVisiblePages(page, totalPages)
-  const progressPercentage =
-    student.isHired && calculatedHoursCompleted && requiredHours ? (calculatedHoursCompleted / requiredHours) * 100 : 0
 
   const [docs, setDocs] = useState<Document[]>(
     REQUIRED_DOCUMENTS.map((name) => {
@@ -317,9 +323,29 @@ export default function OJTProgressTab({
     )
   }
 
+  // Fallback: no OJT progress data
+  const noProgress =
+    !student.hoursCompleted &&
+    (!student.applications || student.applications.length === 0) &&
+    !student.isHired
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {effectiveOjtStatus?.toLowerCase() !== "hired" ? (
+      {noProgress ? (
+        <div className="flex flex-col items-center justify-center py-16">
+          <Image
+            src="/animations/ojt-track.json"
+            alt="No OJT Progress"
+            width={128}
+            height={128}
+            className="w-32 h-32 mb-4 object-contain"
+            unoptimized
+          />
+          <span className="mt-2 text-slate-700 font-semibold text-base text-center">
+            No OJT progress data available for this student yet.
+          </span>
+        </div>
+      ) : effectiveOjtStatus?.toLowerCase() !== "hired" ? (
         <div className="space-y-4">
           <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-lg">
             <CardHeader className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-t-lg">
@@ -520,8 +546,27 @@ export default function OJTProgressTab({
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-white" />
                     <span className="font-medium text-white">Hours:</span>
-                    <span className="text-emerald-100">
-                      {calculatedHoursCompleted}/{requiredHours}
+                    <span className="text-emerald-100 flex flex-col">
+                      {/* Show actual hours first, then editable input */}
+                      <span className="text-xs text-emerald-200">
+                        Actual: {student.hoursCompleted ?? 0} / {requiredHours}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={0}
+                          max={requiredHours}
+                          value={editableHoursCompleted}
+                          onChange={e => {
+                            const val = Math.max(0, Math.min(Number(e.target.value), requiredHours))
+                            setEditableHoursCompleted(val)
+                          }}
+                          className="w-20 px-2 py-1 rounded bg-white text-emerald-700 font-semibold border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                          style={{ width: 60 }}
+                        />
+                        /{requiredHours}
+                        <span className="text-xs text-emerald-200 ml-2">(Editable)</span>
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -531,11 +576,19 @@ export default function OJTProgressTab({
             <div className="bg-white px-6 py-6 border-t border-emerald-100">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>Completed: {calculatedHoursCompleted} hours</span>
+                  {/* Show both actual and editable values */}
+                  <span>
+                    Completed: {editableHoursCompleted} hours
+                    <span className="ml-2 text-xs text-gray-400">
+                      (Actual: {student.hoursCompleted ?? 0})
+                    </span>
+                  </span>
                   <span>Required: {requiredHours > 0 ? requiredHours + " hours" : "N/A"}</span>
                 </div>
-                <Progress value={progressPercentage} className="h-3" />
-                <div className="text-center text-sm text-gray-500">{progressPercentage.toFixed(1)}% Complete</div>
+                <Progress value={requiredHours ? Math.min((editableHoursCompleted / requiredHours) * 100, 100) : 0} className="h-3" />
+                <div className="text-center text-sm text-gray-500">
+                  {requiredHours ? Math.min((editableHoursCompleted / requiredHours) * 100, 100).toFixed(1) : "0.0"}% Complete
+                </div>
               </div>
             </div>
           </div>

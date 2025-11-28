@@ -348,7 +348,19 @@ export default function StudentDetailsModalContent({
       dateApplied: app.applied_at || app.created_at || "",
       companyLogo: app.company_logo_image_path || "",
     })),
-    course: student.course || ""
+    course: student.course || "",
+    ojtStatus: (() => {
+      switch (student.status?.toLowerCase()) {
+        case "in progress":
+          return "In Progress";
+        case "completed":
+          return "Completed";
+        case "on hold":
+          return "On Hold";
+        default:
+          return undefined;
+      }
+    })(),
   }
 
   if (!student) return null

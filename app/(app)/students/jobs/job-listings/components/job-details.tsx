@@ -26,6 +26,7 @@ import notFoundAnimation from "../../../../../../public/animations/not-found.jso
 import { BsPersonAdd } from "react-icons/bs";
 
 type Employer = {
+  id?: string;
   first_name?: string;
   last_name?: string;
   company_name?: string;
@@ -148,9 +149,13 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   const [viewTracked, setViewTracked] = useState(false)
   const [hasApplied, setHasApplied] = useState(false);
   const [loadingApply, setLoadingApply] = useState(false);
+  const [followState, setFollowState] = useState<"Follow" | "Following">("Follow");
+  const [followLoading, setFollowLoading] = useState(false);
   const { data: session } = useSession();
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const router = useRouter();
+  const [applicantsCount, setApplicantsCount] = useState<number | undefined>(undefined);
+  const [matchedSkillsCount] = useState<number>(0);
 
   const trackJobView = async (jobId: string) => {
     if (viewTracked) return
@@ -438,9 +443,43 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   console.log("JobDetails job object:", job);
   console.log("JobDetails gpt_score:", job?.gpt_score);
   const skillsMatchPercent = skillsMatchPercentRaw !== null ? Math.max(10, skillsMatchPercentRaw) : null;
-  const matchedSkillsCount = jobSkills.filter(
-    skill => studentSkills.map(s => s.trim().toLowerCase()).includes(skill.trim().toLowerCase())
-  ).length;
+
+  function getSavedJobStatus(job: Job | null, applicantsCount?: number) {
+    if (!job) return null
+    const applicationDeadline = job.application_deadline || job.deadline
+    const paused = job.paused
+    const isArchived = (job as { is_archived?: boolean }).is_archived
+    const maxApplicants = job.max_applicants
+    const now = new Date()
+    if (paused) return { label: "Closed", class: "bg-red-100 text-red-700" }
+    if (isArchived) return { label: "Archived", class: "bg-gray-200 text-gray-700" }
+    if (applicationDeadline) {
+      const deadlineDate = new Date(applicationDeadline)
+      if (deadlineDate.getTime() < now.getTime()) return { label: "Closed", class: "bg-red-100 text-red-700" }
+    }
+    if (
+      typeof maxApplicants === "number" &&
+      typeof applicantsCount === "number" &&
+      maxApplicants > 0 &&
+      applicantsCount >= maxApplicants
+    ) {
+      return { label: "No more available applicant slots", class: "bg-orange-100 text-orange-700" }
+    }
+    return null
+  }
+
+  useEffect(() => {
+    if (!jobId) return
+    fetch(`/api/applications/count?jobId=${jobId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.count === "number") setApplicantsCount(data.count)
+        else setApplicantsCount(undefined)
+      })
+      .catch(() => setApplicantsCount(undefined))
+  }, [jobId])
+
+  const savedJobStatus = getSavedJobStatus(job, applicantsCount)
 
   if (loading) {
     return (
@@ -613,12 +652,15 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
           {!hasApplied && (
             <Button
               className={`gap-2 rounded-full ${
-                loadingApply
+                loadingApply || savedJobStatus
                   ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                   : "bg-blue-600 hover:bg-blue-700 text-white"
               }`}
-              onClick={() => setIsModalOpen(true)}
-              disabled={loadingApply}
+              onClick={() => {
+                if (loadingApply || savedJobStatus) return
+                setIsModalOpen(true)
+              }}
+              disabled={loadingApply || !!savedJobStatus}
             >
               {loadingApply ? (
                 <CircularProgress size={20} color="inherit" />
@@ -651,7 +693,11 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
             <span>{saved ? "Saved" : "Save"}</span>
           </Button>
         </div>
-
+        {savedJobStatus && (
+          <div className={`mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold ${savedJobStatus.class}`}>
+            {savedJobStatus.label}
+          </div>
+        )}
         <p className="mt-4 text-sm text-muted-foreground">
           {description}
         </p>
@@ -910,9 +956,14 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
               </span>
             </div>
           </div>
-          <Button variant="outline" className="rounded-full text-blue-500 border-blue-500 flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="rounded-full text-blue-500 border-blue-500 flex items-center gap-2"
+            onClick={handleFollowEmployer}
+            disabled={followLoading}
+          >
             <BsPersonAdd className="w-4 h-4" />
-            <span>Follow</span>
+            <span>{followLoading ? "..." : followState}</span>
           </Button>
         </div>
       </div>
@@ -1076,14 +1127,35 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
             job?.title?.trim() ||
             "Untitled Position"
           }
+          gpt_score={typeof job?.gpt_score === "number" ? job.gpt_score : 0}
           onClose={() => setIsModalOpen(false)}
         />
       )}
     </div>
   );
+
+
+  async function handleFollowEmployer() {
+    if (!job?.employers?.id || !session?.user?.studentId || followLoading) return;
+    setFollowLoading(true);
+    if (followState === "Following") {
+      await fetch("/api/students/people/sendFollow", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: session.user.studentId, employerId: job.employers.id }),
+      });
+      setFollowState("Follow");
+    } else {
+      await fetch("/api/students/people/sendFollow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: session.user.studentId, employerId: job.employers.id }),
+      });
+      setFollowState("Following");
+    }
+    setFollowLoading(false);
+  }
 };
-
-
 
 export default JobDetails;
 

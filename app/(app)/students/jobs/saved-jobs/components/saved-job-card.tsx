@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 "use client"
 
 import type React from "react"
@@ -51,6 +52,33 @@ function formatPostedDate(postedDate?: string) {
   if (diffDays === 1) return "Saved 1 day ago"
   if (diffDays <= 7) return `Saved ${diffDays} days ago`
   return posted.toLocaleString("default", { month: "short", day: "numeric" })
+}
+
+function getJobStatus(job: SavedJob) {
+  const applicationDeadline =
+    (job as { application_deadline?: string }).application_deadline ||
+    (job as { deadline?: string }).deadline
+  const paused = (job as { paused?: boolean }).paused
+  const isArchived = (job as { is_archived?: boolean }).is_archived
+  const maxApplicants = (job as { max_applicants?: number }).max_applicants
+  const applicantsCount = (job as { applicants_count?: number }).applicants_count
+
+  const now = new Date()
+  if (paused) return { label: "Closed", class: "bg-red-100 text-red-700" }
+  if (isArchived) return { label: "Archived", class: "bg-gray-200 text-gray-700" }
+  if (applicationDeadline) {
+    const deadlineDate = new Date(applicationDeadline)
+    if (deadlineDate.getTime() < now.getTime()) return { label: "Closed", class: "bg-red-100 text-red-700" }
+  }
+  if (
+    typeof maxApplicants === "number" &&
+    typeof applicantsCount === "number" &&
+    maxApplicants > 0 &&
+    applicantsCount >= maxApplicants
+  ) {
+    return { label: "No more available applicant slots", class: "bg-orange-100 text-orange-700" }
+  }
+  return null
 }
 
 function SavedJobCard({
@@ -149,39 +177,23 @@ function SavedJobCard({
   const location = extractCityRegionCountry(job.location)
   const remoteOptions = job.remote_options || "On-site"
   const type = job.type || "Full-time"
-  const matchPercentage = job.match_percentage || 85
+  const matchPercentage = job.match_percentage ?? null
+
+  // Color coding for match score
+  let matchScoreColor = ""
+  if (typeof matchPercentage === "number") {
+    if (matchPercentage >= 60) matchScoreColor = "bg-green-100 text-green-700"
+    else if (matchPercentage >= 25) matchScoreColor = "bg-orange-100 text-orange-700"
+    else if (matchPercentage >= 10) matchScoreColor = "bg-red-100 text-red-700"
+  }
   const payType = job.pay_type || "N/A"
   const payAmount = job.pay_amount ? job.pay_amount : "N/A"
   const savedDate = formatPostedDate(job.savedDate || job.created_at)
 
   let statusLabel = ""
   let statusClass = ""
-  const applicationDeadline =
-    (job as { application_deadline?: string }).application_deadline ||
-    (job as { deadline?: string }).deadline
-  const paused = (job as { paused?: boolean }).paused
-
-  if (paused) {
-    statusLabel = "Closed"
-    statusClass = "bg-red-100 text-red-700"
-  } else if (applicationDeadline) {
-    const deadlineDate = new Date(applicationDeadline)
-    const now = new Date()
-    const diffDays = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    if (diffDays < 0) {
-      statusLabel = "Closed"
-      statusClass = "bg-red-100 text-red-700"
-    } else if (diffDays <= 3) {
-      statusLabel = "Closing Soon"
-      statusClass = "bg-orange-100 text-orange-700"
-    } else {
-      statusLabel = "Active"
-      statusClass = "bg-green-100 text-green-700"
-    }
-  } else {
-    statusLabel = "Active"
-    statusClass = "bg-green-100 text-green-700"
-  }
+  const statusObj = getJobStatus(job)
+  const isApplyDisabled = !!statusObj
 
   async function handleRemove(e: React.MouseEvent) {
     e.stopPropagation()
@@ -231,10 +243,16 @@ function SavedJobCard({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-lg text-gray-800">{title}</h3>
-              {statusLabel && (
-                <span className={`ml-2 ${statusClass} text-xs font-semibold px-2 py-0.5 rounded-full`}>
-                  {statusLabel}
+              {statusObj ? (
+                <span className={`ml-2 ${statusObj.class} text-xs font-semibold px-2 py-0.5 rounded-full`}>
+                  {statusObj.label}
                 </span>
+              ) : (
+                statusLabel && (
+                  <span className={`ml-2 ${statusClass} text-xs font-semibold px-2 py-0.5 rounded-full`}>
+                    {statusLabel}
+                  </span>
+                )
               )}
             </div>
             <p className="text-sm text-gray-500">
@@ -275,8 +293,14 @@ function SavedJobCard({
         <span>{savedDate}</span>
       </div>
 
-      {matchPercentage && (
-        <div className="bg-green-100 text-green-700 text-sm font-semibold mt-2 px-4 py-2 rounded-lg flex items-center gap-2">
+      {/* Match Score Section */}
+      {matchPercentage == null || matchPercentage < 10 ? (
+        <div className="bg-gray-100 text-gray-500 text-sm font-semibold mt-2 px-4 py-2 rounded-lg flex items-center gap-2">
+          <CgSmile className="w-5 h-5" />
+          <span>Set up your profile to get matchscore</span>
+        </div>
+      ) : (
+        <div className={`${matchScoreColor} text-sm font-semibold mt-2 px-4 py-2 rounded-lg flex items-center gap-2`}>
           <CgSmile className="w-5 h-5" />
           <span>You are {matchPercentage}% match to this job.</span>
         </div>
@@ -328,13 +352,15 @@ function SavedJobCard({
             </motion.button>
           )}
           <motion.button
-            className="bg-white hover:bg-blue-50 text-blue-600 px-6 py-2 rounded-full font-medium shadow-sm border border-blue-600 flex-1 sm:flex-none flex items-center justify-center gap-2"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
+            className={`bg-white hover:bg-blue-50 text-blue-600 px-6 py-2 rounded-full font-medium shadow-sm border border-blue-600 flex-1 sm:flex-none flex items-center justify-center gap-2 ${isApplyDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+            whileHover={isApplyDisabled ? {} : { scale: 1.03 }}
+            whileTap={isApplyDisabled ? {} : { scale: 0.97 }}
             onClick={(e) => {
+              if (isApplyDisabled) return
               e.stopPropagation()
               onQuickApply()
             }}
+            disabled={isApplyDisabled}
           >
             <IoIosRocket className="w-4 h-4" />
             Quick Apply

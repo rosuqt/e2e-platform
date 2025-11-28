@@ -11,7 +11,8 @@ import {
   Typography,
   Card,
   CardContent,
-  MenuItem
+  MenuItem,
+  CircularProgress
 } from "@mui/material";
 import type { SlideProps } from "@mui/material";
 import { Briefcase } from "lucide-react";
@@ -152,6 +153,11 @@ export default function AddExpModal({
         return;
       }
       await fetch("/api/ai-matches/embeddings/student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
+      await fetch("/api/ai-matches/rescore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId }),
@@ -451,7 +457,7 @@ export default function AddExpModal({
                 "&:hover": { background: "#1e40af" }
               }}
             >
-              {editMode ? "Update" : "Save"}
+              {saving ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : (editMode ? "Update" : "Save")}
             </Button>
           </Box>
         </Box>

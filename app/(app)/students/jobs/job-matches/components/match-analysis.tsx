@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { SiCodemagic } from "react-icons/si"
+import { FaRegUserCircle } from "react-icons/fa"
 import MatchBoosterPopup from "./match-booster"
 import { useSession } from "next-auth/react"
 
@@ -64,7 +65,18 @@ export function MatchAnalysis() {
     description,
     accentColor,
     ringColor,
+    showProfileSetup,
   } = useMemo(() => {
+    if (score <= 5) {
+      return {
+        title: "Setup Your Profile",
+        description:
+          "Complete your profile to start seeing better matches. Add your skills, experience, and interests to unlock opportunities tailored for you!",
+        accentColor: "text-blue-600",
+        ringColor: "#3B82F6",
+        showProfileSetup: true,
+      }
+    }
     if (score >= 60) {
       return {
         title: "Nice! You’ve Got Strong Matches!",
@@ -72,6 +84,7 @@ export function MatchAnalysis() {
           "You’re on the right track with your matches. With a few tweaks using our Match Guide, you can boost your score and unlock even better opportunities!",
         accentColor: "text-emerald-600",
         ringColor: "#059669",
+        showProfileSetup: false,
       }
     }
     if (score >= 25) {
@@ -81,6 +94,7 @@ export function MatchAnalysis() {
           "You’ve built a decent foundation with your matches. Use your Match Booster to fine-tune your skills and increase your compatibility — you’re closer than you think!",
         accentColor: "text-amber-600",
         ringColor: "#D97706",
+        showProfileSetup: false,
       }
     }
     return {
@@ -89,6 +103,7 @@ export function MatchAnalysis() {
         "Your current matches are still developing, but don’t worry — everyone starts here. Use your Match Guide to build stronger skills and start finding roles that truly match you!",
       accentColor: "text-rose-600",
       ringColor: "#DC2626",
+      showProfileSetup: false,
     }
   }, [score])
 
@@ -169,6 +184,8 @@ export function MatchAnalysis() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   {scoreLoading ? (
                     <span className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></span>
+                  ) : showProfileSetup ? (
+                    <FaRegUserCircle className="text-blue-400 w-8 h-8 mb-1" />
                   ) : (
                     <span className={`text-xl font-bold leading-none ${accentColor}`}>
                       {avgScore !== null ? `${score}%` : "—"}

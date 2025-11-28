@@ -236,8 +236,7 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
         <ApplicationModal
           jobId={"0"}
           jobTitle="UI/UX Designer"
-          onClose={() => setIsModalOpen(false)}
-        />
+          onClose={() => setIsModalOpen(false)} gpt_score={0}        />
       )}
       <QuickEditModal
         open={isQuickEditOpen}

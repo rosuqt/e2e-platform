@@ -17,6 +17,7 @@ import Switch from "@mui/material/Switch"
 import Box from "@mui/material/Box"
 import Chip from "@mui/material/Chip"
 import Checkbox from "@mui/material/Checkbox"
+import Tooltip from "@mui/material/Tooltip"
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogAction } from "@/components/ui/alert-dialog"
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 const ConfettiFireworks = dynamic(() => import("@/components/magicui/fireworks").then(mod => mod.ConfettiFireworks), { ssr: false })
@@ -47,6 +48,7 @@ const jobTypes = [
 ]
 
 const remoteOptions = [
+  { value: "any", label: "Any" },
   { value: "hybrid", label: "Hybrid" },
   { value: "wfh", label: "Work from Home" },
   { value: "onsite", label: "Onsite" },
@@ -76,11 +78,13 @@ export default function WelcomeFlow() {
     section: "",
     jobType: [],
     remoteOption: [],
-    unrelatedJobRecommendations: false,
+    unrelatedJobRecommendations: true,
   })
   const [isPosting, setIsPosting] = useState(false)
   const [showError, setShowError] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
+  const [sectionError, setSectionError] = useState("")
+  const [isAlumni, setIsAlumni] = useState(false)
   const lottieRef = useRef<import("lottie-react").LottieRefCurrentProps | null>(null)
 
   const totalSteps = 3
@@ -108,19 +112,39 @@ export default function WelcomeFlow() {
         const res = await fetch("/api/students/welcome", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ ...formData, isAlumni }),
           credentials: "include" 
         })
 
-        console.log("POST /api/students/welcome status:", res.status)
         if (res.ok) {
           success = true
+          const studentIdRes = await res.json()
+          console.log("studentIdRes", studentIdRes)
+          const student_id = studentIdRes?.student_id
+          if (!student_id) {
+            setErrorMsg("Student ID missing from response. Embeddings/rescore not triggered.")
+            setShowError(true)
+          } else {
+            await fetch("/api/ai-matches/embeddings/student", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ student_id }),
+              credentials: "include"
+            })
+            await fetch("/api/ai-matches/rescore", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ student_id }),
+              credentials: "include"
+            })
+          }
         } else {
           const data = await res.json()
           setErrorMsg(data?.error || "Something went wrong. Please try again.")
           setShowError(true)
         }
-      } catch {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (err) {
         setErrorMsg("Network error. Please try again.")
         setShowError(true)
       }
@@ -143,8 +167,42 @@ export default function WelcomeFlow() {
     }
   }
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     setIsPosting(true)
+    const saved = sessionStorage.getItem(STORAGE_KEY)
+    let student_id
+    if (saved) {
+      try {
+        const res = await fetch("/api/students/welcome", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...JSON.parse(saved), isAlumni }),
+          credentials: "include"
+        })
+        if (res.ok) {
+          const studentIdRes = await res.json()
+          console.log("studentIdRes", studentIdRes)
+          student_id = studentIdRes?.student_id
+          if (!student_id) {
+            setErrorMsg("Student ID missing from response. Embeddings/rescore not triggered.")
+            setShowError(true)
+          } else {
+            await fetch("/api/ai-matches/embeddings/student", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ student_id }),
+              credentials: "include"
+            })
+            await fetch("/api/ai-matches/rescore", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ student_id }),
+              credentials: "include"
+            })
+          }
+        }
+      } catch {}
+    }
     setTimeout(() => {
       sessionStorage.removeItem(STORAGE_KEY)
       sessionStorage.removeItem(STEP_KEY)
@@ -155,14 +213,18 @@ export default function WelcomeFlow() {
   const updateFormData = (field: keyof FormData, value: string | boolean | string[] | undefined) => {
     if (field === "section" && typeof value === "string") {
       if (!/^\d{0,3}$/.test(value)) return
+      if (value.length === 3 && !/^\d{3}$/.test(value)) {
+        setSectionError("Write a valid section e.g. '711', '211'")
+      } else {
+        setSectionError("")
+      }
     }
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const isStep1Valid =
-    !!formData.course &&
-    !!formData.yearLevel &&
-    /^\d{3}$/.test(formData.section)
+  const isStep1Valid = isAlumni
+    ? !!formData.course
+    : !!formData.course && !!formData.yearLevel && /^\d{3}$/.test(formData.section)
 
   const seniorHighCourses = [
     "ABM",
@@ -341,7 +403,8 @@ export default function WelcomeFlow() {
                         isOptionEqualToValue={(option, value) => option.value === value.value}
                       />
                     </Box>
-                    <div className="grid grid-cols-2 gap-4">
+                    {!isAlumni && (
+                      <div className="grid grid-cols-2 gap-4">
                         <Box>
                           <Autocomplete
                             options={filteredYearLevels.flatMap(group => group.options)}
@@ -381,8 +444,21 @@ export default function WelcomeFlow() {
                               pattern: "[0-9]{3}",
                             }}
                         />
+                        {sectionError && (
+                          <div className="text-xs text-red-500 mt-1">{sectionError}</div>
+                        )}
                         </Box>
-                  </div>
+                      </div>
+                    )}
+                    <Box display="flex" alignItems="center" mt={2}>
+                      <Switch
+                        checked={isAlumni}
+                        onChange={(_, checked) => setIsAlumni(checked)}
+                        color="primary"
+                        inputProps={{ "aria-label": "I'm an alumni" }}
+                      />
+                      <span className="ml-2 text-sm text-blue-600">I&apos;m an alumni</span>
+                    </Box>
                   </div>
                 </div>
               )}
@@ -392,7 +468,7 @@ export default function WelcomeFlow() {
                     <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-500">
                       Personalize Your Experience
                     </h1>
-                    <p className="text-gray-400">Help us tailor job recommendations for you.</p>
+                    <p className="text-gray-400">Help us tailor job recommendations for you. (optional)</p>
                   </div>
                   <div className="space-y-6">
                     <Box>
@@ -546,42 +622,72 @@ export default function WelcomeFlow() {
                             Skip
                           </Button>
                         )}
-                        <motion.button
-                          onClick={handleNext}
-                          disabled={currentStep === 1 && !isStep1Valid || isPosting}
-                          type="button"
-                          className={`flex items-center justify-center px-6 py-2 font-semibold text-white bg-blue-500 rounded-full shadow transition-colors focus:outline-none text-base
-                            ${currentStep === 1 && !isStep1Valid ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}
-                          whileHover={{ scale: currentStep === 1 && !isStep1Valid ? 1 : 1.07 }}
-                          whileTap={{ scale: currentStep === 1 && !isStep1Valid ? 1 : 0.93 }}
-                          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                        <Tooltip
+                          title={
+                            !formData.course
+                              ? "Select your course first"
+                              : (!isAlumni && (!formData.yearLevel || !/^\d{3}$/.test(formData.section)))
+                                ? !formData.yearLevel
+                                  ? "Select your year level"
+                                  : "Enter a valid section e.g. 711"
+                                : ""
+                          }
+                          disableHoverListener={isStep1Valid}
                         >
-                          {isPosting ? (
-                            <span className="w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></span>
-                          ) : (
-                            <>
-                              Finish
-                              <IoIosRocket className="w-5 h-5 ml-1" />
-                            </>
-                          )}
-                        </motion.button>
+                          <span>
+                            <motion.button
+                              onClick={handleNext}
+                              disabled={currentStep === 1 && !isStep1Valid || isPosting}
+                              type="button"
+                              className={`flex items-center justify-center px-6 py-2 font-semibold text-white bg-blue-500 rounded-full shadow transition-colors focus:outline-none text-base
+                                ${currentStep === 1 && !isStep1Valid ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}
+                              whileHover={{ scale: currentStep === 1 && !isStep1Valid ? 1 : 1.07 }}
+                              whileTap={{ scale: currentStep === 1 && !isStep1Valid ? 1 : 0.93 }}
+                              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                            >
+                              {isPosting ? (
+                                <span className="w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></span>
+                              ) : (
+                                <>
+                                  Finish
+                                  <IoIosRocket className="w-5 h-5 ml-1" />
+                                </>
+                              )}
+                            </motion.button>
+                          </span>
+                        </Tooltip>
                       </div>
                     </>
                   ) : (
                     <div className="flex w-full justify-end">
-                      <motion.button
-                        onClick={handleNext}
-                        disabled={!isStep1Valid}
-                        type="button"
-                        className={`flex items-center justify-center px-6 py-2 font-semibold text-white bg-blue-500 rounded-full shadow transition-colors focus:outline-none text-base
-                          ${!isStep1Valid ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}
-                        whileHover={{ scale: !isStep1Valid ? 1 : 1.07 }}
-                        whileTap={{ scale: !isStep1Valid ? 1 : 0.93 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                      <Tooltip
+                        title={
+                          !formData.course
+                            ? "Select your course first"
+                            : (!isAlumni && (!formData.yearLevel || !/^\d{3}$/.test(formData.section)))
+                              ? !formData.yearLevel
+                                ? "Select your year level"
+                                : "Enter a valid section e.g. 711"
+                              : ""
+                        }
+                        disableHoverListener={isStep1Valid}
                       >
-                        Next
-                        <ChevronRight className="w-5 h-5 ml-1" />
-                      </motion.button>
+                        <span>
+                          <motion.button
+                            onClick={handleNext}
+                            disabled={!isStep1Valid}
+                            type="button"
+                            className={`flex items-center justify-center px-6 py-2 font-semibold text-white bg-blue-500 rounded-full shadow transition-colors focus:outline-none text-base
+                              ${!isStep1Valid ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"}`}
+                            whileHover={{ scale: !isStep1Valid ? 1 : 1.07 }}
+                            whileTap={{ scale: !isStep1Valid ? 1 : 0.93 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                          >
+                            Next
+                            <ChevronRight className="w-5 h-5 ml-1" />
+                          </motion.button>
+                        </span>
+                      </Tooltip>
                     </div>
                   )}
                 </div>

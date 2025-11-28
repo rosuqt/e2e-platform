@@ -136,28 +136,32 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
                 const { signedUrl } = await signedRes.json();
                 imgUrl = appendOrUpdateTimestamp(signedUrl);
                 setProfileImg(imgUrl);
+                sessionStorage.setItem(
+                  "sidebarUserData",
+                  JSON.stringify({
+                    role: "employer",
+                    studentName,
+                    email: email || null,
+                    jobTitle: job_title || null,
+                    profileImg: imgUrl,
+                    course: null,
+                    verify_status
+                  })
+                );
               } else {
                 setProfileImg(null);
+                sessionStorage.removeItem("sidebarUserData");
               }
             } catch {
               setProfileImg(null);
+              sessionStorage.removeItem("sidebarUserData");
             }
           } else {
-            setProfileImg(null);
+            imgUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`;
+            setProfileImg(imgUrl);
+            sessionStorage.removeItem("sidebarUserData");
           }
 
-          sessionStorage.setItem(
-            "sidebarUserData",
-            JSON.stringify({
-              role: "employer",
-              studentName,
-              email: email || null,
-              jobTitle: job_title || null,
-              profileImg: imgUrl,
-              course: null,
-              verify_status
-            })
-          );
           setLoading(false);
           return;
         }
@@ -168,8 +172,10 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
           setRole("student");
           const { first_name, last_name, course, profile_img } = await detailsRes.json();
           const studentName =
-            first_name && last_name
-              ? `${first_name} ${last_name}`
+            first_name
+              ? last_name
+                ? `${first_name} ${last_name}`
+                : first_name
               : null;
           setStudentName(studentName);
           setCourse(course || null);
@@ -190,26 +196,30 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
                 const { signedUrl } = await signedRes.json();
                 imgUrl = appendOrUpdateTimestamp(signedUrl); 
                 setProfileImg(imgUrl);
+                sessionStorage.setItem(
+                  "sidebarUserData",
+                  JSON.stringify({
+                    role: "student",
+                    studentName,
+                    email: null,
+                    jobTitle: null,
+                    profileImg: imgUrl,
+                    course: course || null,
+                  })
+                );
               } else {
                 setProfileImg(null);
+                sessionStorage.removeItem("sidebarUserData");
               }
             } catch {
               setProfileImg(null);
+              sessionStorage.removeItem("sidebarUserData");
             }
           } else {
-            setProfileImg(null);
+            imgUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`;
+            setProfileImg(imgUrl);
+            sessionStorage.removeItem("sidebarUserData");
           }
-          sessionStorage.setItem(
-            "sidebarUserData",
-            JSON.stringify({
-              role: "student",
-              studentName,
-              email: null,
-              jobTitle: null,
-              profileImg: imgUrl,
-              course: course || null,
-            })
-          );
           setLoading(false);
           return;
         }

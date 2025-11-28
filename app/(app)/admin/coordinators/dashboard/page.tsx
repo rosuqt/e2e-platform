@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   BarChart3,
   Users,
@@ -64,9 +64,21 @@ const statsCards = [
 export default function AdminDashboard() {
   const [dateRange, setDateRange] = useState("This Month")
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [topCompanies, setTopCompanies] = useState<
+    { company_id: string, company_name: string, applicant_count: number, company_logo_url?: string }[]
+  >([])
+  const [loadingCompanies, setLoadingCompanies] = useState(true)
   const handlePopoverOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget)
   const handlePopoverClose = () => setAnchorEl(null)
   const open = Boolean(anchorEl)
+
+  useEffect(() => {
+    setLoadingCompanies(true)
+    fetch("/api/admin/dashboard/fetchTopCompany")
+      .then(res => res.json())
+      .then(data => setTopCompanies(data.companies || []))
+      .finally(() => setLoadingCompanies(false))
+  }, [])
 
   return (
     <div className="space-y-8">
@@ -278,30 +290,58 @@ export default function AdminDashboard() {
               <Card className="border-0 shadow-lg bg-white">
                 <CardHeader>
                   <CardTitle className="text-xl font-bold text-gray-900">Top Companies</CardTitle>
-                  <CardDescription className="text-gray-600">Companies hiring the most IT students</CardDescription>
+                  <CardDescription className="text-gray-600">Companies hiring the most students</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.7 + i * 0.1 }}
-                        className="flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-colors group"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center"></div>
-                          <div>
-                            <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                              Tech Company {i}
-                            </p>
-                            <p className="text-xs text-gray-600">{15 - i * 2} students hired</p>
+                    {loadingCompanies ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between p-4 rounded-2xl animate-pulse bg-gray-50"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-gray-200" />
+                            <div>
+                              <div className="h-4 w-32 bg-gray-200 rounded mb-2" />
+                              <div className="h-3 w-20 bg-gray-100 rounded" />
+                            </div>
                           </div>
+                          <div className="h-5 w-5 rounded bg-gray-200" />
                         </div>
-                        <TrendingUp className="h-5 w-5 text-emerald-500" />
-                      </motion.div>
-                    ))}
+                      ))
+                    ) : topCompanies.length === 0 ? (
+                      <p className="text-gray-500 font-medium text-lg">No data available</p>
+                    ) : (
+                      topCompanies.slice(0, 5).map((company, i) => (
+                        <motion.div
+                          key={company.company_id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.7 + i * 0.1 }}
+                          className="flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-colors group"
+                        >
+                          <div className="flex items-center gap-2">
+                            {company.company_logo_url ? (
+                              <img
+                                src={company.company_logo_url}
+                                alt={company.company_name}
+                                className="h-8 w-8 rounded-full object-cover border border-gray-200"
+                              />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center"></div>
+                            )}
+                            <div>
+                              <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                                {company.company_name}
+                              </p>
+                              <p className="text-xs text-gray-600">{company.applicant_count} total applications</p>
+                            </div>
+                          </div>
+                          <TrendingUp className="h-5 w-5 text-emerald-500" />
+                        </motion.div>
+                      ))
+                    )}
                   </div>
                 </CardContent>
               </Card>

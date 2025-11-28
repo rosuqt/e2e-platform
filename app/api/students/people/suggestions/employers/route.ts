@@ -3,7 +3,13 @@ import { getAdminSupabase } from "@/lib/supabase"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "../../../../../../lib/authOptions"
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
+  const url = req.url || ""
+  const limitMatch = url.match(/limit=(\d+)/)
+  let limit = 24
+  if (limitMatch) {
+    limit = parseInt(limitMatch[1], 10)
+  }
   const supabase = getAdminSupabase()
   const { data: employers, error } = await supabase
     .from("registered_employers")
@@ -28,7 +34,7 @@ export async function POST(_req: NextRequest) {
   })
 
   const mapped = await Promise.all(
-    sorted.slice(0, 24).map(async (e) => {
+    sorted.slice(0, limit).map(async (e) => {
       let avatar = "/placeholder.svg?height=100&width=100"
       let cover = ""
       const profileImg = e.employer_profile?.profile_img

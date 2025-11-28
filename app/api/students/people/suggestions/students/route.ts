@@ -12,7 +12,7 @@ type StudentRow = {
 }
 
 export async function POST(req: NextRequest) {
-  const { id } = await req.json()
+  const { id, limit } = await req.json()
   const supabase = getAdminSupabase()
 
   const { data: me, error: meError } = await supabase
@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
   const { course, year, section } = me
 
   let students: StudentRow[] = []
+  const maxLimit = typeof limit === "number" ? limit : 12
 
   const { data: allMatch } = await supabase
     .from("registered_students")
@@ -34,36 +35,36 @@ export async function POST(req: NextRequest) {
     .eq("course", course)
     .eq("year", year)
     .eq("section", section)
-    .limit(12)
+    .limit(maxLimit)
   students = (allMatch ?? []) as StudentRow[]
 
-  if (students.length < 12) {
+  if (students.length < maxLimit) {
     const { data: partialMatch } = await supabase
       .from("registered_students")
       .select("id, first_name, last_name, course, year, section, user_id")
       .neq("id", id)
       .eq("course", course)
       .or(`year.eq.${year},section.eq.${section}`)
-      .limit(24)
+      .limit(maxLimit * 2)
 
     const filtered = ((partialMatch ?? []) as StudentRow[]).filter(s =>
       !students.some(x => x.id === s.id)
     )
-    students = students.concat(filtered.slice(0, 12 - students.length))
+    students = students.concat(filtered.slice(0, maxLimit - students.length))
   }
 
-  if (students.length < 12) {
+  if (students.length < maxLimit) {
     const { data: courseMatch } = await supabase
       .from("registered_students")
       .select("id, first_name, last_name, course, year, section, user_id")
       .neq("id", id)
       .eq("course", course)
-      .limit(24)
+      .limit(maxLimit * 2)
 
     const filtered = ((courseMatch ?? []) as StudentRow[]).filter(s =>
       !students.some(x => x.id === s.id)
     )
-    students = students.concat(filtered.slice(0, 12 - students.length))
+    students = students.concat(filtered.slice(0, maxLimit - students.length))
   }
 
   console.log("Suggested students:", students)

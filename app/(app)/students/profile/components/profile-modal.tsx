@@ -118,7 +118,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem(sessionAvatarKey)
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem(sessionAvatarKey)
           }
           setLoading(false)
@@ -132,7 +133,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           const name =
             first_name && last_name
               ? `${first_name} ${last_name}`
-              : ""
+              : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
           setUserType("student")
@@ -160,7 +161,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem(sessionAvatarKey)
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem(sessionAvatarKey)
           }
           setLoading(false)
@@ -213,7 +215,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem("profileModalUserAvatar")
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem("profileModalUserAvatar")
           }
           setLoading(false)
@@ -227,7 +230,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           const name =
             first_name && last_name
               ? `${first_name} ${last_name}`
-              : ""
+              : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
           setUserType("student")
@@ -255,7 +258,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem("profileModalUserAvatar")
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem("profileModalUserAvatar")
           }
           setLoading(false)
@@ -353,7 +357,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               ) : (
                 <>
                   <Avatar
-                    src={dbAvatar || "/placeholder.svg"}
+                    src={dbAvatar || (userType === "student" ? user.avatarUrl : undefined) || "/placeholder.svg"}
                     alt={dbName}
                     sx={{ width: 48, height: 48, border: "2px solid #bbdefb" }}
                   >

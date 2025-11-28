@@ -1054,7 +1054,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
 
         {activeTab === 2 && (
           <motion.div
-            className="space-y-8 p-8 w-[700px] mx-auto flex flex-col items-center justify-center"
+            className="space-y-8 p-8 flex flex-col items-center justify-center w-full"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}

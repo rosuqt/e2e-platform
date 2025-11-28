@@ -29,6 +29,7 @@ export default function SkillsPage() {
   const [skillInput, setSkillInput] = useState("")
   const [showSkillInput, setShowSkillInput] = useState(false)
   const [deletingSkillIdx, setDeletingSkillIdx] = useState<number | null>(null)
+  const [skillError, setSkillError] = useState<string | null>(null)
   const [expertise, setExpertise] = useState<{ skill: string; mastery: number }[]>([])
   const [deletingExpertiseIdx, setDeletingExpertiseIdx] = useState<number | null>(null)
   const [certs, setCerts] = useState<Cert[]>([])
@@ -92,24 +93,36 @@ export default function SkillsPage() {
   }, [openViewCert, selectedCert?.attachmentUrl])
 
   const addSkill = async (value: string) => {
-    const skill = value.trim()
-    if (!skill || skills.includes(skill) || skill.length > 20) return
-    const newSkills = [skill, ...skills]
-    setSkills(newSkills)
-    setSkillInput("")
-    setShowSkillInput(false)
+    const skill = value.trim();
+    if (!skill) return;
+    if (skills.includes(skill)) {
+      setSkillError("This skill already exists.");
+      return;
+    }
+    if (
+      expertise.some(e => e.skill.replace(/\s+/g, "").toLowerCase() === skill.replace(/\s+/g, "").toLowerCase())
+    ) {
+      setSkillError("This skill already exists as an expertise.");
+      return;
+    }
+    if (skill.length > 20) return;
+    setSkillError(null);
+    const newSkills = [skill, ...skills];
+    setSkills(newSkills);
+    setSkillInput("");
+    setShowSkillInput(false);
     await fetch("/api/students/student-profile/postHandlers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ skills: newSkills }),
-    })
-    const studentId = (session?.user as { studentId?: string })?.studentId
+    });
+    const studentId = (session?.user as { studentId?: string })?.studentId;
     if (studentId) {
       await fetch("/api/ai-matches/embeddings/student", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId }),
-      })
+      });
     }
   }
 
@@ -376,25 +389,38 @@ export default function SkillsPage() {
                 <p className="text-sm text-gray-500 mb-3 -mt-2">Highlight your top skills to attract employers.</p>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {showSkillInput ? (
-                    <input
-                      type="text"
-                      value={skillInput}
-                      onChange={e => setSkillInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === "Enter") {
-                          addSkill(skillInput)
-                        } else if (e.key === "Escape") {
-                          setShowSkillInput(false)
-                          setSkillInput("")
-                        }
-                      }}
-                      onBlur={() => { setShowSkillInput(false); setSkillInput("") }}
-                      placeholder="Type then press Enter"
-                      maxLength={20}
-                      autoFocus
-                      className="border border-blue-300 rounded-full px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      style={{ minHeight: 32 }}
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={skillInput}
+                        onChange={e => {
+                          setSkillInput(e.target.value);
+                          setSkillError(null);
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === "Enter") {
+                            addSkill(skillInput);
+                          } else if (e.key === "Escape") {
+                            setShowSkillInput(false);
+                            setSkillInput("");
+                            setSkillError(null);
+                          }
+                        }}
+                        onBlur={() => {
+                          setShowSkillInput(false);
+                          setSkillInput("");
+                          setSkillError(null);
+                        }}
+                        placeholder="Type then press Enter"
+                        maxLength={20}
+                        autoFocus
+                        className="border border-blue-300 rounded-full px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        style={{ minHeight: 32 }}
+                      />
+                      {skillError && (
+                        <div className="text-xs text-red-500 mt-1">{skillError}</div>
+                      )}
+                    </div>
                   ) : (
                     <Button
                       size="sm"
@@ -515,7 +541,17 @@ export default function SkillsPage() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-lg text-gray-800">{cert.title}</h3>
+                            <h3
+                              className="font-medium text-lg text-gray-800 break-words max-w-[120px] overflow-hidden"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                lineClamp: 3
+                              }}
+                            >
+                              {cert.title}
+                            </h3>
                             {cert.category && (
                               <span className="ml-2 px-2 py-1 rounded bg-blue-50 text-blue-600 text-xs font-medium">{cert.category}</span>
                             )}
@@ -551,34 +587,25 @@ export default function SkillsPage() {
                         </button>
                       </div>
                       {cert.description && (
-                        <p className="text-sm text-gray-600 mt-2">
-                          {cert.description}
+                        <p className="text-sm text-gray-600 mt-2 break-words truncate max-h-12 overflow-hidden">
+                          {cert.description.length > 120
+                            ? cert.description.slice(0, 120) + "..."
+                            : cert.description}
                         </p>
                       )}
                       <div className="mt-auto flex w-full justify-end gap-2">
-                        {cert.attachmentUrl ? (
-                          <Button
-                            size="sm"
-                            className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
-                            variant="default"
-                            style={{ minHeight: 32 }}
-                            onClick={() => {
-                              setSelectedCert(cert)
-                              setOpenViewCert(true)
-                            }}
-                          >
-                            View Certificate
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            className="w-full text-xs border-blue-300 text-blue-600 hover:bg-blue-50"
-                            variant="outline"
-                            disabled
-                          >
-                            No Certificate
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
+                          variant="default"
+                          style={{ minHeight: 32 }}
+                          onClick={() => {
+                            setSelectedCert(cert)
+                            setOpenViewCert(true)
+                          }}
+                        >
+                          View Certificate
+                        </Button>
                       </div>
                       {deletingCertIdx === idx && (
                         <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
@@ -672,7 +699,17 @@ export default function SkillsPage() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-lg text-gray-800">{item.title}</h3>
+                            <h3
+                              className="font-medium text-lg text-gray-800 break-words max-w-[120px] overflow-hidden"
+                              style={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                lineClamp: 3
+                              }}
+                            >
+                              {item.title}
+                            </h3>
                             {item.category && (
                               <span className="ml-2 px-2 py-1 rounded bg-blue-50 text-blue-600 text-xs font-medium">{item.category}</span>
                             )}
@@ -704,65 +741,38 @@ export default function SkillsPage() {
                         </button>
                       </div>
                       {item.description && (
-                        <p className="text-sm text-gray-600 mt-2">
-                          {item.description}
+                        <p className="text-sm text-gray-600 mt-2 break-words truncate max-h-12 overflow-hidden">
+                          {item.description.length > 120
+                            ? item.description.slice(0, 120) + "..."
+                            : item.description}
                         </p>
                       )}
                       <div className="mt-auto flex w-full justify-end gap-2">
-                        {item.attachmentUrl ? (
-                          <>
-                            <Button
-                              size="sm"
-                              className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
-                              variant="default"
-                              style={{ minHeight: 32 }}
-                              onClick={() => {
-                                setSelectedPortfolio(item);
-                                setOpenViewPortfolio(true);
-                              }}
-                            >
-                              View Portfolio
-                            </Button>
-                            {item.link && (
-                              <Button
-                                size="sm"
-                                className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
-                                variant="default"
-                                style={{ minHeight: 32 }}
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  window.open(item.link, "_blank", "noopener,noreferrer");
-                                }}
-                              >
-                                Open Link
-                              </Button>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            {item.link ? (
-                              <Button
-                                size="sm"
-                                className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
-                                variant="default"
-                                style={{ minHeight: 32 }}
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  window.open(item.link, "_blank", "noopener,noreferrer");
-                                }}
-                              >
-                                Open Link
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm"
-                                className="w-full text-xs border-blue-300 text-blue-600 hover:bg-blue-50"
-                                variant="outline"
-                              >
-                                No File
-                              </Button>
-                            )}
-                          </>
+                        <Button
+                          size="sm"
+                          className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
+                          variant="default"
+                          style={{ minHeight: 32 }}
+                          onClick={() => {
+                            setSelectedPortfolio(item);
+                            setOpenViewPortfolio(true);
+                          }}
+                        >
+                          View Portfolio
+                        </Button>
+                        {item.link && (
+                          <Button
+                            size="sm"
+                            className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
+                            variant="default"
+                            style={{ minHeight: 32 }}
+                            onClick={e => {
+                              e.stopPropagation();
+                              window.open(item.link, "_blank", "noopener,noreferrer");
+                            }}
+                          >
+                            Open Link
+                          </Button>
                         )}
                       </div>
                       {deletingPortfolioIdx === idx && (

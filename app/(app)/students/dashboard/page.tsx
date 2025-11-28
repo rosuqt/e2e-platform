@@ -406,18 +406,6 @@ export default function Home() {
   }, [selectedJob])
 
   useEffect(() => {
-    const sessionKey = "aiMatchAndRescoreRun";
-    const studentId = session?.user?.studentId
-    if (typeof window !== "undefined" && studentId && !sessionStorage.getItem(sessionKey)) {
-      fetch("/api/ai-matches/match/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ student_id: studentId }) })
-        .then(() => fetch("/api/ai-matches/rescore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ student_id: studentId }) }))
-        .finally(() => {
-          sessionStorage.setItem(sessionKey, "1");
-        });
-    }
-  }, [session]);
-
-  useEffect(() => {
     let refreshTimeout: NodeJS.Timeout | null = null
     if (session?.expires) {
       const exp = new Date(session.expires).getTime()
