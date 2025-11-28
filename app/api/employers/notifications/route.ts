@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/authOptions";
@@ -31,15 +33,18 @@ export async function GET(req: Request) {
 
     // UNIFY
     const combined = [
-      ...(activityRes.data ?? []).map(item => ({
-        source: "applications",
-        external_id: item.application_id,
-        user_id,
-        title: `${item.first_name} ${item.last_name}'s application for ${item.job_postings.job_title}.`,
-        content: `Status: ${item.status}`,
-        created_at: item.applied_at,
-        updated_at: item.applied_at,
-      })),
+      ...(activityRes.data ?? []).map(item => {
+        const jobPosting = Array.isArray(item.job_postings) ? item.job_postings[0] : item.job_postings;
+        return {
+          source: "applications",
+          external_id: item.application_id,
+          user_id,
+          title: `${item.first_name} ${item.last_name}'s application for ${jobPosting?.job_title ?? ""}.`,
+          content: `Status: ${item.status}`,
+          created_at: item.applied_at,
+          updated_at: item.applied_at,
+        };
+      }),
 
       ...(accessRes.data ?? []).map(item => ({
         source: "job_team_access",

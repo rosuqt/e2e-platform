@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
@@ -186,7 +187,7 @@ export default function ApplicationTrackerNoSidebar() {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false)
-  const [followUpDetails, setFollowUpDetails] = useState<{ employerName: string; jobTitle: string; company: string; application_id: any; } | null>(null)
+  const [followUpDetails] = useState<{ employerName: string; jobTitle: string; company: string; application_id: any; } | null>(null)
 
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
   const [menuCardId, setMenuCardId] = useState<string | null>(null)
@@ -289,26 +290,6 @@ export default function ApplicationTrackerNoSidebar() {
   const matchesMergedRef = useRef(false)
   const { data: session } = useSession()
 
-  const applications = [
-    {
-      id: 1,
-      company: "Google",
-      position: "Frontend Developer",
-      contacts: [{ name: "Sarah Johnson", role: "Recruiter" }],
-    },
-    {
-      id: 2,
-      company: "Meta",
-      position: "UI/UX Designer",
-      contacts: [{ name: "Michael Brown", role: "Hiring Manager" }],
-    },
-    {
-      id: 3,
-      company: "Amazon",
-      position: "Software Engineer",
-      contacts: [{ name: "Emily Davis", role: "Technical Lead" }],
-    },
-  ]
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1893,8 +1874,6 @@ function generateApplicationCards(
           : ""
         const remoteOptions = app.job_postings?.remote_options || app.remote_options || ""
         const verificationTier = app.job_postings?.verification_tier || "basic"
-
-        const appliedDateRaw = app.applied_at ? new Date(app.applied_at) : null
 
         const shouldHighlight = !!highlightLogicalId && logicalIdForCard === String(highlightLogicalId) && index === 0
 

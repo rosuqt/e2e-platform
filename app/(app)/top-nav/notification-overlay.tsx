@@ -1,6 +1,6 @@
 "use client"
 
-import { X, BriefcaseIcon, Calendar, MapPin, Building, Clock } from "lucide-react"
+import { X, BriefcaseIcon, Calendar,  Building } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 

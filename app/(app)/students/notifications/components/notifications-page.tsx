@@ -1,10 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Search, Bell, ChevronDown } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Menu, MenuItem, Button as MUIButton } from "@mui/material"
+
 import NotificationItem from "./notification-item"
 import NotificationOverlay from "../../../top-nav/notification-overlay"
 
@@ -23,7 +20,6 @@ type Notif = {
 export default function NotificationsPage() {
   const [selectedNotification, setSelectedNotification] = useState<string | null>(null)
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [notif, setnotif] = useState<Notif[]>();
 
   const fetchNotifications = async() => {
@@ -53,13 +49,9 @@ export default function NotificationsPage() {
     setIsOverlayOpen(false)
   }
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget)
-  }
 
-  const handleMenuClose = () => {
-    setAnchorEl(null)
-  }
+
+
 
 
   return (
@@ -132,10 +124,16 @@ export default function NotificationsPage() {
       </div>
 
       {isOverlayOpen && selectedNotification && (
-        <NotificationOverlay
-          notification={notif?.find((n) => n.external_id === selectedNotification)!}
-          onClose={closeOverlay}
-        />
+        (() => {
+          const notification = notif?.find((n) => n.external_id === selectedNotification);
+          if (!notification) return null;
+          return (
+            <NotificationOverlay
+              notification={notification}
+              onClose={closeOverlay}
+            />
+          );
+        })()
       )}
     </main>
   )

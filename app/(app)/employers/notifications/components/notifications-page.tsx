@@ -1,12 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 import { useState, useEffect } from "react"
-import { Search, Bell, ChevronDown } from "lucide-react"
+import { Bell,  } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Menu, MenuItem, Button as MUIButton } from "@mui/material"
 import NotificationItem from "./notification-item"
-import NotificationOverlay from "../../../top-nav/notification-overlay"
 
 type Notif = {
   content: string;

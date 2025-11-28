@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Sparkles } from "lucide-react";
-import { TextField, IconButton, InputAdornment, Checkbox, FormControlLabel   } from "@mui/material";
+import { TextField, IconButton, InputAdornment } from "@mui/material";
 import Image from "next/image";
 import { signIn, useSession } from "next-auth/react";
 import LegalModal from "../../../components/legal";
@@ -14,7 +14,6 @@ import { IoEnterOutline } from "react-icons/io5";
 
 export default function SignInPage() {
   const [isVisible, setIsVisible] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

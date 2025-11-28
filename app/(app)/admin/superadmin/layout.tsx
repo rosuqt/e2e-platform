@@ -8,25 +8,14 @@ import {
   Users,
   LogOut,
   ChevronDown,
-
   Briefcase,
-  Settings,
   Shield,
   Menu,
-  User,
   Home,
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Suspense } from "react"
@@ -184,8 +173,8 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
   const isActive = (href: string) => pathname === href
   const isSubmenuActive = (submenu: { title: string; href: string }[]) => submenu.some((item) => pathname === item.href)
 
-  const handleLogout = () => {
-    console.log("Logging out...")
+  const handleLogout = async () => {
+    await fetch("/api/auth/signout", { method: "POST" })
     router.push("/admin/login")
   }
 
@@ -439,42 +428,6 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
                 >
                   <Menu className="w-5 h-5" />
                 </Button>
-
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative w-10 h-10 rounded-xl">
-                      <Avatar className="w-8 h-8 ring-2 ring-white shadow-sm">
-                        <AvatarImage src="/placeholder.svg?height=32&width=32" alt="John Admin" />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-semibold">
-                          JA
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56 rounded-2xl shadow-xl border-gray-200" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">John Admin</p>
-                        <p className="text-xs leading-none text-muted-foreground">john.admin@example.com</p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="rounded-xl">
-                      <User className="mr-2 w-4 h-4" />
-                      Profile
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-xl">
-                      <Settings className="mr-2 w-4 h-4" />
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="rounded-xl text-red-600 focus:text-red-600">
-                      <LogOut className="mr-2 w-4 h-4" />
-                      Log out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </div>
           </header>

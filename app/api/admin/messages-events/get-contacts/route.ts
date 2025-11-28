@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../lib/authOptions";
 import supabase from "@/lib/supabase";
 
-type UserType = { employerId?: string }
 
 export async function GET() {
   try {

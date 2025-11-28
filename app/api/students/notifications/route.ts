@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/authOptions";
@@ -26,17 +28,23 @@ export async function GET(req: Request) {
 
     // UNIFY
     const combined = [
-      ...(activityRes.data ?? []).map(item => ({
-        source: "applications",
-        external_id: item.application_id,
-        user_id,
-        title: `Your application for ${item.job_postings.job_title}.`,
-        company_name: item.job_postings.registered_companies.company_name,
-        content: `Status: ${item.status}`,
-        created_at: item.applied_at,
-        updated_at: item.applied_at,
-      })),
-
+      ...(activityRes.data ?? []).map(item => {
+        const jobPosting = Array.isArray(item.job_postings) ? item.job_postings[0] : item.job_postings;
+        const company =
+          jobPosting && Array.isArray(jobPosting.registered_companies) && jobPosting.registered_companies.length > 0
+            ? jobPosting.registered_companies[0].company_name
+            : "";
+        return {
+          source: "applications",
+          external_id: item.application_id,
+          user_id,
+          title: `Your application for ${jobPosting?.job_title ?? ""}.`,
+          company_name: company,
+          content: `Status: ${item.status}`,
+          created_at: item.applied_at,
+          updated_at: item.applied_at,
+        };
+      }),
       ...(offerRes.data ?? []).map(item => ({
         source: "job_offers",
         external_id: item.id,
@@ -47,12 +55,11 @@ export async function GET(req: Request) {
         created_at: item.created_at,
         updated_at: item.updated_at,
       })),
-      
     ];
 
     combined.sort(
-    (a, b) =>
-      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      (a, b) =>
+        new Date((b?.updated_at ?? 0)).getTime() - new Date((a?.updated_at ?? 0)).getTime()
     );
     // GET EXISTING NOTIFICATIONS
     const { data: existing, error: existingError } = await supabase
@@ -64,6 +71,7 @@ export async function GET(req: Request) {
 
     // UPDATE
     for (const entry of combined) {
+      if (!entry) continue;
       const match = existing.find(
         e =>
           e.source === entry.source &&

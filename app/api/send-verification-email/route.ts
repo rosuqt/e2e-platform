@@ -180,7 +180,11 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         "Content-Type": "text/html",
-        "Set-Cookie": `next-auth.session-token=deleted; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`
+        "Set-Cookie": [
+          `next-auth.session-token=deleted; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
+          `next-auth.callback-url=deleted; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
+          `__Secure-next-auth.session-token=deleted; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`
+        ].join(", ")
       }
     }
   )
