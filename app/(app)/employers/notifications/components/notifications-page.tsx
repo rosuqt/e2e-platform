@@ -8,44 +8,6 @@ import { Menu, MenuItem, Button as MUIButton } from "@mui/material"
 import NotificationItem from "./notification-item"
 import NotificationOverlay from "../../../top-nav/notification-overlay"
 
-const notifications = [
-  {
-    id: 1,
-    title: "Under Review",
-    description: "Your application for [Job Title] is being reviewed by [Company].",
-    time: "3 mins ago",
-    read: false,
-  },
-  {
-    id: 2,
-    title: "Under Review",
-    description: "Your application for [Job Title] is being reviewed by [Company].",
-    time: "3 mins ago",
-    read: false,
-  },
-  {
-    id: 3,
-    title: "Under Review",
-    description: "Your application for [Job Title] is being reviewed by [Company].",
-    time: "3 mins ago",
-    read: false,
-  },
-  {
-    id: 4,
-    title: "Under Review",
-    description: "Your application for [Job Title] is being reviewed by [Company].",
-    time: "3 mins ago",
-    read: false,
-  },
-  {
-    id: 5,
-    title: "Under Review",
-    description: "Your application for [Job Title] is being reviewed by [Company].",
-    time: "3 mins ago",
-    read: false,
-  },
-]
-
 type Notif = {
   content: string;
   created_at: Date;
