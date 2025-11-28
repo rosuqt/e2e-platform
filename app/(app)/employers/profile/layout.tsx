@@ -16,11 +16,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const { data: session } = useSession();
   const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus;
-
   const verificationHref =
     verifyStatus === "full"
       ? "/employers/verification/fully-verified"
-      : verifyStatus === "partially_verified"
+      : verifyStatus === "standard"
       ? "/employers/verification/partially-verified"
       : "/employers/verification/unverified";
 

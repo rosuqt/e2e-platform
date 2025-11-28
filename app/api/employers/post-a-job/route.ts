@@ -270,18 +270,6 @@ export async function POST(request: Request) {
                 if (metricsError) {
                     console.error("Error creating job metrics:", metricsError.message);
                 }
-
-                await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/ai-matches/embeddings/job`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ job_id: data.id })
-                });
-
-                await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/ai-matches/rescore`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ job_id: data.id })
-                });
             }
 
             if (formData.applicationQuestions && formData.applicationQuestions.length > 0 && data?.id) {

@@ -31,37 +31,44 @@ const jobTitleOptions = Object.entries(jobTitleSections).flatMap(([category, tit
 
 export function CreateStep({ formData, handleFieldChange, errors }: CreateStepProps) {
   const [showPayAmount, setShowPayAmount] = useState<boolean>(
-    formData.payType !== "" && formData.payType !== "No Pay"
+    formData.payType !== "" && formData.payType !== "No Pay" && formData.workType !== "OJT/Internship"
   )
   const [locationOptions, setLocationOptions] = useState<{ address: string; label: string }[]>([])
+  const [employerId, setEmployerId] = useState<string | null>(null)
 
   const { data: session } = useSession()
 
   useEffect(() => {
-    const employerId = (session?.user as { employerId?: string })?.employerId
-    if (employerId) {
-      fetch("/api/employers/post-a-job/fetchAddress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employer_id: employerId }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.addresses && Array.isArray(data.addresses)) {
-            setLocationOptions(data.addresses)
-            if (!formData.location && data.addresses.length > 0) {
-              handleFieldChange("location", data.addresses[0].address)
-            }
-          }
-        })
-        .catch(() => {})
+    const id = (session?.user as { employerId?: string })?.employerId
+    if (id) {
+      setEmployerId(id)
     }
-  }, [session?.user, handleFieldChange, formData.location])
+  }, [session?.user])
+
+  useEffect(() => {
+    if (!employerId) return
+    fetch("/api/employers/post-a-job/fetchAddress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employer_id: employerId }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.addresses && Array.isArray(data.addresses)) {
+          setLocationOptions(data.addresses)
+          if (!formData.location && data.addresses.length > 0) {
+            handleFieldChange("location", data.addresses[0].address)
+          }
+        }
+      })
+      .catch(() => {})
+  }, [employerId])
 
   useEffect(() => {
     if (!Array.isArray(formData.skills)) {
       handleFieldChange("skills", []);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.skills, handleFieldChange]);
 
   useEffect(() => {
@@ -71,7 +78,13 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
       (!Array.isArray(formData.skills) || formData.skills.length === 0)
     ) {
       const newSkills = getRandomSkillsForCourse(formData.recommendedCourse, 5);
-      handleFieldChange("skills", newSkills);
+      if (
+        !Array.isArray(formData.skills) ||
+        formData.skills.length !== newSkills.length ||
+        formData.skills.some((skill, idx) => skill !== newSkills[idx])
+      ) {
+        handleFieldChange("skills", newSkills);
+      }
     }
     else if (!formData.recommendedCourse && Array.isArray(formData.skills) && formData.skills.length > 0) {
       handleFieldChange("skills", []);
@@ -107,9 +120,24 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
     }
   }
 
+  useEffect(() => {
+    setShowPayAmount(
+      formData.payType !== "" &&
+      formData.payType !== "No Pay"
+    )
+    if (formData.workType === "OJT/Internship" && formData.payType === "No Pay") {
+      handleFieldChange("payAmount", "")
+    }
+  }, [formData.payType, formData.workType, handleFieldChange])
+
   const validatePayAmount = () => {
-    if (showPayAmount && !formData.payAmount) {
-      return "Pay amount is required"
+    if (
+      showPayAmount &&
+      (!formData.payAmount || formData.payAmount.replace(/[^0-9.]/g, "") === "")
+    ) {
+      return formData.payType === "Allowance"
+        ? "Allowance amount is required"
+        : "Pay amount is required"
     }
     return ""
   }
@@ -125,20 +153,35 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
 
   const payTypes = [
     ...(formData.workType === "OJT/Internship"
-      ? [{ value: "No Pay", label: "No Pay" }]
-      : []),
-    { value: "Weekly", label: "Weekly" },
-    { value: "Monthly", label: "Monthly" },
-    { value: "Yearly", label: "Yearly" },
+      ? [
+          { value: "No Pay", label: "No Pay" },
+          { value: "Allowance", label: "Allowance" }
+        ]
+      : [
+          { value: "Weekly", label: "Weekly" },
+          { value: "Monthly", label: "Monthly" },
+          { value: "Yearly", label: "Yearly" }
+        ]),
   ];
 
   function getPayPerHour(payType: string, payAmount: string) {
-    const amount = Number(payAmount);
-    if (!payAmount || isNaN(amount)) return "";
-    if (payType === "Weekly") return `Pay per hour: ₱${(amount / 40).toFixed(2)} / hr (est.)`;
-    if (payType === "Monthly") return `Pay per hour: ₱${(amount / 160).toFixed(2)} / hr (est.)`;
-    if (payType === "Yearly") return `Pay per hour: ₱${(amount / 2080).toFixed(2)} / hr (est.)`;
-    return "";
+    const amount = Number(payAmount)
+    if (!payAmount || isNaN(amount) || payType === "No Pay") return ""
+    if (payType === "Weekly") return `Pay per hour: ₱${(amount / 40).toFixed(2)} / hr (est.)`
+    if (payType === "Monthly") return `Pay per hour: ₱${(amount / 160).toFixed(2)} / hr (est.)`
+    if (payType === "Yearly") return `Pay per hour: ₱${(amount / 2080).toFixed(2)} / hr (est.)`
+    if (payType === "Allowance") return `Allowance: ₱${amount.toFixed(2)}`
+    return ""
+  }
+
+  const getLowPayWarning = () => {
+    if (!showPayAmount) return ""
+    const val = Number(formData.payAmount.replace(/[^0-9.]/g, ""))
+    if (formData.payType === "Weekly" && val > 0 && val < 500) return "Hmm… that pay seems a bit low — want to double-check before posting?"
+    if (formData.payType === "Monthly" && val > 0 && val < 3000) return "Hmm… that pay seems a bit low — want to double-check before posting?"
+    if (formData.payType === "Yearly" && val > 0 && val < 40000) return "Hmm… that pay seems a bit low — want to double-check before posting?"
+    if (formData.payType === "Allowance" && val > 0 && val < 500) return "Hmm… that allowance seems a bit low — want to double-check before posting?"
+    return ""
   }
 
   return (
@@ -165,6 +208,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               <Label htmlFor="jobTitle" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Briefcase className="h-4 w-4 text-blue-500" />
                 Job Title
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4">
@@ -244,6 +288,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-blue-500" />
                 Location
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4" style={{ position: "relative" }}>
@@ -268,6 +313,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               <Label htmlFor="remoteOptions" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Globe className="h-4 w-4 text-blue-500" />
                 Remote Options
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4">
@@ -294,6 +340,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               <Label htmlFor="workType" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Clock className="h-4 w-4 text-blue-500" />
                 Work Type
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4">
@@ -301,7 +348,10 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
                 label="Select a Work Type"
                 options={workTypes}
                 value={formData.workType}
-                onChange={(value) => handleFieldChange("workType", value)}
+                onChange={(value) => {
+                  console.log("Work Type selected:", value)
+                  handleFieldChange("workType", value)
+                }}
                 error={errors.workType}
               />
               {errors.workType && <p className="text-red-500 text-sm mt-1">Work type is required</p>}
@@ -316,6 +366,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               <Label htmlFor="payType" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-blue-500" />
                 Compensation
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4">
@@ -328,12 +379,16 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
                   error={errors.payType}
                   errorMessage="Pay type is required"
                 />
-
                 {showPayAmount && (
                   <>
                     <TextField
                       id="payAmount"
-                      label="Pay Amount"
+                      label={
+                        <>
+                          Pay Amount
+                          <span className="text-red-500 ml-1">*</span>
+                        </>
+                      }
                       value={formData.payAmount.startsWith("₱") ? formData.payAmount : formData.payAmount ? `₱${formData.payAmount.replace(/^₱/, "")}` : ""}
                       onChange={(e) => {
                         const val = e.target.value.replace(/[^0-9.]/g, "");
@@ -344,6 +399,11 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
                       helperText={payAmountError}
                       variant="outlined"
                     />
+                    {getLowPayWarning() && (
+                      <div className="text-red-600 text-sm mt-2 font-medium">
+                        {getLowPayWarning()}
+                      </div>
+                    )}
                     <div className="flex items-center text-xs text-blue-700 font-medium pl-2">
                       {getPayPerHour(formData.payType, formData.payAmount.replace(/^₱/, ""))}
                     </div>
@@ -361,6 +421,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               <Label htmlFor="recommendedCourse" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <GraduationCap className="h-4 w-4 text-blue-500" />
                 Recommended Course
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4">

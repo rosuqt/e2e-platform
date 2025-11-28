@@ -22,7 +22,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("job_postings")
-    .select("*")
+    .select("*, tags")
     .eq("employer_id", employerId);
 
   if (error) {

@@ -341,6 +341,11 @@ export default function DraftsModal({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ job_id: publishedJobId }),
           })
+          await fetch("/api/ai-matches/rescore-job", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: publishedJobId }),
+          })
         }
       } else {
         const response = await fetch("/api/employers/post-a-job", {

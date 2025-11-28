@@ -12,7 +12,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabase
     .from("job_postings")
-    .select("*")
+    .select("*, tags")
     .eq("id", id)
     .single();
 

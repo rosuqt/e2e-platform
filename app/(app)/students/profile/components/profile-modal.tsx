@@ -10,6 +10,7 @@ import { HiBadgeCheck } from "react-icons/hi"
 import { LuBadgeCheck, LuSquareActivity } from "react-icons/lu"
 import { PiWarningFill } from "react-icons/pi"
 import Tooltip from "@mui/material/Tooltip"
+import { useSession } from "next-auth/react"
 
 interface ProfileModalProps {
   user: {
@@ -22,6 +23,7 @@ interface ProfileModalProps {
 
 export function ProfileModal({ user, onClose }: ProfileModalProps) {
   const router = useRouter()
+  const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(true)
   const modalRef = useRef<HTMLDivElement>(null)
   const [dbName, setDbName] = useState<string>("")
@@ -319,6 +321,26 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     { id: "report", label: "Report a bug", icon: AlertCircle },
   ]
 
+  if (userType === "employer") {
+    const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus
+    const verificationHref =
+      verifyStatus === "full"
+        ? "/employers/verification/fully-verified"
+        : verifyStatus === "standard"
+        ? "/employers/verification/partially-verified"
+        : "/employers/verification/unverified"
+    menuItems.unshift({
+      id: "verification",
+      label: "Verification",
+      icon: HiBadgeCheck,
+      onClick: async () => {
+        await router.prefetch(verificationHref)
+        router.push(verificationHref)
+        onClose()
+      }
+    })
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -371,14 +393,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                     <div className="font-medium text-gray-800 flex items-center gap-2">
                       {dbName}
                       {userType === "employer" && (() => {
-                        let verifyStatus = null
-                        try {
-                          const sidebarCached = sessionStorage.getItem("sidebarUserData")
-                          if (sidebarCached) {
-                            const data = JSON.parse(sidebarCached)
-                            verifyStatus = data.verify_status
-                          }
-                        } catch {}
+                        const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus
                         if (!verifyStatus) return null
                         if (verifyStatus === "full") {
                           return (
@@ -388,9 +403,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                                 whileHover={{ scale: 1.18 }}
                                 transition={{ type: "spring", stiffness: 340, damping: 16 }}
                               >
-                               
-                                  <HiBadgeCheck className="w-4 h-4 text-blue-600" />
-
+                                <HiBadgeCheck className="w-4 h-4 text-blue-600" />
                               </motion.span>
                             </Tooltip>
                           )
@@ -403,9 +416,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                                 whileHover={{ scale: 1.18 }}
                                 transition={{ type: "spring", stiffness: 340, damping: 16 }}
                               >
-
-                                  <LuBadgeCheck className="w-4 h-4" style={{ color: "#7c3aed" }} />
-         
+                                <LuBadgeCheck className="w-4 h-4" style={{ color: "#7c3aed" }} />
                               </motion.span>
                             </Tooltip>
                           )

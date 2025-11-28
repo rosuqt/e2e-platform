@@ -132,6 +132,7 @@ export async function GET() {
           total_applicants: stats.total_applicants,
           qualified_applicants: stats.qualified_applicants,
           interviews: stats.interviews,
+          tags: Array.isArray(job.tags) ? job.tags : [],
         };
       });
 

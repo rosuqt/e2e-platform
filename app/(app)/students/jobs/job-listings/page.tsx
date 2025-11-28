@@ -508,12 +508,26 @@ function JobListings({ onSelectJob, selectedJob, initialJobId }: { onSelectJob: 
   };
 
   const filteredJobs = useMemo(() => {
-    if (!filters || Object.keys(filters).length === 0) return jobs;
+    if (!filters || Object.keys(filters).length === 0) {
+      // Only show jobs with "full" or "standard" verify_status
+      return jobs.filter(
+        job =>
+          job.registered_employers?.verify_status === "full" ||
+          job.registered_employers?.verify_status === "standard"
+      );
+    }
 
     const filtered = jobs.filter(matchesFilter);
 
+    // Only show jobs with "full" or "standard" verify_status
+    const filteredWithPoster = filtered.filter(
+      job =>
+        job.registered_employers?.verify_status === "full" ||
+        job.registered_employers?.verify_status === "standard"
+    );
+
     if (typeof filters.salary === "string" && /^\s*>=\s*\d+/.test(filters.salary)) {
-      return filtered.slice().sort((a, b) => {
+      return filteredWithPoster.slice().sort((a, b) => {
         const na = getJobSalaryNumber(a);
         const nb = getJobSalaryNumber(b);
         if (na === null && nb === null) return 0;
@@ -523,10 +537,18 @@ function JobListings({ onSelectJob, selectedJob, initialJobId }: { onSelectJob: 
       });
     }
 
-    return filtered;
+    return filteredWithPoster;
   }, [jobs, filters]);
 
-  const orderedJobs = useMemo(() => filteredJobs, [filteredJobs]);
+  const orderedJobs = useMemo(() => {
+    const fullJobs = filteredJobs.filter(
+      job => job.registered_employers?.verify_status === "full"
+    );
+    const standardJobs = filteredJobs.filter(
+      job => job.registered_employers?.verify_status === "standard"
+    );
+    return [...fullJobs, ...standardJobs];
+  }, [filteredJobs]);
 
   useEffect(() => {
     if (selectedJob && initialJobId) {

@@ -59,7 +59,6 @@ const TopNav: React.FC<TopNavProps> = ({
       return [
         { path: '/employers/dashboard', label: 'Home', icon: Home },
         { path: '/employers/jobs/job-listings', label: 'Jobs', icon: Briefcase },
-        { path: '/employers/people/candidate-matches', label: 'People', icon: Users },
         { path: '/employers/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
         ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
         { path: '/employers/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },

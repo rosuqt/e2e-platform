@@ -21,7 +21,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
         company_name
       ),
       registered_employers:employer_id (
-        company_name
+        company_name,
+        verify_status
       )
     `)
     .eq('id', jobId)
@@ -32,13 +33,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
   }
 
   let registered_companies = null
+  let company_verify_status = null
   if (data?.registered_employers?.company_name) {
     const { data: company } = await supabase
       .from('registered_companies')
-      .select('company_name, company_logo_image_path, company_industry,  address')
+      .select('company_name, company_logo_image_path, company_industry, address, verify_status')
       .eq('company_name', data.registered_employers.company_name)
       .single()
-    if (company) registered_companies = company
+    if (company) {
+      registered_companies = company
+      company_verify_status = company.verify_status ?? null
+    }
   }
 
   let employer_profile_img = null
@@ -102,6 +107,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
         nice_to_haves: normalizeArray(data.nice_to_have_qualifications),
         perks: normalizeArray(data.perks_and_benefits),
         gpt_score,
+        verify_status: data.registered_employers?.verify_status ?? company_verify_status ?? null
       }
     : null
 

@@ -7,18 +7,20 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   type AppToken = {
-  name?: string
-  email?: string
-  sub?: string
-  role?: string
-  [key: string]: unknown
-}
-
+    name?: string
+    email?: string
+    sub?: string
+    role?: string
+    [key: string]: unknown
+  }
 
   if (
     pathname.startsWith("/sign-in") ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/auth/callback")
+    pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/static") ||
+    pathname === "/favicon.ico"
   ) {
     return NextResponse.next()
   }
@@ -67,5 +69,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/employers/:path*", "/students/:path*"],
+  matcher: [
+    '/((?!_next|api|sign-in|static|favicon.ico).*)',
+  ],
 }

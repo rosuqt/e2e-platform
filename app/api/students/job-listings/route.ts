@@ -92,9 +92,11 @@ export async function GET(req: Request) {
         company_name
       ),
       registered_employers:employer_id (
-        company_name
+        company_name,
+        verify_status
       ),
       registered_companies:company_id (
+        id,
         company_logo_image_path
       )
     `, { count: "exact" })
@@ -117,6 +119,7 @@ export async function GET(req: Request) {
   const { data, error } = await query;
 
   if (error) {
+    console.error("API ERROR 500: Could not fetch job listings. Hint:", error.message)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
@@ -171,12 +174,19 @@ export async function GET(req: Request) {
           const mustHaves = normalizeArray(job.must_have_qualifications);
           const niceToHaves = normalizeArray(job.nice_to_have_qualifications);
           const perks = normalizeArray(job.perks_and_benefits);
+          let verify_status = job.registered_employers?.verify_status;
+
+          if (!verify_status && job.registered_companies?.verify_status) {
+            verify_status = job.registered_companies.verify_status;
+          }
           return {
             ...job,
             responsibilities: normalizeArray(job.responsibilities),
             must_haves: mustHaves,
             nice_to_haves: niceToHaves,
             perks: perks,
+            verify_status: verify_status ?? null,
+            company_id: job.registered_companies?.id ?? null
           }
         })
       )
@@ -207,7 +217,6 @@ export async function GET(req: Request) {
   }
   result = result.map(job => ({ ...job, match_score: scoreMap[String(job.id)] ?? 0 }));
 
-  // apply match score range filtering if provided
   if ((typeof matchScoreMin === "number" && !isNaN(matchScoreMin)) || (typeof matchScoreMax === "number" && !isNaN(matchScoreMax))) {
     result = result.filter(job => {
       const s = Number(job.match_score ?? 0);
@@ -308,6 +317,7 @@ export async function GET(req: Request) {
       const description = (job.description || "").toLowerCase();
       const company =
         (job.registered_employers?.company_name ||
+         job.registered_companies?.company_name ||
          job.employers?.company_name ||
          [job.employers?.first_name, job.employers?.last_name].filter(Boolean).join(" ") ||
          "").toLowerCase();
@@ -337,6 +347,53 @@ export async function GET(req: Request) {
        return bTime - aTime;
      });
    }
+
+   result = result.filter(
+     job =>
+       job.registered_employers?.verify_status === "full" ||
+       job.registered_employers?.verify_status === "standard"
+   );
+
+   result = [
+     ...result.filter(job => job.registered_employers?.verify_status === "full"),
+     ...result.filter(job => job.registered_employers?.verify_status === "standard"),
+   ];
+
+   const standardJobs = result.filter(job => job.registered_employers?.verify_status === "standard");
+   const companyJobCounts: Record<string, number> = {};
+   for (const job of standardJobs) {
+     const company =
+       job.registered_employers?.company_name ||
+       job.registered_companies?.company_name ||
+       job.employers?.company_name ||
+       [job.employers?.first_name, job.employers?.last_name].filter(Boolean).join(" ") ||
+       "";
+     if (!companyJobCounts[company]) companyJobCounts[company] = 0;
+     companyJobCounts[company]++;
+   }
+
+   const jobsToHide: Set<string> = new Set();
+   for (const company in companyJobCounts) {
+     const jobsOfCompany = standardJobs.filter(job =>
+       (job.registered_employers?.company_name ||
+        job.registered_companies?.company_name ||
+        job.employers?.company_name ||
+        [job.employers?.first_name, job.employers?.last_name].filter(Boolean).join(" ") ||
+        "") === company
+     );
+     let hideCount = Math.min(3, 1 + Math.floor(jobsOfCompany.length / 5));
+     if (jobsOfCompany.length > 10) hideCount = Math.min(5, Math.floor(jobsOfCompany.length / 3));
+     if (hideCount > jobsOfCompany.length) hideCount = jobsOfCompany.length;
+     const shuffled = jobsOfCompany
+       .map(j => j.id)
+       .sort(() => Math.random() - 0.5)
+       .slice(0, hideCount);
+     shuffled.forEach(id => jobsToHide.add(String(id)));
+   }
+
+   result = result.filter(job =>
+     !(job.registered_employers?.verify_status === "standard" && jobsToHide.has(String(job.id)))
+   );
 
    const pagedResult = result.slice(from, to + 1);
 

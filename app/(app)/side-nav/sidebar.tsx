@@ -18,7 +18,15 @@ type Status = "active" | "idle" | "unavailable";
 
 interface SidebarProps {
   onToggle?: (expanded: boolean) => void;
-  menuItems: { icon: React.ComponentType<{ className?: string }>; text: string; href: string; isActive?: boolean }[];
+  menuItems: {
+    icon: React.ComponentType<{ className?: string }>;
+    text: string;
+    href: string;
+    isActive?: boolean;
+    render?: () => JSX.Element;
+    disabled?: boolean;
+    style?: React.CSSProperties;
+  }[];
   friendRequestCount?: number;
 }
 
@@ -448,7 +456,17 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
           <ul className="space-y-4">
             {menuItems.map((item, index) => (
               <li key={index} className="relative overflow-hidden">
-                <Link href={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={e => {
+                    if (item.disabled) {
+                      e.preventDefault();
+                    }
+                  }}
+                  tabIndex={item.disabled ? -1 : 0}
+                  aria-disabled={item.disabled}
+                  style={item.style}
+                >
                   <motion.div
                     onMouseEnter={() => setHoveredItem(index)}
                     onMouseLeave={() => setHoveredItem(null)}
@@ -456,18 +474,23 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
                       "flex items-center h-[46px] transition-all relative z-10 rounded-2xl",
                       expanded ? "pl-6 pr-4" : "px-0 justify-center",
                       hoveredItem === index && !item.isActive ? "scale-105" : "",
-                      item.isActive ? "bg-white/20 text-white" : "text-white/70"
+                      item.isActive ? "bg-white/20 text-white" : "text-white/70",
+                      item.disabled ? "pointer-events-none" : ""
                     )}
                   >
-                    <motion.div whileHover={{ rotate: [0, -10, 10, -5, 0] }} transition={{ duration: 0.5 }} layout>
-                      <item.icon
-                        className={cn(
-                          "w-6 h-6 min-w-6 transition-transform",
-                          hoveredItem === index ? "scale-105" : "",
-                          item.isActive ? "text-white" : "text-white/70",
-                        )}
-                      />
-                    </motion.div>
+                    {item.render ? (
+                      item.render()
+                    ) : (
+                      <motion.div whileHover={{ rotate: [0, -10, 10, -5, 0] }} transition={{ duration: 0.5 }} layout>
+                        <item.icon
+                          className={cn(
+                            "w-6 h-6 min-w-6 transition-transform",
+                            hoveredItem === index ? "scale-105" : "",
+                            item.isActive ? "text-white" : "text-white/70",
+                          )}
+                        />
+                      </motion.div>
+                    )}
                     {expanded && (
                       <motion.span
                         initial={{ opacity: 0, x: -10 }}

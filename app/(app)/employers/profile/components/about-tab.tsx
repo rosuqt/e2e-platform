@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -10,29 +11,23 @@ import {
   Globe,
   MapPin,
   Users,
-  Calendar,
   Award,
-  TrendingUp,
-  Clock,
   Star,
   Building2,
 } from "lucide-react"
 import { FaLinkedin, FaFacebook, FaTwitter, FaInstagram, FaGithub, FaYoutube, FaTools, FaBug } from "react-icons/fa"
-import dynamic from "next/dynamic"
 import Image from "next/image"
 import { RatingsCards } from "./marquee-ratings"
 import { Star as StarIcon } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import AddEditContactModal from "./add-edit-contact"
-import AvailabilityModal from "./availability-modal"
 import { SiIndeed } from "react-icons/si"
 import { motion } from "framer-motion"
 import Tooltip from "@mui/material/Tooltip"
 import { MdAdminPanelSettings } from "react-icons/md"
 import { useRouter } from "next/navigation"
 
-const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false })
 
 type SessionUser = {
   name?: string | null
@@ -72,14 +67,7 @@ export default function AboutTab() {
   const [registeredEmployer, setRegisteredEmployer] = useState<RegisteredEmployer | null>(null)
   const [registeredCompany, setRegisteredCompany] = useState<RegisteredCompany | null>(null)
   const [contactModalOpen, setContactModalOpen] = useState(false)
-  const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [availability, setAvailability] = useState<{
-    days?: string[];
-    start?: string;
-    end?: string;
-    timezone?: string;
-  } | null>(null)
   const [companyProfile, setCompanyProfile] = useState<Record<string, unknown> | null>(null)
   const [companyLoading, setCompanyLoading] = useState(true)
   const [companyError, setCompanyError] = useState<string | null>(null)
@@ -96,6 +84,9 @@ export default function AboutTab() {
   const [teamLoading, setTeamLoading] = useState(true)
   const [teamError, setTeamError] = useState<string | null>(null)
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null)
+  const [ratings, setRatings] = useState<any[]>([])
+  const [ratingsLoading, setRatingsLoading] = useState(true)
+  const [ratingsError, setRatingsError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!employerID) return
@@ -115,7 +106,6 @@ export default function AboutTab() {
             : null
         )
         setRegisteredCompany(data.registered_company || null)
-        setAvailability(data.availability || null)
       })
   }, [employerID, refreshKey])
 
@@ -209,6 +199,35 @@ export default function AboutTab() {
       })
   }, [companyProfile?.company_name])
 
+  useEffect(() => {
+    if (!employerID) return
+    setRatingsLoading(true)
+    setRatingsError(null)
+    fetch(`/api/employers/fetchRatings`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setRatings(data)
+        } else {
+          setRatings([])
+        }
+        setRatingsLoading(false)
+      })
+      .catch(() => {
+        setRatingsError("Failed to load ratings.")
+        setRatings([])
+        setRatingsLoading(false)
+      })
+  }, [employerID, refreshKey])
+
+  const ratingsStats = useMemo(() => {
+    if (!ratings || ratings.length === 0) return { avg: 0, count: 0 }
+    const avg = (
+      ratings.reduce((sum, r) => sum + (r.overall_rating || 0), 0) / ratings.length
+    )
+    return { avg: Math.round(avg * 10) / 10, count: ratings.length }
+  }, [ratings])
+
   async function saveProfileField(field: "about" | "hiring_philosophy", value: string) {
     if (!employerID) return
     await fetch("/api/employers/employer-profile/postHandlers", {
@@ -246,64 +265,6 @@ export default function AboutTab() {
       e.preventDefault()
       saveProfileField("hiring_philosophy", hiringPhilosophy)
     }
-  }
-
-  
-  const hiringMetrics = [
-    { label: "Response Rate", value: 0, color: "#3b82f6" },
-    { label: "Interview Rate", value: 0, color: "#10b981" },
-    { label: "Offer Acceptance", value: 0, color: "#f59e0b" },
-  ]
-
-  const analyticsOption = {
-    tooltip: { trigger: "item" },
-    legend: {
-      top: "bottom",
-      textStyle: { fontSize: 12 },
-    },
-    series: [
-      {
-        name: "Hiring Pipeline",
-        type: "pie",
-        radius: ["40%", "70%"],
-        avoidLabelOverlap: false,
-        itemStyle: { borderRadius: 8, borderColor: "#fff", borderWidth: 2 },
-        label: { show: false },
-        emphasis: { label: { show: true, fontSize: 14, fontWeight: "bold" } },
-        labelLine: { show: false },
-        data: [
-          { value: 0, name: "Applications" },
-          { value: 0, name: "Interviews" },
-          { value: 0, name: "Final Round" },
-          { value: 0, name: "Offers" },
-        ],
-      },
-    ],
-    color: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"],
-  }
-
-  const monthlyHiringOption = {
-    tooltip: { trigger: "axis" },
-    xAxis: {
-      type: "category",
-      data: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-      axisLabel: { fontSize: 11 },
-    },
-    yAxis: {
-      type: "value",
-      axisLabel: { fontSize: 11 },
-    },
-    series: [
-      {
-        data: [0, 0, 0, 0, 0, 0],
-        type: "line",
-        smooth: true,
-        lineStyle: { color: "#3b82f6", width: 3 },
-        itemStyle: { color: "#3b82f6" },
-        areaStyle: { color: "rgba(59, 130, 246, 0.1)" },
-      },
-    ],
-    grid: { left: 40, right: 20, top: 20, bottom: 40 },
   }
 
   const SOCIALS = [
@@ -393,79 +354,29 @@ export default function AboutTab() {
         </div>
         <div className="p-6">
           <div className="bg-gray-50 p-4 rounded-lg mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star key={star} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                ))}
+            {ratingsLoading ? (
+              <div className="text-center text-gray-500">Loading ratings...</div>
+            ) : ratingsError ? (
+              <div className="text-center text-red-500">{ratingsError}</div>
+            ) : (
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star key={star} className={`w-4 h-4 ${ratingsStats.avg >= star ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                  ))}
+                </div>
+                <span className="text-sm font-medium">{ratingsStats.avg}/5</span>
               </div>
-              <span className="text-sm font-medium">4.8/5</span>
-            </div>
-            <p className="text-xs text-gray-600">Based on 127 candidate reviews</p>
+            )}
+            <p className="text-xs text-gray-600">
+              {ratingsStats.count > 0
+                ? `Based on ${ratingsStats.count} candidate review${ratingsStats.count > 1 ? "s" : ""}`
+                : "No candidate reviews yet"}
+            </p>
           </div>
-          <RatingsCards />
+          <RatingsCards ratings={ratings} />
         </div>
       </section>
-
-      {/* Analytics Section */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card className="border-blue-200">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-100">
-            <CardTitle className="text-blue-700 flex items-center gap-2">
-              <TrendingUp className="text-blue-600" size={18} />
-              Hiring Pipeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <ReactECharts option={analyticsOption} style={{ height: 200 }} />
-          </CardContent>
-        </Card>
-
-        <Card className="border-blue-200">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-100">
-            <CardTitle className="text-blue-700 flex items-center gap-2">
-              <Calendar className="text-blue-600" size={18} />
-              Monthly Hires
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <ReactECharts option={monthlyHiringOption} style={{ height: 200 }} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Hiring Metrics */}
-      <Card className="border-blue-200">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-100">
-          <CardTitle className="text-blue-700 flex items-center gap-2">
-            <Award className="text-blue-600" size={18} />
-            Key Metrics
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid md:grid-cols-3 gap-6">
-            {hiringMetrics.map((metric, index) => (
-              <div key={index} className="text-center">
-                <div className="mb-3">
-                  <div className="text-3xl font-bold" style={{ color: metric.color }}>
-                    {metric.value}%
-                  </div>
-                  <div className="text-sm text-gray-600 font-medium">{metric.label}</div>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="h-2 rounded-full transition-all duration-500"
-                    style={{
-                      width: `${metric.value}%`,
-                      backgroundColor: metric.color,
-                    }}
-                  ></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Company Association */}
       <Card className="border-blue-200">
@@ -732,91 +643,6 @@ export default function AboutTab() {
                 Edit Contact Info
               </Button>
             </div>
-            <div className="relative border-l border-gray-200 pl-8">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-blue-600" />
-                  Response Time
-                </h4>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="border-blue-300 text-blue-600 hover:bg-blue-50 p-1"
-                  onClick={() => setAvailabilityModalOpen(true)}
-                >
-                  <svg width={18} height={18} viewBox="0 0 20 20" fill="none">
-                    <path d="M12.5 5.5l2 2m0 0l-7.5 7.5H5v-2l7.5-7.5m2 2l-2-2" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </Button>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-medium font-medium">
-                    No response data yet
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">
-                    {(() => {
-                      if (
-                        availability &&
-                        Array.isArray(availability.days) &&
-                        availability.days.length > 0 &&
-                        availability.start &&
-                        availability.end &&
-                        availability.timezone
-                      ) {
-                        const days = availability.days;
-                        const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-                        if (days.length === 6) {
-                          const missing = week.find(d => !days.includes(d));
-                          if (missing) {
-                            return (
-                              <>
-                                {`Available anytime except ${missing}`}
-                                <br />
-                                {`${availability.start} - ${availability.end} ${availability.timezone}`}
-                              </>
-                            );
-                          }
-                        }
-                        const indices = days.map(d => week.indexOf(d)).sort((a, b) => a - b);
-                        if (days.length === 1) {
-                          return (
-                            <>
-                              {days[0]}
-                              <br />
-                              {`${availability.start} - ${availability.end} ${availability.timezone}`}
-                            </>
-                          );
-                        }
-                        if (
-                          days.length > 1 &&
-                          indices.every((v, i, arr) => i === 0 || v === arr[i - 1] + 1)
-                        ) {
-                          return (
-                            <>
-                              {`${days[0]} - ${days[days.length - 1]}`}
-                              <br />
-                              {`${availability.start} - ${availability.end} ${availability.timezone}`}
-                            </>
-                          );
-                        }
-                        return (
-                          <>
-                            {days.join(", ")}
-                            <br />
-                            {`${availability.start} - ${availability.end} ${availability.timezone}`}
-                          </>
-                        );
-                      }
-                      return "Anytime";
-                    })()}
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
           <AddEditContactModal
             open={contactModalOpen}
@@ -835,13 +661,6 @@ export default function AboutTab() {
         </CardContent>
       </Card>
 
-      <AvailabilityModal
-        open={availabilityModalOpen}
-        onClose={() => {
-          setAvailabilityModalOpen(false)
-          setRefreshKey((k) => k + 1)
-        }}
-      />
     </div>
   )
 }

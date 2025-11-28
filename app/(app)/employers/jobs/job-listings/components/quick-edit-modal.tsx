@@ -453,6 +453,12 @@ export default function QuickEditModal({
         if (!embeddingsRes.ok) {
           setPostError(embeddingsJson?.error || "Embeddings API failed")
         }
+
+        await fetch("/api/ai-matches/rescore-job", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: draftData.id }),
+        })
       } else {
         const response = await fetch("/api/employers/post-a-job", {
           method: "POST",
@@ -544,6 +550,12 @@ export default function QuickEditModal({
         if (!embeddingsRes.ok) {
           setSaveError(embeddingsJson?.error || "Embeddings API failed")
         }
+
+        await fetch("/api/ai-matches/rescore-job", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: draftData.id }),
+        })
       } else {
         const response = await fetch("/api/employers/post-a-job", {
           method: "POST",
@@ -576,6 +588,12 @@ export default function QuickEditModal({
           if (!embeddingsRes.ok) {
             setSaveError(embeddingsJson?.error || "Embeddings API failed")
           }
+
+          await fetch("/api/ai-matches/rescore-job", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: createdJobId }),
+          })
         }
       }
     } catch (err) {

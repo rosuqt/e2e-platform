@@ -37,7 +37,9 @@ type JobDetails = {
   } | null
   registered_employers?: {
     company_name?: string | null
+    verify_status?: string | null
   } | null
+  verify_status?: string | null // <-- add this for direct access
 }
 
 const FILTER_OPTIONS = {
@@ -162,7 +164,7 @@ function ApplicationModalWrapper({ jobId, jobTitle, onClose }: { jobId: string, 
       document.body.style.overflow = original
     }
   }, [])
-  return <ApplicationModal jobId={jobId} jobTitle={jobTitle} onClose={onClose} />
+  return <ApplicationModal jobId={jobId} jobTitle={jobTitle} onClose={onClose} gpt_score={0} />
 }
 
 export default function Home() {
@@ -737,6 +739,10 @@ export default function Home() {
                                     {jobDetails.registered_employers?.company_name
                                       ? ` | ${jobDetails.registered_employers.company_name}`
                                       : ""}
+                                    {/* Show verify_status if present */}
+                                    {jobDetails.registered_employers?.verify_status === "verified" && (
+                                      <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">Verified</span>
+                                    )}
                                   </p>
                                   <p className="text-blue-200 text-xs mt-1">
                                     {jobDetails.location || "Location N/A"}

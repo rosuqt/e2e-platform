@@ -417,6 +417,20 @@ export default function DuplicateModal({
       })
 
       if (response.ok) {
+        const resData = await response.json()
+        const newJobId = resData?.job_id || resData?.id
+        if (newJobId) {
+          await fetch("/api/ai-matches/embeddings/job", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: newJobId }),
+          })
+          await fetch("/api/ai-matches/rescore-job", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: newJobId }),
+          })
+        }
         onSuccess?.()
         onClose()
       }

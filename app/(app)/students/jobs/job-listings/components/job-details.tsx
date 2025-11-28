@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ArrowRight,  MapPin, Users, Mail, Bookmark, Briefcase, Clock, Globe,   FileText, BadgeCheck as LuBadgeCheck,  } from "lucide-react";
 import { HiBadgeCheck } from "react-icons/hi";
-import { RiErrorWarningLine } from "react-icons/ri"
 import { Divider as Separator, Tooltip, CircularProgress, tooltipClasses } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
@@ -18,11 +17,12 @@ import { FaMoneyBill } from "react-icons/fa";
 import { SiStarship } from "react-icons/si";
 import { PiBuildingsFill } from "react-icons/pi";
 import { Calendar } from "lucide-react";
+import { Star } from "lucide-react";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
-import listLoadAnimation from "../../../../../../public/animations/list-load.json";
 import notFoundAnimation from "../../../../../../public/animations/not-found.json";
+import blueLoaderAnimation from "../../../../../../public/animations/blue_loader.json"
 import { BsPersonAdd } from "react-icons/bs";
 
 type Employer = {
@@ -34,6 +34,7 @@ type Employer = {
 };
 
 export type Job = {
+  verify_status: string | undefined;
   id: string;
   title?: string;
   job_title?: string;
@@ -45,7 +46,18 @@ export type Job = {
   skills?: string[];
   gpt_score?: number;
   employers?: Employer;
-  registered_employers?: { company_name?: string };
+  registered_employers?: { 
+    company_name?: string;
+    verify_status?: string;
+  };
+  registered_companies?: {
+    company_name?: string;
+    company_logo_image_path?: string;
+    company_industry?: string;
+    company_size?: string;
+    address?: string;
+    verify_status?: string; 
+  };
   responsibilities?: string;
   must_haves?: string[];
   nice_to_haves?: string[];
@@ -60,13 +72,6 @@ export type Job = {
   max_applicants?: number;
   paused?: boolean;
   created_at?: string;
-  registered_companies?: {
-    company_name?: string;
-    company_logo_image_path?: string;
-    company_industry?: string;
-    company_size?: string;
-    address?: string;
-  };
 };
 
 type CompanyEmployee = {
@@ -156,6 +161,8 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   const router = useRouter();
   const [applicantsCount, setApplicantsCount] = useState<number | undefined>(undefined);
   const [matchedSkillsCount] = useState<number>(0);
+  const [companyRating] = useState<{ rating: number, count: number } | null>(null)
+  const [posterRating] = useState<{ rating: number, count: number } | null>(null)
 
   const trackJobView = async (jobId: string) => {
     if (viewTracked) return
@@ -484,8 +491,8 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[600px] w-full">
-        <div className="w-100 h-100 flex items-center justify-center">
-          <Lottie animationData={listLoadAnimation} loop={true} />
+        <div className="w-18 h-18 flex items-center justify-center">
+          <Lottie animationData={blueLoaderAnimation} loop={true} />
         </div>
         <div className="mt-4 text-gray-500 font-medium animate-pulse">Loading job details</div>
       </div>
@@ -527,7 +534,17 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   const payType = job?.pay_type || "";
   const payAmount = job?.pay_amount || "";
   const jobSummary = job?.job_summary || "";
-  const verificationTier = job?.verification_tier || "basic";
+
+  const companyVerificationTier =
+    job?.registered_companies?.verify_status ||
+    job?.verify_status ||
+    job?.verification_tier ||
+    "basic";
+
+  const posterVerificationTier =
+    job?.registered_employers?.verify_status ||
+    job?.verification_tier ||
+    "basic";
 
   function formatIndustry(industry?: string) {
     if (!industry) return "";
@@ -596,27 +613,25 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold">{title}</h1>
-              {verificationTier === "full" ? (
+              {/* Top badge uses companyVerificationTier */}
+              {companyVerificationTier === "full" ? (
                 <CustomTooltip title="Fully verified and trusted company">
                   <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
                     <HiBadgeCheck className="w-5 h-5 text-blue-600" />
                   </motion.span>
                 </CustomTooltip>
-              ) : verificationTier === "standard" ? (
+              ) : companyVerificationTier === "standard" ? (
                 <CustomTooltip title="Partially verified, exercise some caution">
                   <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
                     <LuBadgeCheck className="w-5 h-5" style={{ color: "#7c3aed" }} />
                   </motion.span>
                 </CustomTooltip>
-              ) : (
-                <CustomTooltip title="Not verified, proceed carefully">
-                  <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
-                    <RiErrorWarningLine className="w-5 h-5 text-orange-500" />
-                  </motion.span>
-                </CustomTooltip>
-              )}
+              ) : null}
             </div>
-            <div className="text-muted-foreground">{company}</div>
+            <div className="text-muted-foreground flex items-center gap-2">
+              <span>{company}</span>
+             
+            </div>
             <div className="text-sm text-muted-foreground flex items-center gap-1">
               <MapPin className="w-4 h-4" />
               <span>{location}</span>
@@ -927,32 +942,42 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
             </div>
             <div>
               <div className="flex items-center gap-2">
-                
                 <span className="font-medium">
                   {job?.employers?.first_name || ""} {job?.employers?.last_name || ""}
                 </span>
-                {verificationTier === "full" ? (
+                {posterVerificationTier === "full" ? (
                   <CustomTooltip title="Fully verified and trusted company">
                     <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
                       <HiBadgeCheck className="w-4 h-4 text-blue-600" />
                     </motion.span>
                   </CustomTooltip>
-                ) : verificationTier === "standard" ? (
+                ) : posterVerificationTier === "standard" ? (
                   <CustomTooltip title="Partially verified, exercise some caution">
                     <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
                       <LuBadgeCheck className="w-4 h-4" style={{ color: "#7c3aed" }} />
                     </motion.span>
                   </CustomTooltip>
-                ) : (
-                  <CustomTooltip title="Not verified, proceed carefully">
-                    <motion.span whileHover={{ scale: 1.25 }} style={{ display: "inline-flex" }}>
-                      <RiErrorWarningLine className="w-4 h-4 text-orange-500" />
-                    </motion.span>
-                  </CustomTooltip>
-                )}
+                ) : null}
               </div>
-              <span className="text-xs text-muted-foreground">
-                {job?.employers?.job_title || "N/A"}
+              {posterRating ? (
+                <div className="flex items-center gap-1 mt-1">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <Star
+                      key={i + 1}
+                      size={14}
+                      className={posterRating.rating >= i + 1 ? "text-yellow-400" : "text-gray-300"}
+                      fill={posterRating.rating >= i + 1 ? "rgb(250 204 21)" : "none"}
+                    />
+                  ))}
+                  <span className="text-xs ml-1 text-blue-500">
+                    {posterRating.rating.toFixed(1)}/5 ({posterRating.count})
+                  </span>
+                </div>
+              ) : (
+                <span className="text-xs mt-1 text-gray-400">No Ratings Yet</span>
+              )}
+              <span className="text-xs text-muted-foreground block mt-1">
+                {job?.employers?.job_title || job?.job_title || job?.title || "N/A"}
               </span>
             </div>
           </div>
@@ -1008,6 +1033,23 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
           </div>
           <div className="flex-1">
             <h3 className="font-bold">{company}</h3>
+            {companyRating ? (
+              <span className="flex items-center mt-1">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Star
+                    key={i + 1}
+                    size={14}
+                    className={companyRating.rating >= i + 1 ? "text-yellow-400" : "text-gray-300"}
+                    fill={companyRating.rating >= i + 1 ? "rgb(250 204 21)" : "none"}
+                  />
+                ))}
+                <span className="text-xs ml-1 text-blue-500">
+                  {companyRating.rating.toFixed(1)}/5 ({companyRating.count})
+                </span>
+              </span>
+            ) : (
+              <span className="text-xs mt-1 text-gray-400">No Ratings Yet</span>
+            )}
             <div className="text-xs text-muted-foreground mt-1">
               {companyAddress}
             </div>

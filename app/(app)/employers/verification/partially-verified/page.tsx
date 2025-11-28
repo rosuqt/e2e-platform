@@ -140,9 +140,9 @@ export default function PartiallyVerifiedPage() {
                 features={[
                   { name: "Job Listings", value: "5 listings", included: true },
                   { name: "Listing Visibility", value: "Low visibility", included: true },
-                  { name: "AI Job Writer", value: "Locked", included: false },
+                  { name: "AI Job Writer", value: "Unlocked", included: true },
                   { name: "Messaging", value: "Unlocked", included: true },
-                  { name: "Candidate Matches", value: "Unlocked", included: true },
+                  { name: "Candidate Matches", value: "Locked", included: false },
                   { name: "Invitations", value: "Locked", included: false },
                 ]}
                 buttonText="Current Tier"

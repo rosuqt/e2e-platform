@@ -14,6 +14,7 @@ import { styled } from "@mui/material/styles"
 import Skeleton from "@mui/material/Skeleton"
 import { motion } from "framer-motion"
 import Image from "next/image"
+import { Star } from "lucide-react"
 
 import AboutTab from "./components/about-tab"
 import JobListingsTab from "./components/job-listings-tab"
@@ -60,6 +61,7 @@ export default function EmployerProfilePage() {
   const [uploadingCover, setUploadingCover] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [tooltipOpen, setTooltipOpen] = useState(false)
+  const [avgRating, setAvgRating] = useState<number | null>(null)
   const tooltipTimer = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
 
@@ -113,6 +115,19 @@ export default function EmployerProfilePage() {
         const cover = await getSignedUrlIfNeeded(data?.cover_image, "user.covers")
         setCoverUrl(cover)
       })
+
+    async function fetchRatings() {
+      try {
+        const res = await fetch("/api/employers/fetchRatings")
+        const data = await res.json()
+        if (Array.isArray(data) && data.length > 0) {
+          const avg =
+            data.reduce((sum, r) => sum + (r.overall_rating || 0), 0) / data.length
+          setAvgRating(Math.round(avg * 10) / 10)
+        }
+      } catch {}
+    }
+    fetchRatings()
   }, [employer?.id])
 
   const handleUpload = async (file: File, fileType: "avatar" | "cover") => {
@@ -420,6 +435,17 @@ export default function EmployerProfilePage() {
                       ? `${employer.job_title ?? ""}${employer.company_name ? ` at ${employer.company_name}` : ""}`
                       : "Job Title at Company Name"}
                   </p>
+                  {avgRating !== null && (
+                    <div className="flex items-center gap-1 mt-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-4 h-4 ${avgRating >= star ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                        />
+                      ))}
+                      <span className="ml-2 text-sm text-gray-700">{avgRating}/5</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
                     {editingBio ? (
                       <textarea

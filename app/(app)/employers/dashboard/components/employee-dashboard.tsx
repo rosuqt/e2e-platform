@@ -32,6 +32,7 @@ import { LuCalendarSearch } from "react-icons/lu"
 import { TbFileSad } from "react-icons/tb"
 import { Menu, MenuItem, MenuList, Tooltip } from "@mui/material"
 import { useSession } from "next-auth/react"
+import { Lock } from "@mui/icons-material"
 
 type EducationItem = { degree: string; school: string; year: string }
 
@@ -142,6 +143,7 @@ export default function EmployeeDashboard() {
 
   const { data: session } = useSession()
   const employerId = session?.user?.employerId
+  const verifyStatus = session?.user?.verifyStatus
 
   useEffect(() => {
     async function fetchCandidateMatches() {
@@ -851,7 +853,13 @@ export default function EmployeeDashboard() {
                                 </div>
                                 <div className="flex items-center">
                                   <Star className="h-3 w-3 mr-1 text-yellow-500 fill-yellow-500" />
-                                  <span className="font-medium">{applicant.match}% match</span>
+                                  {verifyStatus !== "full" ? (
+                                    <Tooltip title="Verify to see match score" arrow>
+                                      <span className="font-medium blur-sm select-none">{applicant.match}% match</span>
+                                    </Tooltip>
+                                  ) : (
+                                    <span className="font-medium">{applicant.match}% match</span>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1033,7 +1041,7 @@ export default function EmployeeDashboard() {
                 <CardFooter className="bg-gradient-to-b from-blue-700 to-blue-800 p-4">
                   <div className="flex flex-col items-center">
                     <h3 className="text-lg font-medium text-white mb-4">Candidate Matches for You</h3>
-                    <div className="grid grid-cols-3 gap-3 justify-center">
+                    <div className="grid grid-cols-3 gap-3 justify-center" style={verifyStatus !== "full" ? { filter: "blur(6px)", pointerEvents: "none", userSelect: "none" } : {}}>
                       {candidateMatches.length === 0 ? (
                         <div className="col-span-3 flex flex-col items-center justify-center py-8">
                           <RiUserSearchFill className="h-10 w-10 text-blue-300 mb-2" />
@@ -1069,10 +1077,22 @@ export default function EmployeeDashboard() {
                         ))
                       )}
                     </div>
+                    {verifyStatus !== "full" && (
+                      <div className="flex flex-col items-center mt-4">
+                        <Lock className="text-white mb-2" fontSize="large" />
+                        <span className="text-blue-200 text-sm font-semibold">Verify to Unlock Candidate matches</span>
+                      </div>
+                    )}
                     <div className="flex justify-end w-full mt-3">
-                      <button type="button" onClick={() => router.push("/employers/jobs/candidate-matches")} className="text-blue-200 hover:text-white text-sm font-medium px-2 py-1 bg-transparent border-none cursor-pointer">
+                      <button
+                        type="button"
+                        disabled={verifyStatus !== "full"}
+                        onClick={() => {
+                          if (verifyStatus === "full") router.push("/employers/jobs/candidate-matches");
+                        }}
+                        className={`text-blue-200 hover:text-white text-sm font-medium px-2 py-1 bg-transparent border-none cursor-pointer${verifyStatus !== "full" ? " opacity-60 cursor-not-allowed" : ""}`}
+                      >
                         View More
-                        
                       </button>
                     </div>
                   </div>

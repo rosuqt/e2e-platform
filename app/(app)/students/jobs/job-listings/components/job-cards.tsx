@@ -13,6 +13,10 @@ import QuickApplyModal from "./quick-apply-modal";
 import { ApplicationModal } from "./application-modal";
 import ApplicationModalQuickVersion from "./application-modal-quick-version";
 import { Tooltip, CircularProgress } from "@mui/material";
+import { HiBadgeCheck } from "react-icons/hi";
+import { BadgeCheck as LuBadgeCheck } from "lucide-react";
+import { styled } from "@mui/material/styles";
+import { tooltipClasses } from "@mui/material";
 
 type Employer = {
   first_name?: string;
@@ -36,7 +40,11 @@ type Job = {
   match_percentage?: number;
   gpt_score?: number;
   employers?: Employer;
-  registered_employers?: { company_name?: string };
+  registered_employers?: { 
+    company_name?: string;
+    verify_status?: string;
+    [key: string]: any;
+  };
   registered_companies?: { company_logo_image_path?: string };
   company_logo_image_path?: string; 
   pay_type?: string;
@@ -73,6 +81,22 @@ function getMatchIcon(percent: number) {
   if (percent >= 31) return <AiOutlineMeh color="#FFC107" size={24} />;
   return <TbMoodConfuzed color="#F44336" size={24} />;
 }
+
+const CustomTooltip = styled(Tooltip)(() => ({
+  [`& .${tooltipClasses.tooltip}`]: {
+    backgroundColor: "#fff",
+    color: "#222",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+    fontSize: 13,
+    borderRadius: 8,
+    padding: "8px 14px",
+    fontWeight: 500,
+    letterSpacing: 0.1,
+  },
+  [`& .${tooltipClasses.arrow}`]: {
+    color: "#fff",
+  },
+}));
 
 function JobCard({
   isSelected,
@@ -360,6 +384,11 @@ function JobCard({
     setQuickApplyProcessing(false);
   }
 
+  const posterVerificationTier =
+    job.registered_employers?.verify_status ||
+    (job as any).verification_tier ||
+    "basic";
+
   return (
     <>
       <motion.div
@@ -414,7 +443,23 @@ function JobCard({
             </motion.div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-lg text-gray-800">{title}</h3>
+                <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
+                  {title}
+                  {/* Job poster verification badge */}
+                  {posterVerificationTier === "full" ? (
+                    <CustomTooltip title="Job poster is fully verified" arrow>
+                      <span style={{ display: "inline-flex" }}>
+                        <HiBadgeCheck className="w-4 h-4 text-blue-600" />
+                      </span>
+                    </CustomTooltip>
+                  ) : posterVerificationTier === "standard" ? (
+                    <CustomTooltip title="Job poster is partially verified" arrow>
+                      <span style={{ display: "inline-flex" }}>
+                        <LuBadgeCheck className="w-4 h-4" style={{ color: "#7c3aed" }} />
+                      </span>
+                    </CustomTooltip>
+                  ) : null}
+                </h3>
                 {matchedPrefs.length > 0 && (
                   <div
                     className="flex items-center gap-2"
