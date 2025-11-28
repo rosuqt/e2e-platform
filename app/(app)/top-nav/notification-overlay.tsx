@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 
 interface Notification {
-  id: number
-  title: string
-  description: string
-  time: string
-  read: boolean
+  company_name: string;
+  content: string;
+  created_at: Date;
+  external_id: string;
+  source: string;
+  title: string;
+  updated_at: Date;
+  user_id: string;
 }
 
 interface NotificationOverlayProps {
@@ -47,34 +50,23 @@ export default function NotificationOverlay({ notification, onClose }: Notificat
             </div>
             <div>
               <h4 className="font-medium text-lg text-blue-800">{notification.title}</h4>
-              <p className="text-sm text-gray-500">{notification.time}</p>
+              <p className="text-sm text-gray-500">{new Date(notification.updated_at).toLocaleString()}</p>
             </div>
           </div>
 
           <div className="space-y-4">
-            <p className="text-gray-700">{notification.description}</p>
+            <p className="text-gray-700">{notification.content}</p>
 
             <div className="bg-blue-50 p-4 rounded-lg space-y-3">
               <h5 className="font-medium text-blue-800">Job Details</h5>
-
               <div className="flex items-center gap-2">
                 <Building className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-gray-700">[Company Name]</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-gray-700">[Location]</span>
+                <span className="text-sm text-gray-700">{notification.company_name}</span>
               </div>
 
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-gray-700">Applied on [Date]</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-gray-700">Status updated 3 mins ago</span>
+                <span className="text-sm text-gray-700">{new Date(notification.updated_at).toLocaleString()}</span>
               </div>
             </div>
           </div>
