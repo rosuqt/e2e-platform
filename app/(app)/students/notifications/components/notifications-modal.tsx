@@ -8,7 +8,15 @@ import { AiOutlineBell } from "react-icons/ai";
 import { useSession } from "next-auth/react";
 
 interface NotificationsModalProps {
-  notifications: { id: string; title: string; message: string; timestamp: string; avatarUrl?: string; isUnread?: boolean }[];
+  notifications: {
+  company_name: string;
+  content: string;
+  created_at: Date;
+  external_id: string;
+  source: string;
+  title: string;
+  updated_at: Date;
+  user_id: string}[];
   onClose: () => void;
   positionRef: React.RefObject<HTMLAnchorElement | null>;
 }
@@ -93,23 +101,23 @@ export function NotificationsModal({ notifications, onClose, positionRef }: Noti
 
             <div className="p-4 space-y-4 max-h-64 overflow-y-auto">
               {notifications.map((notification) => (
-                <div key={notification.id} className="flex items-center space-x-4">
+                <div key={notification.external_id} className="flex items-center space-x-4">
                   <Avatar
-                    src={notification.avatarUrl || "/placeholder.svg"}
+                    src={"/placeholder.svg"}
                     alt="Notification"
                     sx={{ width: 40, height: 40 }}
                   >
-                    {!notification.avatarUrl && "N"}
+                    {!notification.user_id && "N"}
                   </Avatar>
                   <div className="flex flex-col flex-grow">
                     <span className="font-medium text-gray-800">{notification.title}</span>
-                    <span className="text-[12px] text-gray-500">{notification.message}</span>
+                    <span className="text-[12px] text-gray-500">{notification.content}</span>
                   </div>
                   <div className="flex flex-col items-end space-y-1">
-                    {notification.isUnread && (
+                    {notification.source && (
                       <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
                     )}
-                    <span className="text-xs text-gray-400">{notification.timestamp}</span>
+                    <span className="text-xs text-gray-400">{new Date(notification.updated_at).toLocaleString()}</span>
                   </div>
                 </div>
               ))}

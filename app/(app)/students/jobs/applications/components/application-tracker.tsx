@@ -114,6 +114,7 @@ type ApplicationData = {
   is_archived?: boolean
   application_answers?: any
   notes?: { note: string; date_added: string; isEmployer?: boolean }[] | string
+  followed_up: boolean
 }
 
 type JobRatingData = {
@@ -185,7 +186,7 @@ export default function ApplicationTrackerNoSidebar() {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
   const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false)
-  const [followUpDetails, setFollowUpDetails] = useState<{ employerName: string; jobTitle: string; company: string } | null>(null)
+  const [followUpDetails, setFollowUpDetails] = useState<{ employerName: string; jobTitle: string; company: string; application_id: any; } | null>(null)
 
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
   const [menuCardId, setMenuCardId] = useState<string | null>(null)
@@ -599,19 +600,33 @@ export default function ApplicationTrackerNoSidebar() {
     setIsModalOpen(true)
   }
 
-  const handleFollowUp = (logicalId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    const application = applications.find((app) => String(app.id) === logicalId)
-    if (application && application.contacts?.length > 0) {
-      const contact = application.contacts[0]
-      setFollowUpDetails({
-        employerName: contact.name,
-        jobTitle: contact.role,
-        company: application.company,
-      })
-      setModalApplicationId(logicalId)
-      setIsFollowUpModalOpen(true)
+  const handleFollowUp = async (logicalId: string, e: React.MouseEvent,) => {
+    try {
+      setLoading(true);
+      console.log(logicalId)
+      const res = await fetch("/api/students/applications/follow-up", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId: logicalId,
+          content: "Hello! I would like to follow up on my application.", 
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("Error:", data.error);
+      } else {
+        console.log("Message sent:", data);
+      }
+
+    } catch (err) {
+      console.error("Unexpected error:", err);
     }
+
+    setLoading(false);
+  
   }
 
   const [isJobRatingModalOpen, setIsJobRatingModalOpen] = useState(false)
@@ -1851,6 +1866,8 @@ function generateApplicationCards(
     withdrawn: { title: "Withdrawn", badge: "bg-gray-100 text-gray-700", hover: "hover:border-l-gray-400" },
   } as const
 
+  const canFollowUp = true; //
+
   return (
     <>
       {applicationsData.map((app, index) => {
@@ -1878,7 +1895,6 @@ function generateApplicationCards(
         const verificationTier = app.job_postings?.verification_tier || "basic"
 
         const appliedDateRaw = app.applied_at ? new Date(app.applied_at) : null
-        const canFollowUp = !appliedDateRaw || (Date.now() >= (appliedDateRaw.getTime() + 5 * 24 * 60 * 60 * 1000))
 
         const shouldHighlight = !!highlightLogicalId && logicalIdForCard === String(highlightLogicalId) && index === 0
 
@@ -2056,16 +2072,16 @@ function generateApplicationCards(
                 )}
                 {cardStatus === "pending" && (
                   <Tooltip
-                    title={!canFollowUp ? "You can follow up 5 days after applying." : ""}
+                    title={app.followed_up ? "You can follow up 5 days after applying." : ""}
                     arrow
-                    disableHoverListener={canFollowUp}
+                    disableHoverListener={app.followed_up}
                   >
                     <span className={!canFollowUp ? "cursor-not-allowed" : ""}>
                       <Button
                         size="sm"
                         className="bg-yellow-600 hover:bg-yellow-700 text-xs"
                         onClick={(e) => handleFollowUp(logicalIdForCard, e)}
-                        disabled={!canFollowUp}
+                        disabled={app.followed_up}
                       >
                         Follow Up
                       </Button>

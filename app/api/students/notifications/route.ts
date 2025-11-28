@@ -3,44 +3,114 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/authOptions";
 import supabase from "@/lib/supabase";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    //Get User ID
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const user_id =
-      typeof session.user === "object" && session.user !== null && "employerId" in session.user
-        ? (session.user as { employerId?: string }).employerId
-        : undefined;
+    const user_id = (session.user as any).employerId ?? session.user.studentId;
 
-    // Fetch from multiple tables in parallel
+    // FETCH 
     const [activityRes, offerRes] = await Promise.all([
-      supabase.from("activity_log").select("id, employer_id, student_id, job_id, type, message, created_at").eq("student_id", user_id),
-      supabase.from("job_offers").select("id, created_at") .eq("student_id", user_id),
+      supabase
+        .from("applications")
+        .select("application_id, job_id, first_name, last_name, status, applied_at, job_postings!inner(id, job_title, registered_companies!inner(id, company_name))")
+        .eq("student_id", user_id),
+        
+      supabase
+        .from("job_offers")
+        .select("id, company_name, applicant_name, job_title, created_at, updated_at ,accept_status")
+        .eq("student_id", user_id),
     ]);
-    
-    // Check for errors
-    if (activityRes.error ||offerRes.error) {
-      throw new Error(
-        activityRes.error?.message ||
-        offerRes.error?.message
+
+    // UNIFY
+    const combined = [
+      ...(activityRes.data ?? []).map(item => ({
+        source: "applications",
+        external_id: item.application_id,
+        user_id,
+        title: `Your application for ${item.job_postings.job_title}.`,
+        company_name: item.job_postings.registered_companies.company_name,
+        content: `Status: ${item.status}`,
+        created_at: item.applied_at,
+        updated_at: item.applied_at,
+      })),
+
+      ...(offerRes.data ?? []).map(item => ({
+        source: "job_offers",
+        external_id: item.id,
+        user_id,
+        title: `There is a Job Offer of ${item.job_title} for you`,
+        content: `Is currently: ${item.accept_status === "accepted" ? "Accepted" : item.accept_status === "rejected" ? "Rejected": "Pending"}`,
+        company_name: item.company_name,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+      })),
+      
+    ];
+
+    combined.sort(
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
+    // GET EXISTING NOTIFICATIONS
+    const { data: existing, error: existingError } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user_id);
+
+    if (existingError) throw existingError;
+
+    // UPDATE
+    for (const entry of combined) {
+      const match = existing.find(
+        e =>
+          e.source === entry.source &&
+          e.external_id === entry.external_id
       );
+
+      const entryUpdated = new Date(entry.updated_at).getTime();
+      const matchUpdated = match ? new Date(match.updated_at).getTime() : null;
+
+      if (!match) {
+        // INSERT new notification
+        await supabase.from("notifications").insert({
+          user_id,
+          source: entry.source,
+          external_id: entry.external_id,
+          title: entry.title,
+          content: entry.content,
+          date: entry.created_at,
+          read: false,
+        });
+      } else if (entryUpdated !== matchUpdated) {
+        // UPDATE existing notification only if updated_at changed
+        await supabase
+          .from("notifications")
+          .update({
+            title: entry.title,
+            content: entry.content,
+            date: entry.updated_at,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", match.id);
+      }
     }
 
-    // Return combined JSON
-    return NextResponse.json({
-      activity: activityRes.data,
-      offer: offerRes.data,
-    })
+    // RETURN
+    const { data: finalNotifications } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user_id)
+      .order("date", { ascending: false });
 
-  } catch (err: unknown) {
-    const message =
-      typeof err === "object" && err !== null && "message" in err
-        ? (err as { message?: string }).message ?? ""
-        : "";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ success: true, notifications: combined });
+  } catch (err: any) {
+    console.error(err);
+    return NextResponse.json(
+      { error: err.message || "Failed to generate notifications" },
+      { status: 500 }
+    );
   }
 }
-
