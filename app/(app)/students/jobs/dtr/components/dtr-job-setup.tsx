@@ -57,16 +57,38 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.jobTitle || !formData.company || !formData.totalHours || !formData.startDate) {
       alert("Please fill in all fields")
       return
     }
-    onSubmit({
-      ...formData,
+    const payload = {
+      jobTitle: formData.jobTitle,
+      company: formData.company,
       totalHours: Number.parseInt(formData.totalHours),
+      startDate: formData.startDate,
+      externalApplication: formData.externalApplication,
+      ...(seekrSelected ? {
+        job_id: seekrSelected.job_id,
+        applied_at: seekrSelected.applied_at,
+        status: seekrSelected.status,
+        job_title: seekrSelected.job_title,
+        work_type: seekrSelected.work_type,
+        remote_options: seekrSelected.remote_options,
+        employer_id: seekrSelected.employer_id,
+        company_id: seekrSelected.company_id,
+        employer_first_name: seekrSelected.employer_first_name,
+        employer_last_name: seekrSelected.employer_last_name,
+        company_name: seekrSelected.company_name,
+      } : {})
+    }
+    await fetch("/api/students/dtr/setJobInfo", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json" }
     })
+    onSubmit(payload)
   }
 
   return (
@@ -158,7 +180,7 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleSelectSeekrJob(job)}
-                    className="w-full bg-white border-2 border-blue-200 rounded-xl p-4 text-left hover:border-blue-500 hover:shadow-lg transition-all"
+                    className="w-full bg-white border-2 border-blue-200 rounded-xl p-4 text-left hover:border-blue-500 hover:shadow-lg transition-all relative"
                   >
                     <div className="flex flex-col gap-2">
                       <span className="font-bold text-blue-700 text-lg">{job.job_title}</span>
@@ -173,6 +195,9 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
                         Employer: {job.employer_first_name} {job.employer_last_name}
                       </span>
                     </div>
+                    <span className="absolute top-3 right-3 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
+                      Hired
+                    </span>
                   </motion.button>
                 ))}
               </div>

@@ -58,6 +58,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/sign-in", request.url))
   }
 
+  const protectedRoutes = [
+    "/students",
+    "/employers",
+    "/admin"
+  ]
+  const isProtected = protectedRoutes.some(route => pathname.startsWith(route))
+
+  if (!isProtected) {
+    return NextResponse.next()
+  }
+
   if (pathname.startsWith("/employers") && role !== "employer") {
     return NextResponse.redirect(new URL("/forbidden", request.url))
   }
@@ -71,6 +82,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next|api|sign-in|static|favicon.ico).*)',
+    // Only match protected routes
+    '/students/:path*',
+    '/employers/:path*',
+    '/admin/:path*',
   ],
 }

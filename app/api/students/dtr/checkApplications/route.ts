@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   const results = []
   for (const app of applications) {
     const { data: job } = await supabase
-      .from("jobs")
+      .from("job_postings")
       .select("job_title, work_type, remote_options, employer_id, company_id")
       .eq("id", app.job_id)
       .maybeSingle()
