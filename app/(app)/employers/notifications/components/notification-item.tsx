@@ -3,11 +3,13 @@
 import { BriefcaseIcon } from "lucide-react"
 
 interface Notification {
-  id: number
-  title: string
-  description: string
-  time: string
-  read: boolean
+  content: string;
+  created_at: Date;
+  external_id: string;
+  source: string;
+  title: string;
+  updated_at: Date;
+  user_id: string;
 }
 
 interface NotificationItemProps {
@@ -26,9 +28,9 @@ export default function NotificationItem({ notification, onClick }: Notification
       </div>
       <div className="flex-1 min-w-0">
         <h4 className="font-medium text-blue-800">{notification.title}</h4>
-        <p className="text-sm text-gray-600 mt-0.5">{notification.description}</p>
+        <p className="text-sm text-gray-600 mt-0.5">{notification.content}</p>
       </div>
-      <div className="text-xs text-gray-500 whitespace-nowrap">{notification.time}</div>
+      <div className="text-xs text-gray-500 whitespace-nowrap">{new Date(notification.updated_at).toLocaleString()}</div>
     </div>
   )
 }
