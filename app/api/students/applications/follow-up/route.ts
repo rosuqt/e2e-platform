@@ -130,10 +130,10 @@ export async function POST(req: Request) {
   }
 }
 
-
-export async function PULL(req: Request) {
+export async function GET(req: Request) {
   try {
-    const { applicationId } = await req.json();
+    const { searchParams } = new URL(req.url);
+    const applicationId = searchParams.get("applicationId");
 
     if (!applicationId) {
       return NextResponse.json(

@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import {
   Users,
   LogOut,
@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Suspense } from "react"
+import { signOut } from "next-auth/react"
 
 
 interface NavItem {
@@ -155,7 +156,6 @@ function MobileNavigation({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
 
 function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; onItemClick?: () => void }) {
   const pathname = usePathname()
-  const router = useRouter()
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
 
   useEffect(() => {
@@ -174,8 +174,7 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
   const isSubmenuActive = (submenu: { title: string; href: string }[]) => submenu.some((item) => pathname === item.href)
 
   const handleLogout = async () => {
-    await fetch("/api/auth/signout", { method: "POST" })
-    router.push("/admin/login")
+    await signOut({ callbackUrl: "/admin/login" })
   }
 
   return (

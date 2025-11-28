@@ -6,8 +6,7 @@ import {
   Download,
   MoreHorizontal,
   Eye,
-  Trash,
-  Edit,
+  Archive,
   User,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -150,9 +149,8 @@ export default function EmployersManagement() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [selectedEmployer, setSelectedEmployer] = useState<Employer | null>(null)
-  const [selectedIndustry, setSelectedIndustry] = useState<string>("all")
   const [selectedLocation, setSelectedLocation] = useState<string>("all")
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
   const [menuEmployerId, setMenuEmployerId] = useState<number | null>(null)
@@ -240,20 +238,25 @@ export default function EmployersManagement() {
     setIsViewDialogOpen(true)
   }
 
-  const handleDeleteEmployer = (employer: Employer) => {
-    setSelectedEmployer(employer)
-    setIsDeleteDialogOpen(true)
-  }
-
-  const confirmDeleteEmployer = async () => {
-    if (!selectedEmployer) return
-    await fetch("/api/superadmin/actions/deleteUsers", {
+  const handleArchiveEmployer = async (employer: Employer) => {
+    await fetch("/api/superadmin/actions/isArchived", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selectedEmployer.employerId, table: "registered_employers" }),
+      body: JSON.stringify({ id: employer.employerId }),
     })
-    setEmployers(employers.filter((employer) => employer.employerId !== selectedEmployer.employerId))
-    setIsDeleteDialogOpen(false)
+    setEmployers(employers.map(e =>
+      e.employerId === employer.employerId ? { ...e, status: "suspended" } : e
+    ))
+  }
+
+  const handleArchiveDialog = (employer: Employer) => {
+    setSelectedEmployer(employer)
+    setIsArchiveDialogOpen(true)
+  }
+  const confirmArchiveEmployer = async () => {
+    if (!selectedEmployer) return
+    await handleArchiveEmployer(selectedEmployer)
+    setIsArchiveDialogOpen(false)
   }
 
   const exportEmployers = () => {
@@ -324,15 +327,6 @@ export default function EmployersManagement() {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
-                        <SelectTrigger className="w-[180px] rounded-2xl border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 h-12">
-                          <SelectValue placeholder="Industry" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          <SelectItem value="all">All Industries</SelectItem>
-        
-                        </SelectContent>
-                      </Select>
                       <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                         <SelectTrigger className="w-[150px] rounded-2xl border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 h-12">
                           <SelectValue placeholder="Location" />
@@ -388,7 +382,7 @@ export default function EmployersManagement() {
                     <EmployersTable
                       employers={paginatedEmployers}
                       onViewEmployer={handleViewEmployer}
-                      onDeleteEmployer={handleDeleteEmployer}
+                      onArchiveEmployer={handleArchiveDialog}
                       menuAnchorEl={menuAnchorEl}
                       setMenuAnchorEl={setMenuAnchorEl}
                       menuEmployerId={menuEmployerId}
@@ -399,7 +393,7 @@ export default function EmployersManagement() {
                     <EmployersTable
                       employers={paginatedEmployers}
                       onViewEmployer={handleViewEmployer}
-                      onDeleteEmployer={handleDeleteEmployer}
+                      onArchiveEmployer={handleArchiveDialog}
                       menuAnchorEl={menuAnchorEl}
                       setMenuAnchorEl={setMenuAnchorEl}
                       menuEmployerId={menuEmployerId}
@@ -410,7 +404,7 @@ export default function EmployersManagement() {
                     <EmployersTable
                       employers={paginatedEmployers}
                       onViewEmployer={handleViewEmployer}
-                      onDeleteEmployer={handleDeleteEmployer}
+                      onArchiveEmployer={handleArchiveDialog}
                       menuAnchorEl={menuAnchorEl}
                       setMenuAnchorEl={setMenuAnchorEl}
                       menuEmployerId={menuEmployerId}
@@ -421,7 +415,7 @@ export default function EmployersManagement() {
                     <EmployersTable
                       employers={paginatedEmployers}
                       onViewEmployer={handleViewEmployer}
-                      onDeleteEmployer={handleDeleteEmployer}
+                      onArchiveEmployer={handleArchiveDialog}
                       menuAnchorEl={menuAnchorEl}
                       setMenuAnchorEl={setMenuAnchorEl}
                       menuEmployerId={menuEmployerId}
@@ -432,7 +426,7 @@ export default function EmployersManagement() {
                     <EmployersTable
                       employers={paginatedEmployers}
                       onViewEmployer={handleViewEmployer}
-                      onDeleteEmployer={handleDeleteEmployer}
+                      onArchiveEmployer={handleArchiveDialog}
                       menuAnchorEl={menuAnchorEl}
                       setMenuAnchorEl={setMenuAnchorEl}
                       menuEmployerId={menuEmployerId}
@@ -478,23 +472,23 @@ export default function EmployersManagement() {
         onEdit={() => {}}
       />
 
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <Dialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
         <DialogContent className="sm:max-w-[400px] rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-gray-900">Are you sure you want to delete this employer?</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Archive Employer?</DialogTitle>
             <DialogDescription className="text-gray-600 text-base">
-              This action cannot be undone. This will permanently delete the employer record and remove all associated data from the system.
+              This will archive the employer record and remove access from the system.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} className="rounded-xl px-6">
+            <Button variant="outline" onClick={() => setIsArchiveDialogOpen(false)} className="rounded-xl px-6">
               Cancel
             </Button>
             <Button
-              onClick={confirmDeleteEmployer}
-              className="rounded-xl px-6 bg-red-600 hover:bg-red-700 text-white"
+              onClick={confirmArchiveEmployer}
+              className="rounded-xl px-6 bg-orange-600 hover:bg-orange-700 text-white"
             >
-              Delete
+              Archive
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -506,7 +500,7 @@ export default function EmployersManagement() {
 function EmployersTable({
   employers,
   onViewEmployer,
-  onDeleteEmployer,
+  onArchiveEmployer,
   menuAnchorEl,
   setMenuAnchorEl,
   menuEmployerId,
@@ -514,7 +508,7 @@ function EmployersTable({
 }: {
   employers: (Employer & { verify_status?: string; profile_img?: string })[]
   onViewEmployer: (employer: Employer & { profile_img?: string }) => void
-  onDeleteEmployer: (employer: Employer) => void
+  onArchiveEmployer: (employer: Employer) => void
   menuAnchorEl: null | HTMLElement
   setMenuAnchorEl: (el: null | HTMLElement) => void
   menuEmployerId: number | null
@@ -607,25 +601,15 @@ function EmployersTable({
                         View Details
                       </button>
                       <button
-                        className="flex items-center w-full px-4 py-3 hover:bg-gray-50 rounded-xl"
+                        className="flex items-center w-full px-4 py-3 hover:orange-50 rounded-xl text-orange-600"
                         onClick={() => {
                           setMenuAnchorEl(null)
                           setMenuEmployerId(null)
+                          onArchiveEmployer(employer)
                         }}
                       >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </button>
-                      <button
-                        className="flex items-center w-full px-4 py-3 hover:red-50 rounded-xl text-red-600"
-                        onClick={() => {
-                          setMenuAnchorEl(null)
-                          setMenuEmployerId(null)
-                          onDeleteEmployer(employer)
-                        }}
-                      >
-                        <Trash className="mr-2 h-4 w-4" />
-                        Delete
+                        <Archive className="mr-2 h-4 w-4" />
+                        Archive
                       </button>
                     </div>
                   )}

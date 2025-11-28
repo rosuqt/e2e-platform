@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Search,  Download, MoreHorizontal, Edit, Trash, Archive, Eye, User } from "lucide-react"
+import { Plus, Search,  Download, MoreHorizontal, Edit, Archive, Eye, User } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,16 +20,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import toast from 'react-hot-toast'
@@ -66,7 +56,6 @@ export default function AdminsManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null)
   const [formData, setFormData] = useState({
     username: "",
@@ -172,11 +161,6 @@ export default function AdminsManagement() {
       status: admin.status,
     })
     setIsEditDialogOpen(true)
-  }
-
-  const handleDeleteAdmin = (admin: Admin) => {
-    setSelectedAdmin(admin)
-    setIsDeleteDialogOpen(true)
   }
 
   const handleArchiveAdmin = async (admin: Admin) => {
@@ -352,18 +336,6 @@ export default function AdminsManagement() {
 
     setAdminList(updatedAdmins)
     setIsEditDialogOpen(false)
-  }
-
-  const confirmDeleteAdmin = async () => {
-    if (!selectedAdmin) return
-    await fetch("/api/superadmin/actions/deleteUsers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selectedAdmin.id, table: "registered_admins" }),
-    })
-    const updatedAdmins = adminList.filter((admin) => admin.id !== selectedAdmin.id)
-    setAdminList(updatedAdmins)
-    setIsDeleteDialogOpen(false)
   }
 
   const exportAdmins = async () => {
@@ -722,13 +694,6 @@ export default function AdminsManagement() {
                                       <Archive className="mr-3 w-4 h-4" />
                                       {admin.status === "archived" ? "Unarchive" : "Archive"}
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => handleDeleteAdmin(admin)}
-                                      className="rounded-xl py-3 text-red-600 focus:text-red-600 focus:bg-red-50"
-                                    >
-                                      <Trash className="mr-3 w-4 h-4" />
-                                      Delete
-                                    </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </TableCell>
@@ -937,28 +902,6 @@ export default function AdminsManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-3xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-bold text-gray-900">Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-600 text-base">
-              This action cannot be undone. This will permanently delete the admin account and remove all associated
-              data from our servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl px-6">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteAdmin}
-              className="rounded-xl px-6 bg-red-600 hover:bg-red-700 text-white"
-            >
-              Delete Account
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

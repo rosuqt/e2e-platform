@@ -1,13 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, JSX } from "react"
 import {
   Search,
   Download,
   MoreHorizontal,
   Eye,
-  Trash,
-  Edit,
   Mail,
   Phone,
   Building,
@@ -16,6 +14,7 @@ import {
   MapPin,
   Users,
   Briefcase,
+  Archive,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -67,7 +66,7 @@ export default function CompaniesManagement() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
   const [selectedIndustry, setSelectedIndustry] = useState<string>("all")
   const [selectedSize, setSelectedSize] = useState<string>("all")
@@ -180,20 +179,22 @@ export default function CompaniesManagement() {
     setIsViewDialogOpen(true)
   }
 
-  const handleDeleteCompany = (company: Company) => {
+  const handleArchiveDialog = (company: Company) => {
     setSelectedCompany(company)
-    setIsDeleteDialogOpen(true)
+    setIsArchiveDialogOpen(true)
   }
 
-  const confirmDeleteCompany = async () => {
+  const confirmArchiveCompany = async () => {
     if (!selectedCompany) return
-    await fetch("/api/superadmin/actions/deleteUsers", {
+    await fetch("/api/superadmin/actions/isArchived", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selectedCompany.companyId, table: "registered_companies" }),
+      body: JSON.stringify({ id: selectedCompany.companyId }),
     })
-    setCompanies(companies.filter((company) => company.companyId !== selectedCompany.companyId))
-    setIsDeleteDialogOpen(false)
+    setCompanies(companies.map(c =>
+      c.companyId === selectedCompany.companyId ? { ...c, status: "suspended" } : c
+    ))
+    setIsArchiveDialogOpen(false)
   }
 
   const exportCompanies = () => {
@@ -339,7 +340,7 @@ export default function CompaniesManagement() {
                     <CompaniesTable
                       companies={filteredCompanies}
                       onViewCompany={handleViewCompany}
-                      onDeleteCompany={handleDeleteCompany}
+                      onArchiveCompany={handleArchiveDialog}
                       menuAnchors={menuAnchors}
                       handleMenuOpen={handleMenuOpen}
                       handleMenuClose={handleMenuClose}
@@ -349,7 +350,7 @@ export default function CompaniesManagement() {
                     <CompaniesTable
                       companies={filteredCompanies}
                       onViewCompany={handleViewCompany}
-                      onDeleteCompany={handleDeleteCompany}
+                      onArchiveCompany={handleArchiveDialog}
                       menuAnchors={menuAnchors}
                       handleMenuOpen={handleMenuOpen}
                       handleMenuClose={handleMenuClose}
@@ -359,7 +360,7 @@ export default function CompaniesManagement() {
                     <CompaniesTable
                       companies={filteredCompanies}
                       onViewCompany={handleViewCompany}
-                      onDeleteCompany={handleDeleteCompany}
+                      onArchiveCompany={handleArchiveDialog}
                       menuAnchors={menuAnchors}
                       handleMenuOpen={handleMenuOpen}
                       handleMenuClose={handleMenuClose}
@@ -369,7 +370,7 @@ export default function CompaniesManagement() {
                     <CompaniesTable
                       companies={filteredCompanies}
                       onViewCompany={handleViewCompany}
-                      onDeleteCompany={handleDeleteCompany}
+                      onArchiveCompany={handleArchiveDialog}
                       menuAnchors={menuAnchors}
                       handleMenuOpen={handleMenuOpen}
                       handleMenuClose={handleMenuClose}
@@ -379,7 +380,7 @@ export default function CompaniesManagement() {
                     <CompaniesTable
                       companies={filteredCompanies}
                       onViewCompany={handleViewCompany}
-                      onDeleteCompany={handleDeleteCompany}
+                      onArchiveCompany={handleArchiveDialog}
                       menuAnchors={menuAnchors}
                       handleMenuOpen={handleMenuOpen}
                       handleMenuClose={handleMenuClose}
@@ -534,24 +535,22 @@ export default function CompaniesManagement() {
           <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
             Close
           </Button>
-          <Button>Edit Company</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
-        <DialogTitle>Are you sure you want to delete this company?</DialogTitle>
+      <Dialog open={isArchiveDialogOpen} onClose={() => setIsArchiveDialogOpen(false)}>
+        <DialogTitle>Archive Company?</DialogTitle>
         <DialogContent>
           <Typography>
-            This action cannot be undone. This will permanently delete the company record and remove all associated
-            data from the system, including job listings and employer accounts.
+            This will archive the company record and remove access from the system.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsDeleteDialogOpen(false)}>
+          <Button onClick={() => setIsArchiveDialogOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={confirmDeleteCompany} color="error">
-            Delete
+          <Button onClick={confirmArchiveCompany} color="warning">
+            Archive
           </Button>
         </DialogActions>
       </Dialog>
@@ -562,14 +561,14 @@ export default function CompaniesManagement() {
 function CompaniesTable({
   companies,
   onViewCompany,
-  onDeleteCompany,
+  onArchiveCompany,
   menuAnchors,
   handleMenuOpen,
   handleMenuClose,
 }: {
   companies: Company[]
   onViewCompany: (company: Company) => void
-  onDeleteCompany: (company: Company) => void
+  onArchiveCompany: (company: Company) => void
   menuAnchors: { [key: number]: HTMLElement | null }
   handleMenuOpen: (event: React.MouseEvent<HTMLElement>, id: number) => void
   handleMenuClose: (id: number) => void
@@ -649,23 +648,14 @@ function CompaniesTable({
                         View Details
                       </button>
                       <button
-                        className="flex items-center w-full px-4 py-3 hover:bg-gray-50 rounded-xl"
+                        className="flex items-center w-full px-4 py-3 hover:orange-50 rounded-xl text-orange-600"
                         onClick={() => {
                           handleMenuClose(company.id)
+                          onArchiveCompany(company)
                         }}
                       >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </button>
-                      <button
-                        className="flex items-center w-full px-4 py-3 hover:red-50 rounded-xl text-red-600"
-                        onClick={() => {
-                          handleMenuClose(company.id)
-                          onDeleteCompany(company)
-                        }}
-                      >
-                        <Trash className="mr-2 h-4 w-4" />
-                        Delete
+                        <Archive className="mr-2 h-4 w-4" />
+                        Archive
                       </button>
                     </div>
                   )}
@@ -807,7 +797,7 @@ function getSizeLabel(size: string): string {
   }
 }
 
-function CompanyLogo({ logoPath, alt }: { logoPath?: string; alt?: string }) {
+function CompanyLogo({ logoPath, alt }: { logoPath?: string; alt?: string }): JSX.Element {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -839,7 +829,6 @@ function CompanyLogo({ logoPath, alt }: { logoPath?: string; alt?: string }) {
   if (logoUrl) {
     return (
       <div className="flex items-center justify-center bg-gray-100 rounded-full w-16 h-16 overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={logoUrl} alt={alt || "Company Logo"} className="object-cover w-full h-full" />
       </div>
     )
