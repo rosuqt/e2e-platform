@@ -243,7 +243,15 @@ export function RecruiterApplicationDetailsModal({
         : (applicant.status || "").toLowerCase() === "invited"
         ? "bg-green-100 text-green-700"
         : "bg-yellow-100 text-yellow-700",
-    location: applicant.address || "N/A",
+    location: Array.isArray(applicant.address)
+      ? applicant.address.filter(Boolean).join(", ")
+      : typeof applicant.address === "string"
+      ? applicant.address
+      : applicant.location && Array.isArray(applicant.location)
+      ? applicant.location.filter(Boolean).join(", ")
+      : typeof applicant.location === "string"
+      ? applicant.location
+      : "N/A",
     experience: applicant.experience_years || "N/A",
     appliedDate: applicant.applied_date || applicant.applied_at || "N/A",
     matchScore,
@@ -528,7 +536,7 @@ interface Application {
   title: string
   status: string
   statusColor: string
-  location: string
+  location: string | string[]
   experience: string
   appliedDate: string
   matchScore: number
@@ -620,6 +628,7 @@ function RecruiterApplicationDetailsContent({
   // const open = Boolean(anchorEl)
   const [signedAchievements, setSignedAchievements] = useState<{ name: string; url: string }[]>([])
   const [signedPortfolio, setSignedPortfolio] = useState<{ name: string; url: string }[]>([])
+  const verifyStatus = session?.user?.verifyStatus
 
   useEffect(() => {
     const employerId = (session?.user as { employerId?: string })?.employerId
@@ -830,7 +839,9 @@ function RecruiterApplicationDetailsContent({
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xl font-bold">{application.matchScore}%</span>
+                  <span className={`text-xl font-bold${verifyStatus !== "full" ? " blur-sm select-none" : ""}`}>
+                    {application.matchScore}%
+                  </span>
                 </div>
               </div>
               <div className="flex-1">
@@ -845,7 +856,7 @@ function RecruiterApplicationDetailsContent({
                     fontWeight: 600,
                     fontSize: "1.125rem"
                   }}
-                  className="font-semibold"
+                  className={`font-semibold${verifyStatus !== "full" ? " blur-sm select-none" : ""}`}
                 >
                   {application.matchScore >= 70
                     ? "This Applicant Is a Strong Match"
@@ -853,16 +864,18 @@ function RecruiterApplicationDetailsContent({
                     ? "This Applicant Is a Partial Match"
                     : "This Applicant Isn’t a Strong Match"}
                 </h3>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className={`text-xs text-muted-foreground mt-1${verifyStatus !== "full" ? " blur-sm select-none" : ""}`}>
                   {application.matchScore >= 70
                     ? "Their background and skills closely match what this role is looking for — it could be a great fit!"
                     : application.matchScore >= 40
                     ? "They match some key aspects of this role. With a bit of alignment, it could be a solid opportunity."
                     : "Their profile doesn’t closely match the main requirements for this role, but other opportunities may suit them better."}
                 </p>
-                <div className="mt-2 text-sm text-blue-700 font-medium">
-                  {matchedSkillsCount} Skills Matched
-                </div>
+                {verifyStatus === "full" && matchedSkillsCount > 0 && (
+                  <div className="mt-2 text-sm text-blue-700 font-medium">
+                    {matchedSkillsCount} Skills Matched
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -892,7 +905,13 @@ function RecruiterApplicationDetailsContent({
             </div>
             <div className="flex items-start gap-3 mb-2 mt-5">
               <span className="text-sm font-medium text-blue-700 min-w-[70px]">Location:</span>
-              <span className="text-sm whitespace-pre-line">{application.location}</span>
+              <span className="text-sm whitespace-pre-line">
+                {typeof application.location === "string"
+                  ? application.location
+                  : Array.isArray(application.location)
+                  ? application.location.filter(Boolean).join(", ")
+                  : "N/A"}
+              </span>
             </div>  
           </div>
 

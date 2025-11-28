@@ -8,9 +8,6 @@ import {
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
   Zap,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -60,35 +57,8 @@ const statsCards = [
   },
 ]
 
-const recentActivities = [
-  {
-    id: 1,
-    type: "user",
-    title: "New admin account created",
-    description: "John Smith created a new admin account",
-    time: "2 hours ago",
-    icon: Users,
-    color: "from-blue-500 to-cyan-500",
-  },
-  {
-    id: 2,
-    type: "company",
-    title: "Company verification completed",
-    description: "TechCorp Inc. has been verified",
-    time: "4 hours ago",
-    icon: CheckCircle,
-    color: "from-emerald-500 to-teal-500",
-  },
-  {
-    id: 3,
-    type: "report",
-    title: "New bug report submitted",
-    description: "Critical issue reported in job application system",
-    time: "6 hours ago",
-    icon: AlertTriangle,
-    color: "from-orange-500 to-red-500",
-  },
-]
+
+
 const topEmployers = [
   { id: 1, name: "TechCorp Inc.", listings: 18, growth: "+15%" },
   { id: 2, name: "InnovateLab", listings: 16, growth: "+12%" },
@@ -246,96 +216,18 @@ export default function Dashboard() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-8">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+        <TabsList className="grid w-full grid-cols-1 rounded-2xl bg-gray-100 p-1.5 h-auto">
           <TabsTrigger
             value="overview"
             className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
           >
             Overview
           </TabsTrigger>
-          <TabsTrigger
-            value="analytics"
-            className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
-          >
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger
-            value="reports"
-            className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
-          >
-            Reports
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8">
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Chart Placeholder */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="lg:col-span-2"
-            >
-              <Card className="border-0 shadow-lg bg-white">
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold text-gray-900">User Registration Trends</CardTitle>
-                  <CardDescription className="text-gray-600">
-                    Monthly user registrations over the past year
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[350px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
-                    <div className="text-center">
-                      <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 font-medium text-lg">Chart: Monthly user registrations</p>
-                      <p className="text-gray-400 text-sm mt-2">Interactive chart will be displayed here</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Recent Activities */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <Card className="border-0 shadow-lg bg-white h-full">
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold text-gray-900">Recent Activities</CardTitle>
-                  <CardDescription className="text-gray-600">Latest system activities</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {recentActivities.map((activity, index) => (
-                      <motion.div
-                        key={activity.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.5 + index * 0.1 }}
-                        className="flex items-start space-x-4 p-4 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer group"
-                      >
-                        <div
-                          className={cn(
-                            "w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center",
-                            activity.color,
-                          )}
-                        >
-                          <activity.icon className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                            {activity.title}
-                          </p>
-                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">{activity.description}</p>
-                          <div className="flex items-center space-x-1 mt-2">
-                            <Clock className="w-3 h-3 text-gray-400" />
-                            <p className="text-xs text-gray-500">{activity.time}</p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
           </div>
 
           <div className="grid gap-8 lg:grid-cols-2">
@@ -436,46 +328,6 @@ export default function Dashboard() {
               </Card>
             </motion.div>
           </div>
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Card className="border-0 shadow-lg bg-white">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-gray-900">Advanced Analytics</CardTitle>
-                <CardDescription className="text-gray-600">Detailed platform analytics and insights</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[500px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
-                  <div className="text-center">
-                    <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium text-lg">Advanced Analytics Dashboard</p>
-                    <p className="text-gray-400 text-sm mt-2">Comprehensive analytics will be displayed here</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </TabsContent>
-
-        <TabsContent value="reports">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Card className="border-0 shadow-lg bg-white">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-gray-900">System Reports</CardTitle>
-                <CardDescription className="text-gray-600">Generated reports and statistics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[500px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
-                  <div className="text-center">
-                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium text-lg">System Reports</p>
-                    <p className="text-gray-400 text-sm mt-2">Detailed reports and statistics will be displayed here</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </TabsContent>
       </Tabs>
     </div>

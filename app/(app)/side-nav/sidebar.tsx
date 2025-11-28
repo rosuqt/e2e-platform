@@ -6,15 +6,13 @@ import { PiWarningFill } from "react-icons/pi";
 import Tooltip from "@mui/material/Tooltip";
 import Badge from "@mui/material/Badge";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, JSX } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../../src/lib/utils";
-import { StatusDropdown } from "./status-dropdown";
-import { StatusIcon } from "./status-icon";
+
 import Skeleton from "@mui/material/Skeleton";
 
-type Status = "active" | "idle" | "unavailable";
 
 interface SidebarProps {
   onToggle?: (expanded: boolean) => void;
@@ -32,7 +30,6 @@ interface SidebarProps {
 
 export default function Sidebar({ onToggle, menuItems, friendRequestCount }: SidebarProps) {
   const [expanded, setExpanded] = useState(true);
-  const [status, setStatus] = useState<Status>("active");
   const [hoveredItem, setHoveredItem] = useState<number | null>(null);
   const [studentName, setStudentName] = useState<string | null>(null);
   const [profileImg, setProfileImg] = useState<string | null>(null);
@@ -351,9 +348,6 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
                     : "?")
                 )}
               </div>
-              <motion.div className="absolute -top-1 -right-1" layout>
-                <StatusIcon status={status} size="sm" />
-              </motion.div>
             </motion.div>
 
             <AnimatePresence>
@@ -388,9 +382,7 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
                                 whileHover={{ scale: 1.18 }}
                                 transition={{ type: "spring", stiffness: 340, damping: 16 }}
                               >
-                             
                                   <HiBadgeCheck className="w-4 h-4 text-blue-50" />
-                              
                               </motion.span>
                             </Tooltip>
                           )
@@ -403,9 +395,7 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
                                 whileHover={{ scale: 1.18 }}
                                 transition={{ type: "spring", stiffness: 340, damping: 16 }}
                               >
-
                                   <LuBadgeCheck className="w-4 h-4 text-purple-100"  />
-
                               </motion.span>
                             </Tooltip>
                           )
@@ -417,7 +407,6 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
                               whileHover={{ scale: 1.18 }}
                               transition={{ type: "spring", stiffness: 340, damping: 16 }}
                             >
-
                               <PiWarningFill className="w-4 h-4 text-orange-100" />
                             </motion.span>
                           </Tooltip>
@@ -436,20 +425,6 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
               )}
             </AnimatePresence>
           </Link>
-        </div>
-
-        <div className={cn("h-[42px] flex items-center relative z-30", expanded ? "px-4" : "px-0 justify-center")}>
-          {expanded ? (
-            <StatusDropdown status={status} onStatusChange={setStatus} expanded={expanded} />
-          ) : (
-            <motion.div
-              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              {expanded && <StatusIcon status={status} size="sm" />}
-            </motion.div>
-          )}
         </div>
 
         <div className="mt-12 flex-1 overflow-y-auto relative z-10 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-transparent px-2">

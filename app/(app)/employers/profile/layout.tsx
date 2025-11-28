@@ -8,29 +8,40 @@ import BaseLayout from "../base-layout";
 import { BsBuilding } from "react-icons/bs";
 import { FaUser } from "react-icons/fa";
 import { LuBadgeCheck } from "react-icons/lu";
-import { useSession } from "next-auth/react";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../../../../lib/authOptions";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { data: session } = useSession();
-  const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus;
-  const verificationHref =
-    verifyStatus === "full"
-      ? "/employers/verification/fully-verified"
-      : verifyStatus === "standard"
-      ? "/employers/verification/partially-verified"
-      : "/employers/verification/unverified";
+  const [verifyStatus, setVerifyStatus] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    async function fetchSession() {
+      const session = await getServerSession(authOptions);
+      setVerifyStatus((session?.user as { verifyStatus?: string } | undefined)?.verifyStatus);
+    }
+    fetchSession();
+  }, []);
 
   const menuItems = useMemo(
     () => [
       { icon: FaUser, text: "My Profile", href: "/employers/profile" },
       { icon: BsBuilding, text: "My Company", href: "/employers/profile/company" },
       { icon: TbSettings, text: "Settings", href: "/employers/settings" },
-      { icon: LuBadgeCheck, text: "Verification", href: verificationHref },
+      {
+        icon: LuBadgeCheck,
+        text: "Verification",
+        href:
+          verifyStatus === "full"
+            ? "/employers/verification/fully-verified"
+            : verifyStatus === "standard"
+            ? "/employers/verification/partially-verified"
+            : "/employers/verification/unverified",
+      },
     ],
-    [verificationHref]
+    [verifyStatus]
   );
 
   useEffect(() => {

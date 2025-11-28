@@ -6,10 +6,8 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   Users,
-  FileText,
   LogOut,
   ChevronDown,
-  Search,
   Bell,
   Briefcase,
   Settings,
@@ -19,9 +17,7 @@ import {
   Home,
   X,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -54,35 +50,26 @@ const navItems: NavItem[] = [
     title: "Account Management",
     href: "#",
     icon: Users,
-    badge: 8,
     submenu: [
-      { title: "Coordinators", href: "/admin/superadmin/account-management/admins", badge: 2 },
-      { title: "Students", href: "/admin/superadmin/account-management/students", badge: 3 },
-      { title: "Employers", href: "/admin/superadmin/account-management/employers", badge: 1 },
-      { title: "Companies", href: "/admin/superadmin/account-management/companies", badge: 2 },
+      { title: "Coordinators", href: "/admin/superadmin/account-management/admins" },
+      { title: "Students", href: "/admin/superadmin/account-management/students" },
+      { title: "Employers", href: "/admin/superadmin/account-management/employers" },
+      { title: "Companies", href: "/admin/superadmin/account-management/companies" },
     ],
   },
   {
     title: "Hiring Management",
     href: "#",
     icon: Briefcase,
-    badge: 5,
     submenu: [
-      { title: "Career Opportunities", href: "/admin/superadmin/hiring/opportunities", badge: 3 },
-      { title: "Applications", href: "/admin/superadmin/hiring/applications", badge: 2 },
+      { title: "Career Opportunities", href: "/admin/superadmin/hiring/opportunities" },
+      { title: "Applications", href: "/admin/superadmin/hiring/applications" },
     ],
   },
   {
-    title: "Report Management",
-    href: "#",
-    icon: FileText,
-    badge: 15,
-    submenu: [
-      { title: "Bugs", href: "/admin/superadmin/reports/bugs", badge: 3 },
-      { title: "Reported Employers", href: "/admin/superadmin/reports/employers", badge: 3 },
-      { title: "Reported Companies", href: "/admin/superadmin/reports/companies", badge: 2 },
-      { title: "Reported Listings", href: "/admin/superadmin/reports/listings", badge: 3 },
-    ],
+    title: "Verification Management",
+    href: "/admin/superadmin/verification",
+    icon: Shield,
   },
 ]
 
@@ -236,19 +223,6 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
                           className="flex items-center space-x-2"
                         >
                           <span className="font-medium">{item.title}</span>
-                          {item.badge && (
-                            <Badge
-                              variant="secondary"
-                              className={cn(
-                                "text-xs px-2 py-0.5 rounded-full",
-                                isSubmenuActive(item.submenu)
-                                  ? "bg-white/20 text-white"
-                                  : "bg-indigo-100 text-indigo-600",
-                              )}
-                            >
-                              {item.badge}
-                            </Badge>
-                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -297,19 +271,6 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
                               )}
                             >
                               <span>{subItem.title}</span>
-                              {subItem.badge && (
-                                <Badge
-                                  variant="outline"
-                                  className={cn(
-                                    "text-xs px-2 py-0.5 rounded-full border",
-                                    isActive(subItem.href)
-                                      ? "bg-indigo-100 text-indigo-600 border-indigo-200"
-                                      : "bg-gray-100 text-gray-600 border-gray-200",
-                                  )}
-                                >
-                                  {subItem.badge}
-                                </Badge>
-                              )}
                             </Link>
                           </motion.div>
                         ))}
@@ -341,17 +302,6 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
                       className="flex items-center space-x-2"
                     >
                       <span className="font-medium">{item.title}</span>
-                      {item.badge && (
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "text-xs px-2 py-0.5 rounded-full",
-                            isActive(item.href) ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-600",
-                          )}
-                        >
-                          {item.badge}
-                        </Badge>
-                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -490,13 +440,7 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
                   <Menu className="w-5 h-5" />
                 </Button>
 
-                <div className="relative w-full max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="Search anything..."
-                    className="pl-10 bg-gray-50 border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 rounded-xl"
-                  />
-                </div>
+
               </div>
 
               <div className="flex items-center space-x-3">

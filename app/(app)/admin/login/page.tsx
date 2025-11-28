@@ -296,14 +296,7 @@ export default function LoginPage() {
                   transition={{ delay: 0.5, duration: 0.5 }}
                   className="flex items-center space-x-3"
                 >
-                  <input
-                    type="checkbox"
-                    id="remember"
-                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                  />
-                  <Label htmlFor="remember" className="text-gray-700 font-medium">
-                    Remember me for 30 days
-                  </Label>
+                  {/* Removed remember me checkbox */}
                 </motion.div>
 
                 <motion.div

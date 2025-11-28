@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronRight, LogOut, Settings,  AlertCircle, Calendar } from "lucide-react"
+import { ChevronRight, LogOut, Settings, Calendar } from "lucide-react"
 import { Avatar } from "@mui/material"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
@@ -314,12 +314,24 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     onClose();
   }
 
-  const menuItems = [
+  const menuItems: {
+    id: string
+    label: string
+    icon: React.ComponentType<{ size?: number }>
+    onClick: () => Promise<void>
+  }[] = [
     { id: "calendar", label: "Calendar", icon: Calendar, onClick: handleCalendarClick },
     { id: "settings", label: "Settings", icon: Settings, onClick: handleSettingsClick },
-    { id: "theme", label: "Activity Log", icon: LuSquareActivity , onClick: handleActivityLogClick },
-    { id: "report", label: "Report a bug", icon: AlertCircle },
   ]
+
+  if (userType === "student") {
+    menuItems.push({
+      id: "theme",
+      label: "Activity Log",
+      icon: LuSquareActivity,
+      onClick: handleActivityLogClick,
+    })
+  }
 
   if (userType === "employer") {
     const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus
@@ -453,6 +465,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                   >
                     <div className="flex items-center">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500">
+                        {/* Render Lucide or custom icons */}
                         <Icon size={18} />
                       </div>
                       <span className="ml-3 text-gray-700">{item.label}</span>

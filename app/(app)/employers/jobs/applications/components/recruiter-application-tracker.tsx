@@ -55,6 +55,8 @@ import { BsMailbox2Flag } from "react-icons/bs"
 import { LuSquarePen } from "react-icons/lu"
 import { TbMailStar } from "react-icons/tb"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
+import TopHighestMatchApplicants from "./topHighest"
 
 type JobPosting = {
   job_title?: string
@@ -1489,84 +1491,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                 </CardContent>
               </Card>
 
-              <Card className="shadow-sm border-blue-100">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center">
-                    Top 3 Highest Match Applicants
-                    <Badge className="ml-2 bg-green-500 text-white text-xs">95%+ Match</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        name: "Alex Johnson",
-                        title: "Senior Frontend Developer",
-                        match: "98%",
-                        skills: ["React", "TypeScript", "Next.js"],
-                        experience: "5 years",
-                      },
-                      {
-                        name: "Emily Zhang",
-                        title: "Frontend Engineer",
-                        match: "97%",
-                        skills: ["React", "JavaScript", "CSS"],
-                        experience: "4 years",
-                      },
-                      {
-                        name: "Michael Brown",
-                        title: "UI Developer",
-                        match: "95%",
-                        skills: ["React", "Tailwind", "TypeScript"],
-                        experience: "3 years",
-                      },
-                    ].map((candidate, index) => (
-                      <div
-                        key={index}
-                        className="border border-green-100 rounded-lg p-3 hover:bg-green-50 transition-colors"
-                      >
-                        <div className="flex gap-3 items-start">
-                          <Avatar
-                            sx={{
-                              width: 40,
-                              height: 40,
-                              fontWeight: "bold",
-                              bgcolor: "#DCFCE7",
-                              color: "#15803D",
-                              fontSize: 22,
-                            }}
-                          >
-                            {candidate.name.charAt(0)}
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex justify-between">
-                              <p className="font-medium text-gray-800">{candidate.name}</p>
-                              <Badge className="bg-green-100 text-green-700">{candidate.match} Match</Badge>
-                            </div>
-                            <p className="text-xs text-gray-500">{candidate.title}</p>
-                            <p className="text-xs text-gray-500 mt-1">{candidate.experience}</p>
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {candidate.skills.map((skill, i) => (
-                                <span key={i} className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                                  {skill}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-3 flex gap-2">
-                          <Button size="sm" className="bg-blue-600 text-xs flex-1">
-                            View Details
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 text-xs flex-1">
-                            Invite to Interview
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <TopHighestMatchApplicants />
             </div>
           </div>
         </div>
@@ -1682,10 +1607,17 @@ function ApplicantCard({
   setApplicants: React.Dispatch<React.SetStateAction<Applicant[]>>
 }) {
 
-  const formattedLocation = applicant.address
-   
-    ? applicant.address.split(",")[0].trim()
-    : ""
+  // Fix location formatting for array or string
+  const formattedLocation =
+    Array.isArray(applicant.address)
+      ? applicant.address.filter(Boolean).join(", ")
+      : typeof applicant.address === "string"
+      ? applicant.address
+      : applicant.location && Array.isArray(applicant.location)
+      ? applicant.location.filter(Boolean).join(", ")
+      : typeof applicant.location === "string"
+      ? applicant.location
+      : ""
 
   function formatAppliedAt(dateString?: string) {
     if (!dateString) return ""
@@ -1721,13 +1653,18 @@ function ApplicantCard({
 
   const formattedAppliedAt = applicant.applied_at ? formatAppliedAt(applicant.applied_at) : ""
 
+  const { data: session } = useSession()
+  const verifyStatus = session?.user?.verifyStatus
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
   const [loadingShortlist, setLoadingShortlist] = useState(false)
   const [loadingReject, setLoadingReject] = useState(false)
+ 
   const [rejectOpen, setRejectOpen] = useState(false)
   const [cancelInterviewOpen, setCancelInterviewOpen] = useState(false)
   const [markDoneOpen, setMarkDoneOpen] = useState(false)
+ 
   const [markDoneLoading, setMarkDoneLoading] = useState(false)
   const router = useRouter()
 
@@ -1979,26 +1916,49 @@ function ApplicantCard({
           </div>
         </div>
         <div className="flex gap-1 items-center">
-          <Tooltip title={getMatchTooltip(matchScore)} arrow>
-            <span>
-              <motion.div whileHover={{ scale: 1.15 }}>
-                <Badge
-                  className={
-                    (matchScore >= 70
-                      ? "bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800"
-                      : matchScore >= 40
-                      ? "bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800"
-                      : "bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"
-                    )
-                    + " whitespace-nowrap min-w-[70px]"
-                  }
-                  style={{ cursor: "pointer-events-none" }}
-                >
-                  {matchScore}% Match
-                </Badge>
-              </motion.div>
-            </span>
-          </Tooltip>
+          {verifyStatus !== "full" ? (
+            <Tooltip title="You need to verify your account to see applicant match scores." arrow>
+              <span>
+                <motion.div whileHover={{ scale: 1.15 }}>
+                  <Badge
+                    className={
+                      (matchScore >= 70
+                        ? "bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800"
+                        : matchScore >= 40
+                        ? "bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800"
+                        : "bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"
+                      )
+                      + " whitespace-nowrap min-w-[70px] blur-sm select-none"
+                    }
+                    style={{ cursor: "pointer-events-none", filter: "blur(3px)" }}
+                  >
+                    {matchScore}% Match
+                  </Badge>
+                </motion.div>
+              </span>
+            </Tooltip>
+          ) : (
+            <Tooltip title={getMatchTooltip(matchScore)} arrow>
+              <span>
+                <motion.div whileHover={{ scale: 1.15 }}>
+                  <Badge
+                    className={
+                      (matchScore >= 70
+                        ? "bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800"
+                        : matchScore >= 40
+                        ? "bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800"
+                        : "bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"
+                      )
+                      + " whitespace-nowrap min-w-[70px]"
+                    }
+                    style={{ cursor: "pointer-events-none" }}
+                  >
+                    {matchScore}% Match
+                  </Badge>
+                </motion.div>
+              </span>
+            </Tooltip>
+          )}
           <div>
             <button
               className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"

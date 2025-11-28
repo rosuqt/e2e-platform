@@ -186,16 +186,6 @@ export default function SignInPage() {
           />
 
           <div className="flex items-center justify-between">
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={rememberMe}
-                  onChange={() => setRememberMe(!rememberMe)}
-                  color="primary"
-                />
-              }
-              label={<span className="text-gray-700">Remember me</span>}
-            />
             <Link href="sign-in/forgot-password" className="text-blue-500 hover:underline text-sm">
               Forgot password?
             </Link>

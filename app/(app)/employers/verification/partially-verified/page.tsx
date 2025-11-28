@@ -39,6 +39,13 @@ export default function PartiallyVerifiedPage() {
                 width={500}
                 height={400}
                 className="rounded-lg ml-10"
+                priority
+                onError={(e) => {
+                  const parent = (e.target as HTMLImageElement).parentElement
+                  if (parent) {
+                    parent.innerHTML = `<span style="display:flex;justify-content:center;align-items:center;height:400px;"><svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="none" viewBox="0 0 24 24" stroke="purple"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 17.75l-6.172 3.247 1.179-6.88L2 9.753l6.904-1.003L12 2.25l3.096 6.5L22 9.753l-5.007 4.364 1.179 6.88z"/></svg></span>`
+                  }
+                }}
               />
             </div>
             <div className="space-y-6">
