@@ -1,247 +1,134 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 import Image from "next/image"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
-  MoreHorizontal,
   Grid,
   List,
-  Star,
   Send,
   User,
-  Heart,
-  Share2,
-  Trash2,
   Search,
-  Sparkles,
   TrendingUp,
   Briefcase,
   MapPin,
-  Clock,
   Filter,
+  Loader2,
+  GraduationCap,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
+import { useRouter } from "next/navigation"
+import MuiTooltip from "@mui/material/Tooltip"
+import InvitationModal from "../invited-candidates/components/invitation-modal"
 
 interface JobListing {
   id: string
   title: string
-  department: string
-  location: string
 }
 
 interface Candidate {
-  id: string
-  name: string
-  title: string
-  experience: string
-  location: string
-  skills: string[]
-  avatar: string
-  coverPhoto: string
-  isFavorite: boolean
-  status: "New" | "Contacted" | "Interviewed" | "Offered" | "Rejected"
-  savedDate: string
-  jobMatches: {
-    jobId: string
-    matchScore: number
-    isTopMatch: boolean
-  }[]
+  student_id: string
+  first_name: string
+  last_name: string
+  course: string
+  year: string
+  email: string
+  address: string
+  is_alumni: boolean
+  user_id: string
+  profile_img_url: string
+  cover_img_url?: string
+  job_id: string
+  job_title: string
+  gpt_score: number
+  last_scored_at: string
+  application_status?: string
+}
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return ""
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
 }
 
 export default function SavedCandidatesPage() {
-  const [jobListings] = useState<JobListing[]>([
-    {
-      id: "job1",
-      title: "Senior Frontend Developer",
-      department: "Engineering",
-      location: "San Francisco, CA",
-    },
-    {
-      id: "job2",
-      title: "Full Stack Engineer",
-      department: "Engineering",
-      location: "Remote",
-    },
-    {
-      id: "job3",
-      title: "UI/UX Designer",
-      department: "Design",
-      location: "New York, NY",
-    },
-  ])
-
-  const [candidates, setCandidates] = useState<Candidate[]>([
-    {
-      id: "c1",
-      name: "Kemly Rose",
-      title: "Senior Frontend Developer",
-      experience: "5 years",
-      location: "San Francisco, CA",
-      skills: ["React", "TypeScript", "Tailwind CSS", "Next.js"],
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      isFavorite: true,
-      status: "Interviewed",
-      savedDate: "May 10, 2025",
-      jobMatches: [
-        { jobId: "job1", matchScore: 95, isTopMatch: true },
-        { jobId: "job2", matchScore: 88, isTopMatch: false },
-        { jobId: "job3", matchScore: 45, isTopMatch: false },
-      ],
-    },
-    {
-      id: "c2",
-      name: "Kemlerin Kemeli",
-      title: "UI/UX Designer & Developer",
-      experience: "3 years",
-      location: "New York, NY",
-      skills: ["Figma", "React", "CSS", "Design Systems"],
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      isFavorite: false,
-      status: "Contacted",
-      savedDate: "May 12, 2025",
-      jobMatches: [
-        { jobId: "job3", matchScore: 92, isTopMatch: true },
-        { jobId: "job1", matchScore: 78, isTopMatch: false },
-        { jobId: "job2", matchScore: 82, isTopMatch: false },
-      ],
-    },
-    {
-      id: "c3",
-      name: "Edrian Sevilla",
-      title: "Node.js Developer",
-      experience: "4 years",
-      location: "Austin, TX",
-      skills: ["Node.js", "Express", "MongoDB", "AWS"],
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      isFavorite: true,
-      status: "New",
-      savedDate: "May 14, 2025",
-      jobMatches: [
-        { jobId: "job2", matchScore: 94, isTopMatch: true },
-        { jobId: "job1", matchScore: 72, isTopMatch: false },
-        { jobId: "job3", matchScore: 35, isTopMatch: false },
-      ],
-    },
-    {
-      id: "c4",
-      name: "Suzeyn Zeyn",
-      title: "Python Backend Engineer",
-      experience: "6 years",
-      location: "Seattle, WA",
-      skills: ["Python", "Django", "PostgreSQL", "Docker"],
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      isFavorite: false,
-      status: "Offered",
-      savedDate: "May 8, 2025",
-      jobMatches: [
-        { jobId: "job2", matchScore: 89, isTopMatch: true },
-        { jobId: "job1", matchScore: 65, isTopMatch: false },
-        { jobId: "job3", matchScore: 28, isTopMatch: false },
-      ],
-    },
-    {
-      id: "c5",
-      name: "Zeyn Delevwa",
-      title: "Full Stack Developer",
-      experience: "7 years",
-      location: "Los Angeles, CA",
-      skills: ["React", "Node.js", "AWS", "GraphQL"],
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      isFavorite: false,
-      status: "Interviewed",
-      savedDate: "May 5, 2025",
-      jobMatches: [
-        { jobId: "job2", matchScore: 91, isTopMatch: true },
-        { jobId: "job1", matchScore: 87, isTopMatch: false },
-        { jobId: "job3", matchScore: 52, isTopMatch: false },
-      ],
-    },
-    {
-      id: "c6",
-      name: "Reri Wu",
-      title: "MERN Stack Developer",
-      experience: "4 years",
-      location: "Chicago, IL",
-      skills: ["MongoDB", "Express", "React", "Node.js"],
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      isFavorite: true,
-      status: "Contacted",
-      savedDate: "May 11, 2025",
-      jobMatches: [
-        { jobId: "job2", matchScore: 93, isTopMatch: true },
-        { jobId: "job1", matchScore: 85, isTopMatch: false },
-        { jobId: "job3", matchScore: 41, isTopMatch: false },
-      ],
-    },
-  ])
-
+  const [jobListings, setJobListings] = useState<JobListing[]>([])
+  const [candidates, setCandidates] = useState<Candidate[]>([])
   const [isGridView, setIsGridView] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [jobFilter, setJobFilter] = useState("all")
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [showAll, setShowAll] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalCandidate, setModalCandidate] = useState<Candidate | null>(null)
+  const [modalJobTitle, setModalJobTitle] = useState<string | null>(null)
+  const [modalMatchScore, setModalMatchScore] = useState<number | null>(null)
+  const router = useRouter()
 
-  const handleToggleFavorite = (candidateId: string) => {
-    setCandidates((prev) =>
-      prev.map((candidate) =>
-        candidate.id === candidateId ? { ...candidate, isFavorite: !candidate.isFavorite } : candidate,
-      ),
-    )
-  }
+  useEffect(() => {
+    setLoading(true)
+    fetch("/api/ai-matches/fetch-current-candidates", { method: "POST" })
+      .then((res) => res.json())
+      .then((data) => {
+        setCandidates(data.candidates || [])
+        const jobs: JobListing[] = Array.from(
+          new Set(
+            (data.candidates || []).map((c: any) => ({
+              id: c.job_id,
+              title: c.job_title,
+            })),
+          ),
+        )
+        setJobListings(jobs)
+      })
+      .finally(() => setLoading(false))
+  }, [])
 
-  const handleRemoveCandidate = (candidateId: string) => {
-    setCandidates((prev) => prev.filter((candidate) => candidate.id !== candidateId))
-  }
+  const filteredCandidates = candidates
+    .filter((candidate) => {
+      const query = searchQuery.trim().toLowerCase()
+      const name = `${candidate.first_name} ${candidate.last_name}`.toLowerCase()
+      const matchesSearch =
+        !query || name.includes(query)
+      const matchesJob = jobFilter === "all" || candidate.job_id === jobFilter
+      return matchesSearch && matchesJob
+    })
+    .sort((a, b) => {
+      const query = searchQuery.trim().toLowerCase()
+      if (!query) return 0
+      const aName = `${a.first_name} ${a.last_name}`.toLowerCase()
+      const bName = `${b.first_name} ${b.last_name}`.toLowerCase()
+      const aMatch = aName.includes(query)
+      const bMatch = bName.includes(query)
+      if (aMatch === bMatch) return 0
+      return aMatch ? -1 : 1
+    })
 
-  // Filter candidates based on search, status, job, and favorites
-  const filteredCandidates = candidates.filter((candidate) => {
-    const matchesSearch =
-      candidate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      candidate.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      candidate.skills.some((skill) => skill.toLowerCase().includes(searchQuery.toLowerCase()))
+  const displayedCandidates = showAll ? filteredCandidates : filteredCandidates.slice(0, 6)
 
-    const matchesStatus = statusFilter === "all" || candidate.status.toLowerCase() === statusFilter
-    const matchesFavorites = !showFavoritesOnly || candidate.isFavorite
+  const getStatusColor = () => "bg-blue-100 text-blue-700 border-blue-200"
 
-    const matchesJob =
-      jobFilter === "all" || candidate.jobMatches.some((match) => match.jobId === jobFilter && match.isTopMatch)
-
-    return matchesSearch && matchesStatus && matchesFavorites && matchesJob
+  const getTopMatch = (candidate: Candidate) => ({
+    match: { matchScore: candidate.gpt_score },
+    job: { title: candidate.job_title },
   })
 
-  const getStatusColor = (status: Candidate["status"]) => {
-    switch (status) {
-      case "New":
-        return "bg-blue-100 text-blue-700 border-blue-200"
-      case "Contacted":
-        return "bg-purple-100 text-purple-700 border-purple-200"
-      case "Interviewed":
-        return "bg-amber-100 text-amber-700 border-amber-200"
-      case "Offered":
-        return "bg-green-100 text-green-700 border-green-200"
-      case "Rejected":
-        return "bg-red-100 text-red-700 border-red-200"
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-200"
-    }
+  const handleSendInvite = (candidate: Candidate) => {
+    setModalCandidate(candidate)
+    setModalJobTitle(candidate.job_title)
+    setModalMatchScore(candidate.gpt_score)
+    setModalOpen(true)
   }
 
-  const getTopMatch = (candidate: Candidate) => {
-    const topMatch = candidate.jobMatches.find((match) => match.isTopMatch)
-    const job = jobListings.find((job) => job.id === topMatch?.jobId)
-    return { match: topMatch, job }
+  const handleModalClose = () => {
+    setModalOpen(false)
+    setModalCandidate(null)
   }
 
   return (
@@ -259,10 +146,7 @@ export default function SavedCandidatesPage() {
                 Discover perfect matches for your job openings • {filteredCandidates.length} candidates
               </p>
             </div>
-            <Button className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm">
-              <Sparkles className="h-4 w-4 mr-2" />
-              I&apos;m Feeling Lucky
-            </Button>
+            {/* Removed "I'm Feeling Lucky" button */}
           </div>
         </div>
       </div>
@@ -317,15 +201,7 @@ export default function SavedCandidatesPage() {
                     </SelectContent>
                   </Select>
 
-                  <Button
-                    variant={showFavoritesOnly ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                    className={showFavoritesOnly ? "bg-yellow-500 hover:bg-yellow-600" : ""}
-                  >
-                    <Star className={`h-4 w-4 mr-1 ${showFavoritesOnly ? "fill-white" : ""}`} />
-                    Favorites
-                  </Button>
+                  {/* Removed Favorites button */}
                 </div>
               </div>
 
@@ -339,7 +215,11 @@ export default function SavedCandidatesPage() {
         </Card>
 
         {/* Candidates Grid/List */}
-        {filteredCandidates.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="animate-spin h-10 w-10 text-blue-500" />
+          </div>
+        ) : filteredCandidates.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
               <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -351,32 +231,61 @@ export default function SavedCandidatesPage() {
           <div>
             {isGridView ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCandidates.map((candidate) => (
+                {displayedCandidates.map((candidate) => (
                   <CandidateCard
-                    key={candidate.id}
+                    key={candidate.student_id}
                     candidate={candidate}
-                    onToggleFavorite={handleToggleFavorite}
-                    onRemove={handleRemoveCandidate}
                     getStatusColor={getStatusColor}
                     getTopMatch={getTopMatch}
+                    router={router}
+                    onSendInvite={handleSendInvite}
                   />
                 ))}
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredCandidates.map((candidate) => (
+                {displayedCandidates.map((candidate) => (
                   <CandidateListItem
-                    key={candidate.id}
+                    key={candidate.student_id}
                     candidate={candidate}
-                    onToggleFavorite={handleToggleFavorite}
-                    onRemove={handleRemoveCandidate}
                     getStatusColor={getStatusColor}
                     getTopMatch={getTopMatch}
+                    router={router}
+                    onSendInvite={handleSendInvite}
                   />
                 ))}
               </div>
             )}
+            {filteredCandidates.length > 6 && !showAll && (
+              <div className="flex justify-center mt-6">
+                <Button onClick={() => setShowAll(true)} className="bg-white text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                  Show More
+                </Button>
+              </div>
+            )}
           </div>
+        )}
+        {/* Invitation Modal */}
+        {modalCandidate && (
+          <InvitationModal
+            open={modalOpen}
+            onClose={handleModalClose}
+            candidate={{
+              name: `${modalCandidate.first_name} ${modalCandidate.last_name}`,
+              matchScore: modalMatchScore ?? modalCandidate.gpt_score,
+              program: modalCandidate.course,
+              yearSection: modalCandidate.year,
+              avatar: modalCandidate.profile_img_url,
+              id: modalCandidate.student_id,
+            }}
+            jobTitles={[modalJobTitle ?? modalCandidate.job_title]}
+            jobMatchScores={
+              modalJobTitle && modalMatchScore !== null
+                ? { [modalJobTitle]: modalMatchScore }
+                : undefined
+            }
+            jobId={modalCandidate.job_id}
+          />
         )}
       </div>
     </div>
@@ -385,180 +294,222 @@ export default function SavedCandidatesPage() {
 
 interface CandidateCardProps {
   candidate: Candidate
-  onToggleFavorite: (id: string) => void
-  onRemove: (id: string) => void
-  getStatusColor: (status: Candidate["status"]) => string
-  getTopMatch: (candidate: Candidate) => { match: Candidate["jobMatches"][number] | undefined; job: JobListing | undefined }
+  getStatusColor: () => string
+  getTopMatch: (candidate: Candidate) => { match: { matchScore: number }; job: { title: string } }
+  router?: any
+  onSendInvite?: (candidate: Candidate) => void
 }
 
 function CandidateCard({
   candidate,
-  onToggleFavorite,
-  onRemove,
-  getStatusColor,
   getTopMatch,
+  onSendInvite,
 }: CandidateCardProps) {
   const { match: topMatch, job: topJob } = getTopMatch(candidate)
+  let address = "Not Provided"
+  if (candidate.address) {
+    if (Array.isArray(candidate.address)) {
+      address = candidate.address.filter(Boolean).join(", ")
+    } else if (typeof candidate.address === "string") {
+      try {
+        const parsed = JSON.parse(candidate.address)
+        if (Array.isArray(parsed)) {
+          address = parsed.filter(Boolean).join(", ")
+        } else {
+          address = candidate.address
+        }
+      } catch {
+        address = candidate.address
+      }
+    }
+  }
+
+  const matchScore = topMatch?.matchScore ?? 0
+  const matchColor =
+    matchScore >= 60
+      ? "bg-green-500 text-white"
+      : matchScore >= 25
+        ? "bg-orange-400 text-white"
+        : "bg-gray-200 text-gray-700"
+
+  const coverUrl = candidate.cover_img_url ||
+    "https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default_cover.jpg"
+
+  const [invited, setInvited] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    setChecking(true);
+    fetch("/api/employers/invitedCandidates/inviteCheck", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: candidate.student_id, jobId: candidate.job_id })
+    })
+      .then(res => res.json())
+      .then(data => setInvited(!!data.invited))
+      .finally(() => setChecking(false));
+  }, [candidate.student_id, candidate.job_id]);
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group">
-      {/* Cover Photo */}
-      <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-500 overflow-hidden">
+    <Card className="overflow-visible hover:shadow-lg transition-all duration-300 group">
+      <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-500">
         <Image
-          src={candidate.coverPhoto || "/placeholder.svg"}
+          src={coverUrl}
           alt="Cover"
           layout="fill"
           objectFit="cover"
           className="opacity-80"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-
-        {/* Match Score Badge */}
         <div className="absolute top-3 left-3">
-          <Badge className="bg-white/90 text-gray-900 font-semibold backdrop-blur-sm">
+          <Badge className={`${matchColor} font-semibold backdrop-blur-sm`}>
             <TrendingUp className="h-3 w-3 mr-1" />
-            {topMatch?.matchScore}% Match
+            {matchScore}% Match
           </Badge>
         </div>
-
-        {/* Quick Actions */}
-        <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-8 w-8 p-0 bg-white/90 hover:bg-white backdrop-blur-sm"
-            onClick={() => onToggleFavorite(candidate.id)}
-          >
-            <Heart className={`h-4 w-4 ${candidate.isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"}`} />
-          </Button>
-          <Button size="sm" variant="secondary" className="h-8 w-8 p-0 bg-white/90 hover:bg-white backdrop-blur-sm">
-            <Share2 className="h-4 w-4 text-gray-600" />
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="secondary" className="h-8 w-8 p-0 bg-white/90 hover:bg-white backdrop-blur-sm">
-                <MoreHorizontal className="h-4 w-4 text-gray-600" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onRemove(candidate.id)} className="text-red-600">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Remove Candidate
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Avatar */}
-        <Avatar className="absolute -bottom-6 left-4 h-12 w-12 border-4 border-white">
-          <AvatarImage src={candidate.avatar || "/placeholder.svg"} alt={candidate.name} />
+        {candidate.application_status && (
+          <div className="absolute top-3 right-3">
+            <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs font-semibold">
+              {["new", "New"].includes(candidate.application_status) ? "Contacted" : candidate.application_status}
+            </Badge>
+          </div>
+        )}
+      </div>
+      <div className="relative">
+        <Avatar className="absolute -top-6 left-4 h-14 w-14 border-4 border-white">
+          <AvatarImage src={candidate.profile_img_url || "/placeholder.svg"} alt={candidate.first_name} />
           <AvatarFallback>
-            {candidate.name
-              .split(" ")
-              .map((n) => n[0])
-              .join("")}
+            {candidate.first_name.charAt(0)}
+            {candidate.last_name.charAt(0)}
           </AvatarFallback>
         </Avatar>
-      </div>
-
-      <CardContent className="pt-8 pb-4 px-4">
-        <div className="space-y-3">
-          {/* Name and Title */}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-gray-900">{candidate.name}</h3>
-              {candidate.isFavorite && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
-            </div>
-            <p className="text-sm text-gray-600">{candidate.title}</p>
-            <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {candidate.experience}
-              </span>
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {candidate.location}
-              </span>
-            </div>
-          </div>
-
-          {/* Top Job Match */}
-          {topJob && (
-            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-blue-700">Best Match</span>
-                <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300 text-xs">
-                  {topMatch?.matchScore}%
-                </Badge>
+        <CardContent className="pt-8 pb-4 px-4">
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-gray-900">
+                  {candidate.first_name} {candidate.last_name}
+                </h3>
               </div>
-              <p className="text-sm font-medium text-gray-900">{topJob.title}</p>
-              <p className="text-xs text-gray-600">
-                {topJob.department} • {topJob.location}
-              </p>
+              <p className="text-sm text-gray-600">{candidate.course}</p>
+              <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
+                <span className="flex items-center gap-1">
+                  <GraduationCap className="h-3 w-3" />
+                  Year {candidate.year}
+                </span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {address}
+                </span>
+              </div>
             </div>
-          )}
-
-          {/* Skills */}
-          <div className="flex flex-wrap gap-1">
-            {candidate.skills.slice(0, 3).map((skill, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {skill}
-              </Badge>
-            ))}
-            {candidate.skills.length > 3 && (
-              <Badge variant="outline" className="text-xs">
-                +{candidate.skills.length - 3}
-              </Badge>
+            {topJob && (
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-blue-700">Best Match</span>
+                  <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300 text-xs">
+                    {topMatch?.matchScore}%
+                  </Badge>
+                </div>
+                <p className="text-sm font-medium text-gray-900">{topJob.title}</p>
+              </div>
             )}
+            <span className="text-xs text-gray-500">
+              Last matched at {formatDate(candidate.last_scored_at)}
+            </span>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" size="sm" className="flex-1">
+                <User className="h-4 w-4 mr-1" />
+                View Profile
+              </Button>
+              <MuiTooltip
+                title={
+                  invited
+                    ? "This candidate has already been invited for this job"
+                    : candidate.application_status
+                    ? "This candidate already has an existing application"
+                    : ""
+                }
+                arrow
+                disableHoverListener={!invited && !candidate.application_status}
+              >
+                <span className="flex-1">
+                  <Button
+                    size="sm"
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    disabled={!!candidate.application_status || invited || checking}
+                    onClick={() => onSendInvite?.(candidate)}
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    {checking ? "Checking..." : "Send Invite"}
+                  </Button>
+                </span>
+              </MuiTooltip>
+            </div>
           </div>
-
-          {/* Status and Date */}
-          <div className="flex items-center justify-between">
-            <Badge variant="outline" className={getStatusColor(candidate.status)}>
-              {candidate.status}
-            </Badge>
-            <span className="text-xs text-gray-500">Saved {candidate.savedDate}</span>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" size="sm" className="flex-1">
-              <User className="h-4 w-4 mr-1" />
-              View Profile
-            </Button>
-            <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700">
-              <Send className="h-4 w-4 mr-1" />
-              Send Invite
-            </Button>
-          </div>
-        </div>
-      </CardContent>
+        </CardContent>
+      </div>
     </Card>
   )
 }
 
 function CandidateListItem({
   candidate,
-  onToggleFavorite,
-  onRemove,
-  getStatusColor,
   getTopMatch,
+  onSendInvite,
 }: CandidateCardProps) {
   const { match: topMatch, job: topJob } = getTopMatch(candidate)
+  let address = "Not Provided"
+  if (candidate.address) {
+    if (Array.isArray(candidate.address)) { 
+      address = candidate.address.filter(Boolean).join(", ")
+    } else if (typeof candidate.address === "string") {
+      try {
+        const parsed = JSON.parse(candidate.address)
+        if (Array.isArray(parsed)) {
+          address = parsed.filter(Boolean).join(", ")
+        } else {
+          address = candidate.address
+        }
+      } catch {
+        address = candidate.address
+      }
+    }
+  }
+
+  const [invited, setInvited] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    setChecking(true);
+    fetch("/api/employers/invitedCandidates/inviteCheck", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: candidate.student_id, jobId: candidate.job_id })
+    })
+      .then(res => res.json())
+      .then(data => setInvited(!!data.invited))
+      .finally(() => setChecking(false));
+  }, [candidate.student_id, candidate.job_id]);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
+          {candidate.application_status && (
+            <div className="absolute top-4 right-4">
+              <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs font-semibold">
+                {["new", "New"].includes(candidate.application_status) ? "Contacted" : candidate.application_status}
+              </Badge>
+            </div>
+          )}
           <div className="flex items-center gap-4 flex-1">
             <div className="relative">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={candidate.avatar || "/placeholder.svg"} alt={candidate.name} />
+                <AvatarImage src={candidate.profile_img_url || "/placeholder.svg"} alt={candidate.first_name} />
                 <AvatarFallback>
-                  {candidate.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
+                  {candidate.first_name.charAt(0)}
+                  {candidate.last_name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               {topMatch && (
@@ -570,14 +521,12 @@ function CandidateListItem({
 
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-gray-900">{candidate.name}</h3>
-                {candidate.isFavorite && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
-                <Badge variant="outline" className={getStatusColor(candidate.status)}>
-                  {candidate.status}
-                </Badge>
+                <h3 className="font-semibold text-gray-900">
+                  {candidate.first_name} {candidate.last_name}
+                </h3>
               </div>
 
-              <p className="text-sm text-gray-600 mb-1">{candidate.title}</p>
+              <p className="text-sm text-gray-600 mb-1">{candidate.course}</p>
 
               {topJob && (
                 <div className="bg-blue-50 rounded px-2 py-1 mb-2 inline-block">
@@ -589,65 +538,52 @@ function CandidateListItem({
 
               <div className="flex items-center gap-6 text-xs text-gray-500 mb-2">
                 <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {candidate.experience}
+                  <GraduationCap className="h-3 w-3" />
+                  Year {candidate.year}
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  {candidate.location}
+                  {address}
                 </span>
-                <span>Saved {candidate.savedDate}</span>
-              </div>
-
-              <div className="flex flex-wrap gap-1">
-                {candidate.skills.slice(0, 4).map((skill, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
-                    {skill}
-                  </Badge>
-                ))}
-                {candidate.skills.length > 4 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{candidate.skills.length - 4}
+                <span>
+                  Last matched at {formatDate(candidate.last_scored_at)}
+                </span>
+                {candidate.application_status && (
+                  <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs font-semibold">
+                    {["new", "New"].includes(candidate.application_status) ? "Contacted" : candidate.application_status}
                   </Badge>
                 )}
               </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => onToggleFavorite(candidate.id)}>
-              <Heart className={`h-4 w-4 mr-1 ${candidate.isFavorite ? "fill-red-500 text-red-500" : ""}`} />
-              Save
-            </Button>
-
-            <Button size="sm" variant="outline">
-              <Share2 className="h-4 w-4 mr-1" />
-              Share
-            </Button>
-
-            <Button variant="outline" size="sm">
-              <User className="h-4 w-4 mr-1" />
-              View Profile
-            </Button>
-
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-              <Send className="h-4 w-4 mr-1" />
-              Send Invite
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" size="sm" className="flex-1">
+                  <User className="h-4 w-4 mr-1" />
+                  View Profile
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onRemove(candidate.id)} className="text-red-600">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Remove Candidate
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <MuiTooltip
+                  title={
+                    invited
+                      ? "This candidate has already been invited for this job"
+                      : candidate.application_status
+                      ? "This candidate already has an existing application"
+                      : ""
+                  }
+                  arrow
+                  disableHoverListener={!invited && !candidate.application_status}
+                >
+                  <span className="flex-1">
+                    <Button
+                      size="sm"
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      disabled={!!candidate.application_status || invited || checking}
+                      onClick={() => onSendInvite?.(candidate)}
+                    >
+                      <Send className="h-4 w-4 mr-1" />
+                      {checking ? "Checking..." : "Send Invite"}
+                    </Button>
+                  </span>
+                </MuiTooltip>
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>

@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { TbCards } from "react-icons/tb";
+import { TbCards, TbUserStar } from "react-icons/tb";
 import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
-import { FiCalendar } from "react-icons/fi";
 import Sidebar from "../../side-nav/sidebar";
 import BaseLayout from "../base-layout";
 import { MdAddCircleOutline } from "react-icons/md";
@@ -22,7 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { icon: TbCards, text: "Job Listings", href: "/employers/jobs/job-listings" },
       { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/employers/jobs/applications" },
       { icon: TbMailStar, text: "Invited Candidates", href: "/employers/jobs/invited-candidates" },
-      { icon: FiCalendar, text: "Calendar", href: "/employers/calendar" },
+      { icon: TbUserStar, text: "Candidate Matches", href: "/employers/jobs/candidate-matches" },
     ],
     []
   );

@@ -1,13 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 import Image from "next/image"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   ChevronDown,
-  MoreHorizontal,
   List,
   Star,
-  X,
   Mail,
   Trash2,
   Clock,
@@ -17,8 +16,7 @@ import {
   Search,
   TrendingUp,
   Heart,
-  Share2,
-  Send,
+  Loader2,
 } from "lucide-react"
 import { LuLayoutGrid } from "react-icons/lu"
 import { Button } from "@/components/ui/button"
@@ -27,15 +25,17 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Collapse from "@mui/material/Collapse"
 import ViewInviteModal from "./components/invitation-preview"
 import InvitationModal from "./components/invitation-modal"
 import { DndContext } from "@dnd-kit/core"
 import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 interface Candidate {
+  message: string
+  employerName: string
   id: string
   name: string
   school: string
@@ -47,9 +47,15 @@ interface Candidate {
   isFavorite: boolean
   program?: string
   matchScore?: number
+  jobTitle?: string 
+  companyName?: string 
+  jobId?: string
+  studentId?: string 
 }
 
 interface SuggestedCandidate {
+  jobTitle: any
+  jobTitleRaw: any
   id: string
   name: string
   school: string
@@ -58,6 +64,8 @@ interface SuggestedCandidate {
   coverPhoto?: string
   matchPercentage: number
   program?: string
+  jobId?: string
+  studentId?: string 
 }
 
 function SortableSection({ id, children }: { id: string; children: React.ReactNode }) {
@@ -80,117 +88,8 @@ function SortableSection({ id, children }: { id: string; children: React.ReactNo
 }
 
 export default function InvitedCandidatesPage() {
-  const [candidates, setCandidates] = useState<Candidate[]>([
-    {
-      id: "c1",
-      name: "Kemly Rose",
-      school: "STI Alabang",
-      yearSection: "3rd year - 611",
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      status: "pending",
-      date: "May 10, 2025",
-      isFavorite: true,
-      program: "BS - Information Technology",
-      matchScore: 95,
-    },
-    {
-      id: "c2",
-      name: "Kemlerin Kemeli",
-      school: "STI Alabang",
-      yearSection: "2nd year - 512",
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      status: "accepted",
-      date: "May 8, 2025",
-      isFavorite: false,
-      program: "BS - Information Technology",
-      matchScore: 88,
-    },
-    {
-      id: "c3",
-      name: "Edrian Sevilla",
-      school: "STI Alabang",
-      yearSection: "4th year - 710",
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      status: "declined",
-      date: "May 5, 2025",
-      isFavorite: false,
-      program: "BS - Information Technology",
-      matchScore: 82,
-    },
-    {
-      id: "c4",
-      name: "Suzeyn Zeyn",
-      school: "STI Alabang",
-      yearSection: "1st year - 101",
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      status: "pending",
-      date: "May 3, 2025",
-      isFavorite: false,
-      program: "BS - Information Technology",
-      matchScore: 90,
-    },
-    {
-      id: "c5",
-      name: "Reri Wu",
-      school: "STI Alabang",
-      yearSection: "3rd year - 611",
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      status: "accepted",
-      date: "April 29, 2025",
-      isFavorite: true,
-      program: "BS - Information Technology",
-      matchScore: 89,
-    },
-  ])
-
-  const suggestedCandidates: SuggestedCandidate[] = [
-    {
-      id: "s1",
-      name: "Jamal Janrei",
-      school: "STI College Alabang",
-      yearSection: "4th year - 710",
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      matchPercentage: 95,
-      program: "BS - Information Technology",
-    },
-    {
-      id: "s2",
-      name: "Valentina Valentines",
-      school: "STI College Alabang",
-      yearSection: "3rd year - 611",
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      matchPercentage: 88,
-      program: "BS - Information Technology",
-    },
-    {
-      id: "s3",
-      name: "Zeyn Delevwa",
-      school: "STI College Alabang",
-      yearSection: "2nd year - 512",
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      matchPercentage: 82,
-      program: "BS - Information Technology",
-    },
-    {
-      id: "s4",
-      name: "Reri Wu",
-      school: "STI College Alabang",
-      yearSection: "4th year - 710",
-      avatar: "/placeholder.svg?height=100&width=100",
-      coverPhoto: "/placeholder.svg?height=200&width=400",
-      matchPercentage: 78,
-      program: "BS - Information Technology",
-    },
-  ]
-
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [loading, setLoading] = useState(true)
   const [isGridView, setIsGridView] = useState(true)
   const [isPendingExpanded, setIsPendingExpanded] = useState(true)
   const [isAcceptedExpanded, setIsAcceptedExpanded] = useState(true)
@@ -215,6 +114,44 @@ export default function InvitedCandidatesPage() {
     candidate?: SuggestedCandidate
   }>({ open: false, candidate: undefined })
 
+  const [removeModal, setRemoveModal] = useState<{ open: boolean; candidateId?: string }>({ open: false, candidateId: undefined })
+
+  async function fetchCandidates() {
+    setLoading(true)
+    const res = await fetch("/api/employers/invitedCandidates/displayInvites")
+    const data = await res.json()
+    const invitations = data.invitations || []
+    setCandidates(
+      invitations.map((invite: any) => {
+        const student = invite.student || invite.registered_students || {}
+        return {
+          id: invite.id,
+          name: `${student.first_name || ""} ${student.last_name || ""}`.trim(),
+          school: student.course || "",
+          yearSection: student.year || "",
+          avatar: student.avatarUrl || "/placeholder.svg",
+          coverPhoto: student.coverUrl || "https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default_cover.jpg",
+          status: invite.status === "invited" ? "pending" : invite.status || "pending",
+          date: invite.invited_at ? new Date(invite.invited_at).toLocaleDateString() : "",
+          isFavorite: invite.is_favorite ?? false,
+          program: student.course || "",
+          matchScore: invite.matchScore || 0,
+          jobTitle: invite.jobTitle || "",
+          employerName: invite.employerName || "",
+          companyName: invite.companyName || "",
+          message: invite.message || "",
+          jobId: invite.job_id,
+          studentId: invite.student_id 
+        }
+      })
+    )
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchCandidates()
+  }, [])
+
   const handleSearch = (firstName: string, lastName: string) => {
     setSearchParams({ firstName, lastName })
     const normalize = (s: string) => s.trim().toLowerCase()
@@ -237,16 +174,51 @@ export default function InvitedCandidatesPage() {
     setSearchActive(false)
   }
 
-  const handleToggleFavorite = (candidateId: string) => {
+  const handleToggleFavorite = async (candidateId: string) => {
+    await fetch("/api/employers/invitedCandidates/actionsInvites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "favorite", invitationId: candidateId }),
+    })
     setCandidates((prev) =>
       prev.map((candidate) =>
-        candidate.id === candidateId ? { ...candidate, isFavorite: !candidate.isFavorite } : candidate,
+        candidate.id === candidateId ? { ...candidate, isFavorite: true } : candidate,
       ),
     )
   }
 
-  const handleRemoveCandidate = (candidateId: string) => {
-    setCandidates((prev) => prev.filter((candidate) => candidate.id !== candidateId))
+  const handleRemoveCandidate = async (candidateId: string) => {
+    setRemoveModal({ open: true, candidateId })
+  }
+
+  const confirmRemoveCandidate = async () => {
+    if (!removeModal.candidateId) return
+    await fetch("/api/employers/invitedCandidates/actionsInvites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "remove", invitationId: removeModal.candidateId }),
+    })
+    await fetchCandidates()
+    setRemoveModal({ open: false, candidateId: undefined })
+  }
+
+  const handleEditCandidate = async (candidate: Candidate) => {
+    setInviteModal({
+      open: true,
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        avatar: candidate.avatar,
+        program: candidate.program,
+        yearSection: candidate.yearSection,
+        matchPercentage: candidate.matchScore ?? 0,
+        school: "",
+        jobTitle: candidate.jobTitle ?? candidate.program ?? "",
+        jobTitleRaw: candidate.jobTitle ?? candidate.program ?? "",
+        jobId: candidate.jobId,
+        studentId: candidate.studentId
+      },
+    })
   }
 
   const pendingCandidates = candidates.filter((candidate) => candidate.status === "pending")
@@ -254,9 +226,6 @@ export default function InvitedCandidatesPage() {
   const declinedCandidates = candidates.filter((candidate) => candidate.status === "declined")
   const favoriteCandidates = candidates.filter((candidate) => candidate.isFavorite)
 
-  const handleInviteClick = (candidate: SuggestedCandidate) => {
-    setInviteModal({ open: true, candidate })
-  }
 
   const handleViewInvite = (candidateId: string) => {
     const candidate = candidates.find((c) => c.id === candidateId)
@@ -471,7 +440,6 @@ export default function InvitedCandidatesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]"></div>
@@ -489,6 +457,26 @@ export default function InvitedCandidatesPage() {
       </div>
 
       {/* Modals */}
+      {removeModal.open && (
+        <Dialog open={removeModal.open} onOpenChange={() => setRemoveModal({ open: false, candidateId: undefined })}>
+          <DialogContent>
+            <DialogTitle>Remove Candidate</DialogTitle>
+            <div className="py-4">
+              <p className="text-red-600 font-semibold mb-2">Are you sure you want to remove this candidate?</p>
+              <p className="text-gray-700 mb-4">This action cannot be undone and will cancel the invitation.</p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setRemoveModal({ open: false, candidateId: undefined })}>
+                  Cancel
+                </Button>
+                <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={confirmRemoveCandidate}>
+                  Remove
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {viewInviteModal.open && viewInviteModal.candidate && (
         <ViewInviteModal
           open={viewInviteModal.open}
@@ -497,180 +485,205 @@ export default function InvitedCandidatesPage() {
             id: viewInviteModal.candidate.id,
             candidateName: viewInviteModal.candidate.name,
             candidateAvatar: viewInviteModal.candidate.avatar,
-            jobTitle: viewInviteModal.candidate.program || "Job Invitation",
+            jobTitle: viewInviteModal.candidate.jobTitle || viewInviteModal.candidate.program || "Job Invitation",
             matchScore: viewInviteModal.candidate.matchScore || 0,
-            message: "Thank you for your interest. Please review the invitation details.",
+            message: viewInviteModal.candidate.message,
             sentDate: viewInviteModal.candidate.date,
             status: viewInviteModal.candidate.status,
-            companyName: "STI Alabang",
+            companyName: viewInviteModal.candidate.companyName || viewInviteModal.candidate.school,
             companyLogo: "",
-            employerName: "Employer Name",
+            employerName: viewInviteModal.candidate.employerName || "",
             employerAvatar: "",
+            course: viewInviteModal.candidate.school,
+            year: viewInviteModal.candidate.yearSection,
+            jobTitleRaw: viewInviteModal.candidate.jobTitle || viewInviteModal.candidate.program,
           }}
-          onEdit={() => setViewInviteModal({ open: false })}
+          onEdit={() => {
+            setViewInviteModal({ open: false })
+            if (viewInviteModal.candidate) handleEditCandidate(viewInviteModal.candidate)
+          }}
           onResend={() => setViewInviteModal({ open: false })}
+          onRefresh={fetchCandidates}
         />
       )}
 
       {inviteModal.open && inviteModal.candidate && (
         <InvitationModal
           open={inviteModal.open}
-          onClose={() => setInviteModal({ open: false, candidate: inviteModal.candidate })}
+          onClose={async () => {
+            setInviteModal({ open: false, candidate: inviteModal.candidate })
+            await fetchCandidates()
+          }}
           candidate={{
-            name: inviteModal.candidate.name,
-            avatar: inviteModal.candidate.avatar,
-            program: inviteModal.candidate.program,
-            yearSection: inviteModal.candidate.yearSection,
-            matchScore: inviteModal.candidate.matchPercentage,
+            name: inviteModal.candidate?.name ?? "",
+            avatar: inviteModal.candidate?.avatar ?? "",
+            program: inviteModal.candidate?.program ?? "",
+            yearSection: inviteModal.candidate?.yearSection ?? "",
+            matchScore: inviteModal.candidate?.matchPercentage ?? 0,
+            id: inviteModal.candidate?.studentId || undefined,
           }}
-          jobTitles={[inviteModal.candidate.program || "Job Invitation"]}
+          jobTitles={[
+            inviteModal.candidate?.jobTitle ??
+            inviteModal.candidate?.jobTitleRaw ??
+            inviteModal.candidate?.program ??
+            "Job Invitation"
+          ]}
           jobMatchScores={{
-            [inviteModal.candidate.program || "Job Invitation"]: inviteModal.candidate.matchPercentage,
+            [inviteModal.candidate?.jobTitle ??
+              inviteModal.candidate?.jobTitleRaw ??
+              inviteModal.candidate?.program ??
+              "Job Invitation"]: inviteModal.candidate?.matchPercentage ?? 0,
           }}
-          onSend={() => {}} 
+          onSend={async (message, jobTitle) => {
+            const jobId =
+              inviteModal.candidate?.jobId ??
+              jobTitle
+            const student_id = inviteModal.candidate?.studentId && inviteModal.candidate.studentId !== "" 
+              ? inviteModal.candidate.studentId 
+              : undefined;
+            await fetch("/api/employers/invitedCandidates/actionsInvites", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "edit",
+                invitationId: inviteModal.candidate?.id ?? "",
+                data: {
+                  message,
+                  job_id: jobId,
+                  ...(student_id ? { student_id } : {}),
+                },
+              }),
+            })
+            setInviteModal({ open: false, candidate: inviteModal.candidate })
+            await fetchCandidates()
+          }}
         />
       )}
 
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-        {/* Search and Filters */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center flex-1">
-                <div className="flex gap-2 flex-1 max-w-md">
-                  <Input
-                    placeholder="First name"
-                    value={searchParams.firstName}
-                    onChange={(e) => handleSearch(e.target.value, searchParams.lastName)}
-                    className="flex-1"
-                  />
-                  <Input
-                    placeholder="Last name"
-                    value={searchParams.lastName}
-                    onChange={(e) => handleSearch(searchParams.firstName, e.target.value)}
-                    className="flex-1"
-                  />
-                  {searchActive && (
-                    <Button variant="outline" onClick={handleClearSearch}>
-                      Clear
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+          </div>
+        )}
+        {!loading && (
+          <>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center flex-1">
+                    <div className="flex gap-2 flex-1 max-w-md">
+                      <Input
+                        placeholder="First name"
+                        value={searchParams.firstName}
+                        onChange={(e) => handleSearch(e.target.value, searchParams.lastName)}
+                        className="flex-1"
+                      />
+                      <Input
+                        placeholder="Last name"
+                        value={searchParams.lastName}
+                        onChange={(e) => handleSearch(searchParams.firstName, e.target.value)}
+                        className="flex-1"
+                      />
+                      {searchActive && (
+                        <Button variant="outline" onClick={handleClearSearch}>
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-gray-700">Sort by:</span>
+                      <Select value={sortBy} onValueChange={(value: string) => setSortBy(value as "relevance" | "recent" | "alphabetical")}>
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="relevance">Relevance</SelectItem>
+                          <SelectItem value="recent">Recent</SelectItem>
+                          <SelectItem value="alphabetical">Alphabetical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsGridView(!isGridView)}>
+                      {isGridView ? <List className="h-4 w-4" /> : <LuLayoutGrid className="h-4 w-4" />}
                     </Button>
-                  )}
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-700">Sort by:</span>
-                  <Select value={sortBy} onValueChange={(value: string) => setSortBy(value as "relevance" | "recent" | "alphabetical")}>
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="relevance">Relevance</SelectItem>
-                      <SelectItem value="recent">Recent</SelectItem>
-                      <SelectItem value="alphabetical">Alphabetical</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => setIsGridView(!isGridView)}>
-                  {isGridView ? <List className="h-4 w-4" /> : <LuLayoutGrid className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Search Results Section */}
-        {searchActive && (
-          <Card>
-            <CardContent className="p-0">
-              <div className="border-b bg-gradient-to-r from-blue-50 to-blue-100 p-4">
-                <h2 className="text-blue-700 font-medium flex items-center">
-                  <Search className="h-4 w-4 mr-2" />
-                  Search Results ({searchResults.length})
-                </h2>
-              </div>
-              <div className="p-4">
-                {searchResults.length > 0 ? (
-                  <div className={isGridView ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
-                    {searchResults.map((candidate) =>
-                      isGridView ? (
-                        <CandidateCard
-                          key={candidate.id}
-                          candidate={candidate}
-                          onToggleFavorite={handleToggleFavorite}
-                          onRemoveCandidate={handleRemoveCandidate}
-                          onViewInvite={handleViewInvite}
-                        />
-                      ) : (
-                        <CandidateListItem
-                          key={candidate.id}
-                          candidate={candidate}
-                          onToggleFavorite={handleToggleFavorite}
-                          onRemoveCandidate={handleRemoveCandidate}
-                          onViewInvite={handleViewInvite}
-                        />
-                      ),
+            {searchActive && (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="border-b bg-gradient-to-r from-blue-50 to-blue-100 p-4">
+                    <h2 className="text-blue-700 font-medium flex items-center">
+                      <Search className="h-4 w-4 mr-2" />
+                      Search Results ({searchResults.length})
+                    </h2>
+                  </div>
+                  <div className="p-4">
+                    {searchResults.length > 0 ? (
+                      <div className={isGridView ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+                        {searchResults.map((candidate) =>
+                          isGridView ? (
+                            <CandidateCard
+                              key={candidate.id}
+                              candidate={candidate}
+                              onToggleFavorite={handleToggleFavorite}
+                              onRemoveCandidate={handleRemoveCandidate}
+                              onViewInvite={handleViewInvite}
+                            />
+                          ) : (
+                            <CandidateListItem
+                              key={candidate.id}
+                              candidate={candidate}
+                              onToggleFavorite={handleToggleFavorite}
+                              onRemoveCandidate={handleRemoveCandidate}
+                              onViewInvite={handleViewInvite}
+                            />
+                          ),
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">No candidates found</div>
                     )}
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">No candidates found</div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            )}
+
+            <DndContext
+              onDragEnd={(e) => {
+                const { active, over } = e
+                if (over && active.id !== over.id && typeof active.id === "string" && typeof over.id === "string") {
+                  setSectionOrder((prev: string[]) => {
+                    const oldIndex = prev.indexOf(active.id as string)
+                    const newIndex = prev.indexOf(over.id as string)
+                    return arrayMove(prev, oldIndex, newIndex) as string[]
+                  })
+                }
+              }}
+            >
+              <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
+                <div className="space-y-6">
+                  {sectionOrder.map((sectionKey) => {
+                    const section = sectionData[sectionKey]
+                    if (!section.show) return null
+                    return (
+                      <SortableSection key={section.key} id={section.key}>
+                        {section.node}
+                      </SortableSection>
+                    )
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </>
         )}
-
-        <DndContext
-          onDragEnd={(e) => {
-            const { active, over } = e
-            if (over && active.id !== over.id && typeof active.id === "string" && typeof over.id === "string") {
-              setSectionOrder((prev: string[]) => {
-                const oldIndex = prev.indexOf(active.id as string)
-                const newIndex = prev.indexOf(over.id as string)
-                return arrayMove(prev, oldIndex, newIndex) as string[]
-              })
-            }
-          }}
-        >
-          <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
-            <div className="space-y-6">
-              {sectionOrder.map((sectionKey) => {
-                const section = sectionData[sectionKey]
-                if (!section.show) return null
-                return (
-                  <SortableSection key={section.key} id={section.key}>
-                    {section.node}
-                  </SortableSection>
-                )
-              })}
-            </div>
-          </SortableContext>
-        </DndContext>
-
-        {/* Suggested Candidates Section */}
-        <Card>
-          <div className="border-b p-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-blue-700 font-medium">Suggested Candidates</h2>
-              <Button variant="ghost" className="text-blue-600 hover:text-blue-700">
-                View All
-              </Button>
-            </div>
-          </div>
-          <CardContent className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {suggestedCandidates.map((candidate) => (
-                <SuggestedCandidateCard
-                  key={candidate.id}
-                  candidate={candidate}
-                  onInvite={() => handleInviteClick(candidate)}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
@@ -710,32 +723,36 @@ function CandidateCard({ candidate, onToggleFavorite, onRemoveCandidate, onViewI
     }
   }
 
+  const getMatchScoreColor = (score?: number) => {
+    if (typeof score !== "number") return "bg-gray-200 text-gray-700"
+    if (score >= 60) return "bg-green-600 text-white"
+    if (score >= 25) return "bg-orange-500 text-white"
+    return "bg-gray-200 text-gray-700"
+  }
+
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group">
-      {/* Cover Photo */}
-      <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-500 overflow-hidden">
+    <Card className="overflow-visible hover:shadow-lg transition-all duration-300 group">
+      <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-500">
         <Image
           src={candidate.coverPhoto || "/placeholder.svg"}
           alt="Cover"
           fill
-          className="w-full h-full object-cover opacity-80"
+          className="w-full h-full object-cover opacity-80 absolute z-0"
           style={{ objectFit: "cover" }}
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent z-0" />
 
-        {/* Match Score Badge */}
-        {candidate.matchScore && (
-          <div className="absolute top-3 left-3">
-            <Badge className="bg-white/90 text-gray-900 font-semibold backdrop-blur-sm">
+        {candidate.matchScore !== undefined && (
+          <div className="absolute top-3 left-3 z-10">
+            <Badge className={`font-semibold backdrop-blur-sm ${getMatchScoreColor(candidate.matchScore)}`}>
               <TrendingUp className="h-3 w-3 mr-1" />
               {candidate.matchScore}% Match
             </Badge>
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <Button
             size="sm"
             variant="secondary"
@@ -744,26 +761,17 @@ function CandidateCard({ candidate, onToggleFavorite, onRemoveCandidate, onViewI
           >
             <Heart className={`h-4 w-4 ${candidate.isFavorite ? "fill-red-500 text-red-500" : "text-gray-600"}`} />
           </Button>
-          <Button size="sm" variant="secondary" className="h-8 w-8 p-0 bg-white/90 hover:bg-white backdrop-blur-sm">
-            <Share2 className="h-4 w-4 text-gray-600" />
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 w-8 p-0 bg-white/90 hover:bg-white backdrop-blur-sm"
+            onClick={() => onRemoveCandidate(candidate.id)}
+          >
+            <Trash2 className="h-4 w-4 text-red-600" />
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="secondary" className="h-8 w-8 p-0 bg-white/90 hover:bg-white backdrop-blur-sm">
-                <MoreHorizontal className="h-4 w-4 text-gray-600" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onRemoveCandidate(candidate.id)} className="text-red-600">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Remove Candidate
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
-        {/* Avatar */}
-        <Avatar className="absolute -bottom-6 left-4 h-12 w-12 border-4 border-white">
+        <Avatar className="absolute -bottom-4 left-4 h-14 w-14 border-4 border-white z-20">
           <AvatarImage src={candidate.avatar || "/placeholder.svg"} alt={candidate.name} />
           <AvatarFallback>
             {candidate.name
@@ -774,9 +782,8 @@ function CandidateCard({ candidate, onToggleFavorite, onRemoveCandidate, onViewI
         </Avatar>
       </div>
 
-      <CardContent className="pt-8 pb-4 px-4">
+      <CardContent className="pt-10 pb-4 px-4">
         <div className="space-y-3">
-          {/* Name and Details */}
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-semibold text-gray-900">{candidate.name}</h3>
@@ -789,20 +796,14 @@ function CandidateCard({ candidate, onToggleFavorite, onRemoveCandidate, onViewI
             </div>
           </div>
 
-          {/* Program */}
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-            {candidate.program}
+          <Badge variant="outline" className={getStatusColor(candidate.status)}>
+            {getStatusText(candidate.status)}
           </Badge>
 
-          {/* Status and Date */}
           <div className="flex items-center justify-between">
-            <Badge variant="outline" className={getStatusColor(candidate.status)}>
-              {getStatusText(candidate.status)}
-            </Badge>
             <span className="text-xs text-gray-500">Invited {candidate.date}</span>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-2 pt-2">
             <Button variant="outline" size="sm" className="flex-1">
               <User className="h-4 w-4 mr-1" />
@@ -850,13 +851,20 @@ function CandidateListItem({ candidate, onToggleFavorite, onRemoveCandidate, onV
     }
   }
 
+  const getMatchScoreColor = (score?: number) => {
+    if (typeof score !== "number") return "bg-gray-200 text-gray-700"
+    if (score >= 60) return "bg-green-600 text-white"
+    if (score >= 25) return "bg-orange-500 text-white"
+    return "bg-gray-200 text-gray-700"
+  }
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
             <div className="relative">
-              <Avatar className="h-12 w-12">
+              <Avatar className="h-12 w-12 z-20">
                 <AvatarImage src={candidate.avatar || "/placeholder.svg"} alt={candidate.name} />
                 <AvatarFallback>
                   {candidate.name
@@ -865,8 +873,8 @@ function CandidateListItem({ candidate, onToggleFavorite, onRemoveCandidate, onV
                     .join("")}
                 </AvatarFallback>
               </Avatar>
-              {candidate.matchScore && (
-                <Badge className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs px-1 py-0">
+              {candidate.matchScore !== undefined && (
+                <Badge className={`absolute -top-2 -right-2 text-xs px-1 py-0 ${getMatchScoreColor(candidate.matchScore)}`}>
                   {candidate.matchScore}%
                 </Badge>
               )}
@@ -891,8 +899,8 @@ function CandidateListItem({ candidate, onToggleFavorite, onRemoveCandidate, onV
                 <span>Invited {candidate.date}</span>
               </div>
 
-              <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                {candidate.program}
+              <Badge variant="outline" className={getStatusColor(candidate.status)}>
+                {getStatusText(candidate.status)}
               </Badge>
             </div>
           </div>
@@ -902,115 +910,21 @@ function CandidateListItem({ candidate, onToggleFavorite, onRemoveCandidate, onV
               <Heart className={`h-4 w-4 mr-1 ${candidate.isFavorite ? "fill-red-500 text-red-500" : ""}`} />
               Save
             </Button>
-
-            <Button size="sm" variant="outline">
-              <Share2 className="h-4 w-4 mr-1" />
-              Share
-            </Button>
-
             <Button variant="outline" size="sm">
               <User className="h-4 w-4 mr-1" />
               View Profile
             </Button>
-
             <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => onViewInvite(candidate.id)}>
               <Mail className="h-4 w-4 mr-1" />
               View Invite
             </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onRemoveCandidate(candidate.id)} className="text-red-600">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Remove Candidate
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-interface SuggestedCandidateProps {
-  candidate: SuggestedCandidate
-  onInvite?: () => void
-}
-
-function SuggestedCandidateCard({ candidate, onInvite }: SuggestedCandidateProps) {
-  return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group">
-      {/* Cover Photo */}
-      <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-500 overflow-hidden">
-        <Image
-          src={candidate.coverPhoto || "/placeholder.svg"}
-          alt="Cover"
-          fill
-          className="w-full h-full object-cover opacity-80"
-          style={{ objectFit: "cover" }}
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-
-        {/* Match Score Badge */}
-        <div className="absolute top-3 left-3">
-          <Badge className="bg-white/90 text-gray-900 font-semibold backdrop-blur-sm">
-            <TrendingUp className="h-3 w-3 mr-1" />
-            {candidate.matchPercentage}% Match
-          </Badge>
-        </div>
-
-        {/* Close Button */}
-        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button size="sm" variant="secondary" className="h-8 w-8 p-0 bg-white/90 hover:bg-white backdrop-blur-sm">
-            <X className="h-4 w-4 text-gray-600" />
-          </Button>
-        </div>
-
-        {/* Avatar */}
-        <Avatar className="absolute -bottom-6 left-4 h-12 w-12 border-4 border-white">
-          <AvatarImage src={candidate.avatar || "/placeholder.svg"} alt={candidate.name} />
-          <AvatarFallback>
-            {candidate.name
-              .split(" ")
-              .map((n) => n[0])
-              .join("")}
-          </AvatarFallback>
-        </Avatar>
-      </div>
-
-      <CardContent className="pt-8 pb-4 px-4">
-        <div className="space-y-3">
-          {/* Name and Details */}
-          <div>
-            <h3 className="font-semibold text-gray-900">{candidate.name}</h3>
-            <p className="text-sm text-gray-600">{candidate.yearSection}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="bg-yellow-400 text-black text-xs font-bold px-1 py-0.5 rounded">STI</div>
-              <span className="text-xs text-gray-500">{candidate.school}</span>
-            </div>
-          </div>
-
-          {/* Program */}
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-            {candidate.program}
-          </Badge>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" size="sm" className="flex-1">
-              <User className="h-4 w-4 mr-1" />
-              View Profile
-            </Button>
-            <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={onInvite}>
-              <Send className="h-4 w-4 mr-1" />
-              Invite
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 w-8 p-0 bg-white/90 hover:bg-white backdrop-blur-sm"
+              onClick={() => onRemoveCandidate(candidate.id)}
+            >
+              <Trash2 className="h-4 w-4 text-red-600" />
             </Button>
           </div>
         </div>

@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const menuItems = [
     { icon: RiAddCircleLine, text: "Post a Job", href: "/employers/jobs/post-a-job" },
     { icon: TbCards, text: "Job Listings", href: "/employers/jobs/job-listings" },
-    { icon: TbUserStar, text: "Candidate Matches", href: "/employers/people/candidate-matches" },
+    { icon: TbUserStar, text: "Candidate Matches", href: "/employers/jobs/candidate-matches" },
     { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/employers/jobs/applications" },
     { icon: FiCalendar, text: "Calendar", href: "/employers/calendar" },
   ];

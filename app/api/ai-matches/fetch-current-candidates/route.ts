@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
   const { data: students, error: studentsError } = await supabase
     .from("registered_students")
-    .select("id, email, first_name, last_name, year, section, course, address, is_alumni, user_id, student_profile(profile_img)")
+    .select("id, email, first_name, last_name, year, section, course, address, is_alumni, user_id, student_profile(profile_img,cover_image)")
     .in("id", studentIds);
 
   if (studentsError) {
@@ -63,13 +63,31 @@ export async function POST(req: Request) {
     matches.map(async (m: any) => {
       const student = studentsMap[m.student_id] || {};
       let profileImgUrl = "";
+      let coverImgUrl = "";
       const imgPath = student?.student_profile?.profile_img;
+      const coverPath = student?.student_profile?.cover_image;
       if (imgPath) {
         const { data } = await supabase.storage
           .from("user.avatars")
           .createSignedUrl(imgPath, 60 * 60);
         if (data?.signedUrl) profileImgUrl = data.signedUrl;
       }
+      if (coverPath) {
+        const { data } = await supabase.storage
+          .from("user.covers")
+          .createSignedUrl(coverPath, 60 * 60);
+        if (data?.signedUrl) coverImgUrl = data.signedUrl;
+      }
+
+      let applicationStatus = "";
+      const { data: appData } = await supabase
+        .from("applications")
+        .select("status")
+        .eq("student_id", m.student_id)
+        .eq("job_id", m.job_id)
+        .single();
+      if (appData?.status) applicationStatus = appData.status;
+
       return {
         student_id: m.student_id,
         job_id: m.job_id,
@@ -85,7 +103,9 @@ export async function POST(req: Request) {
         is_alumni: student.is_alumni || false,
         user_id: student.user_id || "",
         profile_img_url: profileImgUrl,
+        cover_img_url: coverImgUrl,
         job_title: (jobs.find((j: any) => j.id === m.job_id)?.job_title) || "",
+        application_status: applicationStatus,
       };
     })
   );
