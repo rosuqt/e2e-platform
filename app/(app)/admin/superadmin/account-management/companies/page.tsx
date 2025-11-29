@@ -654,9 +654,10 @@ function CompaniesTable({
                           onArchiveCompany(company)
                         }}
                       >
-                        <Archive className="mr-2 h-4 w-4" />
-                        Archive
+                      <Archive className="mr-2 h-4 w-4" />
+                        Edit
                       </button>
+                      
                     </div>
                   )}
                 </td>
