@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server"
 import { getAdminSupabase } from "@/lib/supabase"
 import { getServerSession } from "next-auth"
@@ -10,7 +11,6 @@ const STATUS_HIERARCHY = [
   "interview scheduled",
   "waitlisted",
   "hired",
-  
 ]
 
 function getHighestStatus(statuses: string[]) {
@@ -41,16 +41,18 @@ export async function GET() {
 
   const normalizedDept = department.replace(/\s+/g, "").toLowerCase()
   const supabase = getAdminSupabase()
-  const { data, error } = await supabase
+
+  const { data: regData, error: regError } = await supabase
     .from("registered_students")
     .select("*")
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (regError) {
+    return NextResponse.json({ error: regError.message }, { status: 500 })
   }
 
-  const filtered = (data ?? []).filter((row: Record<string, unknown>) => {
+  const filtered = (regData ?? []).filter((row: Record<string, unknown>) => {
     if (!row.course) return false
+    if (row.is_alumni === true) return false
     const course = String(row.course).replace(/\s+/g, "").toLowerCase()
     return course === normalizedDept
   })
@@ -87,11 +89,70 @@ export async function GET() {
     statusMap.set(String(sid), getHighestStatus(statuses))
   }
 
-  const result = filtered.map((row: Record<string, unknown>) => ({
+  const regResult = filtered.map((row: Record<string, unknown>) => ({
     ...row,
     status: statusMap.get(String(row.id)) || "New",
     profile_img: imgMap.get(String(row.id)) || null,
+    source: "registered_students",
   }))
 
-  return NextResponse.json(result)
+  const { data: ojtData, error: ojtError } = await supabase
+    .from("ojt_students")
+    .select("*")
+    .eq("course", department)
+
+  if (ojtError && typeof ojtError.message === "string") {
+    return NextResponse.json({ error: ojtError.message }, { status: 500 })
+  }
+
+  if (!ojtData || ojtData.length === 0) {
+    const { data: allOjtData } = await supabase
+      .from("ojt_students")
+      .select("*")
+    console.log("ojt_students fallback data:", allOjtData)
+    return NextResponse.json([
+      ...regResult,
+      ...(allOjtData ?? []).map((row: any) => ({
+        id: row.id,
+        name: row.full_name,
+        studentId: row.student_id,
+        email: row.email,
+        year: row.year_level,
+        status: row.ojt_status ?? row.status ?? "New",
+        progress: row.hours ?? 0,
+        company: row.company ?? "",
+        employer: row.job_title ?? "",
+        course: row.course ?? "",
+        profile_img: null,
+        section: row.section ?? "",
+        application_id: null,
+        student_id: row.student_id,
+        source: "ojt_students",
+        isOjt: true,
+      }))
+    ])
+  }
+
+  console.log("ojt_students data:", ojtData)
+
+  const ojtResult = (ojtData ?? []).map((row: any) => ({
+    id: row.id,
+    name: row.full_name,
+    studentId: row.student_id,
+    email: row.email,
+    year: row.year_level,
+    status: row.ojt_status ?? row.status ?? "New",
+    progress: row.hours ?? 0,
+    company: row.company ?? "",
+    employer: row.job_title ?? "",
+    course: row.course ?? "",
+    profile_img: null,
+    section: row.section ?? "",
+    application_id: null,
+    student_id: row.student_id,
+    source: "ojt_students",
+    isOjt: true,
+  }))
+
+  return NextResponse.json([...regResult, ...ojtResult])
 }

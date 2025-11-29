@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import type React from "react"
@@ -10,13 +12,9 @@ import {
   ChevronRight,
   Building2,
   Calendar,
-  Clock,
   FileText,
   CheckCircle,
-  AlertCircle,
   ChevronLeft,
-  Sparkles,
-  Target,
 } from "lucide-react"
 import { AiOutlineFileSearch } from "react-icons/ai"
 import { motion } from "framer-motion"
@@ -25,24 +23,11 @@ import { FaCircleCheck } from "react-icons/fa6"
 import { IoCloseCircle } from "react-icons/io5"
 import { LuNotebookPen } from "react-icons/lu"
 import { MdEventNote } from "react-icons/md"
-import { Checkbox } from "@/components/ui/checkbox"
-import { HiMiniClipboardDocumentList } from "react-icons/hi2"
 import Image from "next/image"
+import { Loader2, AlertCircle, Clock } from "lucide-react"
+import { Maximize2, X as CloseIcon } from "lucide-react"
 
-const REQUIRED_DOCUMENTS = [
-  "Application Letter",
-  "Resume/CV",
-  "School Endorsement Letter",
-  "Medical Certificate",
-  "Insurance Certificate",
-  "Parent's Consent Form",
-  "Company Acceptance Letter",
-  "Training Plan",
-  "Weekly Time Records",
-  "Monthly Progress Reports",
-  "Final Evaluation Form",
-  "Certificate of Completion",
-]
+
 
 interface Application {
   id: string
@@ -178,6 +163,165 @@ function getStatusBadge(status: string) {
   )
 }
 
+function DTRTimeline({ studentId }: { studentId: string }) {
+  const [loading, setLoading] = useState(true)
+  const [job, setJob] = useState<any>(null)
+  const [logs, setLogs] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [fullscreenImg, setFullscreenImg] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchDTR() {
+      setLoading(true)
+      setError(null)
+      setJob(null)
+      setLogs([])
+      try {
+        const jobRes = await fetch(`/api/students/dtr/getJobInfo?studentId=${encodeURIComponent(studentId)}`)
+        const jobData = await jobRes.json()
+        if (!jobData.jobs || jobData.jobs.length === 0) {
+          setLoading(false)
+          setJob(null)
+          setLogs([])
+          return
+        }
+        const jobInfo = jobData.jobs[0]
+        setJob(jobInfo)
+        const logsRes = await fetch(`/api/students/dtr/getLogs?jobId=${encodeURIComponent(jobInfo.id)}`)
+        const logsData = await logsRes.json()
+        setLogs(logsData.logs || [])
+      } catch (e) {
+        setError("Failed to fetch DTR data.")
+      }
+      setLoading(false)
+    }
+    if (studentId) fetchDTR()
+  }, [studentId])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
+        <span className="text-gray-500 font-medium">Loading DTR timeline...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
+        <span className="text-red-600 font-medium">{error}</span>
+      </div>
+    )
+  }
+
+  if (!job) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        <Image src="/animations/ojt-track.json" alt="No DTR" width={96} height={96} unoptimized />
+        <span className="mt-2 text-gray-700 font-semibold text-base text-center">
+          No DTR records found for this student yet.
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>DTR Timeline</CardTitle>
+          <CardContent>
+            <div className="mb-2 text-gray-600">
+              {job.jobTitle} at {job.company} <br />
+              Started: {job.startDate ? new Date(job.startDate).toLocaleDateString() : "N/A"}
+            </div>
+            {logs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <AlertCircle className="w-6 h-6 text-yellow-500 mb-2" />
+                <span className="text-gray-500 font-medium">No DTR logs available.</span>
+              </div>
+            ) : (
+              <ol className="relative border-l border-indigo-300">
+                {logs.map((log, idx) => (
+                  <li key={log.id || idx} className="mb-10 ml-6">
+                    <span className="absolute flex items-center justify-center w-8 h-8 bg-indigo-100 rounded-full -left-4 ring-4 ring-white">
+                      <Clock className="w-5 h-5 text-indigo-500" />
+                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-semibold text-indigo-700">
+                        {log.date ? new Date(log.date).toLocaleDateString() : "Unknown Date"}
+                      </span>
+                      <span className="text-gray-700 text-sm">
+                        {log.time_in} - {log.time_out}
+                      </span>
+                      {log.imageProofUrl && (
+                        <div className="relative mt-2 flex items-center gap-2">
+                          <Image
+                            src={log.imageProofUrl}
+                            alt="Proof"
+                            width={80}
+                            height={80}
+                            className="rounded border cursor-pointer"
+                            unoptimized
+                            onClick={() => setFullscreenImg(log.imageProofUrl)}
+                          />
+                          <button
+                            type="button"
+                            className="p-1 rounded-full bg-white border shadow hover:bg-gray-50"
+                            title="View Fullscreen"
+                            onClick={() => setFullscreenImg(log.imageProofUrl)}
+                          >
+                            <Maximize2 className="w-4 h-4 text-gray-700" />
+                          </button>
+                        </div>
+                      )}
+                      {log.remarks && (
+                        <span className="text-gray-500 text-xs mt-1">Remarks: {log.remarks}</span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {/* Fullscreen Modal */}
+            {fullscreenImg && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
+                onClick={() => setFullscreenImg(null)}
+                style={{ cursor: "zoom-out" }}
+              >
+                <div className="relative">
+                  <Image
+                    src={fullscreenImg}
+                    alt="Proof Fullscreen"
+                    width={800}
+                    height={800}
+                    className="max-w-[90vw] max-h-[90vh] rounded shadow-lg"
+                    unoptimized
+                  />
+                  <button
+                    type="button"
+                    className="absolute top-2 right-2 p-2 bg-white rounded-full shadow hover:bg-gray-200"
+                    onClick={e => {
+                      e.stopPropagation()
+                      setFullscreenImg(null)
+                    }}
+                    title="Close"
+                  >
+                    <CloseIcon className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </CardHeader>
+      </Card>
+    </div>
+  )
+}
+
 export default function OJTProgressTab({
   student,
 }: {
@@ -186,6 +330,9 @@ export default function OJTProgressTab({
   const [page, setPage] = useState(1)
   const perPage = 5
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null)
+  const [editableHoursCompleted, setEditableHoursCompleted] = useState<number>(student.hoursCompleted ?? 0)
+  const [hoursLoading, setHoursLoading] = useState(false)
+  const [hoursError, setHoursError] = useState<string | null>(null)
 
   // Calculate requiredHours before any usage
   let requiredHours = 0
@@ -204,9 +351,6 @@ export default function OJTProgressTab({
     }
   }
   requiredHours = requiredHours || 0
-
-  // Editable hours state
-  const [editableHoursCompleted, setEditableHoursCompleted] = useState<number>(student.hoursCompleted ?? 0)
 
   let calculatedHoursCompleted = editableHoursCompleted
 
@@ -239,6 +383,28 @@ export default function OJTProgressTab({
     }
     fetchLogo()
   }, [hiredApplication?.companyLogo])
+
+  useEffect(() => {
+    async function fetchHours() {
+      setHoursLoading(true)
+      setHoursError(null)
+      try {
+        const res = await fetch("/api/superadmin/coordinators/useandPost?student_id=" + encodeURIComponent(student.id))
+        const data = await res.json()
+        if (typeof data.hours === "number") {
+          setEditableHoursCompleted(data.hours)
+        } else {
+          setEditableHoursCompleted(student.hoursCompleted ?? 0)
+        }
+      } catch (e) {
+        setHoursError("Failed to fetch hours.")
+        setEditableHoursCompleted(student.hoursCompleted ?? 0)
+      }
+      setHoursLoading(false)
+    }
+    fetchHours()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student.id])
 
   function calculateWeekdaysBetween(startDate: Date, endDate: Date) {
     let count = 0
@@ -294,34 +460,8 @@ export default function OJTProgressTab({
 
   const visiblePages = getVisiblePages(page, totalPages)
 
-  const [docs, setDocs] = useState<Document[]>(
-    REQUIRED_DOCUMENTS.map((name) => {
-      const found = student.documents?.find((d) => d.name === name)
-      return found || { name, status: "Pending" }
-    }),
-  )
-
-  useEffect(() => {
-    setDocs(
-      REQUIRED_DOCUMENTS.map((name) => {
-        const found = student.documents?.find((d) => d.name === name)
-        return found || { name, status: "Pending" }
-      }),
-    )
-  }, [student.documents])
-
-  function handleToggleDoc(index: number, checked: boolean | "indeterminate") {
-    setDocs((prev) =>
-      prev.map((doc, i) =>
-        i === index
-          ? {
-              ...doc,
-              status: checked === true ? "Submitted" : "Pending",
-            }
-          : doc,
-      ),
-    )
-  }
+ 
+ 
 
   // Fallback: no OJT progress data
   const noProgress =
@@ -538,10 +678,13 @@ export default function OJTProgressTab({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-white">OJT Status:</span>
-                    <span>{getStatusBadge(student.ojtStatus || "N/A")}</span>
-                  </div>
+                  {/* Only show OJT Status if present */}
+                  {student.ojtStatus && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white">OJT Status:</span>
+                      <span>{getStatusBadge(student.ojtStatus)}</span>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-white" />
@@ -560,13 +703,22 @@ export default function OJTProgressTab({
                           onChange={e => {
                             const val = Math.max(0, Math.min(Number(e.target.value), requiredHours))
                             setEditableHoursCompleted(val)
+                            setHoursError(null)
                           }}
+                          onBlur={handleHoursBlur}
+                          disabled={hoursLoading}
                           className="w-20 px-2 py-1 rounded bg-white text-emerald-700 font-semibold border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                           style={{ width: 60 }}
                         />
                         /{requiredHours}
                         <span className="text-xs text-emerald-200 ml-2">(Editable)</span>
                       </span>
+                      {hoursLoading && (
+                        <span className="text-xs text-emerald-500 mt-1">Saving...</span>
+                      )}
+                      {hoursError && (
+                        <span className="text-xs text-red-500 mt-1">{hoursError}</span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -607,117 +759,37 @@ export default function OJTProgressTab({
             </Card>
           )}
 
-          {/* Document Checklist - Using purple theme */}
-          <Card className="border-0 shadow-lg overflow-hidden">
-            <div className="rounded-t-lg bg-gradient-to-r from-purple-600 to-violet-600 px-6 pt-4 pb-6">
-              <div className="flex items-center gap-2">
-                <HiMiniClipboardDocumentList className="w-8 h-8 text-white" />
-                <span className="text-lg font-semibold text-white">Document Submission Progress</span>
-              </div>
-              {(() => {
-                const submittedCount = docs.filter(
-                  (doc) => doc.status === "Submitted" || doc.status === "Approved",
-                ).length
-                const progressPercentage = docs.length > 0 ? (submittedCount / docs.length) * 100 : 0
-
-                return (
-                  <>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-white font-medium">
-                        Submitted: {submittedCount} of {docs.length}
-                      </span>
-                      <span className="text-white font-medium">{progressPercentage.toFixed(0)}% Complete</span>
-                    </div>
-                    <div className="relative w-full h-3 rounded-full bg-white/20 border border-white/20 overflow-hidden mt-4">
-                      <div
-                        className="absolute left-0 top-0 h-full bg-white/80 transition-all duration-500 ease-out"
-                        style={{ width: `${progressPercentage}%` }}
-                      />
-                    </div>
-                  </>
-                )
-              })()}
-            </div>
-
-            <CardContent className="pt-6">
-              {(() => {
-                const submittedCount = docs.filter(
-                  (doc) => doc.status === "Submitted" || doc.status === "Approved",
-                ).length
-                const progressPercentage = docs.length > 0 ? (submittedCount / docs.length) * 100 : 0
-
-                return (
-                  <div className="space-y-6">
-                    {progressPercentage === 100 && (
-                      <div className="flex items-center gap-2 text-purple-600 font-medium bg-purple-50 p-3 rounded-lg border border-purple-200">
-                        <Sparkles className="w-5 h-5" />
-                        All documents submitted! 🎉
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h4 className="font-semibold mb-4 text-gray-700 flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-purple-500" />
-                          Document Name
-                        </h4>
-                        <div className="space-y-3">
-                          {docs.map((doc, index) => (
-                            <div
-                              key={index}
-                              className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-200 ${
-                                doc.status === "Submitted" || doc.status === "Approved"
-                                  ? "bg-purple-50 border-purple-200 shadow-sm"
-                                  : "bg-gray-50 border-gray-200"
-                              }`}
-                            >
-                              <span
-                                className={`text-sm font-medium ${
-                                  doc.status === "Submitted" || doc.status === "Approved"
-                                    ? "text-purple-800"
-                                    : "text-gray-700"
-                                }`}
-                              >
-                                {doc.name}
-                              </span>
-                              {(doc.status === "Submitted" || doc.status === "Approved") && (
-                                <CheckCircle className="w-4 h-4 text-purple-500" />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold mb-4 text-gray-700 flex items-center gap-2">
-                          <Target className="w-4 h-4 text-purple-500" />
-                          Submitted?
-                        </h4>
-                        <div className="space-y-3">
-                          {docs.map((doc, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-center p-3 rounded-lg border bg-white"
-                            >
-                              <Checkbox
-                                checked={doc.status === "Submitted" || doc.status === "Approved"}
-                                onCheckedChange={(checked) => handleToggleDoc(index, checked)}
-                                className="w-5 h-5 data-[state=checked]:bg-purple-500 data-[state=checked]:border-purple-500 cursor-pointer"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })()}
-            </CardContent>
-          </Card>
+          {effectiveOjtStatus?.toLowerCase() === "hired" && (
+        <div className="space-y-6">
+          <DTRTimeline studentId={student.id} />
+        </div>
+      )}
         </div>
       )}
     </div>
   )
+
+  async function handleHoursBlur() {
+    setHoursLoading(true)
+    setHoursError(null)
+    try {
+      const res = await fetch("/api/superadmin/coordinators/useandPost", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: student.id,
+          hours: editableHoursCompleted,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setHoursError(data.error || "Failed to update hours.")
+      }
+    } catch (e) {
+      setHoursError("Failed to update hours.")
+    }
+    setHoursLoading(false)
+  }
 }
 
 export function OJTProgressWrapper({

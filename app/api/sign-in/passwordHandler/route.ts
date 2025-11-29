@@ -1,56 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
-import supabase from "@/lib/supabase";
-import { sendPasswordResetEmail } from "@/lib/email";
+import { NextResponse } from "next/server"
+import bcrypt from "bcryptjs"
+import { getAdminSupabase } from "@/lib/supabase"
+import { sendPasswordResetEmail } from "@/lib/email"
 
-// Note: This endpoint only sends the reset link. The password is updated
-// when the user submits the new password on the /reset-password page
-// using supabase.auth.updateUser({ password }) on the client.
-
-export async function POST(req: NextRequest) {
-  const { email } = await req.json();
-
-  if (!email) {
-    return NextResponse.json({ error: "Email is required" }, { status: 400 });
-  }
-
-  const { data: user, error: userError } = await supabase
+export async function POST(request: Request) {
+  const { email } = await request.json()
+  if (!email) return NextResponse.json({ error: "Missing email" }, { status: 400 })
+  const adminSupabase = getAdminSupabase()
+  const { data: employer, error } = await adminSupabase
     .from("registered_employers")
     .select("id")
-    .eq("email", email.toLowerCase())
-    .single();
-
-  if (userError || !user) {
-    return NextResponse.json({ error: "No account found with this email address" }, { status: 404 });
+    .eq("email", email)
+    .single()
+  if (error || !employer?.id) {
+    console.error(error)
+    return NextResponse.json({ error: "Email not found" }, { status: 404 })
   }
-
-  const { data, error } = await supabase.auth.admin.generateLink({
-    type: "recovery",
-    email: email.toLowerCase(),
-    options: {
-      redirectTo: process.env.NEXT_PUBLIC_PASSWORD_RESET_REDIRECT_URL,
-    },
-  });
-
-  type GenerateLinkData = {
-    action_link?: string;
-    properties?: { action_link?: string };
-    [key: string]: unknown;
-  };
-
-  const linkData = data as GenerateLinkData;
-  const actionLink = linkData.action_link || linkData.properties?.action_link;
-
-  console.log("Generated password reset link:", actionLink); // Debug: log the link
-
-  if (error || !actionLink) {
-    return NextResponse.json({ error: "Failed to generate reset link" }, { status: 500 });
-  }
-
-  const sent = await sendPasswordResetEmail(email, actionLink);
-
+  const token = Buffer.from(`${employer.id}:${Date.now()}`).toString("base64")
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+  const resetLink = `${baseUrl}/sign-in/password-reset?token=${encodeURIComponent(token)}`
+  const sent = await sendPasswordResetEmail(email, resetLink)
   if (!sent) {
-    return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
+    console.error("Failed to send email")
+    return NextResponse.json({ error: "Failed to send email" }, { status: 500 })
   }
+  return NextResponse.json({ success: true })
+}
 
-  return NextResponse.json({ success: true });
+export async function PUT(request: Request) {
+  const { token, newPassword } = await request.json()
+  if (!token || !newPassword) return NextResponse.json({ error: "Missing token or password" }, { status: 400 })
+  const decoded = Buffer.from(token, "base64").toString("utf-8")
+  const [employerId] = decoded.split(":")
+  if (!employerId) return NextResponse.json({ error: "Invalid token" }, { status: 400 })
+  const hashedPassword = await bcrypt.hash(newPassword, 10)
+  const adminSupabase = getAdminSupabase()
+  const { error } = await adminSupabase
+    .from("registered_employers")
+    .update({ password: hashedPassword })
+    .eq("id", employerId)
+  if (error) {
+    console.error(error)
+    return NextResponse.json({ error: "Failed to update password" }, { status: 500 })
+  }
+  return NextResponse.json({ success: true })
 }

@@ -14,23 +14,25 @@ type DashboardProps = {
 export default function DTRDashboard({ jobInfo, logs, refreshKey }: DashboardProps) {
   const stats = useMemo(() => {
     const totalHoursLogged = logs.reduce((acc, log) => acc + (log.hours || 0), 0)
-    const targetHours = jobInfo.totalHours || 0
+    const targetHours = jobInfo?.totalHours ?? 0
     const percentComplete = targetHours > 0 ? (totalHoursLogged / targetHours) * 100 : 0
     const remainingHours = Math.max(0, targetHours - totalHoursLogged)
-    const daysLogged = new Set(logs.map((log) => log.date)).size
-    const startDate = new Date(jobInfo.startDate)
+    const daysLogged = Math.floor(totalHoursLogged / 8)
+    const startDate = jobInfo?.startDate ? new Date(jobInfo.startDate) : null
     const today = new Date()
-    const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const daysSinceStart = startDate ? Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 0
 
     // Detect absents - days without logs
     const allDatesInRange: string[] = []
-    const currentDate = new Date(startDate)
-    while (currentDate <= today) {
-      allDatesInRange.push(currentDate.toISOString().split("T")[0])
-      currentDate.setDate(currentDate.getDate() + 1)
+    if (startDate) {
+      const currentDate = new Date(startDate)
+      while (currentDate <= today) {
+        allDatesInRange.push(currentDate.toISOString().split("T")[0])
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
     }
     const datesWithLogs = new Set(logs.map((log) => log.date))
-    const absentDays = allDatesInRange.filter((date) => !datesWithLogs.has(date))
+    const absentDays = startDate ? allDatesInRange.filter((date) => !datesWithLogs.has(date)).length : 0
 
     return {
       totalHoursLogged,
@@ -38,7 +40,7 @@ export default function DTRDashboard({ jobInfo, logs, refreshKey }: DashboardPro
       remainingHours,
       daysLogged,
       daysSinceStart,
-      absentDays: absentDays.length,
+      absentDays,
       isNearCompletion: percentComplete >= 80,
       isCompleted: percentComplete >= 100,
       targetHours,
@@ -62,7 +64,7 @@ export default function DTRDashboard({ jobInfo, logs, refreshKey }: DashboardPro
     },
     {
       title: "Days Logged",
-      value: `${stats.daysLogged}/${stats.daysSinceStart}`,
+      value: `${stats.daysLogged}/${stats.targetHours ? Math.floor(stats.targetHours / 8) : 0}`,
       icon: CheckCircle,
       color: "from-emerald-500 to-emerald-600",
       textColor: "text-emerald-600",

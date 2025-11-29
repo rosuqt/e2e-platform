@@ -23,7 +23,6 @@ const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 import notFoundAnimation from "../../../../../../public/animations/not-found.json";
 import blueLoaderAnimation from "../../../../../../public/animations/blue_loader.json"
-import { BsPersonAdd } from "react-icons/bs";
 
 type Employer = {
   id?: string;
@@ -154,8 +153,6 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   const [viewTracked, setViewTracked] = useState(false)
   const [hasApplied, setHasApplied] = useState(false);
   const [loadingApply, setLoadingApply] = useState(false);
-  const [followState, setFollowState] = useState<"Follow" | "Following">("Follow");
-  const [followLoading, setFollowLoading] = useState(false);
   const { data: session } = useSession();
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const router = useRouter();
@@ -981,15 +978,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
               </span>
             </div>
           </div>
-          <Button
-            variant="outline"
-            className="rounded-full text-blue-500 border-blue-500 flex items-center gap-2"
-            onClick={handleFollowEmployer}
-            disabled={followLoading}
-          >
-            <BsPersonAdd className="w-4 h-4" />
-            <span>{followLoading ? "..." : followState}</span>
-          </Button>
+          {/* Removed Follow button here */}
         </div>
       </div>
 
@@ -1103,14 +1092,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                       </div>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-blue-500 border-blue-500 w-full mt-3 rounded-full flex items-center justify-center gap-2"
-                  >
-                    <BsPersonAdd  className="w-4 h-4" />
-                    <span className="truncate">Follow</span>
-                  </Button>
+                  {/* Removed Follow button here */}
                 </div>
               </Card>
             ))
@@ -1133,14 +1115,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                       <div className="text-xs text-muted-foreground truncate max-w-[120px]">Position</div>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-blue-500 border-blue-500 w-full mt-3 rounded-full flex items-center justify-center gap-2"
-                  >
-                    <BsPersonAdd  className="w-4 h-4" />
-                    <span className="truncate">Follow</span>
-                  </Button>
+                  {/* Removed Follow button here */}
                 </div>
               </Card>
             ))
@@ -1175,28 +1150,6 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
       )}
     </div>
   );
-
-
-  async function handleFollowEmployer() {
-    if (!job?.employers?.id || !session?.user?.studentId || followLoading) return;
-    setFollowLoading(true);
-    if (followState === "Following") {
-      await fetch("/api/students/people/sendFollow", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId: session.user.studentId, employerId: job.employers.id }),
-      });
-      setFollowState("Follow");
-    } else {
-      await fetch("/api/students/people/sendFollow", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId: session.user.studentId, employerId: job.employers.id }),
-      });
-      setFollowState("Following");
-    }
-    setFollowLoading(false);
-  }
 };
 
 export default JobDetails;

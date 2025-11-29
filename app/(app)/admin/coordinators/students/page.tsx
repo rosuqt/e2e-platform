@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 import Image from "next/image"
 import type React from "react"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import {
   Search,
   Filter,
@@ -19,6 +20,7 @@ import {
   AlertTriangle,
   Loader2,
   Building2,
+  Clock,
 } from "lucide-react"
 import { FiCalendar } from "react-icons/fi"
 import { HiOutlineUserGroup } from "react-icons/hi2"
@@ -51,6 +53,7 @@ import StudentDetailsModalContent from "./components/studentDetails"
 import { PiWarningCircleBold } from "react-icons/pi"
 import { LuGraduationCap } from "react-icons/lu"
 import Papa from "papaparse"
+import EditStudentDetailsModal from "./components/editstudentDetails"
 
 interface Student {
   id: number
@@ -67,6 +70,7 @@ interface Student {
   section?: string | null
   application_id?: string
   student_id?: string | number 
+  isOjt?: boolean
 }
 
 interface BulkUploadPreviewData {
@@ -78,6 +82,134 @@ interface BulkUploadPreviewData {
   status?: string
   isValid: boolean
   errors?: string[]
+}
+
+const STATUS_OPTIONS = [
+  { value: "new", label: "Not Applied" },
+  { value: "shortlisted", label: "Seeking Jobs" },
+  { value: "interview scheduled", label: "In Progress" },
+  { value: "hired", label: "Hired" },
+  { value: "rejected", label: "Rejected" },
+]
+
+function DTRTimeline({ studentId }: { studentId: string }) {
+  const [loading, setLoading] = useState(true)
+  const [job, setJob] = useState<any>(null)
+  const [logs, setLogs] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchDTR = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    setJob(null)
+    setLogs([])
+    try {
+      // Get job info
+      const jobRes = await fetch(`/api/students/dtr/getJobInfo?studentId=${encodeURIComponent(studentId)}`)
+      const jobData = await jobRes.json()
+      if (!jobData.jobs || jobData.jobs.length === 0) {
+        setLoading(false)
+        setJob(null)
+        setLogs([])
+        return
+      }
+      const jobInfo = jobData.jobs[0]
+      setJob(jobInfo)
+      // Get logs
+      const logsRes = await fetch(`/api/students/dtr/getLogs?jobId=${encodeURIComponent(jobInfo.id)}`)
+      const logsData = await logsRes.json()
+      setLogs(logsData.logs || [])
+    } catch (e) {
+      setError("Failed to fetch DTR data.")
+    }
+    setLoading(false)
+  }, [studentId])
+
+  useEffect(() => {
+    if (studentId) fetchDTR()
+  }, [studentId, fetchDTR])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
+        <span className="text-gray-500 font-medium">Loading DTR timeline...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <AlertTriangle className="w-8 h-8 text-red-500 mb-2" />
+        <span className="text-red-600 font-medium">{error}</span>
+      </div>
+    )
+  }
+
+  if (!job) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Image src="/animations/ojt-track.json" alt="No DTR" width={96} height={96} unoptimized />
+        <span className="mt-2 text-gray-700 font-semibold text-base text-center">
+          No DTR records found for this student yet.
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>DTR Timeline</CardTitle>
+          <CardDescription>
+            {job.jobTitle} at {job.company} <br />
+            Started: {job.startDate ? new Date(job.startDate).toLocaleDateString() : "N/A"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {logs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <AlertTriangle className="w-6 h-6 text-yellow-500 mb-2" />
+              <span className="text-gray-500 font-medium">No DTR logs available.</span>
+            </div>
+          ) : (
+            <ol className="relative border-l border-indigo-300">
+              {logs.map((log, idx) => (
+                <li key={log.id || idx} className="mb-10 ml-6">
+                  <span className="absolute flex items-center justify-center w-8 h-8 bg-indigo-100 rounded-full -left-4 ring-4 ring-white">
+                    <Clock className="w-5 h-5 text-indigo-500" />
+                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className="font-semibold text-indigo-700">
+                      {log.date ? new Date(log.date).toLocaleDateString() : "Unknown Date"}
+                    </span>
+                    <span className="text-gray-700 text-sm">
+                      {log.time_in} - {log.time_out}
+                    </span>
+                    {log.imageProofUrl && (
+                      <Image
+                        src={log.imageProofUrl}
+                        alt="Proof"
+                        width={80}
+                        height={80}
+                        className="rounded border mt-2"
+                        unoptimized
+                      />
+                    )}
+                    {log.remarks && (
+                      <span className="text-gray-500 text-xs mt-1">Remarks: {log.remarks}</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
 }
 
 export default function StudentManagement() {
@@ -112,6 +244,26 @@ export default function StudentManagement() {
         if (Array.isArray(data)) {
           setStudents(
             data.map((row) => {
+              if (row.isOjt === true || row.source === "ojt_students") {
+                return {
+                  id: row.id,
+                  name: row.full_name ?? row.name,
+                  studentId: row.student_id, // <-- always use student_id
+                  email: row.email,
+                  year: row.year_level ?? row.year ?? "",
+                  status: row.ojt_status ?? row.status ?? "New", // <-- always use ojt_status if present
+                  progress: row.hours ?? row.progress ?? 0,
+                  company: row.company ?? "",
+                  employer: row.job_title ?? row.employer ?? "",
+                  course: row.course ?? "",
+                  profile_img: null,
+                  section: row.section ?? "",
+                  application_id: undefined,
+                  student_id: row.student_id ?? row.id,
+                  isOjt: true,
+                } as Student
+              }
+              // registered_students row
               let studentId = "No Student ID"
               const email = String(row.email ?? "")
               if (email.endsWith("@alabang.sti.edu.ph")) {
@@ -133,10 +285,11 @@ export default function StudentManagement() {
                 course: row.course || "",
                 profile_img: row.profile_img || null,
                 section: row.section || null,
-                application_id: row.application_id || "",
+                application_id: row.application_id || undefined,
                 student_id: row.id,
-              }
-            })
+                isOjt: false,
+              } as Student
+            }) as Student[]
           )
         }
       })
@@ -151,10 +304,11 @@ export default function StudentManagement() {
 
     const matchesTab =
       activeTab === "all" ||
-      (activeTab === "not_hired" && student.status.toLowerCase() === "not_hired") ||
-      (activeTab === "in_progress" && student.status.toLowerCase() === "in_progress") ||
-      (activeTab === "hired" && student.status.toLowerCase() === "hired") ||
-      (activeTab === "finished" && student.status.toLowerCase() === "finished")
+      (activeTab === "new" && student.status.toLowerCase() === "new") ||
+      (activeTab === "shortlisted" && student.status.toLowerCase() === "shortlisted") ||
+      (activeTab === "interview_scheduled" && student.status.toLowerCase() === "interview scheduled") ||
+      (activeTab === "hired" && student.status.toLowerCase() === "hired")
+      // Removed finished
 
     return matchesSearch && matchesTab
   })
@@ -170,10 +324,30 @@ export default function StudentManagement() {
     setIsEditStatusDialogOpen(true)
   }
 
-  const updateStudentStatus = () => {
+  const updateStudentStatus = async () => {
     if (!selectedStudent) return
 
-    console.log(`Updating student ${selectedStudent.name} status to ${selectedStatus}`)
+    // Update ojt_status in backend
+    try {
+      await fetch("/api/superadmin/coordinators/updateDetails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedStudent.id,
+          ojt_status: selectedStatus,
+        }),
+      })
+      // Optionally update local state
+      setStudents(prev =>
+        prev.map(s =>
+          s.id === selectedStudent.id
+            ? { ...s, status: selectedStatus }
+            : s
+        )
+      )
+    } catch (err) {
+      // Optionally handle error
+    }
 
     setIsEditStatusDialogOpen(false)
   }
@@ -207,6 +381,11 @@ export default function StudentManagement() {
             if (!studentId) errors.push("Student ID is required")
             if (!name) errors.push("Name is required")
             if (!email) errors.push("Email is required")
+            // Duplicate check
+            const exists = students.some(
+              s => s.studentId === studentId || s.email.toLowerCase() === email.toLowerCase()
+            )
+            if (exists) errors.push("Student already exists")
             return {
               studentId,
               name,
@@ -251,6 +430,11 @@ export default function StudentManagement() {
               if (!studentId) errors.push("Student ID is required")
               if (!name) errors.push("Name is required")
               if (!email) errors.push("Email is required")
+              // Duplicate check
+              const exists = students.some(
+                s => s.studentId === studentId || s.email.toLowerCase() === email.toLowerCase()
+              )
+              if (exists) errors.push("Student already exists")
               return {
                 studentId,
                 name,
@@ -269,27 +453,48 @@ export default function StudentManagement() {
     }
   }
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     setUploadStep("uploading")
 
     let progress = 0
+    const validRecords = previewData.filter((record) => record.isValid)
+    const invalidRecords = previewData.filter((record) => !record.isValid)
+
+    if (validRecords.length > 0) {
+      try {
+        const res = await fetch("/api/superadmin/coordinators/importStudent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            students: validRecords.map((r) => ({
+              full_name: r.name,
+              email: r.email,
+              year_level: r.year?.toString() ?? null,
+              status: r.status ?? null,
+              company: r.course ?? null,
+              section: null,
+              course: r.course ?? null,
+            })),
+          }),
+        })
+        await res.json()
+      } catch (err) {
+        // Optionally handle error
+      }
+    }
+
     const interval = setInterval(() => {
       progress += 10
       setUploadProgress(progress)
 
       if (progress >= 100) {
         clearInterval(interval)
-
-        const validRecords = previewData.filter((record) => record.isValid)
-        const invalidRecords = previewData.filter((record) => !record.isValid)
-
         setUploadResults({
           total: previewData.length,
           successful: validRecords.length,
           failed: invalidRecords.length,
           errors: invalidRecords.flatMap((record) => record.errors || []),
         })
-
         setUploadStep("results")
       }
     }, 300)
@@ -420,7 +625,7 @@ export default function StudentManagement() {
                   </div>
                 </div>
                 <Tabs defaultValue="all" onValueChange={setActiveTab} className="space-y-8">
-                  <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+                  <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
                     <TabsTrigger
                       value="all"
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
@@ -428,13 +633,19 @@ export default function StudentManagement() {
                       All
                     </TabsTrigger>
                     <TabsTrigger
-                      value="not_hired"
+                      value="new"
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
                     >
-                      Not Hired
+                      Not Applied
                     </TabsTrigger>
                     <TabsTrigger
-                      value="in_progress"
+                      value="shortlisted"
+                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
+                    >
+                      Seeking Jobs
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="interview_scheduled"
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
                     >
                       In Progress
@@ -445,12 +656,7 @@ export default function StudentManagement() {
                     >
                       Hired
                     </TabsTrigger>
-                    <TabsTrigger
-                      value="finished"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
-                    >
-                      Finished
-                    </TabsTrigger>
+         
                   </TabsList>
                   <TabsContent value="all" className="mt-4">
                     <StudentsTable
@@ -459,14 +665,21 @@ export default function StudentManagement() {
                       onEditStatus={handleEditStatus}
                     />
                   </TabsContent>
-                  <TabsContent value="not_hired" className="mt-4">
+                  <TabsContent value="new" className="mt-4">
                     <StudentsTable
                       students={filteredStudents}
                       onViewStudent={handleViewStudent}
                       onEditStatus={handleEditStatus}
                     />
                   </TabsContent>
-                  <TabsContent value="in_progress" className="mt-4">
+                  <TabsContent value="shortlisted" className="mt-4">
+                    <StudentsTable
+                      students={filteredStudents}
+                      onViewStudent={handleViewStudent}
+                      onEditStatus={handleEditStatus}
+                    />
+                  </TabsContent>
+                  <TabsContent value="interview_scheduled" className="mt-4">
                     <StudentsTable
                       students={filteredStudents}
                       onViewStudent={handleViewStudent}
@@ -480,12 +693,15 @@ export default function StudentManagement() {
                       onEditStatus={handleEditStatus}
                     />
                   </TabsContent>
-                  <TabsContent value="finished" className="mt-4">
-                    <StudentsTable
-                      students={filteredStudents}
-                      onViewStudent={handleViewStudent}
-                      onEditStatus={handleEditStatus}
-                    />
+                  <TabsContent value="dtr" className="mt-4">
+                    {selectedStudent ? (
+                      <DTRTimeline studentId={String(selectedStudent.studentId)} />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <AlertTriangle className="w-8 h-8 text-yellow-500 mb-2" />
+                        <span className="text-gray-500 font-medium">Select a student to view DTR timeline.</span>
+                      </div>
+                    )}
                   </TabsContent>
                 </Tabs>
               </CardContent>
@@ -590,14 +806,18 @@ export default function StudentManagement() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="status">Status</Label>
-                      <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                      <Select
+                        value={selectedStatus}
+                        onValueChange={setSelectedStatus}
+                        disabled={!selectedStudent.isOjt}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="not-started">Not-started</SelectItem>
-                          <SelectItem value="in-progress">In-progress</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
+                          {STATUS_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -608,7 +828,7 @@ export default function StudentManagement() {
                 <Button variant="outline" onClick={() => setIsEditStatusDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={updateStudentStatus}>Update Status</Button>
+                <Button onClick={updateStudentStatus} disabled={!selectedStudent?.isOjt}>Update Status</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -686,17 +906,15 @@ export default function StudentManagement() {
                     </Button>
                   </div>
 
-                  {previewData.some((record) => !record.isValid) && (
-                    <Alert variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle>Validation Errors</AlertTitle>
-                      <AlertDescription>
-                        Some records have validation errors. Please fix them before uploading.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
                   <div className="rounded-md border max-h-[300px] overflow-auto">
+                    {previewData.some((record) => !record.isValid) && (
+                      <div className="p-4">
+                        <div className="text-red-700 font-semibold mb-2">Validation Errors</div>
+                        <div className="text-sm text-red-600">
+                          Some records have validation errors. Please fix them before uploading.
+                        </div>
+                      </div>
+                    )}
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -826,8 +1044,11 @@ export default function StudentManagement() {
                     <Button variant="outline" onClick={resetBulkUpload}>
                       Back
                     </Button>
-                    <Button onClick={handleUpload} disabled={previewData.some((record) => !record.isValid)}>
-                      Upload {previewData.filter((record) => record.isValid).length} Records
+                    <Button
+                      onClick={handleUpload}
+                      disabled={previewData.filter((record) => record.isValid).length === 0}
+                    >
+                      Upload {previewData.filter((record) => record.isValid).length} Valid Record{previewData.filter((record) => record.isValid).length === 1 ? "" : "s"}
                     </Button>
                   </>
                 )}
@@ -860,78 +1081,100 @@ function StudentsTable({
   onViewStudent: (student: Student) => void
   onEditStatus: (student: Student) => void
 }) {
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editStudent, setEditStudent] = useState<any>(null)
+  const handleEditDetails = (student: Student) => {
+    setEditStudent({
+      ...student,
+      full_name: (student as any).full_name ?? student.name
+    })
+    setEditModalOpen(true)
+  }
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-sm"
-    >
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-gray-50">
-            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Student ID</TableHead>
-            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Name</TableHead>
-            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">School Email</TableHead>
-            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Year</TableHead>
-            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Status</TableHead>
-            <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Company</TableHead>
-            <TableHead className="font-bold text-gray-700 py-4 px-6 text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {students.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                No students found
-              </TableCell>
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl border border-gray-200 overflow-hidden bg-white shadow-sm"
+      >
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-gray-50">
+              <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Student ID</TableHead>
+              <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Name</TableHead>
+              <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">School Email</TableHead>
+              <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Year</TableHead>
+              <TableHead className="font-bold text-gray-700 py-4 px-6 text-left">Status</TableHead>
+              <TableHead className="font-bold text-gray-700 py-4 px-6 text-right">Actions</TableHead>
             </TableRow>
-          ) : (
-            students.map((student, idx) => (
-              <motion.tr
-                key={student.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
-              >
-                <TableCell className="font-semibold text-gray-900 py-4 px-6">{student.studentId}</TableCell>
-                <TableCell className="text-gray-700 py-4 px-6">{student.name}</TableCell>
-                <TableCell className="text-gray-700 py-4 px-6">{student.email}</TableCell>
-                <TableCell className="text-gray-700 py-4 px-6">{student.year}</TableCell>
-                <TableCell className="text-gray-700 py-4 px-6">
-                  <StatusBadge status={student.status} />
+          </TableHeader>
+          <TableBody>
+            {students.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  No students found
                 </TableCell>
-                <TableCell className="text-gray-700 py-4 px-6">{student.company || "-"}</TableCell>
-                <TableCell className="text-right py-4 px-6">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onViewStudent(student)}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Progress
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEditStatus(student)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit Status
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <MessageSquare className="mr-2 h-4 w-4" />
-                        Message Employer
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </motion.tr>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </motion.div>
+              </TableRow>
+            ) : (
+              students.map((student, idx) => {
+                const isOjt = student.isOjt === true
+                return (
+                  <motion.tr
+                    key={student.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                  >
+                    <TableCell className="font-semibold text-gray-900 py-4 px-6">{student.studentId}</TableCell>
+                    <TableCell className="text-gray-700 py-4 px-6">{student.name}</TableCell>
+                    <TableCell className="text-gray-700 py-4 px-6">{student.email}</TableCell>
+                    <TableCell className="text-gray-700 py-4 px-6">{student.year}</TableCell>
+                    <TableCell className="text-gray-700 py-4 px-6">
+                      <StatusBadge status={student.status} />
+                    </TableCell>
+                    <TableCell className="text-right py-4 px-6">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onViewStudent(student)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Progress
+                          </DropdownMenuItem>
+                          <Tooltip title="OJT progress for this student is managed and tracked by the system" arrow>
+                            <span>
+                              <DropdownMenuItem
+                                disabled={!isOjt}
+                                onClick={() => isOjt && handleEditDetails(student)}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Student Details
+                              </DropdownMenuItem>
+                            </span>
+                          </Tooltip>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </motion.tr>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+      </motion.div>
+      {editModalOpen && editStudent && (
+        <EditStudentDetailsModal
+          open={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          student={editStudent}
+        />
+      )}
+    </>
   )
 }
 
