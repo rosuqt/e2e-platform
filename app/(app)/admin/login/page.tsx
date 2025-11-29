@@ -3,7 +3,6 @@
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { Eye, EyeOff, Lock, User,  Shield,  Zap, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -279,14 +278,6 @@ export default function LoginPage() {
                       )}
                       <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
                     </Button>
-                  </div>
-                  <div>
-                    <Link
-                      href="#"
-                      className="text-sm text-blue-600 hover:text-indigo-800 font-medium transition-colors"
-                    >
-                      Forgot password?
-                    </Link>
                   </div>
                 </motion.div>
 

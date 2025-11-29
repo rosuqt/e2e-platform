@@ -63,13 +63,16 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
       alert("Please fill in all fields")
       return
     }
-    const payload = {
+    setLoading(true)
+    const payload: any = {
       jobTitle: formData.jobTitle,
       company: formData.company,
       totalHours: Number.parseInt(formData.totalHours),
       startDate: formData.startDate,
       externalApplication: formData.externalApplication,
-      ...(seekrSelected ? {
+    }
+    if (seekrSelected) {
+      Object.assign(payload, {
         job_id: seekrSelected.job_id,
         applied_at: seekrSelected.applied_at,
         status: seekrSelected.status,
@@ -81,14 +84,20 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
         employer_first_name: seekrSelected.employer_first_name,
         employer_last_name: seekrSelected.employer_last_name,
         company_name: seekrSelected.company_name,
-      } : {})
+      })
     }
-    await fetch("/api/students/dtr/setJobInfo", {
+    const res = await fetch("/api/students/dtr/setJobInfo", {
       method: "POST",
       body: JSON.stringify(payload),
       headers: { "Content-Type": "application/json" }
     })
-    onSubmit(payload)
+    const result = await res.json()
+    setLoading(false)
+    if (result.success && result.jobInfo) {
+      onSubmit(result.jobInfo)
+    } else {
+      onSubmit(payload)
+    }
   }
 
   return (
@@ -305,14 +314,20 @@ export default function DTRJobSetup({ onSubmit }: JobSetupProps) {
               >
                 Back
               </button>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-sky-500 text-white font-semibold hover:shadow-lg transition-all"
-              >
-                Continue
-              </motion.button>
+              {loading ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-sky-500 text-white font-semibold hover:shadow-lg transition-all"
+                >
+                  Continue
+                </motion.button>
+              )}
             </div>
           </form>
         ) : null}

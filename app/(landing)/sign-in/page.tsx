@@ -185,9 +185,6 @@ export default function SignInPage() {
           />
 
           <div className="flex items-center justify-between">
-            <Link href="sign-in/forgot-password" className="text-blue-500 hover:underline text-sm">
-              Forgot password?
-            </Link>
           </div>
 
           <motion.button

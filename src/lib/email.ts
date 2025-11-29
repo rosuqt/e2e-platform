@@ -2,13 +2,15 @@ import nodemailer from "nodemailer";
 
 export async function sendPasswordResetEmail(email: string, resetLink: string): Promise<boolean> {
   const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false,
+    host: process.env.SMTP_HOST, // should be 'smtp.gmail.com'
+    port: Number(process.env.SMTP_PORT) || 587, // 587 for TLS
+    secure: false, // false for port 587
+    requireTLS: true, // force TLS for Gmail
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    // Remove any tls options for Gmail App Password
   });
 
   const mailOptions = {
@@ -210,7 +212,8 @@ a[x-apple-data-detectors],
   try {
     await transporter.sendMail(mailOptions);
     return true;
-  } catch {
+  } catch (err) {
+    console.error("Email send error:", err);
     return false;
   }
 }

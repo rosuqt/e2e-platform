@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { TextField } from "@mui/material";
 import Link from "next/link";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export default function ForgotPasswordPage() {
   const [isVisible, setIsVisible] = useState(false);
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
-  const supabase = createClientComponentClient();
+  const [canResend, setCanResend] = useState(false);
+  const [timer, setTimer] = useState(30);
 
   useEffect(() => {
     setIsVisible(true);
@@ -24,33 +24,44 @@ export default function ForgotPasswordPage() {
     };
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (submitted && !canResend) {
+      setTimer(30);
+      interval = setInterval(() => {
+        setTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [submitted, canResend]);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError("");
     setSubmitted(false);
+    setCanResend(false);
 
     if (!email) {
       setError("Please enter your email address");
       return;
     }
 
-    const res = await fetch("/api/sign-in/passwordHandler/check-email", {
+    const res = await fetch("/api/sign-in/passwordHandler", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     });
     const data = await res.json();
-    if (!data.exists) {
-      setError("No account found with this email address");
-      return;
-    }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (error) {
-      setError(error.message || "Something went wrong");
+    if (!res.ok) {
+      setError(data.error || "Something went wrong");
       return;
     }
 
@@ -103,8 +114,24 @@ export default function ForgotPasswordPage() {
             animate={{ opacity: 1, y: 0 }}
             className="p-4 mb-4 bg-green-100 text-green-600 rounded-xl text-center"
           >
-            {" "}
             <span className="font-semibold">{email}</span>, you will receive a password reset email shortly.
+            <div className="mt-4">
+              {!canResend ? (
+                <button
+                  disabled
+                  className="px-4 py-2 rounded-xl bg-blue-200 text-blue-500 font-medium cursor-not-allowed"
+                >
+                  Resend in {timer}s
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleSubmit()}
+                  className="px-4 py-2 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+                >
+                  Resend
+                </button>
+              )}
+            </div>
           </motion.div>
         ) : (
           <motion.form
@@ -166,7 +193,7 @@ export default function ForgotPasswordPage() {
         >
           Need help? Contact{" "}
           <a
-            href="mailto:support@testcompany.com"
+            href="mailto:seekr.assist@gmail.com"
             className="text-blue-500 hover:text-blue-700 transition-colors"
           >
             support@testcompany.com
@@ -181,7 +208,7 @@ export default function ForgotPasswordPage() {
         ></motion.div>
       </motion.div>
       <div className="absolute bottom-4 text-center text-gray-600 text-sm">
-        © {new Date().getFullYear()} Test Company. All rights reserved.
+        © {new Date().getFullYear()} Seekr. All rights reserved.
       </div>
     </div>
   );
