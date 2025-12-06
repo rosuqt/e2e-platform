@@ -161,7 +161,7 @@ export default function SignUpForm() {
 
     if (!details.firstName.trim()) {
       errors.firstName = "First Name is required.";
-    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.firstName)) {
+    } else if (!/^(Ma\.\s*)?[A-Za-z]+([ -][A-Za-z]+)*$/.test(details.firstName)) {
       errors.firstName = "Only letters, single space or dash between names allowed.";
     } else if (details.firstName.length < 1 || details.firstName.length > 36) {
       errors.firstName = "Must be between 1 and 36 characters.";
@@ -219,7 +219,7 @@ export default function SignUpForm() {
     if (!details.email.trim()) {
       errors.email = "Email is required.";
     } else {
-      const emailRegex = /^[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
+      const emailRegex = /^(?!\.)(?!.*\.\.)(?!.*\.\@)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
       const domainPart = details.email.split('@')[1];
       if (!emailRegex.test(details.email)) {
         errors.email = "Invalid email format.";
@@ -245,6 +245,8 @@ export default function SignUpForm() {
       errors.password = "Password is required.";
     } else if (details.password.length < 8 || details.password.length > 40) {
       errors.password = "Password must be between 8 and 40 characters.";
+    } else if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/.test(details.password)){
+      errors.password = "Password must require a combination of symbols, numbers or letters."
     }
 
     if (!details.confirmPassword.trim()) {

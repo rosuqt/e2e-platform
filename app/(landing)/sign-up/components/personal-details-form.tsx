@@ -59,7 +59,7 @@ export default function PersonalDetailsForm({
             }}
             error={!!errors.firstName}
             helperText={errors.firstName}
-            inputProps={{ maxLength: 35, minLength: 1 }}
+            inputProps={{ maxLength: 35, minLength: 1}}
             sx={{
               "& .MuiOutlinedInput-root": {
                 "& fieldset": { borderColor: "darkgray" },
