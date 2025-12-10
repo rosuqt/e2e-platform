@@ -52,7 +52,11 @@ export default function SignInPage() {
 
     if (searchParams?.get("error")) {
       if (searchParams.get("error") === "invalid_domain") {
-        setError("Sorry! We’re only accepting sign-ins from STI College students. Please use your STI email.");
+        setError("Sorry! We're only accepting sign-ins from STI College students. Please use your STI email.");
+      } else if (searchParams.get("error") === "admin_not_registered") {
+        setError("Access denied. This faculty/teacher account is not registered in the system. Please contact the administrator.");
+      } else if (searchParams.get("error") === "admin_check_failed") {
+        setError("An error occurred while verifying your account. Please try again later.");
       } else {
         setError("Invalid email or password");
       }
@@ -143,9 +147,19 @@ export default function SignInPage() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-3 mb-4 bg-red-100 text-red-500 rounded-xl text-sm text-center"
+            className="p-4 mb-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg text-sm"
+            role="alert"
           >
-            {error}
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="font-medium">{error}</p>
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -161,8 +175,12 @@ export default function SignInPage() {
             variant="outlined"
             fullWidth
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (error) setError(""); // Clear error when user starts typing
+            }}
             InputLabelProps={{ shrink: true }}
+            error={!!error}
           />
 
           <TextField
