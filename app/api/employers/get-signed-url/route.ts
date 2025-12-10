@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSupabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
-  const { bucket, path } = await req.json();
+  let bucket, path;
+  try {
+    const body = await req.json();
+    bucket = body.bucket;
+    path = body.path;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (e) {
+    return NextResponse.json({ error: "Invalid or missing JSON body" }, { status: 400 });
+  }
   if (!bucket || !path) {
     return NextResponse.json({ error: "Missing bucket or path" }, { status: 400 });
   }

@@ -424,6 +424,10 @@ const JobCards: React.FC<JobCardsProps> = ({
               logoUrlCache[safeLogoPath] = parsed.url;
               return parsed.url;
             }
+            // Add: handle "notfound" marker
+            if (parsed && parsed.notfound) {
+              return null;
+            }
           } catch {
             sessionStorage.removeItem(`companyLogoUrl:${safeLogoPath}`);
           }
@@ -460,6 +464,12 @@ const JobCards: React.FC<JobCardsProps> = ({
             setLoadingLogo(false);
             return;
           }
+          // Add: handle "notfound" marker
+          if (parsed && parsed.notfound) {
+            setLogoUrl(null);
+            setLoadingLogo(false);
+            return;
+          }
         } catch {
           sessionStorage.removeItem(cacheKey);
         }
@@ -476,6 +486,9 @@ const JobCards: React.FC<JobCardsProps> = ({
             }),
           });
           if (res.status === 401 || res.status === 400) {
+            // Cache notfound marker
+            if (typeof window !== "undefined")
+              sessionStorage.setItem(cacheKey, JSON.stringify({ notfound: true }));
             setLogoUrl(null);
             setLoadingLogo(false);
             return;
@@ -488,12 +501,18 @@ const JobCards: React.FC<JobCardsProps> = ({
                 sessionStorage.setItem(cacheKey, JSON.stringify({ url: json.signedUrl }));
               setLogoUrl(json.signedUrl);
             } else {
+              // Cache notfound marker
+              if (typeof window !== "undefined")
+                sessionStorage.setItem(cacheKey, JSON.stringify({ notfound: true }));
               setLogoUrl(null);
             }
             setLoadingLogo(false);
           }
         } catch {
           if (!ignore) {
+            // Cache notfound marker
+            if (typeof window !== "undefined")
+              sessionStorage.setItem(cacheKey, JSON.stringify({ notfound: true }));
             setLogoUrl(null);
             setLoadingLogo(false);
           }

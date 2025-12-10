@@ -488,7 +488,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[600px] w-full">
-        <div className="w-18 h-18 flex items-center justify-center">
+        <div className="w-10 h-10 flex items-center justify-center">
           <Lottie animationData={blueLoaderAnimation} loop={true} />
         </div>
         <div className="mt-4 text-gray-500 font-medium animate-pulse">Loading job details</div>
