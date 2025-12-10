@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, easeIn, easeOut } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { useSession, signOut } from "next-auth/react"
 
@@ -50,7 +50,6 @@ const sidebarVariants = {
   expanded: {
     width: 280,
     transition: {
-      type: "spring",
       stiffness: 400,
       damping: 40,
       mass: 1,
@@ -59,7 +58,6 @@ const sidebarVariants = {
   collapsed: {
     width: 80,
     transition: {
-      type: "spring",
       stiffness: 400,
       damping: 40,
       mass: 1,
@@ -74,7 +72,7 @@ const contentVariants = {
     transition: {
       delay: 0.1,
       duration: 0.3,
-      ease: "easeOut",
+      ease: easeOut,
     },
   },
   collapsed: {
@@ -82,7 +80,7 @@ const contentVariants = {
     x: -10,
     transition: {
       duration: 0.2,
-      ease: "easeIn",
+      ease: easeIn,
     },
   },
 }

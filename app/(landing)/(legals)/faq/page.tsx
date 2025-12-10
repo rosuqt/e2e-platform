@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, easeOut } from "framer-motion"
 import Link from "next/link"
 import { ArrowRight, Plus, Minus, Search, MessageCircle, Users, Briefcase, Shield, HelpCircle } from "lucide-react"
 
@@ -10,7 +10,7 @@ const fadeInUp = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut" },
+    transition: { duration: 0.6, ease: easeOut },
   },
 }
 
