@@ -177,7 +177,7 @@ export default function SignInPage() {
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
-              if (error) setError(""); // Clear error when user starts typing
+              if (error) setError("");
             }}
             InputLabelProps={{ shrink: true }}
             error={!!error}

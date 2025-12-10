@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
     AzureADProvider({
       clientId: process.env.AZURE_AD_CLIENT_ID!,
       clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-      tenantId: process.env.AZURE_AD_TENANT_ID || "common", // Use "common" for multi-tenant support
+      tenantId: process.env.AZURE_AD_TENANT_ID || "common",
       authorization: {
         params: {
           scope: "openid profile email",
@@ -115,23 +115,17 @@ export const authOptions: NextAuthOptions = {
             return "/sign-in?error=invalid_domain"
           }
           
-          // Extract the local part (before @)
           const localPart = normalizedEmail.split("@")[0];
           
-          // Check if it's a student email format (something.studentnumber@alabang.sti.edu.ph)
-          // Pattern: contains a dot followed by numeric digits
           const studentEmailPattern = /^[^.]+\.\d+$/;
           const isStudentEmail = studentEmailPattern.test(localPart);
           
-          // If it's a teacher/faculty email format (firstname.lastname@alabang.sti.edu.ph)
           if (!isStudentEmail && localPart.includes(".")) {
-            // Extract firstname and lastname from email
             const parts = localPart.split(".");
             if (parts.length >= 2) {
               const emailFirstName = parts[0].toLowerCase();
               const emailLastName = parts.slice(1).join(".").toLowerCase();
               
-              // Check if this teacher/faculty exists in registered_admins table
               const { data: admin, error: adminError } = await supabase
                 .from("registered_admins")
                 .select("id, first_name, last_name, status, is_archived")
@@ -146,14 +140,12 @@ export const authOptions: NextAuthOptions = {
                 return "/sign-in?error=admin_check_failed"
               }
               
-              // If teacher/faculty not found in database, deny access
               if (!admin) {
                 return "/sign-in?error=admin_not_registered"
               }
             }
           }
           
-          // For student emails, continue with existing logic
           if (isStudentEmail) {
             let firstName = ""
             let lastName = ""
