@@ -27,7 +27,7 @@ const faqCategories = [
       {
         question: "Is the platform free to use?",
         answer:
-          "Yes! Our platform is completely free for students. We believe in removing barriers to opportunity. Employers have access to basic features for free, with premium options available for enhanced functionality.",
+          "Up to the client's decision.",
       },
       {
         question: "What information should I include in my profile?",
@@ -58,7 +58,7 @@ const faqCategories = [
       {
         question: "How do I track my applications?",
         answer:
-          "Your dashboard includes an application tracker where you can see all your submitted applications, their current status, and any updates from employers. You'll also receive email notifications for important updates.",
+          "Your dashboard includes an application tracker where you can see all your submitted applications, their current status, and any updates from employers.",
       },
       {
         question: "What happens after I apply to a position?",

@@ -10,7 +10,7 @@ import Link from "next/link";
 
 const LandingFooter = () => {
   const SOCIAL_LINKS = {
-    facebook: "https://www.facebook.com/seekr",
+    facebook: "https://www.facebook.com/profile.php?id=61582102903364",
     twitter: "https://twitter.com/seekr",
     instagram: "https://www.instagram.com/seekr.assist/",
   };
@@ -35,15 +35,6 @@ const LandingFooter = () => {
                 className="text-gray-500 hover:text-blue-700"
               >
                 <Facebook className="w-5 h-5" />
-              </a>
-              <a
-                href={SOCIAL_LINKS.twitter}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Seekr on Twitter"
-                className="text-gray-500 hover:text-blue-700"
-              >
-                <Twitter className="w-5 h-5" />
               </a>
               <a
                 href={SOCIAL_LINKS.instagram}
