@@ -29,7 +29,7 @@ export default function SignInPage() {
 
   const handleMicrosoftLogin = async () => {
     await signIn(adminMode ? "azure-ad-admin" : "azure-ad", {
-      callbackUrl: adminMode ? "/admin/dashboard" : "/students/after-login"
+      callbackUrl: adminMode ? "/sign-in" : "/students/after-login"
     });
   };
 
@@ -44,7 +44,7 @@ export default function SignInPage() {
       return;
     }
     if (session?.user?.role === "admin" || session?.user?.role === "superadmin") {
-      router.replace("/admin/dashboard");
+      router.replace("/sign-in");
       return;
     }
 

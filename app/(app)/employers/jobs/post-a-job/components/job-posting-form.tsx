@@ -35,8 +35,8 @@ export default function JobPostingForm() {
     location: "",
     remoteOptions: "",
     workType: "",
-    payType: "",
-    payAmount: "",
+    payType: "", // keep for type compatibility
+    payAmount: "", // keep for type compatibility
     recommendedCourse: "",
     verificationTier: "basic",
     jobDescription: "",
@@ -118,24 +118,12 @@ export default function JobPostingForm() {
     let newErrors: Record<string, boolean> = {}
 
     if (currentStep === 1) {
-      const isIntern = formData.workType === "OJT/Internship"
-      const payTypeRequired = isIntern ? !formData.payType.trim() : !formData.payType.trim()
-      const payAmountRequired =
-        isIntern
-          ? formData.payType === "Allowance" &&
-            (!formData.payAmount || formData.payAmount.replace(/[^0-9.]/g, "") === "")
-          : formData.payType !== "" &&
-            formData.payType !== "No Pay" &&
-            (!formData.payAmount || formData.payAmount.replace(/[^0-9.]/g, "") === "")
-
       newErrors = {
         jobTitle: !formData.jobTitle.trim(),
         location: !formData.location.trim(),
         remoteOptions: !formData.remoteOptions.trim(),
         workType: !formData.workType.trim(),
-        payType: payTypeRequired,
         recommendedCourse: !formData.recommendedCourse.trim(),
-        payAmount: payAmountRequired,
       }
     } else if (currentStep === 3) {
       newErrors = {
@@ -195,13 +183,17 @@ export default function JobPostingForm() {
 
     const sanitizedFormData = {
       ...formData,
-      maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
+      maxApplicants: formData.maxApplicants
+        ? (typeof formData.maxApplicants === "string"
+            ? parseInt(formData.maxApplicants, 10) || null
+            : formData.maxApplicants)
+        : null,
       applicationDeadline: {
-        date: formData.applicationDeadline.date || null,
-        time: formData.applicationDeadline.time || null,
+        date: formData.applicationDeadline?.date || null,
+        time: formData.applicationDeadline?.time || null,
       },
-      perksAndBenefits: formData.perksAndBenefits.length > 0 ? formData.perksAndBenefits : null,
-      applicationQuestions: formData.applicationQuestions.length > 0 ? formData.applicationQuestions : null,
+      perksAndBenefits: Array.isArray(formData.perksAndBenefits) && formData.perksAndBenefits.length > 0 ? formData.perksAndBenefits : [],
+      applicationQuestions: Array.isArray(formData.applicationQuestions) && formData.applicationQuestions.length > 0 ? formData.applicationQuestions : [],
     }
 
     console.log("About to POST job with data:", sanitizedFormData)
@@ -213,7 +205,7 @@ export default function JobPostingForm() {
       credentials: "include",
       body: JSON.stringify({
         action: "publishJob",
-        formData: sanitizedFormData,
+        data: sanitizedFormData,
       }),
     })
     console.log("POST /api/employers/post-a-job response status:", response.status, "ok:", response.ok);
@@ -253,7 +245,6 @@ export default function JobPostingForm() {
         }
       }
 
-      console.log("Embeddings job_id:", createdJobId)
       if (createdJobId && employerId) {
         await fetch("/api/ai-matches/embeddings/job", {
           method: "POST",
@@ -261,12 +252,19 @@ export default function JobPostingForm() {
           body: JSON.stringify({ job_id: createdJobId })
         });
 
-        console.log("Calling rescore-job with:", { job_id: createdJobId });
-        await fetch("/api/ai-matches/rescore-job", {
+        const jobsRes = await fetch("/api/ai-matches/match/students", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ job_id: createdJobId })
         });
+
+        if (jobsRes.ok) {
+          await fetch("/api/ai-matches/rescore-job", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: createdJobId })
+          });
+        }
       }
 
       setCurrentStep(6)
@@ -284,7 +282,13 @@ export default function JobPostingForm() {
 
     const sanitizedFormData = {
       ...formData,
-      maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
+      maxApplicants: formData.maxApplicants
+        ? (typeof formData.maxApplicants === "string"
+            ? parseInt(formData.maxApplicants, 10) || null
+            : formData.maxApplicants)
+        : null,
+      perksAndBenefits: Array.isArray(formData.perksAndBenefits) && formData.perksAndBenefits.length > 0 ? formData.perksAndBenefits : [],
+      applicationQuestions: Array.isArray(formData.applicationQuestions) && formData.applicationQuestions.length > 0 ? formData.applicationQuestions : [],
     }
 
     const response = await fetch("/api/employers/post-a-job", {
@@ -295,12 +299,14 @@ export default function JobPostingForm() {
       credentials: "include",
       body: JSON.stringify({
         action: "saveDraft",
-        formData: sanitizedFormData,
+        data: sanitizedFormData,
       }),
     })
 
     if (response.ok) {
       localStorage.setItem("draftSaved", "true")
+      toast.success("Draft saved successfully!")
+      setIsSavingDraft(false)
       return
     }
     setIsSavingDraft(false)
@@ -377,7 +383,7 @@ export default function JobPostingForm() {
                   location: "",
                   remoteOptions: "",
                   workType: "",
-                  payType: "",
+                  payType: "", 
                   payAmount: "",
                   recommendedCourse: "",
                   verificationTier: "basic",

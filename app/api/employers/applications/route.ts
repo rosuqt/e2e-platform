@@ -69,6 +69,24 @@ export async function GET() {
     return []
   }
 
+  function parseAddressField(address: unknown): string[] {
+    if (Array.isArray(address)) return address as string[]
+    if (typeof address === "string") {
+      try {
+        const arr = JSON.parse(address)
+        if (Array.isArray(arr)) return arr as string[]
+        return address.split(",").map(s => s.trim()).filter(Boolean)
+      } catch {
+        return address.split(",").map(s => s.trim()).filter(Boolean)
+      }
+    }
+    if (address && typeof address === "object" && address !== null) {
+      const values = Object.values(address as object)
+      if (values.every(v => typeof v === "string")) return values as string[]
+    }
+    return []
+  }
+
   const applicantsWithJobTitle = await Promise.all(
     (applicants || []).map(async app => {
       const achievementsArr = parseArrayField(app.achievements)
@@ -100,6 +118,13 @@ export async function GET() {
           .single()
         gptScore = matchRow?.gpt_score ?? null
       }
+      // Address parsing
+      let addressArr: string[] = []
+      if (app.address !== undefined) {
+        addressArr = parseAddressField(app.address)
+      } else if (profile.contact_info && profile.contact_info.address !== undefined) {
+        addressArr = parseAddressField(profile.contact_info.address)
+      }
       return {
         ...app,
         job_title: app.job_postings?.job_title,
@@ -118,7 +143,8 @@ export async function GET() {
         raw_achievements: app.achievements as string | string[] | Record<string, unknown> | null | undefined,
         raw_portfolio: app.portfolio as string | string[] | Record<string, unknown> | null | undefined,
         contactInfo,
-        gpt_score: gptScore
+        gpt_score: gptScore,
+        address: addressArr.length > 0 ? addressArr : app.address // always array if possible
       }
     })
   )

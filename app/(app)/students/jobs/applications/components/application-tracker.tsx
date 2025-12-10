@@ -684,7 +684,7 @@ export default function ApplicationTrackerNoSidebar() {
   const allAppsRaw = applicationsData || []
   const pendingAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "new")
   const reviewAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "shortlisted")
-  const interviewAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "interview scheduled")
+  const interviewAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "interview")
   const hiredAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "hired")
   const rejectedAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "rejected")
   const offerAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "offer_sent")
@@ -1015,7 +1015,6 @@ export default function ApplicationTrackerNoSidebar() {
                             {tabCount("all")}
                           </span>
                         </TabsTrigger>
-
                         <TabsTrigger
                           value="pending"
                           className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
@@ -1030,7 +1029,6 @@ export default function ApplicationTrackerNoSidebar() {
                             {tabCount("pending")}
                           </span>
                         </TabsTrigger>
-
                         <TabsTrigger
                           value="review"
                           className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
@@ -1045,7 +1043,6 @@ export default function ApplicationTrackerNoSidebar() {
                             {tabCount("review")}
                           </span>
                         </TabsTrigger>
-
                         <TabsTrigger
                           value="interview"
                           className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
@@ -1060,7 +1057,6 @@ export default function ApplicationTrackerNoSidebar() {
                             {tabCount("interview")}
                           </span>
                         </TabsTrigger>
-
                         <TabsTrigger
                           value="offers"
                           className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
@@ -1075,7 +1071,6 @@ export default function ApplicationTrackerNoSidebar() {
                             {tabCount("offers")}
                           </span>
                         </TabsTrigger>
-
                         <TabsTrigger
                           value="hired"
                           className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
@@ -1090,7 +1085,6 @@ export default function ApplicationTrackerNoSidebar() {
                             {tabCount("hired")}
                           </span>
                         </TabsTrigger>
-
                         <TabsTrigger
                           value="rejected"
                           className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent
@@ -1402,58 +1396,89 @@ export default function ApplicationTrackerNoSidebar() {
                         }
                       </TabsContent>
                       <TabsContent value="interview" className="mt-4 space-y-4">
-                        {interviewApps.length
-                          ? (
-                            <>
-                              {generateApplicationCards(
-                                paginatedApps,
-                                "interview",
-                                selectedApplication,
-                                setSelectedApplication,
-                                handleViewDetails,
-                                handleFollowUp,
-                                handleMenuOpen,
-                                logoUrls,
-                                handleOpenJobRatingModal,
-                                highlightLogicalId,
-                                setConfirmWithdrawId,
-                                setConfirmWithdrawOpen
-                              )}
-                              {totalPages > 1 && (
-                                <div className="flex flex-col items-center gap-2 mt-4">
-                                  <div className="flex items-center gap-4">
-                                    <button
-                                      type="button"
-                                      disabled={page === 1}
-                                      onClick={() => setPage(p => Math.max(1, p - 1))}
-                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
-                                    >
-                                      Previous
-                                    </button>
-                                    <span className="text-xs text-gray-500">
-                                      Page {page} of {totalPages}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      disabled={page === totalPages}
-                                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                      className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
-                                    >
-                                      Next
-                                    </button>
-                                  </div>
+                        {
+                          (() => {
+                            const ongoing = interviewApps.filter(a => (a.status || "").toLowerCase() === "interview scheduled")
+                            const finished = interviewApps.filter(a => (a.status || "").toLowerCase() === "interview finished")
+                            return (
+                              <>
+                                <div className="mb-2 mt-2 text-base font-semibold text-purple-700 border-b border-purple-200 pb-1">
+                                  Ongoing Interviews
                                 </div>
-                              )}
-                            </>
-                          )
-                          : (
-                            <div className="flex flex-col items-center justify-center min-h-[220px]">
-                              <TbUserSearch size={64} className="text-gray-300 mb-2" />
-                              <div className="text-lg font-semibold text-gray-500">No interviews scheduled</div>
-                              <div className="text-sm text-blue-500 mt-1">Interviewed applications will appear here</div>
-                            </div>
-                          )
+                                {ongoing.length ? (
+                                  generateApplicationCards(
+                                    ongoing,
+                                    "interview",
+                                    selectedApplication,
+                                    setSelectedApplication,
+                                    handleViewDetails,
+                                    handleFollowUp,
+                                    handleMenuOpen,
+                                    logoUrls,
+                                    handleOpenJobRatingModal,
+                                    highlightLogicalId,
+                                    setConfirmWithdrawId,
+                                    setConfirmWithdrawOpen
+                                  )
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center min-h-[120px]">
+                                    <TbUserSearch size={40} className="text-gray-300 mb-2" />
+                                    <div className="text-base font-semibold text-gray-500">No ongoing interviews</div>
+                                  </div>
+                                )}
+                                <div className="mb-2 mt-6 text-base font-semibold text-purple-700 border-b border-purple-200 pb-1">
+                                  Finished Interviews
+                                </div>
+                                {finished.length ? (
+                                  generateApplicationCards(
+                                    finished,
+                                    "interview",
+                                    selectedApplication,
+                                    setSelectedApplication,
+                                    handleViewDetails,
+                                    handleFollowUp,
+                                    handleMenuOpen,
+                                    logoUrls,
+                                    handleOpenJobRatingModal,
+                                    highlightLogicalId,
+                                    setConfirmWithdrawId,
+                                    setConfirmWithdrawOpen
+                                  )
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center min-h-[120px]">
+                                    <TbUserSearch size={40} className="text-gray-300 mb-2" />
+                                    <div className="text-base font-semibold text-gray-500">No finished interviews</div>
+                                  </div>
+                                )}
+                              </>
+                            )
+                          })()
                         }
+                        {totalPages > 1 && (
+                          <div className="flex flex-col items-center gap-2 mt-4">
+                            <div className="flex items-center gap-4">
+                              <button
+                                type="button"
+                                disabled={page === 1}
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                              >
+                                Previous
+                              </button>
+                              <span className="text-xs text-gray-500">
+                                Page {page} of {totalPages}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={page === totalPages}
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                className="text-xs text-gray-600 disabled:text-gray-300 hover:text-blue-600"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </TabsContent>
                       <TabsContent value="offers" className="mt-4 space-y-4">
                         {offerApps.length
@@ -1973,9 +1998,20 @@ function generateApplicationCards(
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-sm text-gray-500">
-                      {app.company_name ||
-                        app.job_postings?.registered_employers?.company_name ||
-                        ""}
+                      {
+                        (() => {
+                          let company =
+                            app.company_name ||
+                            app.job_postings?.registered_employers?.company_name ||
+                            ""
+                          if (Array.isArray(company)) company = company.join(", ")
+                          let location = app.job_postings?.location
+                          if (Array.isArray(location)) location = location.join(", ")
+                          if (location && company) return `${company} — ${location}`
+                          if (location) return location
+                          return company
+                        })()
+                      }
                     </p>
                   </div>
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">

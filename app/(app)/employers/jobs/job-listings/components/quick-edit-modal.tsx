@@ -9,9 +9,14 @@ import { WriteStep } from "../../post-a-job/components/steps/write-step"
 import { ManageStep } from "../../post-a-job/components/steps/manage-step"
 import { PreviewStep } from "../../post-a-job/components/steps/preview-step"
 import { ProgressBar } from "../../post-a-job/components/progress-bar"
-import type { JobPostingData } from "../../post-a-job/lib/types"
+import type { JobPostingData as OriginalJobPostingData } from "../../post-a-job/lib/types"
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa"
 import { Save } from "lucide-react"
+
+type JobPostingData = Omit<OriginalJobPostingData, "payType" | "payAmount"> & {
+  payType: string
+  payAmount: string
+}
 
 export default function QuickEditModal({
   open,
@@ -30,8 +35,6 @@ export default function QuickEditModal({
     location: "",
     remoteOptions: "",
     workType: "",
-    payType: "",
-    payAmount: "",
     recommendedCourse: "",
     verificationTier: "basic",
     jobDescription: "",
@@ -44,6 +47,8 @@ export default function QuickEditModal({
     applicationQuestions: [],
     perksAndBenefits: [],
     skills: [],
+    payType: "",
+    payAmount: "",
   })
   const [errors, setErrors] = useState<Record<string, boolean>>({})
   const [hasAttemptedNext, setHasAttemptedNext] = useState(false)
@@ -69,8 +74,6 @@ export default function QuickEditModal({
             location: jobData.location ?? jobData.job_location ?? jobData.jobLocation ?? "",
             remoteOptions: jobData.remoteOptions ?? jobData.remote_options ?? jobData.remote ?? jobData.isRemote ?? jobData.remoteOption ?? "",
             workType: jobData.workType ?? jobData.work_type ?? jobData.type ?? jobData.job_type ?? jobData.jobType ?? "",
-            payType: jobData.payType ?? jobData.pay_type ?? jobData.pay_type_label ?? jobData.compensationType ?? jobData.compensation_type ?? "",
-            payAmount: jobData.payAmount ?? jobData.pay_amount ?? jobData.salary ?? jobData.compensation ?? jobData.compensationAmount ?? jobData.compensation_amount ?? "",
             recommendedCourse: (() => {
               const courseVal = jobData.recommendedCourse ?? jobData.recommended_course ?? jobData.course ?? jobData.recommended_course_name ?? jobData.recommended_course_label ?? "";
               const normalize = (val: string) => {
@@ -156,6 +159,8 @@ export default function QuickEditModal({
               ? jobData.perks_and_benefits
               : [],
             skills: Array.isArray(jobData.skills) ? jobData.skills : [],
+            payType: "",
+            payAmount: "",
           }))
         } else {
           setFormData({
@@ -163,8 +168,6 @@ export default function QuickEditModal({
             location: "",
             remoteOptions: "",
             workType: "",
-            payType: "",
-            payAmount: "",
             recommendedCourse: "",
             verificationTier: "basic",
             jobDescription: "",
@@ -177,6 +180,8 @@ export default function QuickEditModal({
             applicationQuestions: [],
             perksAndBenefits: [],
             skills: [],
+            payType: "",
+            payAmount: "",
           })
         }
       } catch (err) {
@@ -186,8 +191,6 @@ export default function QuickEditModal({
           location: "",
           remoteOptions: "",
           workType: "",
-          payType: "",
-          payAmount: "",
           recommendedCourse: "",
           verificationTier: "basic",
           jobDescription: "",
@@ -200,6 +203,8 @@ export default function QuickEditModal({
           applicationQuestions: [],
           perksAndBenefits: [],
           skills: [],
+          payType: "",
+          payAmount: "",
         })
       } finally {
         setIsLoading(false)
@@ -264,8 +269,6 @@ export default function QuickEditModal({
         location: (d.location as string) ?? "",
         remoteOptions: (d.remote_options as string) ?? (d.remoteOptions as string) ?? (d.remote as string) ?? "",
         workType: (d.work_type as string) ?? (d.workType as string) ?? (d.type as string) ?? "",
-        payType: (d.pay_type as string) ?? (d.payType as string) ?? (d.pay_type_label as string) ?? "",
-        payAmount: (d.pay_amount as string) ?? (d.payAmount as string) ?? (d.salary as string) ?? "",
         recommendedCourse:
           typeof d.recommended_course === "string" && d.recommended_course.trim()
             ? d.recommended_course.trim()
@@ -311,6 +314,8 @@ export default function QuickEditModal({
         ),
         perksAndBenefits: (d.perks_and_benefits as string[]) ?? (d.perksAndBenefits as string[]) ?? [],
         skills: (d.skills as string[]) ?? [],
+        payType: "",
+        payAmount: "",
       })
       setIsLoading(false)
     }
@@ -332,7 +337,6 @@ export default function QuickEditModal({
         location: !formData.location.trim(),
         remoteOptions: !formData.remoteOptions.trim(),
         workType: !formData.workType.trim(),
-        payType: !formData.payType.trim(),
         recommendedCourse: !formData.recommendedCourse.trim(),
       }
     } else if (currentStep === 3) {
@@ -401,8 +405,6 @@ export default function QuickEditModal({
           location: formData.location,
           remote_options: formData.remoteOptions,
           work_type: formData.workType,
-          pay_type: formData.payType,
-          pay_amount: formData.payAmount,
           recommended_course: formData.recommendedCourse,
           verification_tier: formData.verificationTier,
           job_description: formData.jobDescription,
@@ -453,6 +455,12 @@ export default function QuickEditModal({
         if (!embeddingsRes.ok) {
           setPostError(embeddingsJson?.error || "Embeddings API failed")
         }
+
+        await fetch("/api/ai-matches/match/students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: draftData.id }),
+        })
 
         await fetch("/api/ai-matches/rescore-job", {
           method: "POST",
@@ -506,8 +514,6 @@ export default function QuickEditModal({
           location: formData.location,
           remote_options: formData.remoteOptions,
           work_type: formData.workType,
-          pay_type: formData.payType,
-          pay_amount: formData.payAmount,
           recommended_course: formData.recommendedCourse,
           verification_tier: formData.verificationTier,
           job_description: formData.jobDescription,
@@ -551,6 +557,12 @@ export default function QuickEditModal({
           setSaveError(embeddingsJson?.error || "Embeddings API failed")
         }
 
+        await fetch("/api/ai-matches/match/students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: draftData.id }),
+        })
+
         await fetch("/api/ai-matches/rescore-job", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -588,6 +600,12 @@ export default function QuickEditModal({
           if (!embeddingsRes.ok) {
             setSaveError(embeddingsJson?.error || "Embeddings API failed")
           }
+
+          await fetch("/api/ai-matches/match/students", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: createdJobId }),
+          })
 
           await fetch("/api/ai-matches/rescore-job", {
             method: "POST",

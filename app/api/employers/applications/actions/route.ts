@@ -6,9 +6,10 @@ import { getAdminSupabase } from "@/lib/supabase"
 export async function POST(req: Request) {
   await new Promise((res) => setTimeout(res, 2000))
   const { application_id, action, message } = await req.json()
+  const normalizedAction = typeof action === "string" ? action.toLowerCase() : ""
   if (
     !application_id ||
-    !["shortlist", "reject", "interview_scheduled", "offer_sent", "hired", "offer_updated", "waitlist", "withdraw"].includes(action)
+    !["shortlist", "reject", "interview_scheduled", "offer_sent", "hired", "offer_updated", "waitlist", "withdraw"].includes(normalizedAction)
   ) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 })
   }
@@ -18,34 +19,34 @@ export async function POST(req: Request) {
   let status = ""
   let logType = ""
   let logMessage = ""
-  if (action === "shortlist") {
+  if (normalizedAction === "shortlist") {
     status = "shortlisted"
     logType = "shortlisted"
     logMessage = "Applicant was shortlisted"
-  } else if (action === "reject") {
+  } else if (normalizedAction === "reject") {
     status = "rejected"
     logType = "rejected"
     logMessage = "Applicant was rejected"
-  } else if (action === "interview_scheduled") {
+  } else if (normalizedAction === "interview_scheduled") {
     status = "Interview Scheduled"
     logType = "interview"
     logMessage = "Interview scheduled"
-  } else if (action === "offer_sent") {
+  } else if (normalizedAction === "offer_sent") {
     status = "offer_sent"
     logType = "offer sent"
     logMessage = "Your job offer has been sent to the applicant!"
-  } else if (action === "hired") {
+  } else if (normalizedAction === "hired") {
     status = "hired"
     logType = "hired"
     logMessage = "You have successfully hired the applicant!"
-  } else if (action === "offer_updated") {
+  } else if (normalizedAction === "offer_updated") {
     logType = "offer_updated"
     logMessage = message || "Job offer has been updated"
-  } else if (action === "waitlist") {
+  } else if (normalizedAction === "waitlist") {
     status = "waitlisted"
     logType = "waitlisted"
     logMessage = "Applicant was waitlisted after interview"
-  } else if (action === "withdraw") {
+  } else if (normalizedAction === "withdraw") {
     status = "withdrawn"
     logType = "withdrawn"
     logMessage = message || "Applicant withdrew the application"

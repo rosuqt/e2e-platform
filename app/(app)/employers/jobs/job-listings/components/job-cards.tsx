@@ -762,7 +762,7 @@ export default function EmployerJobCard({
                       <DialogTitle className="text-red-600 font-bold">Delete Job Listing</DialogTitle>
                       <DialogContent>
                         <DialogContentText>
-                          This action cannot be undone. This will permanently delete the job listing and all associated data including messages, and analytics.
+                          This action cannot be undone. This will permanently delete the job listing and all associated data including messages, analytics, and all related job invitations. Deleting this job will also remove all related job invitations. Please confirm to proceed.
                         </DialogContentText>
                         <div className="py-4">
                           <div className="flex items-start gap-4 p-3 rounded-lg bg-red-50 border border-red-200">
@@ -771,9 +771,10 @@ export default function EmployerJobCard({
                               <p className="font-bold text-base mb-2">Warning:</p>
                               <ul className="list-disc pl-5 mt-2 space-y-1 font-medium">
                                 <li>All job data will be permanently deleted</li>
-                                  <li>All messages and communication history will be lost</li>
-                                  <li>All analytics and reporting data will be removed</li>
-                                  <li>This action CANNOT be reversed</li>
+                                <li>All messages and communication history will be lost</li>
+                                <li>All analytics and reporting data will be removed</li>
+                                <li>All related job invitations will be deleted</li>
+                                <li>This action CANNOT be reversed</li>
                               </ul>
                             </div>
                           </div>

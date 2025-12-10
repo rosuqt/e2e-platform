@@ -14,18 +14,6 @@ export async function middleware(request: NextRequest) {
     [key: string]: unknown
   }
 
-  if (
-    pathname.startsWith("/sign-in") ||
-    pathname.startsWith("/admin/login") ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/auth/callback") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/static") ||
-    pathname === "/favicon.ico"
-  ) {
-    return NextResponse.next()
-  }
-
   let token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
@@ -54,10 +42,6 @@ export async function middleware(request: NextRequest) {
   console.log("middleware: cookies", request.cookies.getAll().map(c => c.name))
   console.log("middleware: NEXTAUTH_SESSION_TOKEN_MODE", process.env.NEXTAUTH_SESSION_TOKEN_MODE)
 
-  if (!token) {
-    return NextResponse.redirect(new URL("/sign-in", request.url))
-  }
-
   const protectedRoutes = [
     "/students",
     "/employers",
@@ -68,7 +52,7 @@ export async function middleware(request: NextRequest) {
   if (!isProtected) {
     return NextResponse.next()
   }
-
+                
   if (pathname.startsWith("/employers") && role !== "employer") {
     return NextResponse.redirect(new URL("/forbidden", request.url))
   }

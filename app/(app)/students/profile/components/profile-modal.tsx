@@ -277,7 +277,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   const handleProfileClick = async () => {
     const profilePath =
       userType === "employer"
-        ? "/employers/profile"
+        ? "#"
         : "/students/profile"
     await router.prefetch(profilePath)
     router.push(profilePath)

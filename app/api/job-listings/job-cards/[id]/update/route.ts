@@ -8,6 +8,8 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
     if ('max_applicants' in body && body.max_applicants === '') {
       body.max_applicants = null
     }
+    delete body.pay_type
+    delete body.pay_amount
     console.log('Update jobId:', jobId)
     console.log('Update payload:', body)
 

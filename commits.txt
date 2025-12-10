@@ -1,0 +1,355 @@
+44d1845 - SevillaAdrian16, 2025-11-29 : student management  (origin/ally-student)
+98293a1 - SevillaAdrian16, 2025-11-29 : student-management 
+a87aaf5 - rosuqt, 2025-11-29 : vercel test6  (HEAD -> ally-student)
+fd1fcd5 - rosuqt, 2025-11-29 : vercel test5 
+3ab8ef8 - rosuqt, 2025-11-29 : vercel test3 
+dd8382d - rosuqt, 2025-11-29 : vercel test 2 
+3a14573 - rosuqt, 2025-11-29 : vercel test 
+d9847c0 - rosuqt, 2025-11-29 : try vercel 
+e46be8f - rosuqt, 2025-11-29 : done superadmin 
+64049c6 - rosuqt, 2025-11-29 : fully functional verification 
+5b81b77 - rosuqt, 2025-11-29 : im scared  (origin/test-merge-adrian, test-merge-adrian)
+b67856d - rosuqt, 2025-11-29 : test 
+a988d7b - SevillaAdrian16, 2025-11-29 : test: test commit 
+ed10623 - SevillaAdrian16, 2025-11-29 : basic ah messaging for admin 
+2a91d1e - SevillaAdrian16, 2025-11-28 : notif finish  (origin/DO-NOT-TEST-YET)
+775a551 - SevillaAdrian16, 2025-11-28 : notif 
+f812dd1 - rosuqt, 2025-11-28 : candidate and invited employers 
+955cb23 - rosuqt, 2025-11-28 : hi adrian 
+9e43db1 - MingoHaha, 2025-11-28 : Student Profile Changes  (origin/student_ratings)
+68a48f6 - SevillaAdrian16, 2025-11-27 : notifications for employer should work 
+40a9761 - rosuqt, 2025-11-26 : finished companies NOTE: very rough people rushed 
+c229a52 - rosuqt, 2025-11-26 : finished following 
+57aa0ed - rosuqt, 2025-11-26 : Finished connections and suggestions 
+6a1ce2c - rosuqt, 2025-11-26 : Finished student suggestions 
+f809da5 - rosuqt, 2025-11-26 : Finished community jobs for now 
+46d1105 - SevillaAdrian16, 2025-11-25 : notif almost 
+718605c - rosuqt, 2025-11-25 : quick tweaks v2 
+949454b - rosuqt, 2025-11-25 : quick tweaks 
+def7788 - rosuqt, 2025-11-25 : random prod tweaks 
+18b80fb - rosuqt, 2025-11-25 : rough push for fixing zeyns found critical issues v2 
+84902f2 - rosuqt, 2025-11-25 : rough push for fixing zeyns found critical issues 
+d63ea4b - rosuqt, 2025-11-24 : rough push for student calendar 
+a976720 - rosuqt, 2025-11-24 : roough push for job matches FOR Vercel 
+0323529 - rosuqt, 2025-11-24 : roough push for job matches 
+b524fb7 - rosuqt, 2025-11-23 : roough push 
+637d368 - SevillaAdrian16, 2025-11-23 : test: test commit 
+f391831 - rosuqt, 2025-11-23 : activity log, ratings student profile 
+5cac4b5 - rosuqt, 2025-11-23 : Fixed mark's rating modal shud work na lahat ng ratings related TO DO: add ratings count sa jobs and employers 
+70169d9 - rosuqt, 2025-11-22 : Students Job Matches done 
+5c1e91c - MingoHaha, 2025-11-20 : changes in the logic ofratings 
+301a49b - SevillaAdrian16, 2025-11-19 : update for me 
+88dea71 - rosuqt, 2025-11-19 : applications module done except for marks rating modal and follow up to be done by adrian 
+3075840 - rosuqt, 2025-11-19 : application students - 80% done 
+915498c - rosuqt, 2025-11-18 : i thnk i broke it 
+1eee342 - rosuqt, 2025-11-17 : updated somethng sa quick apply 
+52be504 - rosuqt, 2025-11-17 : updated somethng sa quick apply 
+7fe7f33 - rosuqt, 2025-11-16 : job listing module for testing see details in clickup 
+8ecb9f8 - rosuqt, 2025-11-16 : quick apply quick commit - disabled buttons when application exists 
+4dd2829 - rosuqt, 2025-11-16 : quick apply quick commit 
+24f1a0a - rosuqt, 2025-11-16 : currently working on quick apply 
+278bbd3 - rosuqt, 2025-11-15 : my right hand busy msg ltr  (DO-NOT-TEST-YET)
+afa8108 - SevillaAdrian16, 2025-11-13 : Messaging and Calendar 
+8acbbf4 - rosuqt, 2025-11-13 : Merge remote-tracking branch 'origin/superadmin-edit-students' into merge-branches  (origin/merge-branches)
+84a09b1 - rosuqt, 2025-11-13 : Merge remote-tracking branch 'origin/DO-NOT-TEST-YET' into merge-branches 
+4374b2d - MingoHaha, 2025-11-13 : merged with student ratings brach 
+60eacc0 - SevillaAdrian16, 2025-11-13 : use this  (origin/Cap-2-Adrian)
+4fc489c - MingoHaha, 2025-11-13 : Merge branch 'student_ratings' into DO-NOT-TEST-YET 
+929129b - MingoHaha, 2025-08-27 : initial code palang  (origin/combined-test)
+22ad314 - MingoHaha, 2025-08-19 : i added ratings 
+aa64f0d - SevillaAdrian16, 2025-11-13 : test: test commit 
+e165c03 - rosuqt, 2025-11-13 : Merge pull request #24 from rosuqt/DO-NOT-TEST-YET  (origin/main, origin/HEAD, main)
+0d17f5b - rosuqt, 2025-11-13 : READY to TEST : AI matches for students + student dashboard v5 
+2550875 - rosuqt, 2025-11-13 : READY to TEST : AI matches for students + student dashboard v4 
+9d63218 - rosuqt, 2025-11-13 : READY to TEST : AI matches for students + student dashboard v3 
+4812498 - rosuqt, 2025-11-13 : READY to TEST : AI matches for students + student dashboard v2 
+b03ee51 - rosuqt, 2025-11-13 : READY to TEST : AI matches for students + student dashboard 
+ae967d1 - SevillaAdrian16, 2025-11-11 : test: notif 
+76c0726 - zeynnnnns, 2025-11-11 : unfinished landing page  (origin/landing-changes-zeyn)
+bdd5d06 - rosuqt, 2025-07-03 : Bro 
+70070d8 - rosuqt, 2025-07-03 : Employer Verfication Page v.1 
+c401baa - rosuqt, 2025-07-03 : Employer Verfication Page v.0 
+1ec5bc8 - rosuqt, 2025-07-03 : Employer Verfication Page v.0 
+32855dc - rosuqt, 2025-06-30 : Test all pages lol 
+4ef8275 - rosuqt, 2025-06-28 : Superadmin | Account Management 
+53d169d - rosuqt, 2025-06-26 : middleware | manually added decoding for vercel jwt >:( 
+9143654 - rosuqt, 2025-06-26 : middleware rip 
+e97d5ca - rosuqt, 2025-06-26 : Sign in test console logs v9 
+a8601f5 - rosuqt, 2025-06-26 : Sign in test console logs v8 
+faccfe7 - rosuqt, 2025-06-26 : Sign in test console logs v7 
+186e463 - rosuqt, 2025-06-26 : Sign in test console logs v6 
+fa9dc53 - rosuqt, 2025-06-26 : Sign in test console logs v5 
+c5f5753 - rosuqt, 2025-06-26 : Sign in test console logs v4 
+fa93847 - rosuqt, 2025-06-26 : Sign in test console logs v3 
+bd17529 - rosuqt, 2025-06-26 : Sign in test console logs v2 
+5be2281 - rosuqt, 2025-06-26 : Sign in test console logs 
+1c6657d - rosuqt, 2025-06-26 : Deployment | Fixed callback n Student Settings 
+da22c1b - rosuqt, 2025-06-25 : Deployment | Applications Students and added Middleware for 403 page 
+25ada05 - rosuqt, 2025-06-23 : Deployment | Applications Employers 
+85f66ae - rosuqt, 2025-06-21 : Deployment | Applications cron job v0.1 
+ebf7d79 - rosuqt, 2025-06-21 : Deployment | Applications cron job v9 
+e2e6e5e - rosuqt, 2025-06-21 : Deployment | Applications cron job v8 
+e8f20c5 - rosuqt, 2025-06-21 : Deployment | Applications cron job v7 
+d4c4e9e - rosuqt, 2025-06-21 : Deployment | Applications cron job v6 
+2955820 - rosuqt, 2025-06-21 : Deployment | Applications cron job v5 
+ce60f77 - rosuqt, 2025-06-21 : Deployment | Applications cron job v4 
+ccabf18 - rosuqt, 2025-06-21 : Deployment | Applications cron job v3 
+e802990 - rosuqt, 2025-06-21 : Deployment | Applications cron job v2 
+f185efb - rosuqt, 2025-06-21 : Deployment | Applications cron job v1 
+5d04f58 - rosuqt, 2025-06-21 : Deployment | Applications (before cron job attempt) 
+6f2805f - rosuqt, 2025-06-19 : Deployment | Student Job Listing v2 
+5fd585e - rosuqt, 2025-06-19 : Deployment | Student Job Listing 
+cba47f7 - rosuqt, 2025-06-11 : Deployment | Test Company Profile v4 (fully implemented) 
+1851e5f - rosuqt, 2025-06-10 : Deployment | Test Company Profile v3 (fixed company endless loop) 
+37a5874 - rosuqt, 2025-06-10 : Deployment | Test Company Profile v2 (fixed signup) 
+00f436a - rosuqt, 2025-06-10 : Deployment | Test Company Profile v1 
+9d04635 - rosuqt, 2025-06-09 : Deployment | Test Employer Profile v1 
+fea2d48 - rosuqt, 2025-06-07 : Deployment | Test v10.3 
+b8d2ff5 - rosuqt, 2025-06-05 : Deployment | Test v10.2 
+dd85670 - rosuqt, 2025-06-05 : Deployment | Test v10.1 
+eb74b7b - rosuqt, 2025-06-05 : Deployment | Test v10 
+cdec592 - rosuqt, 2025-06-03 : Deployment | Test v9 
+d054154 - rosuqt, 2025-06-03 : Deployment | Test v8 
+25eb5eb - rosuqt, 2025-06-03 : Deployment | Test v7 
+aed2699 - rosuqt, 2025-06-03 : Deployment | Test v6 
+43ff424 - rosuqt, 2025-06-02 : Deployment | Test v5 
+b1a9b48 - rosuqt, 2025-06-02 : Deployment | Test v4 
+c418c7a - rosuqt, 2025-06-02 : Deployment | Test v2 
+7e809c6 - rosuqt, 2025-06-02 : Deployment | Test - env DELETE AFTER 
+ad007c8 - rosuqt, 2025-06-02 : Deployment | v2 - Initial release 
+549c4e7 - rosuqt, 2025-06-02 : Exploratory Testing | Safe Commit.02 
+a052583 - rosuqt, 2025-06-02 : Deployment | v1 - Initial release 
+39e9ad6 - rosuqt, 2025-06-01 : Exploratory Testing | Safe Commit 
+a2b5389 - rosuqt, 2025-05-31 : Exploratory Testing | Commit Ver 06 
+dee989e - rosuqt, 2025-05-31 : Exploratory Testing | Commit Ver 05 
+12fc93d - rosuqt, 2025-05-30 : Exploratory Testing | Commit Ver 04 
+e6f291f - rosuqt, 2025-05-27 : Exploratory Testing | Commit Ver 03 
+4eddcb3 - rosuqt, 2025-05-26 : Exploratory Testing | Commit Ver 02 
+1d44e3e - rosuqt, 2025-05-26 : Exploratory Testing | Commit Ver 01 
+85663bc - rosuqt, 2025-05-20 : feat: polished microsoft and signin roles 
+a61987e - rosuqt, 2025-05-20 : feat: microsoft login wont work for school email 
+e726feb - rosuqt, 2025-05-13 : feat: finished the whole UI for student module 
+69a4a6d - rosuqt, 2025-05-04 : feat: fixed infinite rendering, added loaders, fixed fetching and validations for character limits 
+5e02341 - rosuqt, 2025-05-02 : feat: fixed renz's test cases for signup 
+1b58ed1 - rosuqt, 2025-04-30 : test: vercel 
+9d2167b - rosuqt, 2025-04-29 : test: fix for deploy pt3. 
+969883e - rosuqt, 2025-04-29 : feat: fix for deployment 
+7a2624b - rosuqt, 2025-04-29 : feat: fixed validation, used session storage, design tweak 
+74fee62 - rosuqt, 2025-04-22 : feat: added drafts moddal and job-listing-live 
+b60c475 - rosuqt, 2025-04-21 : feat: new dashboard design 
+ac43626 - rosuqt, 2025-04-20 : Remove .env from repo 
+5f14534 - rosuqt, 2025-04-19 : test: fix import for vercel 
+b843da5 - rosuqt, 2025-04-19 : feat: fully functional post-a-job page. -added jwt token -updated supabase connection 
+c5e78a5 - rosuqt, 2025-04-19 : feat: finished post-a-job UI will 
+9ae5f75 - rosuqt, 2025-04-17 : test: .env update4 
+a0ac132 - rosuqt, 2025-04-17 : test: .env update3 
+faa71c1 - rosuqt, 2025-04-17 : test: .env update2 
+212b4af - rosuqt, 2025-04-17 : test: .env update 
+9385179 - rosuqt, 2025-04-17 : test: removed unused form data for deployment testing 
+246269d - rosuqt, 2025-04-17 : test: supabase connection 
+1f5a52a - rosuqt, 2025-04-17 : test: latest safe copy before migrating to supabase 
+07da380 - rosuqt, 2025-04-16 : Fixed message without accidental mention 
+71ea441 - rosuqt, 2025-04-16 : feat: added db.sql 
+4cd234f - rosuqt, 2025-04-16 : test: safe working copy of dashboard scrolling 
+f7e44d7 - rosuqt, 2025-04-16 : feat: remade the sidebar 
+a324968 - rosuqt, 2025-04-15 : feat: working sign-in | sign-in page.tsx needs 1 fix(mark/adrian) 
+b3a2211 - rosuqt, 2025-04-15 : feat: added bcryptjs and swal loading needs fix 
+6a5458e - rosuqt, 2025-04-15 : test: test add since im adding bcrypt might mess up this is safe copy 
+77d2346 - rosuqt, 2025-04-15 : needs fix assigned to adrian 
+2b7ba32 - rosuqt, 2025-04-15 : feat: full sign up done. sign up 2 has error msgs alr 
+610996e - rosuqt, 2025-04-15 : feat: finished sign-up step 1-3 but step 2 doesnt have form error msgs 
+5b5896b - rosuqt, 2025-04-14 : test: deleted empty files for deployment 
+d2a936f - rosuqt, 2025-04-14 : feat: ULTIMATE WORKING VERSION NG STEP 2 signup. 
+d3548b2 - rosuqt, 2025-04-12 : feat: - completed backend/validation step2 signup & company creation form step1. - added animations to components. - changed dropdown to react-select 
+859781f - rosuqt, 2025-04-11 : test: im gonna try to change the dropdown 
+a5b3710 - rosuqt, 2025-04-11 : fix: auto select when creating new company 
+b4f7ba7 - rosuqt, 2025-04-10 : fix: fully functional step 2 
+6711f09 - rosuqt, 2025-04-10 : fix: email validation when clicking back 
+b35c84c - rosuqt, 2025-04-09 : test: step 1 and step 2 backend complete, back button not working yet 
+9139273 - rosuqt, 2025-04-07 : test: backend for step1 sign-up complete, but i havent lifted the form state yet. also tried doing the ui for dashboard 
+be17d86 - rosuqt, 2025-11-11 : READY to TEST : Resume parser - ai-resume - Suggestions based on resume v4 
+29adad8 - rosuqt, 2025-11-10 : READY to TEST : Resume parser - ai-resume - Suggestions based on resume v3 
+ae7c2fc - rosuqt, 2025-11-10 : READY to TEST : Resume parser - ai-resume - Suggestions based on resume v2 
+4a949d3 - rosuqt, 2025-11-10 : READY to TEST : Resume parser - ai-resume - Suggestions based on resume 
+7d76bfb - MingoHaha, 2025-11-05 : Added username-based profile routing for students and employers  (origin/copied-test)
+d1b1b56 - rosuqt, 2025-11-03 : application details ready to test 
+d9a3d27 - rosuqt, 2025-11-03 : application tracker ready to test 
+3b2a848 - rosuqt, 2025-11-03 : application tracker ready to test 
+adc7950 - SevillaAdrian16, 2025-11-01 : MESSAGING 
+d3237e9 - rosuqt, 2025-10-30 : send offer modal 
+3649245 - rosuqt, 2025-10-28 : applying cron for updating waitlisted v2 
+2aa9e7b - rosuqt, 2025-10-28 : applying cron for updating waitlisted 
+59a748b - rosuqt, 2025-10-27 : READY to TEST delete functions for job cards ALL THREE OF THEM v3 (fixed params error) 
+4bb63b0 - rosuqt, 2025-10-26 : READY to TEST delete functions for job cards ALL THREE OF THEM v2 
+1cc38fc - rosuqt, 2025-10-26 : READY to TEST delete functions for job cards ALL THREE OF THEM 
+f449c56 - rosuqt, 2025-10-24 : READY to TEST archived jobs if buttons are disabled v2 
+5c77dce - rosuqt, 2025-10-24 : READY to TEST archive function sa job cards, overviewtab and settings tab 
+6bd2bcb - rosuqt, 2025-10-24 : READY to TEST archived jobs if buttons are disabled 
+66dac1f - rosuqt, 2025-10-23 : READY to TEST analytics tab 
+8e3cf4d - rosuqt, 2025-10-23 : READY to TEST pls test metrics history (employers - job listings - analytics tab - Job Analytic section v2 
+c63464d - rosuqt, 2025-10-23 : READY to TEST pls test metrics history (employers - job listings - analytics tab - Job Analytic section 
+c992d87 - rosuqt, 2025-10-23 : READY to TEST job employers job listings details (overview tab and applicants tab) 
+e939153 - rosuqt, 2025-10-21 : READY to TEST job metrics hired, total applicants and interviews. pls test functionality lol v2 
+e65e8ad - rosuqt, 2025-10-21 : READY to TEST job metrics hired, total applicants and interviews. pls test functionality lol 
+38aa551 - rosuqt, 2025-10-18 : added functional job metrics (refer to job_metrics table for metrics to test) READY FOR TESTING 
+536ca8a - rosuqt, 2025-10-14 : fully finished employers job listings page READY FOR TESTING v3 
+86e75fc - rosuqt, 2025-10-14 : fully finished employers job listings page READY FOR TESTING v2 
+7f196ee - rosuqt, 2025-10-14 : fully finished employers job listings page READY FOR TESTING 
+e4cede1 - rosuqt, 2025-09-17 : rough push 
+6c36900 - MingoHaha, 2025-09-15 : after edit add refresh list  (origin/superadmin-edit-students)
+6489fa0 - MingoHaha, 2025-09-11 : added feedback in the settings with the api  (origin/feedback-settings)
+1bb4df7 - MingoHaha, 2025-09-11 : functioning send bug report  (origin/send_bug)
+bca27cf - SevillaAdrian16, 2025-09-06 : calendar now has function 
+9ae20ee - MingoHaha, 2025-08-27 : initial code palang 
+9b37b5b - rosuqt, 2025-08-24 : DONT CLONE or DONT TEST: fixed build issues atmp2 
+22b4c91 - rosuqt, 2025-08-21 : DONT CLONE or DONT TEST: fixed build issues 
+bd16343 - rosuqt, 2025-08-21 : DONT CLONE or DONT TEST: interview practice whole module hard release 
+2766f02 - MingoHaha, 2025-08-19 : i added ratings 
+8bcaa57 - rosuqt, 2025-08-14 : DONT CLONE or DONT TEST: added smart writer, and skills generation 
+0b4751d - rosuqt, 2025-07-03 : Bro  (origin/Cap-2-Ally)
+09b6093 - rosuqt, 2025-07-03 : Employer Verfication Page v.1 
+18c4635 - rosuqt, 2025-07-03 : Employer Verfication Page v.0 
+dc87bd2 - rosuqt, 2025-07-03 : Employer Verfication Page v.0 
+5babb01 - rosuqt, 2025-06-30 : Test all pages lol 
+1da6e89 - rosuqt, 2025-06-28 : Superadmin | Account Management 
+fe2b2a2 - rosuqt, 2025-06-26 : middleware | manually added decoding for vercel jwt >:( 
+c2dd199 - rosuqt, 2025-06-26 : middleware rip 
+a2cc0b5 - rosuqt, 2025-06-26 : Sign in test console logs v9 
+ff5bc42 - rosuqt, 2025-06-26 : Sign in test console logs v8 
+c57cce0 - rosuqt, 2025-06-26 : Sign in test console logs v7 
+5fbdcc2 - rosuqt, 2025-06-26 : Sign in test console logs v6 
+8243f7a - rosuqt, 2025-06-26 : Sign in test console logs v5 
+e007596 - rosuqt, 2025-06-26 : Sign in test console logs v4 
+081def8 - rosuqt, 2025-06-26 : Sign in test console logs v3 
+25a23a4 - rosuqt, 2025-06-26 : Sign in test console logs v2 
+9de4c38 - rosuqt, 2025-06-26 : Sign in test console logs 
+1e9e187 - rosuqt, 2025-06-26 : Deployment | Fixed callback n Student Settings 
+467c5f2 - rosuqt, 2025-06-25 : Deployment | Applications Students and added Middleware for 403 page 
+3819b00 - rosuqt, 2025-06-23 : Deployment | Applications Employers 
+357eb04 - rosuqt, 2025-06-21 : Deployment | Applications cron job v0.1 
+946776f - rosuqt, 2025-06-21 : Deployment | Applications cron job v9 
+5eecdda - rosuqt, 2025-06-21 : Deployment | Applications cron job v8 
+68f84a3 - rosuqt, 2025-06-21 : Deployment | Applications cron job v7 
+eacb989 - rosuqt, 2025-06-21 : Deployment | Applications cron job v6 
+5195ba8 - rosuqt, 2025-06-21 : Deployment | Applications cron job v5 
+b5a35b8 - rosuqt, 2025-06-21 : Deployment | Applications cron job v4 
+3989ffe - rosuqt, 2025-06-21 : Deployment | Applications cron job v3 
+1025891 - rosuqt, 2025-06-21 : Deployment | Applications cron job v2 
+1816415 - rosuqt, 2025-06-21 : Deployment | Applications cron job v1 
+5d823c7 - rosuqt, 2025-06-21 : Deployment | Applications (before cron job attempt) 
+414cd3b - rosuqt, 2025-06-19 : Deployment | Student Job Listing v2 
+25b356d - rosuqt, 2025-06-19 : Deployment | Student Job Listing 
+ca3b750 - rosuqt, 2025-06-11 : Deployment | Test Company Profile v4 (fully implemented) 
+c2ccc1d - rosuqt, 2025-06-10 : Deployment | Test Company Profile v3 (fixed company endless loop) 
+d3966ac - rosuqt, 2025-06-10 : Deployment | Test Company Profile v2 (fixed signup) 
+e5b9085 - rosuqt, 2025-06-10 : Deployment | Test Company Profile v1  (tag: profile)
+4d6670a - rosuqt, 2025-06-09 : Deployment | Test Employer Profile v1 
+cac904c - rosuqt, 2025-06-07 : Deployment | Test v10.3 
+23a2405 - rosuqt, 2025-06-05 : Deployment | Test v10.2 
+abe9007 - rosuqt, 2025-06-05 : Deployment | Test v10.1 
+dae9202 - rosuqt, 2025-06-05 : Deployment | Test v10 
+ad3a899 - rosuqt, 2025-06-03 : Deployment | Test v9 
+84968bc - rosuqt, 2025-06-03 : Deployment | Test v8 
+8a90eaa - rosuqt, 2025-06-03 : Deployment | Test v7 
+1747a35 - rosuqt, 2025-06-03 : Deployment | Test v6 
+4599f50 - rosuqt, 2025-06-02 : Deployment | Test v5 
+02c19c2 - rosuqt, 2025-06-02 : Deployment | Test v4 
+4a3e5e4 - rosuqt, 2025-06-02 : Deployment | Test v2 
+d7b7e00 - rosuqt, 2025-06-02 : Deployment | Test - env DELETE AFTER 
+56bab1b - rosuqt, 2025-06-02 : Deployment | v2 - Initial release 
+f265f4f - rosuqt, 2025-06-02 : Exploratory Testing | Safe Commit.02 
+fb1e009 - rosuqt, 2025-06-02 : Deployment | v1 - Initial release 
+532c594 - rosuqt, 2025-06-01 : Exploratory Testing | Safe Commit  (origin/Testing-Phase)
+69d7119 - rosuqt, 2025-05-31 : Exploratory Testing | Commit Ver 06 
+0493fe2 - rosuqt, 2025-05-31 : Exploratory Testing | Commit Ver 05 
+ab6e2c0 - rosuqt, 2025-05-30 : Exploratory Testing | Commit Ver 04 
+ac2d0a2 - rosuqt, 2025-05-27 : Exploratory Testing | Commit Ver 03 
+4c7464f - rosuqt, 2025-05-26 : Exploratory Testing | Commit Ver 02 
+f9ee8e1 - rosuqt, 2025-05-26 : Exploratory Testing | Commit Ver 01  (tag: release)
+83968ab - rosuqt, 2025-05-20 : feat: polished microsoft and signin roles  (origin/microsoft-login-attempt)
+128e360 - rosuqt, 2025-05-20 : feat: microsoft login wont work for school email 
+e0876c8 - rosuqt, 2025-05-13 : feat: finished the whole UI for student module  (origin/student-module-ui)
+4b60c29 - rosuqt, 2025-05-04 : feat: fixed infinite rendering, added loaders, fixed fetching and validations for character limits  (origin/sign-up-latest)
+72e2610 - rosuqt, 2025-05-02 : feat: fixed renz's test cases for signup  (origin/functional-post-job)
+d437c88 - zeynnnnns, 2025-05-01 : job-lisitng page  (origin/student-job-lisitng)
+4856a3d - rosuqt, 2025-04-30 : test: vercel 
+d936543 - rosuqt, 2025-04-29 : test: fix for deploy pt3.  (origin/final-signup, origin/deployment-test)
+54d707c - rosuqt, 2025-04-29 : feat: fix for deployment 
+ae611e9 - rosuqt, 2025-04-29 : feat: fixed validation, used session storage, design tweak 
+c63fdf9 - zeynnnnns, 2025-04-26 : sti-hiring page  (origin/sti-hiring-page)
+6dbafd2 - rosuqt, 2025-04-22 : feat: added drafts moddal and job-listing-live  (origin/design-tweaks)
+d1b2e53 - rosuqt, 2025-04-21 : feat: new dashboard design 
+cccf9dc - rosuqt, 2025-04-20 : Remove .env from repo 
+8785aa6 - rosuqt, 2025-04-19 : test: fix import for vercel  (origin/post-a-job)
+2830a36 - rosuqt, 2025-04-19 : test: fix import for vercel 
+803ae1e - rosuqt, 2025-04-19 : feat: fully functional post-a-job page. -added jwt token -updated supabase connection 
+5563181 - rosuqt, 2025-04-19 : feat: fully functional post-a-job page. -added jwt token -updated supabase connection 
+0783585 - rosuqt, 2025-04-19 : feat: finished post-a-job UI will 
+21c9677 - rosuqt, 2025-04-19 : feat: finished post-a-job UI will 
+c345c8a - zeynnnnns, 2025-04-17 : students-joblistings and sti-hiring page 
+efdfe20 - rosuqt, 2025-04-17 : test: .env update4  (origin/migrated-supabase)
+f7212ba - rosuqt, 2025-04-17 : test: .env update4 
+af357b9 - rosuqt, 2025-04-17 : test: .env update3 
+fc59aff - rosuqt, 2025-04-17 : test: .env update3 
+8a9fc81 - rosuqt, 2025-04-17 : test: .env update2 
+c644fd7 - rosuqt, 2025-04-17 : test: .env update2 
+4240218 - rosuqt, 2025-04-17 : test: .env update 
+ac7a7aa - rosuqt, 2025-04-17 : test: .env update 
+d0b7f0a - rosuqt, 2025-04-17 : test: removed unused form data for deployment testing 
+0b488d4 - rosuqt, 2025-04-17 : test: supabase connection 
+3ad4c36 - rosuqt, 2025-04-17 : test: latest safe copy before migrating to supabase  (origin/student-dashboard)
+53c528f - rosuqt, 2025-04-16 : Fixed message without accidental mention 
+61a3eff - rosuqt, 2025-04-16 : feat: added db.sql 
+2110f3e - rosuqt, 2025-04-16 : test: safe working copy of dashboard scrolling 
+edd817e - rosuqt, 2025-04-16 : feat: remade the sidebar 
+0eaa185 - rosuqt, 2025-04-15 : feat: working sign-in | sign-in page.tsx needs 1 fix(mark/adrian)  (origin/email_validation)
+ab5117b - rosuqt, 2025-04-15 : feat: added bcryptjs and swal loading needs fix 
+9e82291 - rosuqt, 2025-04-15 : test: test add since im adding bcrypt might mess up this is safe copy 
+8ab25a9 - rosuqt, 2025-04-15 : needs fix assigned to adrian 
+434e383 - rosuqt, 2025-04-15 : feat: full sign up done. sign up 2 has error msgs alr 
+0d8da8b - rosuqt, 2025-04-15 : feat: finished sign-up step 1-3 but step 2 doesnt have form error msgs 
+0500e23 - rosuqt, 2025-04-14 : test: deleted empty files for deployment 
+7f4a6d0 - rosuqt, 2025-04-14 : feat: ULTIMATE WORKING VERSION NG STEP 2 signup. 
+9d1bcbd - rosuqt, 2025-04-14 : Merge pull request #17 from rosuqt/testing-branch 
+4397f05 - zeynnnnns, 2025-04-14 : deleted page  (origin/testing-branch)
+feaf3c4 - SevillaAdrian16, 2025-04-13 : Merge branch 'job-hiring' of https://github.com/rosuqt/e2e-platform into job-hiring  (origin/job-hiring)
+b113f12 - SevillaAdrian16, 2025-04-13 : test: test commit 
+53cc6a2 - rosuqt, 2025-04-12 : feat: - completed backend/validation step2 signup & company creation form step1. - added animations to components. - changed dropdown to react-select 
+7dd9946 - rosuqt, 2025-04-11 : test: im gonna try to change the dropdown 
+8188300 - rosuqt, 2025-04-11 : fix: auto select when creating new company 
+180b9ad - rosuqt, 2025-04-10 : fix: fully functional step 2 
+2cb10f1 - rosuqt, 2025-04-10 : fix: email validation when clicking back 
+591600f - rosuqt, 2025-04-09 : test: step 1 and step 2 backend complete, back button not working yet  (origin/backend_sign-in/up)
+8bae1c1 - SevillaAdrian16, 2025-04-08 : test: test commit 
+d88adb3 - rosuqt, 2025-04-07 : test: backend for step1 sign-up complete, but i havent lifted the form state yet. also tried doing the ui for dashboard 
+983301d - SevillaAdrian16, 2025-04-04 : feat: feat commit 
+5fd0a67 - SevillaAdrian16, 2025-03-23 : test: test commit 
+3f2cf6d - zeynnnnns, 2025-03-20 : share job post  (origin/people-page)
+0aefcd2 - rosuqt, 2025-03-20 : Added Employer signup and Links  (origin/TestBranch)
+f50963c - rosuqt, 2025-03-20 : feat: -Finished sign-up page with proper validations -created a form dropdown with placeholder and logo props -Adjusted a hrefs to Link hrefs -Added proper navigations to finished pages -Added a component for removing double clicks -Added Singl line footer component -Added an autocomplete component  (origin/employer-signup)
+b30d9c3 - rosuqt, 2025-03-19 : test: clean employer sign-up but no input handling yet 
+f354dfb - rosuqt, 2025-03-18 : test: resolving conflicts 
+dca9b8f - Mark Toniel A. Seva, 2025-03-18 : Added job details, job list, and updated job page  (origin/feature/job-tags)
+d88112f - rosuqt, 2025-03-18 : test: company signup 
+947b459 - rosuqt, 2025-03-18 : Added People Page(Landing) 
+d72b598 - zeynnnnns, 2025-03-18 : No sign-in overlay yet 
+9b65195 - rosuqt, 2025-03-18 : Test 
+580f214 - rosuqt, 2025-03-18 : Added Sign-in Page 
+558d73d - rosuqt, 2025-03-18 : feat: finished Sign-in Page, Added singlelinefooter component, Added RemoveDoubleClick Component, Added AnimatedCheckBox Component 
+316f008 - rosuqt, 2025-03-18 : Finished Main Landing 
+268708b - rosuqt, 2025-03-18 : feat: finished Main Landing 
+ab21701 - rosuqt, 2025-03-17 : feat: new section (how it works) 
+d88adac - rosuqt, 2025-03-17 : feat: new section & button animations 
+145f2d0 - rosuqt, 2025-03-17 : Merge pull request #4 from rosuqt/test-animations 
+2c3f822 - rosuqt, 2025-03-17 : test: testing overall 
+d292712 - rosuqt, 2025-03-16 : feat: added 3rd section 
+40a1e5f - rosuqt, 2025-03-16 : feat: added upon scroll transition to the new section and hover scale up to the 1st section 
+dda4c79 - rosuqt, 2025-03-16 : feat: added showcase section3 
+bfdfafa - rosuqt, 2025-03-15 : Merge pull request #3 from rosuqt/section-and-dropdowns 
+0c67c01 - rosuqt, 2025-03-15 : test: floating objects for header 
+48f6211 - rosuqt, 2025-03-15 : feat: Added image section & improved dropdown functionality 
+da9f4f9 - rosuqt, 2025-03-14 : Merge pull request #1 from ally-testacc/newpage 
+def3be7 - rosuqt, 2025-03-14 : feat: Add 'Set Up Your Profile' section & project structure improvements - Added Set Up Your Profile section in MainLanding.tsx - Created folders for each page (People, Page, STI-Hiring) with their respective page.tsx - Added components folder in landing for reusable components (Navbar, Footer, Header) - Added Dev-Notes for naming conventions,commit format and folder structure 
+0eb9b1b - rosuqt, 2025-03-14 : Test 
+2308299 - rosuqt, 2025-03-14 : added placeholders 
+9d74b53 - rosuqt, 2025-03-13 : Initial commit 

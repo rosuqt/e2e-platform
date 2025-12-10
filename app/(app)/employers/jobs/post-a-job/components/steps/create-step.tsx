@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import { useState, useEffect } from "react"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "../ui/card"
-import { Briefcase, MapPin, Globe, Clock, DollarSign, GraduationCap, Lightbulb } from "lucide-react"
+import { Briefcase, MapPin, Globe, Clock, GraduationCap, Lightbulb } from "lucide-react"
 import type { JobPostingData } from "../../lib/types"
 import MUIDropdown from "../../../../../components/MUIDropdown"
 import Autocomplete from "@mui/material/Autocomplete";
@@ -30,9 +31,6 @@ const jobTitleOptions = Object.entries(jobTitleSections).flatMap(([category, tit
 );
 
 export function CreateStep({ formData, handleFieldChange, errors }: CreateStepProps) {
-  const [showPayAmount, setShowPayAmount] = useState<boolean>(
-    formData.payType !== "" && formData.payType !== "No Pay" && formData.workType !== "OJT/Internship"
-  )
   const [locationOptions, setLocationOptions] = useState<{ address: string; label: string }[]>([])
   const [employerId, setEmployerId] = useState<string | null>(null)
 
@@ -110,78 +108,6 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
       "recommendedCourse",
       newValue.map((course) => course.title).join(", ") 
     )
-  }
-
-  const handlePayTypeChange = (value: string) => {
-    handleFieldChange("payType", value)
-    setShowPayAmount(value !== "" && value !== "No Pay")
-    if (value === "No Pay") {
-      handleFieldChange("payAmount", "") 
-    }
-  }
-
-  useEffect(() => {
-    setShowPayAmount(
-      formData.payType !== "" &&
-      formData.payType !== "No Pay"
-    )
-    if (formData.workType === "OJT/Internship" && formData.payType === "No Pay") {
-      handleFieldChange("payAmount", "")
-    }
-  }, [formData.payType, formData.workType, handleFieldChange])
-
-  const validatePayAmount = () => {
-    if (
-      showPayAmount &&
-      (!formData.payAmount || formData.payAmount.replace(/[^0-9.]/g, "") === "")
-    ) {
-      return formData.payType === "Allowance"
-        ? "Allowance amount is required"
-        : "Pay amount is required"
-    }
-    return ""
-  }
-
-  const payAmountError = validatePayAmount()
-
-  const workTypes = [
-    { value: "OJT/Internship", label: "OJT/Internship" },
-    { value: "Part-time", label: "Part-time" },
-    { value: "Full-time", label: "Full-time" },
-    { value: "Contract", label: "Contract" },
-  ]
-
-  const payTypes = [
-    ...(formData.workType === "OJT/Internship"
-      ? [
-          { value: "No Pay", label: "No Pay" },
-          { value: "Allowance", label: "Allowance" }
-        ]
-      : [
-          { value: "Weekly", label: "Weekly" },
-          { value: "Monthly", label: "Monthly" },
-          { value: "Yearly", label: "Yearly" }
-        ]),
-  ];
-
-  function getPayPerHour(payType: string, payAmount: string) {
-    const amount = Number(payAmount)
-    if (!payAmount || isNaN(amount) || payType === "No Pay") return ""
-    if (payType === "Weekly") return `Pay per hour: ₱${(amount / 40).toFixed(2)} / hr (est.)`
-    if (payType === "Monthly") return `Pay per hour: ₱${(amount / 160).toFixed(2)} / hr (est.)`
-    if (payType === "Yearly") return `Pay per hour: ₱${(amount / 2080).toFixed(2)} / hr (est.)`
-    if (payType === "Allowance") return `Allowance: ₱${amount.toFixed(2)}`
-    return ""
-  }
-
-  const getLowPayWarning = () => {
-    if (!showPayAmount) return ""
-    const val = Number(formData.payAmount.replace(/[^0-9.]/g, ""))
-    if (formData.payType === "Weekly" && val > 0 && val < 500) return "Hmm… that pay seems a bit low — want to double-check before posting?"
-    if (formData.payType === "Monthly" && val > 0 && val < 3000) return "Hmm… that pay seems a bit low — want to double-check before posting?"
-    if (formData.payType === "Yearly" && val > 0 && val < 40000) return "Hmm… that pay seems a bit low — want to double-check before posting?"
-    if (formData.payType === "Allowance" && val > 0 && val < 500) return "Hmm… that allowance seems a bit low — want to double-check before posting?"
-    return ""
   }
 
   return (
@@ -346,7 +272,12 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
             <div className="p-4">
               <MUIDropdown
                 label="Select a Work Type"
-                options={workTypes}
+                options={[
+                  { value: "OJT/Internship", label: "OJT/Internship" },
+                  { value: "Part-time", label: "Part-time" },
+                  { value: "Full-time", label: "Full-time" },
+                  { value: "Contract", label: "Contract" },
+                ]}
                 value={formData.workType}
                 onChange={(value) => {
                   console.log("Work Type selected:", value)
@@ -356,61 +287,6 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               />
               {errors.workType && <p className="text-red-500 text-sm mt-1">Work type is required</p>}
               <p className="text-xs text-gray-500 mt-2">Choose the employment type for this position</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
-          <CardContent className="p-0">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
-              <Label htmlFor="payType" className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-blue-500" />
-                Compensation
-                <span className="text-red-500 ml-1">*</span>
-              </Label>
-            </div>
-            <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <MUIDropdown
-                  label="Pay Type"
-                  options={payTypes}
-                  value={formData.payType}
-                  onChange={handlePayTypeChange}
-                  error={errors.payType}
-                  errorMessage="Pay type is required"
-                />
-                {showPayAmount && (
-                  <>
-                    <TextField
-                      id="payAmount"
-                      label={
-                        <>
-                          Pay Amount
-                          <span className="text-red-500 ml-1">*</span>
-                        </>
-                      }
-                      value={formData.payAmount.startsWith("₱") ? formData.payAmount : formData.payAmount ? `₱${formData.payAmount.replace(/^₱/, "")}` : ""}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9.]/g, "");
-                        handleFieldChange("payAmount", val ? `₱${val}` : "");
-                      }}
-                      fullWidth
-                      error={!!payAmountError}
-                      helperText={payAmountError}
-                      variant="outlined"
-                    />
-                    {getLowPayWarning() && (
-                      <div className="text-red-600 text-sm mt-2 font-medium">
-                        {getLowPayWarning()}
-                      </div>
-                    )}
-                    <div className="flex items-center text-xs text-blue-700 font-medium pl-2">
-                      {getPayPerHour(formData.payType, formData.payAmount.replace(/^₱/, ""))}
-                    </div>
-                  </>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-3">Specify the compensation details for this position</p>
             </div>
           </CardContent>
         </Card>

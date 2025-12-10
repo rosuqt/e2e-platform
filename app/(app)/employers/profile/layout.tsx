@@ -5,11 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { TbSettings } from "react-icons/tb";
 import Sidebar from "../../side-nav/sidebar";
 import BaseLayout from "../base-layout";
-import { BsBuilding } from "react-icons/bs";
-import { FaUser } from "react-icons/fa";
 import { LuBadgeCheck } from "react-icons/lu";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../lib/authOptions";
+import { LogOut } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
@@ -27,8 +26,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const menuItems = useMemo(
     () => [
-      { icon: FaUser, text: "My Profile", href: "/employers/profile" },
-      { icon: BsBuilding, text: "My Company", href: "/employers/profile/company" },
       { icon: TbSettings, text: "Settings", href: "/employers/settings" },
       {
         icon: LuBadgeCheck,
@@ -40,6 +37,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ? "/employers/verification/partially-verified"
             : "/employers/verification/unverified",
       },
+      { icon: LogOut, text: "Logout", href: "/landing" }
     ],
     [verifyStatus]
   );

@@ -59,6 +59,24 @@ export async function POST(req: Request) {
 
   const studentsMap = Array.isArray(students) ? Object.fromEntries(students.map((s: any) => [s.id, s])) : {};
 
+  function parseAddressField(address: unknown): string[] {
+    if (Array.isArray(address)) return address as string[]
+    if (typeof address === "string") {
+      try {
+        const arr = JSON.parse(address)
+        if (Array.isArray(arr)) return arr as string[]
+        return address.split(",").map(s => s.trim()).filter(Boolean)
+      } catch {
+        return address.split(",").map(s => s.trim()).filter(Boolean)
+      }
+    }
+    if (address && typeof address === "object" && address !== null) {
+      const values = Object.values(address as object)
+      if (values.every(v => typeof v === "string")) return values as string[]
+    }
+    return []
+  }
+
   const results = await Promise.all(
     matches.map(async (m: any) => {
       const student = studentsMap[m.student_id] || {};
@@ -99,7 +117,12 @@ export async function POST(req: Request) {
         year: student.year || "",
         section: student.section || "",
         course: student.course || "",
-        address: student.address || "",
+        address: (() => {
+          const arr = parseAddressField(student.address)
+          if (arr.length > 1) return arr[1]
+          if (arr.length === 1) return arr[0]
+          return ""
+        })(),
         is_alumni: student.is_alumni || false,
         user_id: student.user_id || "",
         profile_img_url: profileImgUrl,

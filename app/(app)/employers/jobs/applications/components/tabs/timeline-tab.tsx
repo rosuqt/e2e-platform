@@ -1,5 +1,6 @@
 import React from "react"
 import { Clock } from "lucide-react"
+import { MdMarkEmailRead } from "react-icons/md"
 
 type TimelineEvent = {
   status: string
@@ -44,11 +45,23 @@ export default function TimelineTab({
       ) : (
         timeline.map((event, index) => (
           <div key={index} className="relative pl-12 pb-8">
-            <div className={`absolute left-0 w-8 h-8 rounded-full flex items-center justify-center ${event.iconBg}`}>
-              {event.icon}
+            <div className={`absolute left-0 w-8 h-8 rounded-full flex items-center justify-center ${
+              event.status.toLowerCase().replace(/\s/g, "") === "offersent"
+                ? "bg-green-600"
+                : event.iconBg
+            }`}>
+              {event.status.toLowerCase().replace(/\s/g, "") === "offersent"
+                ? <MdMarkEmailRead  className="h-5 w-5 text-white" />
+                : event.icon}
             </div>
             <div className={`border rounded-lg p-3 ${event.current ? "border-purple-300 bg-purple-50" : "border-gray-200"}`}>
-              <div className="font-medium text-sm">{event.status}</div>
+              <div className="font-medium text-sm" style={
+                event.status.toLowerCase().replace(/\s/g, "") === "offersent"
+                  ? { color: "#16a34a" }
+                  : undefined
+              }>
+                {event.status}
+              </div>
               <div className="text-xs text-gray-500 mt-1">{formatTimelineDate(event.date)}</div>
               <div className="text-xs text-gray-400 mt-1">{event.message}</div>
             </div>
@@ -84,6 +97,11 @@ export default function TimelineTab({
           {status === "waitlisted" && (
             <em>
               🌱 Keep an eye out! This candidate is on your radar for future opportunities. Stay in touch and keep them engaged!
+            </em>
+          )}
+          {status === "offersent" && (
+            <em>
+              🟢 Offer sent! Awaiting candidate&apos;s response to your job offer.
             </em>
           )}
           {status === "hired" && (
