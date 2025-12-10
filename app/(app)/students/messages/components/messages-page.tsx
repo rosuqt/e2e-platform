@@ -132,7 +132,7 @@ export default function MessageInterface({conversationId, messages}: any) {
   }, []);
   const [activeConversation, setActiveConversation] = useState<any>(null);
   const activeConvo = conversations.find((c) => c.id === activeConversation);
-  
+  const [search, setSearch] = useState("");
   //SENDING MESSAGE
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -174,7 +174,10 @@ export default function MessageInterface({conversationId, messages}: any) {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
             <Input
-              placeholder="Search messages"
+              type="text"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10 bg-white border-slate-200 rounded-md focus-visible:ring-blue-500"
             />
           </div>
@@ -203,7 +206,7 @@ export default function MessageInterface({conversationId, messages}: any) {
         {/* MESSAGING MODE */}
         {active !== "contacts" &&(
         <div className="overflow-y-auto flex-1">         
-          {conversations.map((conversation) => (
+          {conversations.filter(adacc => adacc.name.toLowerCase().includes(search.toLowerCase())).map((conversation) => (
             <div
               key={conversation.id}
               className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4 ${
@@ -262,7 +265,7 @@ export default function MessageInterface({conversationId, messages}: any) {
             {/* Collapsible Content */}
             {isOpenS && (
               <div className="mt-1 space-y-1">
-              {students.map((s: any) => (
+              {students.filter(adacc => adacc.first_name.toLowerCase().includes(search.toLowerCase())).map((s: any) => (
             <div
               key={s.id}
               className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}
@@ -306,7 +309,7 @@ export default function MessageInterface({conversationId, messages}: any) {
             {/* Collapsible Content */}
             {isOpenA && (
               <div className="mt-1 space-y-1">
-              {admins.map((a: any) => (
+              {admins.filter(adacc => adacc.first_name.toLowerCase().includes(search.toLowerCase())).map((a: any) => (
             <div
               key={a.id}
               className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}
@@ -349,49 +352,6 @@ export default function MessageInterface({conversationId, messages}: any) {
               </Avatar>
               <div className="flex gap-2">
                 {/* removed Phone and Video buttons */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full text-slate-600 hover:text-blue-600 hover:bg-blue-50"
-                >
-                  <Plus className="h-5 w-5" />
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full text-slate-600 hover:text-blue-600 hover:bg-blue-50"
-                    >
-                      <MoreVertical className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>Messaging Settings</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                      <DropdownMenuItem>
-                        <Archive className="mr-2 h-4 w-4" />
-                        <span>Archived Messages</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        <span>Delete Conversations</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                      <DropdownMenuItem>
-                        <Moon className="mr-2 h-4 w-4" />
-                        <span>Dark Mode</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Advanced Settings</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </div>
 
