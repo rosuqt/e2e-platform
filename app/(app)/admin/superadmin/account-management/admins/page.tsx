@@ -33,7 +33,7 @@ interface Coordinator {
   last_name: string
   suffix?: string
   department: string
-  status: "active" | "inactive" | "archived"
+  status: "active" | "inactive"
   created_at?: string
 }
 
@@ -46,7 +46,7 @@ interface Admin {
     last: string
   }
   department: string
-  status: "active" | "inactive" | "archived"
+  status: "active" | "inactive"
   createdAt: string
 }
 
@@ -84,7 +84,7 @@ export default function AdminsManagement() {
     department: "",
   })
   const [page, setPage] = useState(1)
-  const pageSize = 7
+const pageSize = 7
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
@@ -105,7 +105,12 @@ export default function AdminsManagement() {
               last: c.last_name + (c.suffix && c.suffix !== "none" ? `, ${c.suffix}` : ""),
             },
             department: c.department,
-            status: c.is_archived ? "archived" : c.status,
+            status:
+              c.is_archived === true
+                ? "inactive"
+                : c.status === "inactive"
+                  ? "inactive"
+                  : "active",
             createdAt: c.created_at ? c.created_at.split("T")[0] : "",
           }))
         )
@@ -132,8 +137,7 @@ export default function AdminsManagement() {
     const matchesTab =
       activeTab === "all" ||
       (activeTab === "active" && admin.status === "active") ||
-      (activeTab === "inactive" && admin.status === "inactive") ||
-      (activeTab === "archived" && admin.status === "archived")
+      (activeTab === "inactive" && admin.status === "inactive")
 
     return matchesSearch && matchesTab
   })
@@ -164,13 +168,12 @@ export default function AdminsManagement() {
   }
 
   const handleArchiveAdmin = async (admin: Admin) => {
-    const isArchived = admin.status === "archived"
-   
+    const nextStatus = admin.status === "active" ? "inactive" : "active"
     await toast.promise(
       fetch("/api/superadmin/actions/isArchived", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: admin.id }),
+        body: JSON.stringify({ id: admin.id, is_archived: nextStatus === "inactive" }),
       }).then(async res => {
         if (!res.ok) throw new Error()
         const refreshRes = await fetch("/api/superadmin/fetchUsers")
@@ -187,7 +190,12 @@ export default function AdminsManagement() {
                   last: c.last_name + (c.suffix && c.suffix !== "none" ? `, ${c.suffix}` : ""),
                 },
                 department: c.department,
-                status: c.is_archived ? "archived" : c.status,
+                status:
+                  c.is_archived === true
+                    ? "inactive"
+                    : c.status === "inactive"
+                      ? "inactive"
+                      : "active",
                 createdAt: c.created_at ? c.created_at.split("T")[0] : "",
               }))
             )
@@ -195,9 +203,9 @@ export default function AdminsManagement() {
         }
       }),
       {
-        loading: isArchived ? "Unarchiving..." : "Archiving...",
-        success: isArchived ? "Admin unarchived." : "Admin archived.",
-        error: isArchived ? "Failed to unarchive admin." : "Failed to archive admin.",
+        loading: nextStatus === "inactive" ? "Archiving..." : "Unarchiving...",
+        success: nextStatus === "inactive" ? "Admin archived." : "Admin unarchived.",
+        error: nextStatus === "inactive" ? "Failed to archive admin." : "Failed to unarchive admin.",
       },
       { position: "bottom-right" }
     )
@@ -325,10 +333,9 @@ export default function AdminsManagement() {
             last: editFormData.lastName,
           },
           department: editFormData.department,
-          status: (["active", "inactive", "archived"].includes(editFormData.status) ? editFormData.status : "active") as
+          status: (["active", "inactive"].includes(editFormData.status) ? editFormData.status : "active") as
             | "active"
-            | "inactive"
-            | "archived",
+            | "inactive",
         }
       }
       return admin
@@ -605,7 +612,7 @@ export default function AdminsManagement() {
 
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-                  <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+                  <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
                     <TabsTrigger
                       value="all"
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
@@ -623,12 +630,6 @@ export default function AdminsManagement() {
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
                     >
                       Inactive ({adminList.filter((a) => a.status === "inactive").length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="archived"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
-                    >
-                      Archived ({adminList.filter((a) => a.status === "archived").length})
                     </TabsTrigger>
                   </TabsList>
 
@@ -692,7 +693,7 @@ export default function AdminsManagement() {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => handleArchiveAdmin(admin)} className="rounded-xl py-3">
                                       <Archive className="mr-3 w-4 h-4" />
-                                      {admin.status === "archived" ? "Unarchive" : "Archive"}
+                                      {admin.status === "inactive" ? "Unarchive" : "Archive"}
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -884,7 +885,6 @@ export default function AdminsManagement() {
                 <SelectContent className="rounded-xl">
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -910,7 +910,6 @@ function StatusBadge({ status }: { status: string }) {
   const variants = {
     active: "bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
     inactive: "bg-red-100 text-red-700 border-red-200 hover:bg-red-100",
-    archived: "bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100",
   }
 
   return (
