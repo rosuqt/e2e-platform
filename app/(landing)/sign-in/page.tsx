@@ -53,7 +53,10 @@ export default function SignInPage() {
     if (searchParams?.get("error")) {
       if (searchParams.get("error") === "invalid_domain") {
         setError("Sorry! We’re only accepting sign-ins from STI College students. Please use your STI email.");
-      } else {
+      } else if (searchParams.get("error") === "archived_account") { // <-- NEW CHECK ADDED
+        setError("Account is archived and cannot be logged in.");
+      }
+      else {
         setError("Invalid email or password");
       }
     }

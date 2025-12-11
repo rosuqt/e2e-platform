@@ -40,7 +40,7 @@ import { Textarea } from "@heroui/react"
 import { toast } from "react-toastify"
 
 interface Student {
-  id: string 
+  id: string
   studentId: string
   name: string
   email: string
@@ -77,23 +77,30 @@ export default function StudentsManagement() {
   const [isLoading, setIsLoading] = useState(false)
 
   const [editForm, setEditForm] = useState({
-  name: "",
-  email: "",
-  personalEmail: "",
-  personalPhone: "",
-  year: "",
-  course: "",
-  section: "",
-  address: "",
+    name: "",
+    email: "",
+    personalEmail: "",
+    personalPhone: "",
+    year: "",
+    course: "",
+    section: "",
+    address: "",
   });
 
-  useEffect(() => {
-    async function fetchStudents() {
-      setIsLoading(true)
-      const res = await fetch("/api/superadmin/fetchUsers?students=1", { method: "GET" })
-      setIsLoading(false)
-      if (!res.ok) return
+  // --- REUSABLE FETCH FUNCTION ---
+  const fetchStudents = async () => {
+    setIsLoading(true)
+    try {
+      // Added timestamp to prevent caching
+      const res = await fetch(`/api/superadmin/fetchUsers?students=1&t=${Date.now()}`, { method: "GET" })
+      
+      if (!res.ok) {
+        setIsLoading(false)
+        return
+      }
+      
       const { students: apiStudents } = await res.json()
+      
       if (Array.isArray(apiStudents)) {
         setStudents(
           apiStudents.map((s: Record<string, unknown>) => {
@@ -125,7 +132,14 @@ export default function StudentsManagement() {
           }) as unknown as Student[]
         )
       }
+    } catch (error) {
+      console.error("Error fetching students:", error)
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchStudents()
   }, [])
 
@@ -134,7 +148,7 @@ export default function StudentsManagement() {
     new Set(
       students
         .map((student) => student.year)
-        .filter((year) => year && year !== "") 
+        .filter((year) => year && year !== "")
     )
   )
   const courses = Array.from(
@@ -184,7 +198,7 @@ export default function StudentsManagement() {
         section: student.section,
         address: student.address,
       });
-    }       
+    }
     if (student.id && student.id !== "") {
       try {
         const res = await fetch(`/api/superadmin/fetchUsers?studentId=${encodeURIComponent(student.id)}`)
@@ -206,44 +220,47 @@ export default function StudentsManagement() {
           if (contact_info) {
             let info = contact_info
             if (typeof info === "string") {
-              try { info = JSON.parse(info) } catch {}
+              try { info = JSON.parse(info) } catch { }
             }
             if (info && typeof info === "object") {
               if (info.email) setPersonalEmail(info.email)
               if (info.countryCode && info.phone) setPersonalPhone(`+${info.countryCode} ${info.phone}`)
             }
           }
-          
+
           if (uname) setUsername(uname)
-          
+
         }
       } catch {
         setAvatarLoading(false)
       }
     }
   }
-  
+
   const saveStudentChanges = async () => {
-  if (!selectedStudent) return;
+    if (!selectedStudent) return;
 
-  const res = await fetch("/api/superadmin/student-management", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      id: selectedStudent.id,
-      ...editForm,
-    }),
-  });
+    const res = await fetch("/api/superadmin/student-management", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: selectedStudent.id,
+        ...editForm,
+      }),
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (res.ok) {
-    toast.success("Student updated successfully!");
-    setIsEditDialogOpen(false);
-  } else {
-    toast.error(data.error || "Failed to update student");
-  }
-};
+    if (res.ok) {
+      toast.success("Student updated successfully!");
+      setIsEditDialogOpen(false);
+      fetchStudents(); // Refresh data
+    } else {
+      toast.error(data.error || "Failed to update student");
+    }
+  };
+
+  // --- UPDATED ARCHIVE LOGIC START ---
 
   const handleArchiveDialog = (student: Student) => {
     setSelectedStudent(student)
@@ -252,16 +269,44 @@ export default function StudentsManagement() {
 
   const confirmArchiveStudent = async () => {
     if (!selectedStudent) return
-    await fetch("/api/superadmin/actions/isArchived", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selectedStudent.id }),
-    })
-    setStudents(students.map(s =>
-      s.id === selectedStudent.id ? { ...s, is_archived: true } : s
-    ))
-    setIsArchiveDialogOpen(false)
+
+    // Calculate new status (Toggle: true -> false, false -> true)
+    const newArchivedStatus = !selectedStudent.is_archived
+    const actionText = newArchivedStatus ? "Archive" : "Unarchive"
+
+    try {
+      const res = await fetch("/api/superadmin/actions/isArchived", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // IMPORTANT: Sending 'is_archived' explicitly helps avoid backend schema confusion
+        body: JSON.stringify({ 
+            id: selectedStudent.id, 
+            target: "student",
+            is_archived: newArchivedStatus 
+        }),
+      })
+
+      if (res.ok) {
+        // 1. Update Local State immediately for speed
+        setStudents(prev => prev.map(s =>
+          s.id === selectedStudent.id ? { ...s, is_archived: newArchivedStatus } : s
+        ))
+        
+        toast.success(`Student ${actionText}d successfully`)
+        setIsArchiveDialogOpen(false)
+
+        // 2. Re-fetch from server to ensure perfect sync
+        await fetchStudents()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || `Failed to ${actionText} student`)
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("An error occurred while communicating with the server.")
+    }
   }
+  // --- UPDATED ARCHIVE LOGIC END ---
 
   const exportStudents = () => {
     const header = "Student ID,Name,Email,Phone,Course,Year,Status\n"
