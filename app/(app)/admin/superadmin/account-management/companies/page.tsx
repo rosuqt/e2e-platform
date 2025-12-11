@@ -44,7 +44,7 @@ interface Company {
   phone: string
   industry: string
   size: "small" | "medium" | "large" | "enterprise"
-  status: "active" | "inactive" | "suspended" | "pending"
+  status: "active" | "inactive"
   registrationDate: string
   location: string
   website: string
@@ -100,7 +100,12 @@ export default function CompaniesManagement() {
               contact_number: typeof c.contact_number === "string" ? c.contact_number : "",
               industry: typeof c.company_industry === "string" ? c.company_industry : "",
               size: typeof c.company_size === "string" ? c.company_size : "small",
-              status: typeof c.status === "string" ? c.status : "active",
+              status:
+                c.is_archived === true
+                  ? "inactive"
+                  : typeof c.status === "string" && c.status === "active"
+                    ? "active"
+                    : "inactive",
               registrationDate:
                 typeof c.created_at === "string"
                   ? new Date(c.created_at).toISOString().slice(0, 10)
@@ -161,17 +166,15 @@ export default function CompaniesManagement() {
       company.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       company.industry.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesTab =
+    const matchesStatus =
       (activeTab === "active" && company.status === "active") ||
       (activeTab === "inactive" && company.status === "inactive") ||
-      (activeTab === "suspended" && company.status === "suspended") ||
-      (activeTab === "pending" && company.status === "pending") ||
       activeTab === "all"
 
     const matchesIndustry = selectedIndustry === "all" || company.industry === selectedIndustry
     const matchesSize = selectedSize === "all" || company.size === selectedSize
 
-    return matchesSearch && matchesTab && matchesIndustry && matchesSize
+    return matchesSearch && matchesStatus && matchesIndustry && matchesSize
   })
 
   const handleViewCompany = (company: Company) => {
@@ -186,14 +189,92 @@ export default function CompaniesManagement() {
 
   const confirmArchiveCompany = async () => {
     if (!selectedCompany) return
-    await fetch("/api/superadmin/actions/isArchived", {
+    const nextStatus = selectedCompany.status === "active" ? "inactive" : "active"
+    const payloadId = selectedCompany.id
+
+    const archiveRes = await fetch("/api/superadmin/actions/isArchived", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selectedCompany.companyId }),
+      body: JSON.stringify({
+        id: payloadId,
+        is_archived: nextStatus === "inactive",
+      }),
     })
-    setCompanies(companies.map(c =>
-      c.companyId === selectedCompany.companyId ? { ...c, status: "suspended" } : c
-    ))
+
+    // If the API failed, do not mutate state; let the UI stay consistent.
+    if (!archiveRes.ok) {
+      const errText = await archiveRes.text().catch(() => archiveRes.statusText)
+      console.error("Failed to toggle company archive state", errText || archiveRes.statusText)
+      return
+    }
+
+    // Optimistically update the toggled company
+    const targetKey = selectedCompany.companyId || selectedCompany.id
+    setCompanies((prev) =>
+      prev.map((c) =>
+        c.id === selectedCompany.id || c.companyId === selectedCompany.companyId
+          ? { ...c, status: nextStatus }
+          : c,
+      ),
+    )
+
+    // Re-fetch to ensure UI reflects the persisted backend state
+    const refresh = await fetch("/api/superadmin/fetchUsers?allCompanies=true")
+    if (refresh.ok) {
+      const res = await refresh.json()
+      if (Array.isArray(res.companies)) {
+        setCompanies(
+          res.companies.map((c: Record<string, unknown>, idx: number) => ({
+            id: typeof c.id === "number" ? c.id : idx + 1,
+            companyId:
+              typeof c.company_id === "string"
+                ? c.company_id
+                : typeof c.id === "number"
+                  ? c.id.toString()
+                  : "",
+            name: typeof c.company_name === "string" ? c.company_name : "",
+            email: typeof c.contact_email === "string" ? c.contact_email : "",
+            phone:
+              (typeof c.country_code === "string" && c.country_code
+                ? "+" + c.country_code + " "
+                : "") +
+              (typeof c.contact_number === "string" ? c.contact_number : ""),
+            country_code: typeof c.country_code === "string" ? c.country_code : "",
+            contact_number: typeof c.contact_number === "string" ? c.contact_number : "",
+            industry: typeof c.company_industry === "string" ? c.company_industry : "",
+            size: typeof c.company_size === "string" ? c.company_size : "small",
+            status:
+              c.is_archived === true
+                ? "inactive"
+                : typeof c.status === "string" && c.status === "active"
+                  ? "active"
+                  : "inactive",
+            registrationDate:
+              typeof c.created_at === "string"
+                ? new Date(c.created_at).toISOString().slice(0, 10)
+                : "",
+            location: typeof c.company_branch === "string" ? c.company_branch : "",
+            website: typeof c.company_website === "string" ? c.company_website : "",
+            employeesCount: typeof c.employees_count === "number" ? c.employees_count : 0,
+            description: typeof c.description === "string" ? c.description : "",
+            contactEmail: typeof c.contact_email === "string" ? c.contact_email : "",
+            contactPhone:
+              (typeof c.country_code === "string" && c.country_code
+                ? "+" + c.country_code + " "
+                : "") +
+              (typeof c.contact_number === "string" ? c.contact_number : ""),
+            address: typeof c.exact_address === "string" ? c.exact_address : "",
+            suite_unit_floor: typeof c.suite_unit_floor === "string" ? c.suite_unit_floor : "",
+            business_park_landmark:
+              typeof c.business_park_landmark === "string" ? c.business_park_landmark : "",
+            building_name: typeof c.building_name === "string" ? c.building_name : "",
+            verified: c.verify_status === "full",
+            logoPath: typeof c.company_logo_image_path === "string" ? c.company_logo_image_path : undefined,
+          })),
+        )
+      }
+    }
+
     setIsArchiveDialogOpen(false)
   }
 
@@ -304,7 +385,7 @@ export default function CompaniesManagement() {
                 </div>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-                  <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+                  <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
                     <TabsTrigger
                       value="all"
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
@@ -322,18 +403,6 @@ export default function CompaniesManagement() {
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
                     >
                       Inactive ({companies.filter((c) => c.status === "inactive").length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="suspended"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
-                    >
-                      Suspended ({companies.filter((c) => c.status === "suspended").length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="pending"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
-                    >
-                      Pending ({companies.filter((c) => c.status === "pending").length})
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="all" className="mt-4">
@@ -357,26 +426,6 @@ export default function CompaniesManagement() {
                     />
                   </TabsContent>
                   <TabsContent value="inactive" className="mt-4">
-                    <CompaniesTable
-                      companies={filteredCompanies}
-                      onViewCompany={handleViewCompany}
-                      onArchiveCompany={handleArchiveDialog}
-                      menuAnchors={menuAnchors}
-                      handleMenuOpen={handleMenuOpen}
-                      handleMenuClose={handleMenuClose}
-                    />
-                  </TabsContent>
-                  <TabsContent value="suspended" className="mt-4">
-                    <CompaniesTable
-                      companies={filteredCompanies}
-                      onViewCompany={handleViewCompany}
-                      onArchiveCompany={handleArchiveDialog}
-                      menuAnchors={menuAnchors}
-                      handleMenuOpen={handleMenuOpen}
-                      handleMenuClose={handleMenuClose}
-                    />
-                  </TabsContent>
-                  <TabsContent value="pending" className="mt-4">
                     <CompaniesTable
                       companies={filteredCompanies}
                       onViewCompany={handleViewCompany}
@@ -539,10 +588,12 @@ export default function CompaniesManagement() {
       </Dialog>
 
       <Dialog open={isArchiveDialogOpen} onClose={() => setIsArchiveDialogOpen(false)}>
-        <DialogTitle>Archive Company?</DialogTitle>
+        <DialogTitle>{selectedCompany?.status === "active" ? "Archive Company?" : "Unarchive Company?"}</DialogTitle>
         <DialogContent>
           <Typography>
-            This will archive the company record and remove access from the system.
+            {selectedCompany?.status === "active"
+              ? "This will archive the company record and remove access from the system."
+              : "This will restore the company record and re-enable access."}
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -550,7 +601,7 @@ export default function CompaniesManagement() {
             Cancel
           </Button>
           <Button onClick={confirmArchiveCompany} color="warning">
-            Archive
+            {selectedCompany?.status === "active" ? "Archive" : "Unarchive"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -654,10 +705,9 @@ function CompaniesTable({
                           onArchiveCompany(company)
                         }}
                       >
-                      <Archive className="mr-2 h-4 w-4" />
-                        Edit
+                        <Archive className="mr-2 h-4 w-4" />
+                        {company.status === "active" ? "Archive" : "Unarchive"}
                       </button>
-                      
                     </div>
                   )}
                 </td>
@@ -687,24 +737,6 @@ function StatusBadge({ status }: { status: string }) {
         className={cn("rounded-full px-3 py-1 text-sm font-semibold bg-gray-100 text-gray-700 border-gray-200")}
       >
         Inactive
-      </Badge>
-    )
-  } else if (status === "suspended") {
-    return (
-      <Badge
-        variant="outline"
-        className={cn("rounded-full px-3 py-1 text-sm font-semibold bg-red-100 text-red-700 border-red-200")}
-      >
-        Suspended
-      </Badge>
-    )
-  } else if (status === "pending") {
-    return (
-      <Badge
-        variant="outline"
-        className={cn("rounded-full px-3 py-1 text-sm font-semibold bg-blue-100 text-blue-700 border-blue-200")}
-      >
-        Pending
       </Badge>
     )
   }
