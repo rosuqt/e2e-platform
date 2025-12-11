@@ -51,6 +51,7 @@ interface VerificationDocument {
 
 export default function VerificationManagement() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState("all")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [selectedDoc, setSelectedDoc] = useState<VerificationDocument | null>(null)
   const [actionReason, setActionReason] = useState("")
@@ -72,12 +73,19 @@ export default function VerificationManagement() {
 
   const searchedDocs = documents.filter((doc) => {
     const search = searchQuery.toLowerCase()
-    return (
+    const matchesSearch =
       `${doc.first_name} ${doc.last_name}`.toLowerCase().includes(search) ||
       (doc.file_type ?? "").toLowerCase().includes(search) ||
       doc.company_name.toLowerCase().includes(search) ||
       doc.employer_id.toLowerCase().includes(search)
-    )
+
+    const matchesTab =
+      activeTab === "all" ||
+      (activeTab === "pending" && doc.status === "pending") ||
+      (activeTab === "approved" && doc.status === "approved") ||
+      (activeTab === "rejected" && doc.status === "rejected")
+
+    return matchesSearch && matchesTab
   })
 
   const handleViewDoc = (doc: VerificationDocument) => {
@@ -122,12 +130,12 @@ export default function VerificationManagement() {
             </div>
           </div>
 
-          <Tabs defaultValue="pending" >
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
-              <TabsTrigger value="approved">Approved</TabsTrigger>
-              <TabsTrigger value="rejected">Rejected</TabsTrigger>
+              <TabsTrigger value="all">All ({documents.length})</TabsTrigger>
+              <TabsTrigger value="pending">Pending ({documents.filter((d) => d.status === "pending").length})</TabsTrigger>
+              <TabsTrigger value="approved">Approved ({documents.filter((d) => d.status === "approved").length})</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected ({documents.filter((d) => d.status === "rejected").length})</TabsTrigger>
             </TabsList>
             <TabsContent value="all" className="mt-4">
               <DocumentsTable docs={searchedDocs} onViewDoc={handleViewDoc} anchorEls={anchorEls} handleMenuOpen={handleMenuOpen} handleMenuClose={handleMenuClose} />

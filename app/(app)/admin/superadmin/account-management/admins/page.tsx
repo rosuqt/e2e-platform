@@ -595,7 +595,7 @@ export default function AdminsManagement() {
                   </div>
                   <Button
                     variant="outline"
-                    className="flex items-center space-x-2 nded-2xl border-gray-200 h-12 px-6"
+                    className="flex items-center space-x-2 rounded-2xl border-gray-200 h-12 px-6"
                     onClick={exportAdmins}
                   >
                     <Download className="w-5 h-5" />
