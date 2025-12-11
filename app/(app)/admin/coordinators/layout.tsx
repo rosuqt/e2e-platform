@@ -10,27 +10,13 @@ import {
   LogOut,
   Menu,
   ChevronDown,
-  Search,
-  Bell,
-  Flag,
-  Settings,
   Shield,
-  User,
   X,
+  MessageCircle,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, easeIn, easeOut } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { useSession, signOut } from "next-auth/react"
 
@@ -52,19 +38,11 @@ const navItems: NavItem[] = [
     title: "Student Management",
     href: "/admin/coordinators/students",
     icon: Users,
-    badge: 3,
   },
   {
-    title: "Report Management",
-    href: "#",
-    icon: Flag,
-    badge: 12,
-    submenu: [
-      { title: "Reported Employers", href: "/admin/coordinators/reports/employers", badge: 5 },
-      { title: "Reported Companies", href: "/admin/coordinators/reports/companies", badge: 3 },
-      { title: "Reported Listings", href: "/admin/coordinators/reports/listings", badge: 2 },
-      { title: "Reported Students", href: "/admin/coordinators/reports/students", badge: 2 },
-    ],
+    title: "Messaging",
+    href: "/admin/coordinators/messages",
+    icon: MessageCircle
   },
 ]
 
@@ -72,7 +50,6 @@ const sidebarVariants = {
   expanded: {
     width: 280,
     transition: {
-      type: "spring",
       stiffness: 400,
       damping: 40,
       mass: 1,
@@ -81,7 +58,6 @@ const sidebarVariants = {
   collapsed: {
     width: 80,
     transition: {
-      type: "spring",
       stiffness: 400,
       damping: 40,
       mass: 1,
@@ -96,7 +72,7 @@ const contentVariants = {
     transition: {
       delay: 0.1,
       duration: 0.3,
-      ease: "easeOut",
+      ease: easeOut,
     },
   },
   collapsed: {
@@ -104,7 +80,7 @@ const contentVariants = {
     x: -10,
     transition: {
       duration: 0.2,
-      ease: "easeIn",
+      ease: easeIn,
     },
   },
 }
@@ -181,7 +157,8 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
   const isSubmenuActive = (submenu: { title: string; href: string }[]) => submenu.some((item) => pathname === item.href)
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/admin/login" })
+    await signOut({ callbackUrl: "/admin/login", redirect: true })
+    window.location.replace("/admin/login")
   }
 
   return (
@@ -218,19 +195,6 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
                           className="flex items-center space-x-2"
                         >
                           <span className="font-medium">{item.title}</span>
-                          {item.badge && (
-                            <Badge
-                              variant="secondary"
-                              className={cn(
-                                "text-xs px-2 py-0.5 rounded-full",
-                                isSubmenuActive(item.submenu)
-                                  ? "bg-white/20 text-white"
-                                  : "bg-indigo-100 text-indigo-600",
-                              )}
-                            >
-                              {item.badge}
-                            </Badge>
-                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -279,19 +243,6 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
                               )}
                             >
                               <span>{subItem.title}</span>
-                              {subItem.badge && (
-                                <Badge
-                                  variant="outline"
-                                  className={cn(
-                                    "text-xs px-2 py-0.5 rounded-full border",
-                                    isActive(subItem.href)
-                                      ? "bg-indigo-100 text-indigo-600 border-indigo-200"
-                                      : "bg-gray-100 text-gray-600 border-gray-200",
-                                  )}
-                                >
-                                  {subItem.badge}
-                                </Badge>
-                              )}
                             </Link>
                           </motion.div>
                         ))}
@@ -323,17 +274,6 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
                       className="flex items-center space-x-2"
                     >
                       <span className="font-medium">{item.title}</span>
-                      {item.badge && (
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "text-xs px-2 py-0.5 rounded-full",
-                            isActive(item.href) ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-600",
-                          )}
-                        >
-                          {item.badge}
-                        </Badge>
-                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -342,7 +282,6 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
           </motion.div>
         ))}
       </nav>
-
       <div className="mt-auto p-6">
         <div
           className={cn(
@@ -437,11 +376,6 @@ function NavContent({ minimized = false, onItemClick }: { minimized?: boolean; o
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
-  const { data: session } = useSession()
-
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: "/admin/login" })
-  }
 
   return (
     <Suspense fallback={null}>
@@ -513,74 +447,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 >
                   <Menu className="w-5 h-5" />
                 </Button>
-                <div className="relative w-full max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="Search..."
-                    className="pl-10 bg-gray-50 border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 rounded-xl"
-                  />
-                </div>
+   
               </div>
               <div className="flex items-center space-x-3">
-                <Button variant="ghost" size="icon" className="relative rounded-xl hover:bg-gray-100 transition-colors">
-                  <Bell className="w-5 h-5 text-gray-600" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full ring-2 ring-white"></span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="hidden md:flex items-center space-x-2 rounded-xl border-gray-200 hover:bg-gray-50"
-                >
-                  <Settings className="w-4 h-4" />
-                  <span>Settings</span>
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative w-10 h-10 rounded-xl">
-                      <Avatar className="w-8 h-8 ring-2 ring-white shadow-sm">
-                        <AvatarImage
-                          src="/placeholder.svg?height=32&width=32"
-                          alt={
-                            `${(session?.user as { firstName?: string })?.firstName ?? ""} ${(session?.user as { lastName?: string })?.lastName ?? ""} ${(session?.user as { id?: string })?.id ?? ""}`.trim()
-                          }
-                        />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm font-semibold">
-                          {`${(session?.user as { firstName?: string })?.firstName?.[0] ?? ""}${(session?.user as { lastName?: string })?.lastName?.[0] ?? ""}${(session?.user as { id?: string })?.id?.slice(0, 2) ?? ""}`}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56 rounded-2xl shadow-xl border-gray-200" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {`${(session?.user as { firstName?: string })?.firstName ?? ""} ${(session?.user as { lastName?: string })?.lastName ?? ""}`.trim()}
-                        </p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {(session?.user as { username?: string })?.username ?? ""}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="rounded-xl">
-                      <User className="mr-2 w-4 h-4" />
-                      Profile
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="rounded-xl">
-                      <Settings className="mr-2 w-4 h-4" />
-                      Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={handleLogout}
-                      className="rounded-xl text-red-600 focus:text-red-600"
-                    >
-                      <LogOut className="mr-2 w-4 h-4" />
-                      Log out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Removed Notification and Settings and Avatar/Profile */}
               </div>
             </div>
           </header>

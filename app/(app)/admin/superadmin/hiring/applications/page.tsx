@@ -1,10 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
-import Image from "next/image"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Search,
-  Filter,
   MoreHorizontal,
   Eye,
   CheckCircle,
@@ -32,9 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { Progress } from "@/components/ui/progress"
 import Table from "@mui/material/Table"
 import TableBody from "@mui/material/TableBody"
 import TableCell from "@mui/material/TableCell"
@@ -42,162 +38,81 @@ import TableContainer from "@mui/material/TableContainer"
 import TableHead from "@mui/material/TableHead"
 import TableRow from "@mui/material/TableRow"
 import Paper from "@mui/material/Paper"
-import Avatar from "@mui/material/Avatar"
 import IconButton from "@mui/material/IconButton"
 import Menu from "@mui/material/Menu"
 import MenuItem from "@mui/material/MenuItem"
 
-interface Application {
-  id: number
-  applicantName: string
-  email: string
-  phone: string
-  jobTitle: string
-  department: string
-  status: "pending" | "reviewing" | "shortlisted" | "rejected" | "hired"
-  appliedAt: string
-  resumeUrl: string
-  coverLetter: string
-  education: string
-  experience: string
-  skills: string[]
-  notes?: string
-}
 
 export default function ApplicationsManagement() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState("pending")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
-  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
+  const [selectedApplication, setSelectedApplication] = useState<any>(null)
   const [feedbackNote, setFeedbackNote] = useState("")
+  const [applications, setApplications] = useState<any[]>([])
 
-  // Mock data
-  const applications: Application[] = [
-    {
-      id: 1,
-      applicantName: "John Smith",
-      email: "john.smith@example.com",
-      phone: "+63 912 345 6789",
-      jobTitle: "Software Developer",
-      department: "IT",
-      status: "pending",
-      appliedAt: "2023-05-18",
-      resumeUrl: "/resumes/john-smith-resume.pdf",
-      coverLetter:
-        "I am writing to express my interest in the Software Developer position at your company. With my experience in web development and proficiency in JavaScript frameworks, I believe I would be a valuable addition to your team.",
-      education: "Bachelor of Science in Computer Science, University of Manila, 2020",
-      experience: "Junior Developer at Tech Solutions (2020-2022), Freelance Web Developer (2022-Present)",
-      skills: ["JavaScript", "React", "Node.js", "MongoDB", "Git"],
-    },
-    {
-      id: 2,
-      applicantName: "Maria Garcia",
-      email: "maria.garcia@example.com",
-      phone: "+63 923 456 7890",
-      jobTitle: "Data Analyst",
-      department: "Analytics",
-      status: "reviewing",
-      appliedAt: "2023-05-20",
-      resumeUrl: "/resumes/maria-garcia-resume.pdf",
-      coverLetter:
-        "I am excited to apply for the Data Analyst position. My background in statistics and experience with data visualization tools make me well-suited for this role. I am particularly interested in helping your company make data-driven decisions.",
-      education: "Master of Science in Statistics, Cebu University, 2021",
-      experience:
-        "Research Assistant at National Statistics Office (2021-2022), Data Analyst Intern at Global Analytics (2022)",
-      skills: ["SQL", "Python", "R", "Tableau", "Excel"],
-    },
-    {
-      id: 3,
-      applicantName: "David Lee",
-      email: "david.lee@example.com",
-      phone: "+63 934 567 8901",
-      jobTitle: "UI/UX Designer",
-      department: "Design",
-      status: "shortlisted",
-      appliedAt: "2023-05-22",
-      resumeUrl: "/resumes/david-lee-resume.pdf",
-      coverLetter:
-        "I am applying for the UI/UX Designer position at your company. With my portfolio of design projects and understanding of user-centered design principles, I am confident in my ability to create intuitive and engaging user experiences for your products.",
-      education: "Bachelor of Fine Arts in Design, Manila Institute of Arts, 2019",
-      experience: "UI Designer at Creative Solutions (2019-2021), Freelance UX Designer (2021-Present)",
-      skills: ["Figma", "Adobe XD", "Sketch", "Prototyping", "User Research"],
-      notes: "Excellent portfolio, strong visual design skills. Schedule second interview.",
-    },
-    {
-      id: 4,
-      applicantName: "Sarah Johnson",
-      email: "sarah.johnson@example.com",
-      phone: "+63 945 678 9012",
-      jobTitle: "Software Developer",
-      department: "IT",
-      status: "rejected",
-      appliedAt: "2023-05-15",
-      resumeUrl: "/resumes/sarah-johnson-resume.pdf",
-      coverLetter:
-        "I am interested in the Software Developer position at your company. I have experience in web development and am eager to contribute to your team's projects.",
-      education: "Associate Degree in Computer Programming, Davao Technical College, 2021",
-      experience: "Junior Programmer at Local Tech (2021-2022)",
-      skills: ["HTML", "CSS", "JavaScript", "PHP"],
-      notes: "Lacks required experience with React and Node.js.",
-    },
-    {
-      id: 5,
-      applicantName: "Michael Rodriguez",
-      email: "michael.rodriguez@example.com",
-      phone: "+63 956 789 0123",
-      jobTitle: "Network Administrator",
-      department: "IT",
-      status: "hired",
-      appliedAt: "2023-04-12",
-      resumeUrl: "/resumes/michael-rodriguez-resume.pdf",
-      coverLetter:
-        "I am applying for the Network Administrator position. With my certifications and experience in network management, I am well-prepared to maintain and optimize your company's network infrastructure.",
-      education: "Bachelor of Science in Information Technology, University of Davao, 2018",
-      experience: "IT Support at Global Tech (2018-2020), Network Technician at Network Solutions (2020-2023)",
-      skills: ["Network Security", "Cisco Systems", "Troubleshooting", "CCNA Certified"],
-      notes: "Strong technical skills and excellent communication. Offer extended and accepted.",
-    },
-  ]
+  useEffect(() => {
+    fetch("/api/superadmin/careers/applicants")
+      .then((res) => res.json())
+      .then(({ data }) => {
+        console.log("Fetched applications:", data)
+        setApplications(data || [])
+      })
+  }, [])
 
   const filteredApplications = applications.filter((application) => {
     const matchesSearch =
-      application.applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      application.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      application.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      application.department.toLowerCase().includes(searchQuery.toLowerCase())
+      (application.first_name + " " + application.last_name).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (application.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (application.position_title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (application.department || "").toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesTab =
-      activeTab === "all" ||
-      (activeTab === "pending" && application.status === "pending") ||
-      (activeTab === "reviewing" && application.status === "reviewing") ||
-      (activeTab === "shortlisted" && application.status === "shortlisted") ||
-      (activeTab === "rejected" && application.status === "rejected") ||
-      (activeTab === "hired" && application.status === "hired")
-
-    return matchesSearch && matchesTab
+    return matchesSearch 
   })
 
-  const handleViewApplication = (application: Application) => {
+  const handleViewApplication = (application: any) => {
     setSelectedApplication(application)
     setFeedbackNote(application.notes || "")
     setIsViewDialogOpen(true)
   }
 
-  const getStatusProgress = (status: string): number => {
-    switch (status) {
-      case "pending":
-        return 20
-      case "reviewing":
-        return 40
-      case "shortlisted":
-        return 60
-      case "rejected":
-        return 100
-      case "hired":
-        return 100
-      default:
-        return 0
-    }
+  const handleExportApplications = () => {
+    if (!applications.length) return
+    const csvRows = [
+      [
+        "Applicant Name",
+        "Email",
+        "Phone",
+        "Position",
+        "Department",
+        "Applied Date",
+        "Status",
+        "Resume URL",
+        "Cover Letter URL"
+      ].join(","),
+      ...applications.map(app =>
+        [
+          `"${(app.first_name || "N/A") + " " + (app.last_name || "")}"`,
+          `"${app.email || "N/A"}"`,
+          `"${app.phone || "N/A"}"`,
+          `"${app.position_title || "N/A"}"`,
+          `"${app.department || "N/A"}"`,
+          `"${app.created_at ? String(app.created_at).split("T")[0] : "N/A"}"`,
+          `"${app.status || "pending"}"`,
+          `"${app.resume_url || ""}"`,
+          `"${app.cover_letter_url || ""}"`
+        ].join(",")
+      )
+    ]
+    const csvContent = csvRows.join("\r\n")
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "applications_export.csv"
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -208,7 +123,7 @@ export default function ApplicationsManagement() {
           <p className="text-muted-foreground">Manage and review applications for career opportunities</p>
         </div>
         <div className="mt-4 md:mt-0">
-          <Button className="flex items-center gap-2">
+          <Button className="flex items-center gap-2" onClick={handleExportApplications}>
             <Download className="h-4 w-4" />
             Export Applications
           </Button>
@@ -232,159 +147,86 @@ export default function ApplicationsManagement() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Filter
-              </Button>
             </div>
           </div>
-
-          <Tabs defaultValue="pending" onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
-              <TabsTrigger value="reviewing">Reviewing</TabsTrigger>
-              <TabsTrigger value="shortlisted">Shortlisted</TabsTrigger>
-              <TabsTrigger value="hired">Hired</TabsTrigger>
-              <TabsTrigger value="rejected">Rejected</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" className="mt-4">
-              <ApplicationsTable applications={filteredApplications} onViewApplication={handleViewApplication} />
-            </TabsContent>
-            <TabsContent value="pending" className="mt-4">
-              <ApplicationsTable applications={filteredApplications} onViewApplication={handleViewApplication} />
-            </TabsContent>
-            <TabsContent value="reviewing" className="mt-4">
-              <ApplicationsTable applications={filteredApplications} onViewApplication={handleViewApplication} />
-            </TabsContent>
-            <TabsContent value="shortlisted" className="mt-4">
-              <ApplicationsTable applications={filteredApplications} onViewApplication={handleViewApplication} />
-            </TabsContent>
-            <TabsContent value="hired" className="mt-4">
-              <ApplicationsTable applications={filteredApplications} onViewApplication={handleViewApplication} />
-            </TabsContent>
-            <TabsContent value="rejected" className="mt-4">
-              <ApplicationsTable applications={filteredApplications} onViewApplication={handleViewApplication} />
-            </TabsContent>
-          </Tabs>
+          <ApplicationsTable applications={filteredApplications} onViewApplication={handleViewApplication} />
         </CardContent>
       </Card>
-
-      {/* View Application Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
             <DialogTitle>Application Details</DialogTitle>
             <DialogDescription>
-              Review the applicant&apos;s information and manage their application status.
+              Review the applicant&apos;s information.
             </DialogDescription>
           </DialogHeader>
           {selectedApplication && (
             <div className="grid gap-6 py-4">
               <div className="flex items-start gap-4">
-                <Avatar sx={{ width: 64, height: 64 }}>
-                  <Image src="/placeholder.svg?height=64&width=64" alt="Applicant" width={64} height={64} />
-                </Avatar>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold">{selectedApplication.applicantName}</h3>
+                  <h3 className="text-xl font-bold">
+                    {(selectedApplication.first_name || "N/A") + " " + (selectedApplication.last_name || "")}
+                  </h3>
                   <div className="mt-2 space-y-1">
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-4 w-4 text-muted-foreground" />
                       <span>
-                        <strong>Email:</strong> {selectedApplication.email}
+                        <strong>Email:</strong> {selectedApplication.email || "N/A"}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <span>
-                        <strong>Phone:</strong> {selectedApplication.phone}
+                        <strong>Phone:</strong> {selectedApplication.phone || "N/A"}
                       </span>
                     </div>
                   </div>
-                  <p className="text-muted-foreground">
-                    {selectedApplication.email} • {selectedApplication.phone}
-                  </p>
                   <div className="flex items-center gap-2 mt-2">
-                    <StatusBadge status={selectedApplication.status} />
+                    <StatusBadge status={selectedApplication.status || "pending"} />
                   </div>
                 </div>
-                <a
-                  href={selectedApplication.resumeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="no-underline"
-                >
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    View Resume
-                  </Button>
-                </a>
+                {selectedApplication.resume_url && (
+                  <a
+                    href={selectedApplication.resume_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="no-underline"
+                  >
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      View Resume
+                    </Button>
+                  </a>
+                )}
               </div>
-
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <h4 className="font-medium">Application Progress</h4>
-                  <span className="text-sm text-muted-foreground">
-                    {selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)}
-                  </span>
-                </div>
-                <Progress value={getStatusProgress(selectedApplication.status)} className="h-2" />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
                   <Briefcase className="h-4 w-4 text-muted-foreground" />
                   <span>
-                    Position: <strong>{selectedApplication.jobTitle}</strong>
+                    Position: <strong>{selectedApplication.position_title || "N/A"}</strong>
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building className="h-4 w-4 text-muted-foreground" />
                   <span>
-                    Department: <strong>{selectedApplication.department}</strong>
+                    Department: <strong>{selectedApplication.department || "N/A"}</strong>
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>
-                    Applied: <strong>{selectedApplication.appliedAt}</strong>
+                    Applied: <strong>{selectedApplication.created_at ? String(selectedApplication.created_at).split("T")[0] : "N/A"}</strong>
                   </span>
                 </div>
               </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Cover Letter</h4>
-                <div className="p-3 bg-slate-50 rounded-md text-sm">
-                  <p>{selectedApplication.coverLetter}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {selectedApplication.cover_letter && (
                 <div>
-                  <h4 className="font-medium mb-2">Education</h4>
+                  <h4 className="font-medium mb-2">Cover Letter</h4>
                   <div className="p-3 bg-slate-50 rounded-md text-sm">
-                    <p>{selectedApplication.education}</p>
+                    <p>{selectedApplication.cover_letter}</p>
                   </div>
                 </div>
-                <div>
-                  <h4 className="font-medium mb-2">Experience</h4>
-                  <div className="p-3 bg-slate-50 rounded-md text-sm">
-                    <p>{selectedApplication.experience}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Skills</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedApplication.skills.map((skill, index) => (
-                    <Badge key={index} variant="secondary">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
+              )}
               <div>
                 <Label htmlFor="notes">Notes & Feedback</Label>
                 <Textarea
@@ -430,10 +272,9 @@ function ApplicationsTable({
   applications,
   onViewApplication,
 }: {
-  applications: Application[]
-  onViewApplication: (application: Application) => void
+  applications: any[]
+  onViewApplication: (application: any) => void
 }) {
-  // MUI Menu state
   const [anchorEls, setAnchorEls] = useState<{ [key: number]: HTMLElement | null }>({})
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, id: number) => {
@@ -449,42 +290,52 @@ function ApplicationsTable({
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>Applicant</TableCell>
+            <TableCell>Applicant Name</TableCell>
+            <TableCell>Email</TableCell>
             <TableCell>Phone</TableCell>
             <TableCell>Position</TableCell>
             <TableCell>Department</TableCell>
             <TableCell>Applied Date</TableCell>
-            <TableCell>Status</TableCell>
+            <TableCell>Resume</TableCell>
+            <TableCell>Cover Letter</TableCell>
             <TableCell align="right">Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {applications.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} align="center" className="py-8 text-muted-foreground">
-                No applications found
+              <TableCell colSpan={9} align="center" className="py-8 text-muted-foreground font-semibold text-lg">
+                No applications found. Please check back later.
               </TableCell>
             </TableRow>
           ) : (
             applications.map((application) => (
               <TableRow key={application.id}>
                 <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar sx={{ width: 32, height: 32 }}>
-                      <User className="h-4 w-4" />
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">{application.applicantName}</div>
-                      <div className="text-xs text-muted-foreground">{application.email}</div>
-                    </div>
-                  </div>
+                  {(application.first_name || "N/A") + " " + (application.last_name || "")}
                 </TableCell>
-                <TableCell>{application.phone}</TableCell>
-                <TableCell>{application.jobTitle}</TableCell>
-                <TableCell>{application.department}</TableCell>
-                <TableCell>{application.appliedAt}</TableCell>
+                <TableCell>{application.email || "N/A"}</TableCell>
+                <TableCell>{application.phone || "N/A"}</TableCell>
+                <TableCell>{application.position_title || "N/A"}</TableCell>
+                <TableCell>{application.department || "N/A"}</TableCell>
+                <TableCell>{application.created_at ? String(application.created_at).split("T")[0] : "N/A"}</TableCell>
                 <TableCell>
-                  <StatusBadge status={application.status} />
+                  {application.resume_url ? (
+                    <a href={application.resume_url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">View</Button>
+                    </a>
+                  ) : (
+                    "N/A"
+                  )}
+                </TableCell>
+                <TableCell>
+                  {application.cover_letter_url ? (
+                    <a href={application.cover_letter_url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">View</Button>
+                    </a>
+                  ) : (
+                    "N/A"
+                  )}
                 </TableCell>
                 <TableCell align="right">
                   <IconButton
@@ -507,13 +358,25 @@ function ApplicationsTable({
                     </MenuItem>
                     <MenuItem
                       component="a"
-                      href={application.resumeUrl}
+                      href={application.resume_url || "#"}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => handleMenuClose(application.id)}
+                      disabled={!application.resume_url}
                     >
                       <FileText className="mr-2 h-4 w-4" />
                       View Resume
+                    </MenuItem>
+                    <MenuItem
+                      component="a"
+                      href={application.cover_letter_url || "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => handleMenuClose(application.id)}
+                      disabled={!application.cover_letter_url}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      View Cover Letter
                     </MenuItem>
                     <MenuItem onClick={() => handleMenuClose(application.id)}>
                       <MessageSquare className="mr-2 h-4 w-4" />

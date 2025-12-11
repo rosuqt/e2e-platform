@@ -14,9 +14,7 @@ import { LuBadgeCheck } from "react-icons/lu"
 import { PiWarningFill } from "react-icons/pi"
 import { motion } from "framer-motion"
 import { TextField, MenuItem } from "@mui/material"
-import { RiUserSettingsLine } from "react-icons/ri"
 import { BsSendPlus } from "react-icons/bs"
-import TeamAccessModal from "./components/modals/team-access"
 import Image from "next/image"
 
 type Company = {
@@ -51,7 +49,7 @@ export default function CompanyProfilePage() {
   const [jobCount, setJobCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [isCompanyAdmin, setIsCompanyAdmin] = useState(false)
-  const [showAccessModal, setShowAccessModal] = useState(false)
+
   const [canEdit, setCanEdit] = useState(false)
   const [canView, setCanView] = useState(false)
 
@@ -524,18 +522,7 @@ export default function CompanyProfilePage() {
                     )}
                   </div>
                 </div>
-                {isCompanyAdmin ? (
-                  <div className="flex items-center">
-                    <button
-                      className="border border-blue-600 text-blue-600 font-semibold px-4 py-2 rounded-full flex items-center gap-2 hover:bg-blue-50 transition"
-                      onClick={() => setShowAccessModal(true)}
-                      type="button"
-                    >
-                      <RiUserSettingsLine className="w-5 h-5" />
-                      Manage Team Access
-                    </button>
-                  </div>
-                ) : (!canEdit && canView) ? (
+                {isCompanyAdmin ? null : (!canEdit && canView) ? (
                   <div className="flex flex-col items-start gap-2">
                     <div className="bg-blue-50 border border-blue-200 text-blue-700 rounded-lg px-4 py-2 text-sm font-medium max-w-xs">
                       You have view-only access. Request edit access if needed.
@@ -732,14 +719,6 @@ export default function CompanyProfilePage() {
             {activeTab === 2 && <TeamTab /* canEdit={canEdit} */ />}
             {activeTab === 3 && <RatingsTab /* canEdit={canEdit} */ />}
           </div>
-          {/* Team Access Modal */}
-          {showAccessModal && company?.id && (
-            <TeamAccessModal
-              open={showAccessModal}
-              onClose={() => setShowAccessModal(false)}
-              companyId={company.id}
-            />
-          )}
         </>
       )}
     </div>

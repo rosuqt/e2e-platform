@@ -3,6 +3,7 @@ import { Bookmark } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
+import { PiShootingStarFill } from "react-icons/pi"
 
 type SavedJob = {
   id: string
@@ -16,7 +17,7 @@ type ApiResponse = {
   jobs: SavedJob[]
 }
 
-export default function SavedJobs({ refreshKey }: { refreshKey?: unknown } = {}) {
+export default function SavedJobs({ }: { refreshKey?: unknown } = {}) {
   const router = useRouter()
   const { data: session } = useSession()
   const [jobs, setJobs] = useState<SavedJob[]>([])
@@ -50,15 +51,15 @@ export default function SavedJobs({ refreshKey }: { refreshKey?: unknown } = {})
   }
 
   useEffect(() => {
-    if (session && (session.user as { studentId?: string })?.studentId) {
+    if (
+      session &&
+      (session.user as { studentId?: string })?.studentId &&
+      jobs.length === 0 
+    ) {
       fetchSavedJobs()
-    } else {
-      setJobs([])
-      setTotal(0)
-      setLoading(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, refreshKey])
+  }, [session]) 
 
   /*const handleUnsave = async (jobId: string) => {
     setUnsaving(jobId)
@@ -85,7 +86,7 @@ export default function SavedJobs({ refreshKey }: { refreshKey?: unknown } = {})
         </div>
         <Button
           variant="outline"
-          className="text-blue-600 border-blue-100 hover:bg-blue-50 text-xs py-1 px-3 h-7"
+          className="text-blue-600 border-blue-100 hover:bg-blue-50 hover:text-blue-600 text-xs py-1 px-3 h-7"
           onClick={() => router.push("/students/jobs/saved-jobs")}
         >
           View All
@@ -97,7 +98,10 @@ export default function SavedJobs({ refreshKey }: { refreshKey?: unknown } = {})
             <span className="inline-block w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : jobs.length === 0 ? (
-          <div className="text-gray-500 text-sm">No saved jobs.</div>
+          <div className="flex flex-col items-center justify-center py-2">
+            <PiShootingStarFill className="text-gray-400 text-3xl mb-2" />
+         
+          <div className="text-gray-500 text-sm">Nothing saved for now — your dream job might be just a scroll away!</div> </div>
         ) : (
           jobs.map((job) => (
             <div

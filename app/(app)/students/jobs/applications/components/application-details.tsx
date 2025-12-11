@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import Image from "next/image"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -24,9 +24,7 @@ import {
   UserCheck,
   Trash2,
 } from "lucide-react"
-import { PiMoneyDuotone } from "react-icons/pi"
 import { Mail, Phone } from "lucide-react"
-import { LuMessageCircleMore } from "react-icons/lu"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { HiBadgeCheck } from "react-icons/hi"
 import { RiErrorWarningLine } from "react-icons/ri"
@@ -36,6 +34,9 @@ import { styled } from "@mui/material/styles"
 import { motion } from "framer-motion"
 import TimelineTab from "./tabs/timeline-tab"
 import ResumeTab from "./tabs/resume-tab"
+import { ViewOfferModal } from "./view-offer"
+
+type ApplicationAnswers = Record<string, string> | string | null
 
 type ApplicationData = {
   resume: string
@@ -85,10 +86,14 @@ type ApplicationData = {
   profile_img?: string
   achievements?: string[]
   portfolio?: string[]
+  job_id?: string | number | null
+  student_id?: string | number | null
+  notes?: { note: string; date_added: string; isEmployer?: boolean }[] | string
+  application_answers?: ApplicationAnswers
 }
 
 interface ApplicationDetailsProps {
-  applicationId: number | null 
+  applicationId: string | null
   isModalOpen: boolean
   setIsModalOpen: (open: boolean) => void
   applicationData?: ApplicationData
@@ -99,6 +104,7 @@ function getStatusBadgeProps(status: string) {
   if (s === "new" || s === "pending") return { className: "bg-yellow-100 text-yellow-700", label: "Pending" }
   if (s === "shortlisted" || s === "review") return { className: "bg-cyan-100 text-cyan-700", label: "Under Review" }
   if (s === "interview scheduled" || s === "interview") return { className: "bg-purple-100 text-purple-700", label: "To be Interviewed" }
+  if (s === "offer_sent") return { className: "bg-lime-100 text-lime-700", label: "Offer Received" }
   if (s === "hired") return { className: "bg-green-100 text-green-700", label: "Hired" }
   if (s === "rejected") return { className: "bg-red-100 text-red-700", label: "Rejected" }
   if (s === "waitlisted") return { className: "bg-blue-100 text-blue-700", label: "Waitlisted" }
@@ -160,7 +166,78 @@ function buildTimeline(applicationData?: ApplicationData) {
   return timeline
 }
 
+function WarningModalLocal({
+  open,
+  title,
+  message,
+  confirmText,
+  cancelText,
+  loading,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean
+  title: string
+  message: string
+  confirmText: string
+  cancelText: string
+  loading?: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onCancel()}>
+      <DialogContent className="max-w-sm w-full p-6">
+        <DialogTitle className="mb-2">{title}</DialogTitle>
+        <div className="mb-4 text-gray-700">{message}</div>
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" onClick={onCancel} disabled={loading}>{cancelText}</Button>
+          <Button onClick={onConfirm} disabled={loading}>{confirmText}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModalOpen, applicationData }: ApplicationDetailsProps) {
+  const [isClient, setIsClient] = useState(false)
+  const [acceptOfferOpen, setAcceptOfferOpen] = useState(false)
+  const [acceptOfferLoading, setAcceptOfferLoading] = useState(false)
+  const [localStatus, setLocalStatus] = useState(applicationData?.status || "")
+  const [viewOfferOpen, setViewOfferOpen] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    setLocalStatus(applicationData?.status || "")
+  }, [applicationData?.status])
+
+  const acceptOffer = useCallback(async () => {
+    if (!applicationId) return
+    setAcceptOfferLoading(true)
+    try {
+      const res = await fetch("/api/employers/applications/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: applicationId, action: "accept_offer" }),
+      })
+      if (!res.ok) {
+        setAcceptOfferLoading(false)
+        return
+      }
+      setLocalStatus("hired")
+      if (applicationData) applicationData.status = "hired"
+      setViewOfferOpen(true)
+    } catch {
+    }
+    setAcceptOfferLoading(false)
+    setAcceptOfferOpen(false)
+  }, [applicationId, applicationData])
+
+  if (!isClient) return null
+
   const applications = [
     {
       id: 1,
@@ -345,8 +422,22 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
     }
   }
 
+  const parsedNotes =
+    applicationData && applicationData.notes
+      ? Array.isArray(applicationData.notes)
+        ? applicationData.notes.filter(n => !n.isEmployer)
+        : (() => {
+            try {
+              const arr: { note: string; date_added: string; isEmployer?: boolean }[] = JSON.parse(applicationData.notes as string)
+              return Array.isArray(arr) ? arr.filter((n) => !n.isEmployer) : []
+            } catch {
+              return []
+            }
+          })()
+      : []
+
   const application =
-    applicationData && typeof applicationId === "number"
+    applicationData && applicationId
       ? {
           id: applicationId,
           company: applicationData.company_name || applicationData.job_postings?.company || "",
@@ -374,7 +465,7 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
             : "",
           description: applicationData.job_postings?.job_summary || "",
           timeline: buildTimeline(applicationData),
-          notes: "",
+          notes: parsedNotes,
           contacts: employerContact ? [employerContact] : [],
           documents: [],
           profile_img: applicationData.profile_img || "",
@@ -382,15 +473,18 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
           resume: applicationData.resume,
           resumeUrl: applicationData.resumeUrl,
           achievements: applicationData.achievements || applicationData.job_postings?.achievements || [],
-          portfolio: applicationData.portfolio || applicationData.job_postings?.portfolio || []
+          portfolio: applicationData.portfolio || applicationData.job_postings?.portfolio || [],
+          job_id: (applicationData.job_id ?? applicationData.job_postings?.id) ?? undefined,
+          student_id: applicationData.student_id ?? undefined,
+          application_answers: applicationData.application_answers,
         }
-      : applications.find((app) => app.id === applicationId)
+      : applications.find((app) => String(app.id) === applicationId)
 
   if (!application) {
     return null
   }
 
-  const badgeProps = getStatusBadgeProps(application.status)
+  const badgeProps = getStatusBadgeProps(localStatus || application.status)
 
   let verificationTier = "basic"
   if (
@@ -405,8 +499,9 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
 
   return (
     <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto mt-10 p-0">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-6 text-white rounded-t-lg relative">
+      <DialogContent className="max-w-4xl w-full p-0 overflow-hidden max-h-[90vh] flex flex-col">
+        <DialogTitle className="sr-only">Application Details</DialogTitle>
+        <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-6 text-white relative shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
@@ -448,17 +543,42 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
             </div>
           </div>
         </div>
-        <div className="p-6">
-          <DialogTitle className="sr-only">Application Details</DialogTitle>
-          <ApplicationDetailsContent application={application} />
+        <div className="p-6 overflow-y-auto">
+          <ApplicationDetailsContent application={{ ...application, status: localStatus || application.status }} />
         </div>
+        {((localStatus || application.status) === "offer_sent") && (
+          <div className="flex justify-end p-6 pt-0">
+            <Button
+              className="bg-lime-600 hover:bg-lime-700 text-white"
+              onClick={() => setAcceptOfferOpen(true)}
+              disabled={acceptOfferLoading}
+            >
+              Accept Offer
+            </Button>
+          </div>
+        )}
+        <WarningModalLocal
+          open={acceptOfferOpen}
+          title="Accept Offer"
+          message={`Are you sure you want to accept this offer?`}
+          confirmText="Accept Offer"
+          cancelText="Cancel"
+          loading={acceptOfferLoading}
+          onConfirm={acceptOffer}
+          onCancel={() => setAcceptOfferOpen(false)}
+        />
+        <ViewOfferModal
+          open={viewOfferOpen}
+          onClose={() => setViewOfferOpen(false)}
+          applicationId={applicationId}
+        />
       </DialogContent>
     </Dialog>
   )
 }
 
 interface Application {
-  id: number
+  id: string | number
   company: string
   position: string
   status: string
@@ -479,7 +599,7 @@ interface Application {
     iconBg: string
     current?: boolean
   }[]
-  notes: string
+  notes: string | { note: string; date_added: string }[]
   contacts: {
     name: string
     role: string
@@ -498,6 +618,9 @@ interface Application {
   resumeUrl?: string
   achievements?: string[]
   portfolio?: string[]
+  job_id?: string | number
+  student_id?: string | number
+  application_answers?: ApplicationAnswers
 }
 
 const CustomTooltip = styled(Tooltip)(() => ({
@@ -520,7 +643,7 @@ function ApplicationDetailsContent({ application }: { application: Application }
   const [profileImgUrl, setProfileImgUrl] = useState<string | null>(null)
   const [showMore, setShowMore] = useState(false)
 
-  type Note = { note: string; date_added: string };
+  type Note = { note: string; date_added: string }
   const [notes, setNotes] = useState<Note[]>(() =>
     Array.isArray(application.notes)
       ? application.notes.map((n: Partial<Note>) => ({
@@ -528,12 +651,23 @@ function ApplicationDetailsContent({ application }: { application: Application }
           date_added: n.date_added || new Date().toISOString(),
         }))
       : []
-  );
+  )
   const [editMode, setEditMode] = useState(false)
   const [editNoteIdx, setEditNoteIdx] = useState<number | null>(null)
   const [editNoteText, setEditNoteText] = useState("")
   const [loading, setLoading] = useState(false)
   const [newNote, setNewNote] = useState("")
+
+  useEffect(() => {
+    if (Array.isArray(application.notes)) {
+      setNotes(
+        application.notes.map((n: Partial<Note>) => ({
+          note: n.note ?? "",
+          date_added: n.date_added || new Date().toISOString(),
+        }))
+      )
+    }
+  }, [application.notes])
 
   function formatNoteDate(dateString?: string) {
     if (!dateString) return ""
@@ -590,10 +724,14 @@ function ApplicationDetailsContent({ application }: { application: Application }
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setNotes(prev => [
-            ...prev,
-            { note: newNote, date_added: new Date().toISOString() },
-          ])
+          if (Array.isArray(data.notes)) {
+            setNotes(
+              data.notes.map((n: { note?: string; date_added?: string }) => ({
+                note: n.note ?? "",
+                date_added: n.date_added || new Date().toISOString(),
+              }))
+            )
+          }
           setNewNote("")
         }
         setLoading(false)
@@ -637,14 +775,82 @@ function ApplicationDetailsContent({ application }: { application: Application }
   const [achievements, setAchievements] = useState<{ name: string; url: string }[]>([])
   const [portfolio, setPortfolio] = useState<{ name: string; url: string }[]>([])
 
+  const applicationQuestionsInitial: { id: string | number; question_text: string; answer?: string | null }[] = []
+  const [applicationQuestions, setApplicationQuestions] = useState<
+    { id: string | number; question_text: string; answer?: string | null }[]
+  >(applicationQuestionsInitial)
+  const [questionsLoading, setQuestionsLoading] = useState(false)
+  const [questionsError, setQuestionsError] = useState<string | null>(null)
+
   useEffect(() => {
-    console.log("Details: application.achievements", application.achievements)
-    console.log("Details: application.portfolio", application.portfolio)
+    const rawAnswers = (application as unknown as Record<string, unknown>).application_answers
+    if (!rawAnswers) {
+      setApplicationQuestions([])
+      return
+    }
+
+    const jobId =
+      (application.job_postings as { id?: string | number } | undefined)?.id ??
+      application.job_id ??
+      (application as unknown as Record<string, unknown>).job_id ??
+      null
+
+    if (!jobId) {
+      setApplicationQuestions([])
+      return
+    }
+
+    async function loadQuestionsAndAnswers() {
+      try {
+        setQuestionsLoading(true)
+        setQuestionsError(null)
+
+        const params = new URLSearchParams()
+        params.set("job_id", String(jobId))
+
+        const questionsRes = await fetch(`/api/employers/applications/getQuestions?${params.toString()}`)
+        if (!questionsRes.ok) throw new Error("questions_failed")
+        const questionsJson = await questionsRes.json()
+        const rawQuestions: { id?: string | number; question_text?: string; question?: string }[] = Array.isArray(questionsJson.questions) ? questionsJson.questions : []
+
+        let answerMap: Record<string, string> = {}
+        if (typeof rawAnswers === "string") {
+          try {
+            answerMap = JSON.parse(rawAnswers as string)
+          } catch {
+            answerMap = {}
+          }
+        } else if (typeof rawAnswers === "object" && rawAnswers !== null) {
+          answerMap = rawAnswers as Record<string, string>
+        }
+
+        const merged = rawQuestions.map((q) => {
+          const qid = q.id ?? (q as { question_id?: string | number }).question_id
+          const key = qid != null ? String(qid) : ""
+          const ans = key && answerMap[key] != null ? String(answerMap[key]) : ""
+          return {
+            id: qid ?? String(Math.random()),
+            question_text: q.question_text ?? (q as { question?: string }).question ?? "",
+            answer: ans,
+          }
+        })
+
+        setApplicationQuestions(merged)
+        setQuestionsLoading(false)
+      } catch {
+        setQuestionsError("Unable to load questions right now.")
+        setQuestionsLoading(false)
+      }
+    }
+
+    loadQuestionsAndAnswers()
+  }, [application.id, application.job_postings, application.job_id, (application as unknown as Record<string, unknown>).application_answers])
+
+  useEffect(() => {
     const fetchAchievementPortfolio = async () => {
       const jobPostings = application.job_postings as
         | (ApplicationData["job_postings"] & { achievements?: string[]; portfolio?: string[] })
         | undefined
-      console.log("Details: jobPostings", jobPostings)
       let achArr = (application.achievements && application.achievements.length > 0
         ? application.achievements
         : jobPostings?.achievements) || []
@@ -653,8 +859,6 @@ function ApplicationDetailsContent({ application }: { application: Application }
         : jobPostings?.portfolio) || []
       if (!Array.isArray(achArr)) achArr = []
       if (!Array.isArray(portArr)) portArr = []
-      console.log("Details: achArr", achArr)
-      console.log("Details: portArr", portArr)
       const fetchSigned = async (path: string): Promise<string | null> => {
         if (!path) return null
         try {
@@ -666,7 +870,7 @@ function ApplicationDetailsContent({ application }: { application: Application }
               path
             })
           })
-          const json = await res.json()
+          const json: { signedUrl?: string } = await res.json()
           return typeof json.signedUrl === "string" ? json.signedUrl : null
         } catch {
           return null
@@ -691,6 +895,7 @@ function ApplicationDetailsContent({ application }: { application: Application }
     }
     fetchAchievementPortfolio()
   }, [
+    application,
     application.achievements,
     application.portfolio,
     application.job_postings
@@ -762,16 +967,6 @@ function ApplicationDetailsContent({ application }: { application: Application }
                 <span className="text-sm font-medium text-blue-900">{application.work_type || "N/A"}</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="bg-green-100 rounded-full p-2 flex items-center justify-center">
-                  <PiMoneyDuotone className="h-4 w-4 text-green-700" />
-                </div>
-                <span className="text-sm font-medium text-green-900">
-                  {application.pay_amount
-                    ? `${application.pay_amount}${application.pay_type ? `/${application.pay_type}` : ""}`
-                    : application.salary || "N/A"}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
                 <div className="bg-purple-100 rounded-full p-2 flex items-center justify-center">
                   <Globe className="h-4 w-4 text-purple-700" />
                 </div>
@@ -793,7 +988,13 @@ function ApplicationDetailsContent({ application }: { application: Application }
                 <div className="bg-blue-100 rounded-full p-2 flex items-center justify-center">
                   <FileText className="h-4 w-4 text-blue-700" />
                 </div>
-                <span className="text-sm font-medium text-blue-900">{application.status || "N/A"}</span>
+                <span className="text-sm font-medium text-blue-900">
+                  {
+                    application.status?.toLowerCase() === "offer_sent"
+                      ? "Offer Received"
+                      : application.status || "N/A"
+                  }
+                </span>
               </div>
             </div>
             <div className="flex justify-center mt-2">
@@ -977,6 +1178,41 @@ function ApplicationDetailsContent({ application }: { application: Application }
             )}
           </div>
   
+          <div className="px-6 mt-2">
+            <h2 className="text-lg font-semibold mb-3">Application Questions &amp; Answers</h2>
+            {questionsLoading ? (
+              <div className="text-sm text-gray-500">Loading questions...</div>
+            ) : questionsError ? (
+              <div className="text-sm text-red-500">{questionsError}</div>
+            ) : !applicationQuestions.length ? (
+              <div className="text-sm text-gray-500">No application questions for this job.</div>
+            ) : (
+              <div className="space-y-3">
+                {applicationQuestions.map((q, idx) => (
+                  <div
+                    key={q.id ?? idx}
+                    className="rounded-lg border border-blue-100 bg-blue-50/60 px-4 py-3"
+                  >
+                    <div className="text-xs font-semibold text-blue-700 mb-1">
+                      Question {idx + 1}
+                    </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {q.question_text || "No question text"}
+                    </div>
+                    <div className="mt-2 text-xs font-semibold text-gray-500">
+                      Your Answer
+                    </div>
+                    <div className="mt-1 text-sm text-gray-800 whitespace-pre-line">
+                      {q.answer && String(q.answer).trim()
+                        ? q.answer
+                        : "No answer recorded."}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <Separator />
           <div className="space-y-2">
             <h3 className="text-md font-semibold text-blue-700">Contact Information</h3>
@@ -1047,15 +1283,6 @@ function ApplicationDetailsContent({ application }: { application: Application }
                     )}
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  className="border-blue-500 text-blue-600 hover:bg-blue-100 hover:text-blue-700 ml-2 flex items-center"
-                  style={{ borderWidth: 1, background: "transparent" }}
-                  size="sm"
-                >
-                  <LuMessageCircleMore    className="h-4 w-4 mr-1" />
-                  Message Recruiter
-                </Button>
               </div>
             ))}
           </div>

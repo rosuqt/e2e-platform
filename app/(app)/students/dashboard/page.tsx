@@ -37,7 +37,9 @@ type JobDetails = {
   } | null
   registered_employers?: {
     company_name?: string | null
+    verify_status?: string | null
   } | null
+  verify_status?: string | null // <-- add this for direct access
 }
 
 const FILTER_OPTIONS = {
@@ -154,7 +156,7 @@ function FilterDropdown({
   );
 }
 
-function ApplicationModalWrapper({ jobId, jobTitle, onClose }: { jobId: number, jobTitle: string, onClose: () => void }) {
+function ApplicationModalWrapper({ jobId, jobTitle, onClose }: { jobId: string, jobTitle: string, onClose: () => void }) {
   useEffect(() => {
     const original = document.body.style.overflow
     document.body.style.overflow = "hidden"
@@ -162,11 +164,11 @@ function ApplicationModalWrapper({ jobId, jobTitle, onClose }: { jobId: number, 
       document.body.style.overflow = original
     }
   }, [])
-  return <ApplicationModal jobId={jobId} jobTitle={jobTitle} onClose={onClose} />
+  return <ApplicationModal jobId={jobId} jobTitle={jobTitle} onClose={onClose} gpt_score={0} />
 }
 
 export default function Home() {
-  const { data: session } = useSession()
+  const { data: session, update } = useSession()
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [jobDetails, setJobDetails] = useState<JobDetails | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -406,16 +408,21 @@ export default function Home() {
   }, [selectedJob])
 
   useEffect(() => {
-    const sessionKey = "aiMatchAndRescoreRun";
-    const studentId = session?.user?.studentId
-    if (typeof window !== "undefined" && studentId && !sessionStorage.getItem(sessionKey)) {
-      fetch("/api/ai-matches/match/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ student_id: studentId }) })
-        .then(() => fetch("/api/ai-matches/rescore", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ student_id: studentId }) }))
-        .finally(() => {
-          sessionStorage.setItem(sessionKey, "1");
-        });
+    let refreshTimeout: NodeJS.Timeout | null = null
+    if (session?.expires) {
+      const exp = new Date(session.expires).getTime()
+      const now = Date.now()
+      const msUntilRefresh = exp - now - 60000
+      if (msUntilRefresh > 0) {
+        refreshTimeout = setTimeout(() => {
+          update?.()
+        }, msUntilRefresh)
+      }
     }
-  }, [session]);
+    return () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout)
+    }
+  }, [session, update])
 
   return (
     <div className="flex overflow-x-hidden bg-gradient-to-br from-blue-50 to-sky-100">
@@ -732,6 +739,10 @@ export default function Home() {
                                     {jobDetails.registered_employers?.company_name
                                       ? ` | ${jobDetails.registered_employers.company_name}`
                                       : ""}
+                                    {/* Show verify_status if present */}
+                                    {jobDetails.registered_employers?.verify_status === "verified" && (
+                                      <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">Verified</span>
+                                    )}
                                   </p>
                                   <p className="text-blue-200 text-xs mt-1">
                                     {jobDetails.location || "Location N/A"}
@@ -923,7 +934,7 @@ export default function Home() {
                                 {showQuickApply &&
                                   createPortal(
                                     <ApplicationModalWrapper
-                                      jobId={Number(jobDetails.id)}
+                                      jobId={jobDetails.id}
                                       jobTitle={jobDetails.job_title}
                                       onClose={() => setShowQuickApply(false)}
                                     />,

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -76,7 +77,6 @@ export default function JobSettings({ jobId, companyName, onSuccess }: { jobId: 
   })
   const [allColleagues, setAllColleagues] = useState<ApiColleague[]>([])
   const [selectedColleagueId, setSelectedColleagueId] = useState<string | null>(null)
-  const [loadingColleagues, setLoadingColleagues] = useState(false)
   const [isArchiving, setIsArchiving] = useState(false)
   const [isArchived, setIsArchived] = useState(false)
   const router = useRouter()
@@ -112,10 +112,8 @@ export default function JobSettings({ jobId, companyName, onSuccess }: { jobId: 
 
   useEffect(() => {
     async function fetchAdmins() {
-      setLoadingColleagues(true)
       const company = companyName || localStorage.getItem("company_name")
       if (!company) {
-        setLoadingColleagues(false)
         return
       }
       const res = await fetch(`/api/employers/colleagues/fetchByCompany?company_name=${encodeURIComponent(company)}`)
@@ -130,7 +128,6 @@ export default function JobSettings({ jobId, companyName, onSuccess }: { jobId: 
         )
         setAllColleagues(withAvatars)
       }
-      setLoadingColleagues(false)
     }
     fetchAdmins()
   }, [companyName])
@@ -473,172 +470,7 @@ export default function JobSettings({ jobId, companyName, onSuccess }: { jobId: 
         <div className="flex items-center gap-2">
         </div>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-muted-foreground" />
-            Access Control & Permissions
-          </CardTitle>
-          <CardDescription>Manage who can access and edit this job listing</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-4">
-            {sortedMembers.map((member) => (
-              <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  {member.avatarUrl ? (
-                    <Image
-                      src={member.avatarUrl}
-                      alt={member.name}
-                      width={40}
-                      height={40}
-                      className="w-10 h-10 rounded-full object-cover"
-                      unoptimized
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
-                      <FaUser className="text-white w-4 h-4" />
-                    </div>
-                  )}
-                  <div>
-                    <div className="font-medium flex items-center gap-2">
-                      {member.name}
-                      {currentEmployerId && member.id === currentEmployerId && (
-                        <span className="ml-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200">
-                          You
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-muted-foreground">{member.email}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {member.role === "Owner" ? (
-                    <div className="flex items-center gap-2 mr-14">
-                      <span className=" text-gray-500 text-sm ">Owner</span>
-                      <PiCrownSimpleFill className="h-5 w-5 text-yellow-500" />
-                    </div>
-                  ) : (
-                    <>
-                      <Tooltip
-                        title={
-                          isArchived
-                            ? "Disabled because this job is archived"
-                            : member.isAdmin
-                            ? "This role cannot be changed"
-                            : ""
-                        }
-                      >
-                        <div>
-                          <Select
-                            defaultValue={member.role}
-                            onValueChange={(value) => handleChangeRole(member.id, value)}
-                            disabled={isArchived || member.isAdmin}
-                          >
-                            <SelectTrigger className="w-[110px]">
-                              <SelectValue placeholder="Select role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Admin">Admin</SelectItem>
-                              <SelectItem value="Editor">Editor</SelectItem>
-                              <SelectItem value="Viewer">Viewer</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </Tooltip>
-                      <Tooltip
-                        title={
-                          isArchived
-                            ? "Disabled because this job is archived"
-                            : member.isAdmin
-                            ? "This member cannot be removed"
-                            : "Remove member"
-                        }
-                      >
-                        <span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveMember(member.id)}
-                            disabled={isArchived || member.isAdmin}
-                            tabIndex={isArchived ? -1 : 0}
-                            aria-disabled={isArchived}
-                          >
-                            <X className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <Divider className="my-4" />
-          <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-medium">Add Team Member</h3>
-            <div className="flex gap-3 items-center">
-              <Tooltip title={isArchived ? "Disabled because this job is archived" : ""} arrow>
-                <span className="flex gap-3 items-center w-full">
-                  <Select
-                    value={selectedColleagueId ?? ""}
-                    onValueChange={v => setSelectedColleagueId(v)}
-                    disabled={loadingColleagues || isArchived}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder={loadingColleagues ? "Loading..." : "Select employer"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {loadingColleagues ? (
-                        <div className="p-4 text-center text-muted-foreground">Loading...</div>
-                      ) : (
-                        allColleagues
-                          .filter(c => !members.some(m => m.email === c.email))
-                          .map((c) => (
-                            <SelectItem key={c.id} value={c.id ?? ""}>
-                              <div className="flex items-center gap-2">
-                                {c.avatarUrl ? (
-                                  <Image
-                                    src={c.avatarUrl}
-                                    alt={`${c.first_name} ${c.last_name}`}
-                                    width={28}
-                                    height={28}
-                                    className="w-7 h-7 rounded-full object-cover"
-                                    unoptimized
-                                  />
-                                ) : (
-                                  <div className="w-7 h-7 rounded-full bg-blue-400 flex items-center justify-center">
-                                    <FaUser className="text-white w-4 h-4" />
-                                  </div>
-                                )}
-                                <span>{c.first_name} {c.last_name}</span>
-                              </div>
-                            </SelectItem>
-                          ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <Button onClick={handleAddMember} disabled={!selectedColleagueId || loadingColleagues || isArchived}>Add</Button>
-                </span>
-              </Tooltip>
-            </div>
-            <div className="text-sm text-muted-foreground mt-2">
-              <h4 className="font-medium text-foreground">Role Permissions:</h4>
-              <ul className="list-disc pl-5 mt-1 space-y-1">
-                <li>
-                  <span className="font-medium">Admin:</span> Full access to edit, delete, and manage permissions
-                </li>
-                <li>
-                  <span className="font-medium">Editor:</span> Can edit job details and manage applicants
-                </li>
-                <li>
-                  <span className="font-medium">Viewer:</span> Can view job details and applicants, but cannot edit
-                </li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -753,124 +585,6 @@ export default function JobSettings({ jobId, companyName, onSuccess }: { jobId: 
             )}
           </div>
         </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-muted-foreground" />
-            Notification Settings
-          </CardTitle>
-          <CardDescription>Configure when and how you receive notifications</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">New Applications</Label>
-                <p className="text-sm text-muted-foreground">Receive notifications when new candidates apply</p>
-              </div>
-              <Tooltip title={isArchived ? "Disabled because this job is archived" : ""} arrow>
-                <span>
-                  <Switch
-                    checked={notifications.newApplications}
-                    onCheckedChange={() => handleNotificationToggle("newApplications")}
-                    disabled={isArchived}
-                  />
-                </span>
-              </Tooltip>
-            </div>
-            <Divider />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Status Changes</Label>
-                <p className="text-sm text-muted-foreground">Notify when application statuses are updated</p>
-              </div>
-              <Tooltip title={isArchived ? "Disabled because this job is archived" : ""} arrow>
-                <span>
-                  <Switch
-                    checked={notifications.statusChanges}
-                    onCheckedChange={() => handleNotificationToggle("statusChanges")}
-                    disabled={isArchived}
-                  />
-                </span>
-              </Tooltip>
-            </div>
-            <Divider />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Messages</Label>
-                <p className="text-sm text-muted-foreground">Receive notifications for new messages from applicants</p>
-              </div>
-              <Tooltip title={isArchived ? "Disabled because this job is archived" : ""} arrow>
-                <span>
-                  <Switch
-                    checked={notifications.messages}
-                    onCheckedChange={() => handleNotificationToggle("messages")}
-                    disabled={isArchived}
-                  />
-                </span>
-              </Tooltip>
-            </div>
-            <Divider />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Interviews</Label>
-                <p className="text-sm text-muted-foreground">Get reminders about upcoming interviews</p>
-              </div>
-              <Tooltip title={isArchived ? "Disabled because this job is archived" : ""} arrow>
-                <span>
-                  <Switch
-                    checked={notifications.interviews}
-                    onCheckedChange={() => handleNotificationToggle("interviews")}
-                    disabled={isArchived}
-                  />
-                </span>
-              </Tooltip>
-            </div>
-            <Divider />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Daily Digest</Label>
-                <p className="text-sm text-muted-foreground">Receive a daily summary of all activity</p>
-              </div>
-              <Tooltip title={isArchived ? "Disabled because this job is archived" : ""} arrow>
-                <span>
-                  <Switch
-                    checked={notifications.dailyDigest}
-                    onCheckedChange={() => handleNotificationToggle("dailyDigest")}
-                    disabled={isArchived}
-                  />
-                </span>
-              </Tooltip>
-            </div>
-          </div>
-          <div className="pt-4">
-            <h3 className="text-sm font-medium mb-2">Notification Recipients</h3>
-            <div className="space-y-2">
-              {sortedMembers.map((member) => (
-                <Tooltip title={isArchived ? "Disabled because this job is archived" : ""} arrow key={member.id}>
-                  <span>
-                    <Checkbox
-                      id={`notify-${member.id}`}
-                      defaultChecked={member.role === "Admin" || member.role === "Owner"}
-                      disabled={isArchived}
-                    />
-                    <Label htmlFor={`notify-${member.id}`} className="text-sm">
-                      {member.name} ({member.email})
-                    </Label>
-                  </span>
-                </Tooltip>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-end">
-          <Tooltip title={isArchived ? "Disabled because this job is archived" : ""} arrow>
-            <span>
-              <Button disabled={isArchived}>Save Notification Settings</Button>
-            </span>
-          </Tooltip>
-        </CardFooter>
       </Card>
       {/* Job Status Section - moved to the bottom */}
       <Card>

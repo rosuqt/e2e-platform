@@ -182,7 +182,7 @@ export default function PersonalDetailsForm({
             renderInput={(params) => (
               <TextField
                 {...params}
-                label={<span>Country Code <span className="text-red-600">*</span></span>}
+                label={<span>Code <span className="text-red-600">*</span></span>}
                 placeholder="Select your country code"
                 error={!!errors.countryCode}
                 helperText={errors.countryCode}

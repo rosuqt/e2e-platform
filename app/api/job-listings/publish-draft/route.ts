@@ -68,25 +68,23 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           action: 'publishJob',
-          formData: {
-            jobTitle: draft.job_title,
-            location: draft.location,
-            remoteOptions: draft.remote_options,
-            workType: draft.work_type,
-            payType: draft.pay_type,
-            payAmount: draft.pay_amount,
-            recommendedCourse: draft.recommended_course,
-            verificationTier: draft.verification_tier,
-            jobDescription: draft.job_description,
-            responsibilities: typeof draft.responsibilities === 'string' ? JSON.parse(draft.responsibilities) : draft.responsibilities,
-            mustHaveQualifications: Array.isArray(draft.must_have_qualifications) ? draft.must_have_qualifications : [draft.must_have_qualifications],
-            niceToHaveQualifications: Array.isArray(draft.nice_to_have_qualifications) ? draft.nice_to_have_qualifications : [draft.nice_to_have_qualifications],
-            jobSummary: draft.job_summary,
+          data: {
+            jobTitle: draft.job_title ?? "",
+            location: draft.location ?? "",
+            remoteOptions: draft.remote_options ?? "",
+            workType: draft.work_type ?? "",
+            recommendedCourse: draft.recommended_course ?? "",
+            verificationTier: draft.verification_tier ?? "",
+            jobDescription: draft.job_description ?? "",
+            responsibilities: typeof draft.responsibilities === 'string' ? JSON.parse(draft.responsibilities) : (draft.responsibilities ?? [""]),
+            mustHaveQualifications: Array.isArray(draft.must_have_qualifications) ? draft.must_have_qualifications : (draft.must_have_qualifications ? [draft.must_have_qualifications] : [""]),
+            niceToHaveQualifications: Array.isArray(draft.nice_to_have_qualifications) ? draft.nice_to_have_qualifications : (draft.nice_to_have_qualifications ? [draft.nice_to_have_qualifications] : [""]),
+            jobSummary: draft.job_summary ?? "",
             applicationDeadline: draft.application_deadline ? { date: draft.application_deadline.split(' ')[0], time: draft.application_deadline.split(' ')[1] || '00:00' } : { date: '', time: '' },
-            maxApplicants: draft.max_applicants,
-            perksAndBenefits: Array.isArray(draft.perks_and_benefits) ? draft.perks_and_benefits : [],
-            applicationQuestions: Array.isArray(draft.application_questions) ? draft.application_questions : [],
-            skills: Array.isArray(draft.skills) ? draft.skills : []
+            maxApplicants: draft.max_applicants ?? "",
+            perksAndBenefits: Array.isArray(draft.perks_and_benefits) ? draft.perks_and_benefits : (draft.perks_and_benefits ?? []),
+            applicationQuestions: Array.isArray(draft.application_questions) ? draft.application_questions : (draft.application_questions ?? []),
+            skills: Array.isArray(draft.skills) ? draft.skills : (draft.skills ?? []),
           }
         })
       })
@@ -99,6 +97,25 @@ export async function POST(request: NextRequest) {
 
       const result = await response.json()
       console.log("Job published successfully:", result)
+
+      if (result?.jobId || result?.job_id) {
+        const jobId = result.jobId ?? result.job_id
+        await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai-matches/embeddings/job`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: jobId }),
+        })
+        await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai-matches/match/students`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: jobId }),
+        })
+        await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ai-matches/rescore-job`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: jobId }),
+        })
+      }
 
       const { error: deleteError } = await supabase
         .from("job_drafts")
@@ -126,4 +143,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Internal server error: ${error}` }, { status: 500 })
   }
 }
-     

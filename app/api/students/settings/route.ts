@@ -75,6 +75,27 @@ export async function GET() {
       };
     });
   }
+  if (parsedData?.address && Array.isArray(parsedData.address)) {
+    parsedData.country = parsedData.address[0] || ""
+    parsedData.city = parsedData.address[1] || ""
+  } else if (parsedData?.address && typeof parsedData.address === "string") {
+    try {
+      const arr = JSON.parse(parsedData.address)
+      if (Array.isArray(arr)) {
+        parsedData.country = arr[0] || ""
+        parsedData.city = arr[1] || ""
+      } else {
+        parsedData.country = ""
+        parsedData.city = ""
+      }
+    } catch {
+      parsedData.country = ""
+      parsedData.city = ""
+    }
+  } else {
+    parsedData.country = ""
+    parsedData.city = ""
+  }
   console.log("student_profile:", parsedData?.student_profile)
   return NextResponse.json(parsedData)
 }
@@ -87,7 +108,9 @@ export async function PUT(req: Request) {
   }
   const supabase = getAdminSupabase()
   const body = await req.json()
-  const { address, course, year, section, s_job_pref, contact_info, username } = body
+  const { country, city, course, year, section, s_job_pref, contact_info, username } = body
+
+  const address = JSON.stringify([country || "", city || ""])
 
   const { error: studentError } = await supabase
     .from("registered_students")
@@ -138,7 +161,6 @@ export async function PUT(req: Request) {
       if ('phone' in contact_info) mergedContactInfo.phone = contact_info.phone
       if ('countryCode' in contact_info) mergedContactInfo.countryCode = contact_info.countryCode
 
-      // Store as a Postgres JSONB object, not as a string
       updateObj.contact_info = mergedContactInfo
     }
 

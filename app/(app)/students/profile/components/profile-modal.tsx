@@ -2,14 +2,15 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ChevronRight, LogOut, Settings, User, Palette, AlertCircle } from "lucide-react"
+import { ChevronRight, LogOut, Settings, Calendar } from "lucide-react"
 import { Avatar } from "@mui/material"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { HiBadgeCheck } from "react-icons/hi"
-import { LuBadgeCheck } from "react-icons/lu"
+import { LuBadgeCheck, LuSquareActivity } from "react-icons/lu"
 import { PiWarningFill } from "react-icons/pi"
 import Tooltip from "@mui/material/Tooltip"
+import { useSession } from "next-auth/react"
 
 interface ProfileModalProps {
   user: {
@@ -22,6 +23,7 @@ interface ProfileModalProps {
 
 export function ProfileModal({ user, onClose }: ProfileModalProps) {
   const router = useRouter()
+  const { data: session } = useSession()
   const [isOpen, setIsOpen] = useState(true)
   const modalRef = useRef<HTMLDivElement>(null)
   const [dbName, setDbName] = useState<string>("")
@@ -86,10 +88,10 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
       try {
         detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" })
         if (detailsRes.ok) {
-          const { first_name, last_name, email, profile_img } = await detailsRes.json()
+          const { first_name, last_name, suffix, email, profile_img } = await detailsRes.json()
           const name =
             first_name && last_name
-              ? `${first_name} ${last_name}`
+              ? `${first_name} ${last_name}${suffix ? " " + suffix : ""}`
               : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
@@ -118,7 +120,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem(sessionAvatarKey)
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem(sessionAvatarKey)
           }
           setLoading(false)
@@ -132,7 +135,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           const name =
             first_name && last_name
               ? `${first_name} ${last_name}`
-              : ""
+              : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
           setUserType("student")
@@ -160,7 +163,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem(sessionAvatarKey)
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem(sessionAvatarKey)
           }
           setLoading(false)
@@ -181,10 +185,10 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
       try {
         detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" })
         if (detailsRes.ok) {
-          const { first_name, last_name, email, profile_img } = await detailsRes.json()
+          const { first_name, last_name, suffix, email, profile_img } = await detailsRes.json()
           const name =
             first_name && last_name
-              ? `${first_name} ${last_name}`
+              ? `${first_name} ${last_name}${suffix ? " " + suffix : ""}`
               : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
@@ -213,7 +217,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem("profileModalUserAvatar")
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem("profileModalUserAvatar")
           }
           setLoading(false)
@@ -227,7 +232,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           const name =
             first_name && last_name
               ? `${first_name} ${last_name}`
-              : ""
+              : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
           setUserType("student")
@@ -255,7 +260,8 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               sessionStorage.removeItem("profileModalUserAvatar")
             }
           } else {
-            setDbAvatar(undefined)
+            const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
+            setDbAvatar(defaultUrl)
             sessionStorage.removeItem("profileModalUserAvatar")
           }
           setLoading(false)
@@ -278,8 +284,26 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     onClose()
   }
   const handleSettingsClick = async () => {
-    await router.prefetch("/students/settings")
-    router.push("/students/settings")
+    const settingsPath =
+      userType === "employer"
+        ? "/employers/settings"
+        : "/students/settings"
+    await router.prefetch(settingsPath)
+    router.push(settingsPath)
+    onClose()
+  }
+  const handleActivityLogClick = async () => {
+    await router.prefetch("/students/profile?tab=activity-tab")
+    router.push("/students/profile?tab=activity-tab")
+    onClose()
+  }
+  const handleCalendarClick = async () => {
+    const calendarPath =
+      userType === "employer"
+        ? "/employers/calendar"
+        : "/students/calendar"
+    await router.prefetch(calendarPath)
+    router.push(calendarPath)
     onClose()
   }
 
@@ -294,12 +318,44 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     onClose();
   }
 
-  const menuItems = [
-    { id: "profile", label: "Profile", icon: User, onClick: handleProfileClick },
+  const menuItems: {
+    id: string
+    label: string
+    icon: React.ComponentType<{ size?: number }>
+    onClick: () => Promise<void>
+  }[] = [
+    { id: "calendar", label: "Calendar", icon: Calendar, onClick: handleCalendarClick },
     { id: "settings", label: "Settings", icon: Settings, onClick: handleSettingsClick },
-    { id: "theme", label: "Theme", icon: Palette, badge: "7" },
-    { id: "report", label: "Report a bug", icon: AlertCircle },
   ]
+
+  if (userType === "student") {
+    menuItems.push({
+      id: "theme",
+      label: "Activity Log",
+      icon: LuSquareActivity,
+      onClick: handleActivityLogClick,
+    })
+  }
+
+  if (userType === "employer") {
+    const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus
+    const verificationHref =
+      verifyStatus === "full"
+        ? "/employers/verification/fully-verified"
+        : verifyStatus === "standard"
+        ? "/employers/verification/partially-verified"
+        : "/employers/verification/unverified"
+    menuItems.unshift({
+      id: "verification",
+      label: "Verification",
+      icon: HiBadgeCheck,
+      onClick: async () => {
+        await router.prefetch(verificationHref)
+        router.push(verificationHref)
+        onClose()
+      }
+    })
+  }
 
   return (
     <AnimatePresence>
@@ -323,7 +379,11 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               <h3 className="text-lg font-medium text-gray-800">Account</h3>
             </div>
 
-            <div className="p-4 flex items-center space-x-3 border-b border-gray-100">
+            <div
+              className="p-4 flex items-center space-x-3 border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition"
+              onClick={loading ? undefined : handleProfileClick}
+              style={loading ? { cursor: "default", opacity: 0.7 } : undefined}
+            >
               {loading ? (
                 <div className="animate-pulse flex items-center space-x-3 w-full">
                   <div className="rounded-full bg-gray-200" style={{ width: 48, height: 48 }} />
@@ -335,7 +395,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
               ) : (
                 <>
                   <Avatar
-                    src={dbAvatar || "/placeholder.svg"}
+                    src={dbAvatar || (userType === "student" ? user.avatarUrl : undefined) || "/placeholder.svg"}
                     alt={dbName}
                     sx={{ width: 48, height: 48, border: "2px solid #bbdefb" }}
                   >
@@ -349,14 +409,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                     <div className="font-medium text-gray-800 flex items-center gap-2">
                       {dbName}
                       {userType === "employer" && (() => {
-                        let verifyStatus = null
-                        try {
-                          const sidebarCached = sessionStorage.getItem("sidebarUserData")
-                          if (sidebarCached) {
-                            const data = JSON.parse(sidebarCached)
-                            verifyStatus = data.verify_status
-                          }
-                        } catch {}
+                        const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus
                         if (!verifyStatus) return null
                         if (verifyStatus === "full") {
                           return (
@@ -366,9 +419,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                                 whileHover={{ scale: 1.18 }}
                                 transition={{ type: "spring", stiffness: 340, damping: 16 }}
                               >
-                               
-                                  <HiBadgeCheck className="w-4 h-4 text-blue-600" />
-
+                                <HiBadgeCheck className="w-4 h-4 text-blue-600" />
                               </motion.span>
                             </Tooltip>
                           )
@@ -381,9 +432,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                                 whileHover={{ scale: 1.18 }}
                                 transition={{ type: "spring", stiffness: 340, damping: 16 }}
                               >
-
-                                  <LuBadgeCheck className="w-4 h-4" style={{ color: "#7c3aed" }} />
-         
+                                <LuBadgeCheck className="w-4 h-4" style={{ color: "#7c3aed" }} />
                               </motion.span>
                             </Tooltip>
                           )
@@ -420,15 +469,12 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                   >
                     <div className="flex items-center">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500">
+                        {/* Render Lucide or custom icons */}
                         <Icon size={18} />
                       </div>
                       <span className="ml-3 text-gray-700">{item.label}</span>
                     </div>
-                    {item.badge ? (
-                      <span className="bg-blue-100 text-blue-600 text-xs rounded-full px-2 py-0.5">{item.badge}</span>
-                    ) : (
-                      <ChevronRight size={16} className="text-gray-400" />
-                    )}
+                    <ChevronRight size={16} className="text-gray-400" />
                   </button>
                 )
               })}

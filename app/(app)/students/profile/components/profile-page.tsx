@@ -24,7 +24,7 @@ import { SiIndeed } from "react-icons/si";
 import { useSession } from "next-auth/react";
 import { ExpertiseIcon } from "./data/expertise-icons"
 import { useRouter } from "next/navigation";
-import { FaGraduationCap } from "react-icons/fa";
+import { FaGraduationCap, FaStar } from "react-icons/fa";
 import { Tooltip as MuiTooltip, Tooltip } from "@mui/material"
 import toast from "react-hot-toast"
 import { PiFiles } from "react-icons/pi";
@@ -154,10 +154,22 @@ export default function AboutPage() {
     }[];
   } | null>(null);
 const [showAiSuggestionsModal, setShowAiSuggestionsModal] = useState(false);
+const [showExpertiseSkillWarning, setShowExpertiseSkillWarning] = useState(false);
+const [pendingExpertiseData, setPendingExpertiseData] = useState<{ skill: string; mastery: number } | null>(null);
 
 const triggerStudentEmbedding = async () => {
   const currentStudentId = (session?.user as { studentId?: string })?.studentId || "student_001";
   await fetch("/api/ai-matches/embeddings/student", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ student_id: currentStudentId }),
+  });
+  await fetch("/api/ai-matches/match/jobs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ student_id: currentStudentId }),
+  });
+  await fetch("/api/ai-matches/rescore", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ student_id: currentStudentId }),
@@ -510,19 +522,29 @@ const handleDeleteExp = async (idx: number) => {
   }
 };
 
+  const [expertiseWarning, setExpertiseWarning] = useState<string | null>(null);
   const handleAddExpertise = async (data: { skill: string; mastery: number }) => {
-    if (
-      expertise.some(
-        (e, idx) =>
-          e.skill.trim().toLowerCase() === data.skill.trim().toLowerCase() &&
-          (editingExpertiseIdx === null || idx !== editingExpertiseIdx)
-      )
-    ) {
+    const skillLower = data.skill.trim().toLowerCase();
+    const existsInExpertise = expertise.some(
+      (e, idx) =>
+        e.skill.trim().toLowerCase() === skillLower &&
+        (editingExpertiseIdx === null || idx !== editingExpertiseIdx)
+    );
+    if (existsInExpertise) {
       setExpertiseError("Expertise already exists.");
+      setExpertiseWarning(null);
       return;
     }
+    const existsInSkills = skills.some(s => s.trim().toLowerCase() === skillLower);
+    if (existsInSkills) {
+      setPendingExpertiseData(data);
+      setShowExpertiseSkillWarning(true);
+      return;
+    }
+    setExpertiseWarning(null);
+    let newExpertise;
     if (editingExpertiseIdx !== null) {
-      const newExpertise = expertise.map((e, idx) =>
+      newExpertise = expertise.map((e, idx) =>
         idx === editingExpertiseIdx ? { skill: data.skill, mastery: data.mastery } : e
       );
       setExpertise(newExpertise);
@@ -540,7 +562,8 @@ const handleDeleteExp = async (idx: number) => {
       });
       await triggerStudentEmbedding();
     } else {
-      setExpertise([data, ...expertise]);
+      newExpertise = [data, ...expertise];
+      setExpertise(newExpertise);
       const student_id = (session?.user as { studentId?: string })?.studentId;
       await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
@@ -555,6 +578,7 @@ const handleDeleteExp = async (idx: number) => {
     }
     setExpertiseError(null);
     setOpenAddExpertise(false);
+    setExpertiseWarning(null);
   };
 
   const handleEditExpertise = (idx: number) => {
@@ -627,13 +651,22 @@ const handleDeleteExp = async (idx: number) => {
     setOpenEditContact(false);
   };
 
+  const [skillError, setSkillError] = useState<string | null>(null);
   const addSkill = async (value: string) => {
     const skill = value.trim();
+    if (!skill) return;
+    if (skills.some(s => s.replace(/\s+/g, "").toLowerCase() === skill.replace(/\s+/g, "").toLowerCase())) {
+      setSkillError("This skill already exists.");
+      return;
+    }
     if (
-      !skill ||
-      skills.some(s => s.toLowerCase() === skill.toLowerCase()) ||
-      skill.length > 20
-    ) return;
+      expertise.some(e => e.skill.replace(/\s+/g, "").toLowerCase() === skill.replace(/\s+/g, "").toLowerCase())
+    ) {
+      setSkillError("This skill already exists as an expertise.");
+      return;
+    }
+    if (skill.length > 20) return;
+    setSkillError(null);
     const newSkills = [skill, ...skills];
     setSkills(newSkills);
     setSkillInput("");
@@ -690,6 +723,7 @@ const handleDeleteExp = async (idx: number) => {
   const handleSkillInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSkillInput(e.target.value);
     setFocusedSuggestion(-1);
+    setSkillError(null);
   };
 
   const filteredSuggestions = (showSkillInput || skillInput)
@@ -964,12 +998,14 @@ try {
               className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-600 outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Write then Press enter to save"
               value={introduction}
-              onChange={e => setIntroduction(e.target.value)}
+              onChange={e => setIntroduction(e.target.value.slice(0, 800))}
               onBlur={handleIntroductionBlur}
               onKeyDown={handleIntroductionKeyDown}
               disabled={loadingIntro}
+              maxLength={800}
             />
             <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-gray-400">{introduction.length}/800</span>
               {loadingIntro && (
                 <span className="flex items-center text-blue-600 text-xs">
                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -1086,10 +1122,38 @@ try {
         </div>
         <AddExpModal
           open={openAddExp}
-          onClose={() => setOpenAddExp(false)}
-          onSave={data => {
-            setExperiences([data, ...experiences]);
-            saveProfileField("experiences", [data, ...experiences]);
+          onClose={() => {
+            setOpenAddExp(false);
+            setEditingExpIdx(null);
+          }}
+          onSave={async data => {
+            if (editingExpIdx !== null) {
+              const newExperiences = experiences.map((exp, idx) =>
+                idx === editingExpIdx ? data : exp
+              );
+              setExperiences(newExperiences);
+              await fetch("/api/students/student-profile/postHandlers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "experience_update",
+                  student_id: (session?.user as { studentId?: string })?.studentId,
+                  data: newExperiences
+                }),
+              });
+              setEditingExpIdx(null);
+            } else {
+              setExperiences([data, ...experiences]);
+              await fetch("/api/students/student-profile/postHandlers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "experience",
+                  student_id: (session?.user as { studentId?: string })?.studentId,
+                  data
+                }),
+              });
+            }
             setOpenAddExp(false);
           }}
           editMode={editingExpIdx !== null}
@@ -1104,12 +1168,14 @@ try {
               className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-600 outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Write then Press enter to save"
               value={careerGoals}
-              onChange={e => setCareerGoals(e.target.value)}
+              onChange={e => setCareerGoals(e.target.value.slice(0, 800))}
               onBlur={handleCareerGoalsBlur}
               onKeyDown={handleCareerGoalsKeyDown}
               disabled={loadingCareer}
+              maxLength={800}
             />
             <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-gray-400">{careerGoals.length}/800</span>
               {loadingCareer && (
                 <span className="flex items-center text-blue-600 text-xs">
                   <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -1152,15 +1218,18 @@ try {
                         autoFocus
                         className="border border-blue-300 rounded-full px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                         onBlur={e => {
-            
                           if (e.relatedTarget == null) {
                             setShowSkillInput(false);
                             setSkillInput("");
                             setFocusedSuggestion(-1);
+                            setSkillError(null);
                           }
                         }}
                         style={{ minHeight: 32 }}
                       />
+                      {skillError && (
+                        <div className="text-xs text-red-500 mt-1">{skillError}</div>
+                      )}
                       {filteredSuggestions.length > 0 && (
                         <div className="absolute left-0 z-10 mt-1 w-full bg-white border border-blue-200 rounded-lg shadow-lg max-h-56 overflow-auto">
                           {filteredSuggestions.map((group, groupIdx) => (
@@ -1294,6 +1363,9 @@ try {
                 )}
               </div>
               <div className="text-left mt-2">
+                {expertiseWarning && (
+                  <div className="text-red-500 text-xs mb-2">{expertiseWarning}</div>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
@@ -1313,11 +1385,27 @@ try {
                     setExpertiseError(null);
                     setEditingExpertiseIdx(null);
                     setEditingExpertise(null);
+                    setExpertiseWarning(null);
                   }}
                   onSave={handleAddExpertise}
                   error={expertiseError}
                   initial={editingExpertise}
                   editMode={editingExpertiseIdx !== null}
+                  skills={skills}
+                  expertise={expertise}
+                  onSkillRemove={async (skill: string) => {
+                    const idx = skills.findIndex(s => s.replace(/\s+/g, "").toLowerCase() === skill.replace(/\s+/g, "").toLowerCase());
+                    if (idx !== -1) {
+                      const newSkills = skills.filter((_, i) => i !== idx);
+                      setSkills(newSkills);
+                      await fetch("/api/students/student-profile/postHandlers", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ skills: newSkills }),
+                      });
+                      await triggerStudentEmbedding();
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -1596,7 +1684,17 @@ try {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-lg text-gray-800">{cert.title}</h3>
+                      <h3
+  className="font-medium text-lg text-gray-800 break-words max-w-[180px] overflow-hidden"
+  style={{
+    display: '-webkit-box',
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: 'vertical',
+    lineClamp: 3
+  }}
+>
+  {cert.title}
+</h3>
                       {cert.category && (
                         <span className="ml-2 px-2 py-1 rounded bg-blue-50 text-blue-600 text-xs font-medium">{cert.category}</span>
                       )}
@@ -1631,33 +1729,23 @@ try {
                   </button>
                 </div>
                 {cert.description && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    {cert.description}
+                  <p className="text-sm text-gray-600 mt-2 truncate max-h-12 overflow-hidden">
+                    {cert.description.length > 120 ? cert.description.slice(0, 120) + "..." : cert.description}
                   </p>
                 )}
                 <div className="mt-auto flex w-full justify-end gap-2">
-                  {cert.attachmentUrl ? (
-                    <Button
-                      size="sm"
-                      className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
-                      variant="default"
-                      style={{ minHeight: 32 }}
-                      onClick={() => {
-                        setSelectedCert(cert);
-                        setOpenViewCert(true);
-                      }}
-                    >
-                      View Certificate
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="w-full text-xs border-blue-300 text-blue-600 hover:bg-blue-50"
-                      variant="outline"
-                    >
-                      No Certificate
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
+                    variant="default"
+                    style={{ minHeight: 32 }}
+                    onClick={() => {
+                      setSelectedCert(cert);
+                      setOpenViewCert(true);
+                    }}
+                  >
+                    View Certificate
+                  </Button>
                 </div>
                 {deletingCertIdx === idx && (
                   <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
@@ -1721,7 +1809,11 @@ try {
                 ? certs[editingCertIdx]
                 : undefined
             }
+
             editMode={editingCertIdx !== null}
+         
+
+         
           />
           <ViewCertModal
             open={openViewCert}
@@ -1761,7 +1853,17 @@ try {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-lg text-gray-800">{item.title}</h3>
+                      <h3
+  className="font-medium text-lg text-gray-800 break-words max-w-[180px] overflow-hidden"
+  style={{
+    display: '-webkit-box',
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: 'vertical',
+    lineClamp: 3
+  }}
+>
+  {item.title}
+</h3>
                       {item.category && (
                         <span className="ml-2 px-2 py-1 rounded bg-blue-50 text-blue-600 text-xs font-medium">{item.category}</span>
                       )}
@@ -1773,7 +1875,7 @@ try {
                     </div>
                   </div>
                   <button
-                    className="ml-2 flex items-center justify-center text-blue-500 hover:text-blue-700"
+                    className="ml-2 flex items-center justifycenter text-blue-500 hover:text-blue-700"
                     title="Edit Portfolio"
                     onClick={() => {
                       setEditingPortfolioIdx(idx);
@@ -1783,7 +1885,6 @@ try {
                     <Pencil size={18} />
                   </button>
                   <button
-                   
                     className="ml-2 flex items-center justify-center text-red-500 hover:text-red-700"
                     title="Delete Portfolio"
                     disabled={deletingPortfolioIdx === idx}
@@ -1793,65 +1894,36 @@ try {
                   </button>
                 </div>
                 {item.description && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    {item.description}
+                  <p className="text-sm text-gray-600 mt-2 truncate max-h-12 overflow-hidden">
+                    {item.description.length > 120 ? item.description.slice(0, 120) + "..." : item.description}
                   </p>
                 )}
                 <div className="mt-auto flex w-full justify-end gap-2">
-                  {item.attachmentUrl ? (
-                    <>
-                      <Button
-                        size="sm"
-                        className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
-                        variant="default"
-                        style={{ minHeight: 32 }}
-                        onClick={() => {
-                          setSelectedPortfolio(item);
-                          setOpenViewPortfolio(true);
-                        }}
-                      >
-                        View Portfolio
-                      </Button>
-                      {item.link && (
-                        <Button
-                          size="sm"
-                          className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
-                          variant="default"
-                          style={{ minHeight: 32 }}
-                          onClick={e => {
-                            e.stopPropagation();
-                            window.open(item.link, "_blank", "noopener,noreferrer");
-                          }}
-                        >
-                          Open Link
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {item.link ? (
-                        <Button
-                          size="sm"
-                          className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
-                          variant="default"
-                          style={{ minHeight: 32 }}
-                          onClick={e => {
-                            e.stopPropagation();
-                            window.open(item.link, "_blank", "noopener,noreferrer");
-                          }}
-                        >
-                          Open Link
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className="w-full text-xs border-blue-300 text-blue-600 hover:bg-blue-50"
-                          variant="outline"
-                        >
-                          No File
-                        </Button>
-                      )}
-                    </>
+                  <Button
+                    size="sm"
+                    className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
+                    variant="default"
+                    style={{ minHeight: 32 }}
+                    onClick={() => {
+                      setSelectedPortfolio(item);
+                      setOpenViewPortfolio(true);
+                    }}
+                  >
+                    View Portfolio
+                  </Button>
+                  {item.link && (
+                    <Button
+                      size="sm"
+                      className="w-full text-xs bg-blue-600 text-white hover:bg-blue-700 rounded px-3 py-1 flex items-center justify-center"
+                      variant="default"
+                      style={{ minHeight: 32 }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        window.open(item.link, "_blank", "noopener,noreferrer");
+                      }}
+                    >
+                      Open Link
+                    </Button>
                   )}
                 </div>
                 {deletingPortfolioIdx === idx && (
@@ -1936,13 +2008,10 @@ try {
 
       <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
         <div className="flex justify-between items-center p-4 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100">
-          <div className="flex justify-between items-center">
-            <h2 className="text-blue-700 font-semibold text-lg flex items-center gap-2">
-              <MdContactMail className="text-blue-600" size={20} />
-              Contact Information
-            </h2>
-          </div>
-          <p className="text-sm text-gray-500">Keep your contact details up-to-date for candidates and networking.</p>
+          <h2 className="text-blue-700 font-semibold text-lg flex items-center gap-2">
+            <MdContactMail className="text-blue-600" size={20} />
+            Contact Information
+          </h2>
         </div>
         <div className="p-4 space-y-4">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">

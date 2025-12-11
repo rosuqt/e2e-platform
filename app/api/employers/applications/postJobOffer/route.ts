@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
@@ -31,32 +32,34 @@ export async function POST(req: Request) {
       id
     } = body;
 
-    const { error } = await supabase.from('job_offers').upsert([
-      {
-        id,
-        salary,
-        start_date,
-        notes,
-        application_id,
-        student_id,
-        employer_id,
-        company_name,
-        applicant_name,
-        job_title,
-        salary_type,
-        work_setup,
-        employment_type,
-        work_location,
-        work_schedule,
-        bonuses,
-        allowances, 
-        benefits,
-        offer_expiry,
-        offer_date,
-        custom_message,
-        contract_file_url
-      }
-    ], { onConflict: 'id' }).select();
+    const offer: Record<string, any> = {
+      salary,
+      start_date,
+      notes,
+      application_id,
+      student_id,
+      employer_id,
+      company_name,
+      applicant_name,
+      job_title,
+      salary_type,
+      work_setup,
+      employment_type,
+      work_location,
+      work_schedule,
+      bonuses,
+      allowances, 
+      benefits,
+      offer_expiry,
+      offer_date,
+      custom_message,
+      contract_file_url
+    };
+    if (id) {
+      offer.id = id;
+    }
+
+    const { error } = await supabase.from('job_offers').upsert([offer], { onConflict: 'id' }).select();
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });

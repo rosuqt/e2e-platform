@@ -77,6 +77,7 @@ export default function AddEducationalModal({
     }
     return "";
   });
+  const [existingSchools, setExistingSchools] = useState<string[]>([]);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -97,6 +98,24 @@ export default function AddEducationalModal({
       setEndYear("");
     }
   }, [open, initial]);
+
+  useEffect(() => {
+    if (open && session?.user) {
+      const studentId = (session.user as { studentId?: string })?.studentId;
+      if (studentId) {
+        fetch(`/api/students/student-profile/getEducations?student_id=${studentId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (Array.isArray(data)) {
+              setExistingSchools(data.map((edu: { school: string }) => edu.school?.toLowerCase()));
+            } else {
+              setExistingSchools([]);
+            }
+          })
+          .catch(() => setExistingSchools([]));
+      }
+    }
+  }, [open, session?.user]);
 
   useEffect(() => {
     if (level === "Junior High") {
@@ -151,6 +170,15 @@ export default function AddEducationalModal({
     const yearsValue = `${startYear}-${endYear}`;
     const acronymValue = acronym ? acronym.toUpperCase() : "";
     const studentId = (session?.user as { studentId?: string })?.studentId;
+    if (
+      !editMode &&
+      school &&
+      existingSchools.includes(school.trim().toLowerCase())
+    ) {
+      setError("This school already exists.");
+      setSaving(false);
+      return;
+    }
     if (studentId && !editMode) {
       const res = await fetch("/api/students/student-profile/postHandlers", {
         method: "POST",
@@ -172,6 +200,21 @@ export default function AddEducationalModal({
         setSaving(false);
         return;
       }
+      await fetch("/api/ai-matches/embeddings/student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
+      await fetch("/api/ai-matches/match/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
+      await fetch("/api/ai-matches/rescore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
     }
     onSave?.({ school, acronym: acronymValue, degree, years: yearsValue, level, iconColor });
     handleClose();

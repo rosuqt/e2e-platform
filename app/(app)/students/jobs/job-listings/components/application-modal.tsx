@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -8,7 +9,6 @@ import { motion } from "framer-motion"
 import { X, FileText, Upload, CheckCircle } from "lucide-react"
 import Switch from "@mui/material/Switch"
 import { Tooltip } from "@mui/material"
-import AddressAutocomplete from "@/components/AddressAutocomplete"
 import Image from "next/image"
 import TextField from "@mui/material/TextField";
 import Select from "@mui/material/Select";
@@ -20,6 +20,7 @@ import Chip from "@mui/material/Chip";
 import ListSubheader from "@mui/material/ListSubheader";
 import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
+import jsPDF from "jspdf"
 
 type StudentDetails = {
   id: string
@@ -33,6 +34,7 @@ type StudentDetails = {
     email?: string[]
     phone?: string[]
   }
+  address?: string[]
 }
 
 type ApplicationForm = {
@@ -40,7 +42,8 @@ type ApplicationForm = {
   last_name: string
   email: string
   phone: string
-  address: string
+  country: string
+  city: string
   resume: string
   cover_letter: string
   experience_years: string
@@ -84,16 +87,21 @@ type PortfolioItem = {
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false })
 import mailAnim from "@/../public/animations/mail.json"
 import { ConfettiStars } from "@/components/magicui/star"
+import { TbFileLike } from "react-icons/tb"
 
 export function ApplicationModal({
+  onClose,
   jobId,
   jobTitle,
-  onClose,
+  gpt_score
 }: {
-  jobId: number
-  jobTitle: string
-  onClose: () => void
+  onClose: () => void;
+  jobId: string;
+  jobTitle: string;
+  gpt_score: number;
 }) {
+  console.log("ApplicationModal initialized for jobId:", jobId)
+
   const [step, setStep] = useState(1)
   const totalSteps = 4
 
@@ -103,7 +111,8 @@ export function ApplicationModal({
     last_name: "",
     email: "",
     phone: "",
-    address: "",
+    country: "",
+    city: "",
     resume: "",
     cover_letter: "",
     experience_years: "",
@@ -134,11 +143,99 @@ export function ApplicationModal({
   const [showSuccess, setShowSuccess] = useState(false)
   const router = useRouter()
 
+  const [countries, setCountries] = useState<{ code: string; name: string }[]>([])
+  const [cities, setCities] = useState<{ id: string; name: string }[]>([])
+  const [cityInput, setCityInput] = useState("")
+  const [loadingCountries, setLoadingCountries] = useState(false)
+  const [loadingCities, setLoadingCities] = useState(false)
+  const cityFieldRef = useRef<HTMLDivElement>(null)
+  const [activeTab, setActiveTab] = useState("upload")
+  const [resumeSource, setResumeSource] = useState<"upload" | "select" | null>(null)
+  const [coverSource, setCoverSource] = useState<"upload" | "select" | null>(null)
+  const [writingCover, setWritingCover] = useState(false)
+  const [coverText, setCoverText] = useState("")
+  const [rememberDetails, setRememberDetails] = useState(false)
+  const [saveAddress, setSaveAddress] = useState(false)
+  const [savePhone, setSavePhone] = useState(false)
+
   useEffect(() => {
     setLoadingStudent(true)
     fetch("/api/students/get-student-details")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: StudentDetails) => {
+      .then((data: StudentDetails & { address?: string[] | string, country?: string, city?: string }) => {
+        let addressArr: string[] = []
+        if (Array.isArray(data?.address)) {
+          addressArr = data.address
+        } else if (typeof data?.address === "string") {
+          try {
+            addressArr = JSON.parse(data.address)
+          } catch {
+            addressArr = []
+          }
+        }
+        const countryMap: Record<string, string> = {
+          "Philippines": "PH",
+          "United States": "US",
+          "Canada": "CA",
+          "Australia": "AU",
+          "United Kingdom": "GB",
+          "Germany": "DE",
+          "France": "FR",
+          "Japan": "JP",
+          "China": "CN",
+          "India": "IN",
+          "Singapore": "SG",
+          "South Korea": "KR",
+          "Italy": "IT",
+          "Spain": "ES",
+          "Brazil": "BR",
+          "Mexico": "MX",
+          "Russia": "RU",
+          "Netherlands": "NL",
+          "Sweden": "SE",
+          "Norway": "NO",
+          "Denmark": "DK",
+          "Finland": "FI",
+          "Switzerland": "CH",
+          "New Zealand": "NZ",
+          "South Africa": "ZA",
+          "Ireland": "IE",
+          "Belgium": "BE",
+          "Austria": "AT",
+          "Turkey": "TR",
+          "Indonesia": "ID",
+          "Malaysia": "MY",
+          "Thailand": "TH",
+          "Vietnam": "VN",
+          "Saudi Arabia": "SA",
+          "United Arab Emirates": "AE",
+          "Pakistan": "PK",
+          "Bangladesh": "BD",
+          "Egypt": "EG",
+          "Argentina": "AR",
+          "Chile": "CL",
+          "Colombia": "CO",
+          "Poland": "PL",
+          "Portugal": "PT",
+          "Greece": "GR",
+          "Czech Republic": "CZ",
+          "Hungary": "HU",
+          "Romania": "RO",
+          "Israel": "IL",
+          "Ukraine": "UA"
+        }
+        let countryValue = ""
+        if (typeof data.country === "string" && data.country) {
+          countryValue = data.country
+        } else if (addressArr[0]) {
+          countryValue = countryMap[addressArr[0]] || addressArr[0]
+        }
+        let cityValue = ""
+        if (typeof data.city === "string" && data.city) {
+          cityValue = data.city
+        } else if (addressArr[1]) {
+          cityValue = addressArr[1]
+        }
         if (data) {
           setStudent(data)
           let formattedPhone = ""
@@ -146,8 +243,12 @@ export function ApplicationModal({
             if (data.contact_info.phone.length > 1) {
               formattedPhone = `+${data.contact_info.phone[0]} ${data.contact_info.phone[1]}`
             } else if (data.contact_info.phone.length === 1) {
-              formattedPhone = data.contact_info.phone[0]
+              formattedPhone = `+${data.contact_info.phone[0]}`
             }
+          } else if (typeof data.contact_info?.phone === "string" && data.contact_info.phone) {
+            formattedPhone = data.contact_info.phone
+          } else {
+            formattedPhone = "+63 "
           }
           setForm((prev: ApplicationForm) => ({
             ...prev,
@@ -155,6 +256,8 @@ export function ApplicationModal({
             last_name: data.last_name || "",
             email: data.email || (Array.isArray(data.contact_info?.email) ? data.contact_info.email[0] ?? "" : ""),
             phone: formattedPhone,
+            country: countryValue,
+            city: cityValue,
           }))
         }
         setLoadingStudent(false)
@@ -181,8 +284,12 @@ export function ApplicationModal({
         if (student.contact_info.phone.length > 1) {
           formattedPhone = `+${student.contact_info.phone[0]} ${student.contact_info.phone[1]}`
         } else if (student.contact_info.phone.length === 1) {
-          formattedPhone = student.contact_info.phone[0]
+          formattedPhone = `+${student.contact_info.phone[0]}`
         }
+      } else if (typeof student.contact_info?.phone === "string" && student.contact_info.phone) {
+        formattedPhone = student.contact_info.phone
+      } else {
+        formattedPhone = "+63 "
       }
       setForm((prev: ApplicationForm) => ({
         ...prev,
@@ -284,36 +391,29 @@ export function ApplicationModal({
   }
 
   const handleSubmit = async () => {
-    setSubmitting(true)
-    let resumePath = ""
-    let coverLetterPath = ""
+    setSubmitting(true);
+    let resumePath = "";
+    let coverLetterPath = "";
     if (existingResume?.name) {
-      resumePath = student?.id + "/" + existingResume.name
+      resumePath = student?.id + "/" + existingResume.name;
     } else if (form.resume) {
       try {
-        const urlObj = new URL(form.resume)
-        resumePath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname
+        const urlObj = new URL(form.resume);
+        resumePath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname;
       } catch {
-        resumePath = form.resume
+        resumePath = form.resume;
       }
     }
     if (existingCover?.name) {
-      coverLetterPath = student?.id + "/" + existingCover.name
+      coverLetterPath = student?.id + "/" + existingCover.name;
     } else if (form.cover_letter) {
       try {
-        const urlObj = new URL(form.cover_letter)
-        coverLetterPath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname
+        const urlObj = new URL(form.cover_letter);
+        coverLetterPath = urlObj.pathname.startsWith("/") ? urlObj.pathname.slice(1) : urlObj.pathname;
       } catch {
-        coverLetterPath = form.cover_letter
+        coverLetterPath = form.cover_letter;
       }
     }
-
-    const safeJobId =
-      typeof jobId === "string" && jobId !== ""
-        ? jobId
-        : typeof jobId === "number" && !isNaN(jobId)
-        ? jobId
-        : "";
 
     await fetch("/api/students/apply", {
       method: "POST",
@@ -322,18 +422,40 @@ export function ApplicationModal({
         ...form,
         resume: resumePath || "",
         cover_letter: coverLetterPath || "",
-        job_id: safeJobId,
         student_id: student?.id,
+        job_id: jobId,
         project_description: form.project_description,
         portfolio: form.portfolio,
         achievements: form.achievements,
+        rememberDetails,
+        saveAddress,
       }),
-    })
-    setSubmitting(false)
-    setShowSuccess(true)
+    });
+    if (saveAddress && student?.id && form.country && form.city) {
+      await fetch("/api/students/update-address", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: student.id,
+          address: [form.country, form.city],
+        }),
+      });
+    }
+    if (savePhone && student?.id && form.phone) {
+      await fetch("/api/students/update-phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          student_id: student.id,
+          phone: form.phone,
+        }),
+      });
+    }
+    setSubmitting(false);
+    setShowSuccess(true);
     setTimeout(() => {
-      if (typeof window !== "undefined" && window.scrollTo) window.scrollTo(0, 0)
-    }, 0)
+      if (typeof window !== "undefined" && window.scrollTo) window.scrollTo(0, 0);
+    }, 0);
   }
 
 
@@ -371,9 +493,9 @@ export function ApplicationModal({
   }
 
   useEffect(() => {
-    if (!jobId) return
+    if (!student) return
     setLoadingQuestions(true)
-    fetch(`/api/employers/application-questions?job_id=${jobId}`)
+    fetch(`/api/employers/application-questions?job_id=${student.id}`)
       .then(res => res.ok ? res.json() : [])
       .then((data: unknown[]) => {
         const normalized = (data as Question[]).map((q) => {
@@ -415,7 +537,7 @@ export function ApplicationModal({
         setLoadingQuestions(false)
       })
       .catch(() => setLoadingQuestions(false))
-  }, [jobId])
+  }, [student])
 
   const handleQuestionAnswer = (questionId: string, value: string | string[]) => {
     setForm(prev => ({
@@ -428,7 +550,7 @@ export function ApplicationModal({
   }
 
   useEffect(() => {
-  }, [jobId]);
+  }, [student]);
 
   useEffect(() => {
     if (allCovers.length > 0) {
@@ -456,7 +578,6 @@ export function ApplicationModal({
       .then(res => res.json())
       .then(data => {
         setCerts(Array.isArray(data?.certs) ? data.certs : []);
-        setPortfolioItems(Array.isArray(data?.portfolio) ? data.portfolio : []);
       });
 
     fetch(`/api/students/student-profile/getDocuments?student_id=${student.id}`)
@@ -494,19 +615,70 @@ export function ApplicationModal({
 
         setAllResumes(resumes.filter(r => r.url && r.url.trim() !== ""));
         setAllCovers(covers.filter(c => c.url && c.url.trim() !== ""));
+        setPortfolioItems(Array.isArray(data?.portfolio) ? data.portfolio : []);
+        console.log("Portfolio items:", data?.portfolio);
       });
   }, [student?.id]);
 
+  useEffect(() => {
+    setLoadingCountries(true)
+    fetch("/api/students/apply/countries-api")
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        const arr = Array.isArray(data?.data) ? data.data : [];
+        setCountries(arr.map((c: any) => ({
+          code: c.code,
+          name: c.name
+        })));
+        setLoadingCountries(false);
+      })
+      .catch(() => setLoadingCountries(false))
+  }, [])
+
+  useEffect(() => {
+    if (!form.country || !cityInput) {
+      setCities([])
+      return
+    }
+    setLoadingCities(true)
+    fetch(`/api/students/apply/cities-api?country=${form.country}&prefix=${cityInput}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && Array.isArray(data.data)) {
+          setCities(data.data.map((c: any) => ({
+            id: c.id,
+            name: c.name
+          })))
+        }
+        setLoadingCities(false)
+      })
+      .catch(() => setLoadingCities(false))
+  }, [form.country, cityInput])
+
+  const getSignedUrlAndOpen = async (bucket: string, path: string) => {
+    if (!bucket || !path) return
+    const res = await fetch("/api/students/get-signed-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bucket, path }),
+    })
+    const data = await res.json()
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer")
+    }
+  }
+
   return (
     <motion.div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
+      style={{ width: "100vw", height: "100vh", top: 0, margin: 0 }}
     >
       <motion.div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col relative z-[61]"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
@@ -524,9 +696,6 @@ export function ApplicationModal({
           </div>
           {!showSuccess && (
             <p className="text-blue-100 text-sm">
-              {jobTitle
-                ? jobTitle
-                : "Job Title"}
             </p>
           )}
         </div>
@@ -541,15 +710,24 @@ export function ApplicationModal({
               <p className="text-gray-600 text-sm text-center mb-6 max-w-xs">
                 Wow you applied for {jobTitle} ! Your application has been successfully submitted. You can view the status of your applications at any time.
               </p>
-              <Button
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => {
-                  onClose()
-                  router.push("/students/applications")
-                }}
-              >
-                View Applications
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="border-blue-600 text-blue-600 hover:bg-blue-50 hover:text-blue-600"
+                  onClick={onClose}
+                >
+                  Close
+                </Button>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => {
+                    onClose()
+                    router.push("/students/jobs/applications")
+                  }}
+                >
+                  View Applications
+                </Button>
+              </div>
               <div className="absolute left-0 top-0 w-full h-full pointer-events-none">
                 <ConfettiStars />
               </div>
@@ -562,17 +740,45 @@ export function ApplicationModal({
             <>
               {step === 1 && (
                 <div className="space-y-4">
-                  <div className="rounded-lg border p-4 bg-green-50">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-green-700">Your profile is a good match!</p>
-                        <p className="text-xs text-green-600 mt-1">
-                          Based on your skills and experience, you appear to be a strong candidate for this position.
-                        </p>
+                  {gpt_score >= 60 && (
+                    <div className="rounded-lg border p-4 bg-green-50">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-green-700">Your profile is a good match!</p>
+                          <p className="text-xs text-green-600 mt-1">
+                            Based on your skills and experience, you appear to be a strong candidate for this position.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
+                  {gpt_score >= 25 && gpt_score < 60 && (
+                    <div className="rounded-lg border p-4 bg-orange-50">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-orange-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-orange-700">Your profile is a partial match.</p>
+                          <p className="text-xs text-orange-600 mt-1">
+                            You meet some of the requirements for this position. Consider highlighting relevant skills and experience in your application.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {gpt_score < 25 && (
+                    <div className="rounded-lg border p-4 bg-red-50">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-red-700">Your profile is not a strong match.</p>
+                          <p className="text-xs text-red-600 mt-1">
+                            You do not meet most requirements for this position. You can still apply, but consider updating your profile or gaining more relevant experience.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <h4 className="font-medium text-lg text-blue-700">Personal Information</h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -631,26 +837,34 @@ export function ApplicationModal({
                         Phone <span className="text-red-500">*</span>
                       </label>
                       <div className="flex items-center gap-2">
-                        {Array.isArray(student?.contact_info?.phone) && student.contact_info.phone.length > 1 ? (
+                        {true ? (
                           <>
                             <TextField
                               label="Country Code"
                               variant="outlined"
                               size="small"
-                              value={`+${student.contact_info.phone[0]}`}
-                              disabled
+                              value={form.phone.startsWith("+") ? form.phone.split(" ")[0] : "+63"}
+                              onChange={e => {
+                                const code = e.target.value.replace(/[^+\d]/g, "")
+                                const rest = form.phone.replace(/^(\+\d+\s*)/, "")
+                                setForm(prev => ({
+                                  ...prev,
+                                  phone: `${code} ${rest}`
+                                }))
+                              }}
                               sx={{ width: 80 }}
                             />
                             <TextField
                               label=""
                               variant="outlined"
                               size="small"
-                              value={student.contact_info.phone[1]}
-                              onChange={(e) => {
-                                const newPhone = e.target.value
-                                setForm((prev) => ({
+                              value={form.phone.replace(/^(\+\d+\s*)/, "")}
+                              onChange={e => {
+                                const newPhone = e.target.value.replace(/[^\d]/g, "")
+                                const code = form.phone.startsWith("+") ? form.phone.split(" ")[0] : "+63"
+                                setForm(prev => ({
                                   ...prev,
-                                  phone: `+${student.contact_info!.phone![0]} ${newPhone}`
+                                  phone: `${code} ${newPhone}`
                                 }))
                               }}
                               fullWidth
@@ -668,22 +882,117 @@ export function ApplicationModal({
                           />
                         )}
                       </div>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Address <span className="text-red-500">*</span>
-                      </label>
-                      <div className="w-full">
-                        <AddressAutocomplete
-                          value={form.address}
-                          onChange={(val: string) => handleChange("address", val)}
-                          label=""
-                          error={false}
-                          helperText={null}
-                          height="40px"
+                      <div className="flex items-center mt-2">
+                        <Switch
+                          checked={savePhone}
+                          onChange={(_, checked) => setSavePhone(checked)}
+                          size="small"
+                          color="primary"
                         />
+                        <span className="ml-2 text-xs">Save for next time</span>
                       </div>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Country
+                      </label>
+                      <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+                        <Select
+                          label="Country"
+                          value={form.country}
+                          onChange={e => {
+                            handleChange("country", e.target.value)
+                            handleChange("city", "")
+                            setCityInput("")
+                          }}
+                          fullWidth
+                          size="small"
+                          disabled={loadingCountries}
+                          sx={{ fontSize: 14 }}
+                          MenuProps={{
+                            PaperProps: {
+                              style: {
+                                maxHeight: 600,
+                                overflowY: 'auto',
+                              },
+                            },
+                            anchorOrigin: {
+                              vertical: "bottom",
+                              horizontal: "left"
+                            },
+                            transformOrigin: {
+                              vertical: "top",
+                              horizontal: "left"
+                            }
+                          }}
+                        >
+                          <MenuItem value="" disabled>Select country...</MenuItem>
+                          {countries.map(c => (
+                            <MenuItem key={c.code} value={c.code}>{c.name}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        City
+                      </label>
+                      <div ref={cityFieldRef}>
+                        <TextField
+                          placeholder="Start typing to search city"
+                          variant="outlined"
+                          size="small"
+                          fullWidth
+                          value={form.city}
+                          onChange={e => {
+                            handleChange("city", e.target.value)
+                            setCityInput(e.target.value)
+                          }}
+                          sx={{ mb: 1, fontSize: 14 }}
+                          disabled={!form.country}
+                          autoComplete="off"
+                        />
+                        {form.country && cityInput && (
+                          <div
+                            className="border rounded bg-white shadow mt-1 max-h-40 overflow-y-auto z-10 absolute"
+                            style={{
+                              width: cityFieldRef.current
+                                ? `${cityFieldRef.current.offsetWidth}px`
+                                : "100%"
+                            }}
+                          >
+                            {loadingCities ? (
+                              <div className="p-2 text-xs text-gray-500">Loading cities...</div>
+                            ) : (
+                              cities.map(city => (
+                                <div
+                                  key={city.id}
+                                  className="p-2 text-sm cursor-pointer hover:bg-blue-50"
+                                  onClick={() => {
+                                    handleChange("city", city.name)
+                                    setCityInput("")
+                                  }}
+                                >
+                                  {city.name}
+                                </div>
+                              ))
+                            )}
+                            {(!loadingCities && cities.length === 0 && cityInput) && (
+                              <div className="p-2 text-xs text-gray-500">No cities found.</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center mt-2">
+                    <Switch
+                      checked={saveAddress}
+                      onChange={(_, checked) => setSaveAddress(checked)}
+                      size="small"
+                      color="primary"
+                    />
+                    <span className="ml-2 text-xs">Save for next time</span>
                   </div>
                 </div>
               )}
@@ -691,10 +1000,46 @@ export function ApplicationModal({
               {step === 2 && (
                 <div className="space-y-4">
                   <h4 className="font-medium text-lg text-blue-700">Resume & Cover Letter</h4>
-                  <Tabs defaultValue="upload" className="w-full">
+                  {(form.resume || form.cover_letter) && (
+                    <div className="mb-2 flex gap-4 items-center">
+                      {form.resume && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                          <CheckCircle className="w-3 h-3" />
+                          Resume selected
+                        </span>
+                      )}
+                      {form.cover_letter && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                          <CheckCircle className="w-3 h-3" />
+                          Cover letter selected
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="upload">Upload Documents</TabsTrigger>
-                      <TabsTrigger value="select">Select Existing</TabsTrigger>
+                      <TabsTrigger value="upload">
+                        Upload Documents
+                        {(
+                          (form.resume && !allResumes.some(r => r.url === form.resume)) ||
+                          (form.cover_letter && !allCovers.some(c => c.url === form.cover_letter))
+                        ) && (
+                          <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                            Data selected
+                          </span>
+                        )}
+                      </TabsTrigger>
+                      <TabsTrigger value="select">
+                        Select Existing
+                        {(
+                          (form.resume && allResumes.some(r => r.url === form.resume)) ||
+                          (form.cover_letter && allCovers.some(c => c.url === form.cover_letter))
+                        ) && (
+                          <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">
+                            Data selected
+                          </span>
+                        )}
+                      </TabsTrigger>
                     </TabsList>
                     <TabsContent value="upload" className="space-y-4 pt-4">
                       <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center">
@@ -702,6 +1047,11 @@ export function ApplicationModal({
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Resume <span className="text-red-500">*</span>
                           </label>
+                          {(form.resume && resumeSource === "select") && (
+                            <div className="mb-2 text-xs text-red-600 font-semibold">
+                              You&apos;ve already selected a resume. Uploading a new one will override the selected resume.
+                            </div>
+                          )}
                           {(existingResume || form.resume) && !allResumes.some(r => r.url === form.resume) ? (
                             <>
                               <div className="flex items-center gap-3">
@@ -726,14 +1076,13 @@ export function ApplicationModal({
                                     </span>
                                   )}
                                 </span>
-                                <a
-                                  href={existingResume?.url || form.resume}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <Button
+                                  type="button"
                                   className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs font-medium"
+                                  onClick={() => getSignedUrlAndOpen("student.documents", existingResume?.name ? (student?.id + "/" + existingResume.name) : form.resume)}
                                 >
                                   View
-                                </a>
+                                </Button>
                               </div>
                               <Tooltip title="Want to use something else? Upload a new one here and we'll store it for you for future use!." placement="top" arrow>
                                 <Button
@@ -754,6 +1103,7 @@ export function ApplicationModal({
                                 onChange={async (e) => {
                                   if (e.target.files && e.target.files[0]) {
                                     await handleFileUpload(e.target.files[0], "resume")
+                                    setResumeSource("upload")
                                   }
                                 }}
                               />
@@ -771,6 +1121,7 @@ export function ApplicationModal({
                                 onChange={async (e) => {
                                   if (e.target.files && e.target.files[0]) {
                                     await handleFileUpload(e.target.files[0], "resume")
+                                    setResumeSource("upload")
                                   }
                                 }}
                               />
@@ -784,11 +1135,6 @@ export function ApplicationModal({
                                 <Upload className="h-4 w-4 mr-2" />
                                 {uploadingResume ? "Uploading..." : "Browse Files"}
                               </Button>
-                              {form.resume && (
-                                <div className="mt-2 text-xs text-green-600">
-                                  Resume uploaded successfully
-                                </div>
-                              )}
                             </>
                           )}
                         </div>
@@ -798,88 +1144,101 @@ export function ApplicationModal({
                           Cover Letter (Optional)
                         </label>
                         <div className="border-2 border-dashed border-blue-200 rounded-lg p-4 text-center flex flex-col items-center justify-center">
-                          {(existingCover || form.cover_letter) && !allCovers.some(c => c.url === form.cover_letter) ? (
+                          {(form.cover_letter && coverSource === "select") && (
+                            <div className="mb-2 text-xs text-red-600 font-semibold">
+                              You&apos;ve already selected a cover letter. Uploading a new one will override the selected cover letter.
+                            </div>
+                          )}
+                          {!writingCover ? (
                             <>
-                              <div className="flex items-center gap-3">
-                                <Image
-                                  src={
-                                    (existingCover?.name?.toLowerCase().endsWith('.pdf') || existingCover?.url?.toLowerCase().endsWith('.pdf'))
-                                      ? "/images/icon/pdf.png"
-                                      : "/images/icon/doc.png"
+                              <input
+                                type="file"
+                                accept=".pdf,.doc,.docx,.txt"
+                                className="hidden"
+                                ref={coverInputRef}
+                                onChange={async (e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    await handleFileUpload(e.target.files[0], "cover_letter")
+                                    setCoverSource("upload")
                                   }
-                                  alt="icon"
-                                  width={32}
-                                  height={32}
-                                  className="w-8 h-8"
-                                />
-                                <span className="text-base text-gray-800">
-                                  {existingCover?.name || form.cover_letter?.split("/").pop()}
-                                  {form.cover_letter && !existingCover && (
-                                    <span className="ml-2 inline-block px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full align-middle">
-                                      New
-                                    </span>
-                                  )}
-                                </span>
-                                <a
-                                  href={existingCover?.url || form.cover_letter}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs font-medium"
-                                >
-                                  View
-                                </a>
-                              </div>
-                              <Tooltip title="Uploading a new file will override your existing cover letter." placement="top" arrow>
+                                }}
+                              />
+                              <div className="flex gap-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="mt-2 border-blue-400 text-blue-600 hover:bg-red-50"
                                   disabled={uploadingCover}
                                   onClick={() => coverInputRef.current?.click()}
                                 >
-                                  {uploadingCover ? "Uploading..." : "Upload a new Resume"}
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  {uploadingCover ? "Uploading..." : "Upload Cover Letter"}
                                 </Button>
-                              </Tooltip>
-                              <input
-                                type="file"
-                                accept=".pdf,.doc,.docx,.txt"
-                                className="hidden"
-                                ref={coverInputRef}
-                                onChange={async (e) => {
-                                  if (e.target.files && e.target.files[0]) {
-                                    await handleFileUpload(e.target.files[0], "cover_letter")
-                                  }
-                                }}
-                              />
-                            </>
-                          ) : (
-                            <>
-                              <input
-                                type="file"
-                                accept=".pdf,.doc,.docx,.txt"
-                                className="hidden"
-                                ref={coverInputRef}
-                                onChange={async (e) => {
-                                  if (e.target.files && e.target.files[0]) {
-                                    await handleFileUpload(e.target.files[0], "cover_letter")
-                                  }
-                                }}
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={uploadingCover}
-                                onClick={() => coverInputRef.current?.click()}
-                              >
-                                <Upload className="h-4 w-4 mr-2" />
-                                {uploadingCover ? "Uploading..." : "Upload Cover Letter"}
-                              </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setWritingCover(true)}
+                                >
+                                  Write your cover letter
+                                </Button>
+                              </div>
                               {form.cover_letter && (
-                                <div className="mt-2 text-xs text-green-600">
-                                  Cover letter uploaded successfully
+                                <div className="mt-3 flex items-center gap-2">
+                                  <TbFileLike  className="w-4 h-4 text-green-600" />
+                                  <span className="text-green-700 text-xs font-semibold">
+                                    Cover letter written successfully!
+                                  </span>
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="text-blue-600 underline"
+                                    onClick={() => {
+                                      if (form.cover_letter) getSignedUrlAndOpen("student.documents", form.cover_letter)
+                                    }}
+                                  >
+                                    View
+                                  </Button>
                                 </div>
                               )}
                             </>
+                          ) : (
+                            <div className="w-full flex flex-col items-center">
+                              <textarea
+                                className="border border-blue-500 rounded p-2 w-full mb-2"
+                                rows={8}
+                                value={coverText}
+                                onChange={e => setCoverText(e.target.value)}
+                                placeholder="Write your cover letter here..."
+                                style={{ fontSize: 14 }}
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setWritingCover(false)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                                  size="sm"
+                                  disabled={!coverText.trim() || uploadingCover}
+                                  onClick={async () => {
+                                    const doc = new jsPDF()
+                                    doc.setFontSize(12)
+                                    const lines = doc.splitTextToSize(coverText, 180)
+                                    doc.text(lines, 10, 20)
+                                    const pdfBlob = doc.output("blob")
+                                    const file = new File([pdfBlob], "cover_letter.pdf", { type: "application/pdf" })
+                                    await handleFileUpload(file, "cover_letter")
+                                    setCoverSource("upload")
+                                    setWritingCover(false)
+                                    setCoverText("")
+                                  }}
+                                >
+                                  Save & Upload
+                                </Button>
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -889,6 +1248,11 @@ export function ApplicationModal({
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Select Existing Resume <span className="text-red-500">*</span>
                         </label>
+                        {(form.resume && resumeSource === "upload") && (
+                          <div className="mb-2 text-xs text-red-600 font-semibold">
+                            You&apos;ve already uploaded a resume. Selecting a new one will override the uploaded resume.
+                          </div>
+                        )}
                         {allResumes.length === 0 ? (
                           <div className="text-xs text-gray-500">No resumes found.</div>
                         ) : (
@@ -899,8 +1263,10 @@ export function ApplicationModal({
                                   type="radio"
                                   name="resume-select"
                                   checked={String(form.resume) === String(resume.url)}
-                                  onChange={() => setForm(prev => ({ ...prev, resume: String(resume.url) }))
-                                  }
+                                  onChange={() => {
+                                    setForm(prev => ({ ...prev, resume: String(resume.url) }))
+                                    setResumeSource("select")
+                                  }}
                                   value={resume.url}
                                 />
                                 <Image
@@ -915,14 +1281,13 @@ export function ApplicationModal({
                                   className="w-6 h-6"
                                 />
                                 <span className="text-sm">{resume.name}</span>
-                                <a
-                                  href={resume.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <Button
+                                  type="button"
                                   className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs font-medium"
+                                  onClick={() => getSignedUrlAndOpen("student.documents", resume.name ? (student?.id + "/" + resume.name) : resume.url)}
                                 >
                                   View
-                                </a>
+                                </Button>
                                 {String(form.resume) === String(resume.url) && (
                                   <span className="ml-2 text-green-600 text-xs font-semibold">Selected</span>
                                 )}
@@ -935,6 +1300,11 @@ export function ApplicationModal({
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Select Existing Cover Letter (Optional)
                         </label>
+                        {(form.cover_letter && coverSource === "upload") && (
+                          <div className="mb-2 text-xs text-red-600 font-semibold">
+                            You&apos;ve already uploaded a cover letter. Selecting a new one will override the uploaded cover letter.
+                          </div>
+                        )}
                         {allCovers.length === 0 ? (
                           <div className="text-xs text-gray-500">No cover letters found.</div>
                         ) : (
@@ -945,8 +1315,10 @@ export function ApplicationModal({
                                   type="radio"
                                   name="cover-select"
                                   checked={String(form.cover_letter) === String(cover.url)}
-                                  onChange={() => setForm(prev => ({ ...prev, cover_letter: String(cover.url) }))
-                                  }
+                                  onChange={() => {
+                                    setForm(prev => ({ ...prev, cover_letter: String(cover.url) }))
+                                    setCoverSource("select")
+                                  }}
                                   value={cover.url}
                                 />
                                 <Image
@@ -961,14 +1333,13 @@ export function ApplicationModal({
                                   className="w-6 h-6"
                                 />
                                 <span className="text-sm">{cover.name}</span>
-                                <a
-                                  href={cover.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <Button
+                                  type="button"
                                   className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-xs font-medium"
+                                  onClick={() => getSignedUrlAndOpen("student.documents", cover.name ? (student?.id + "/" + cover.name) : cover.url)}
                                 >
                                   View
-                                </a>
+                                </Button>
                                 {String(form.cover_letter) === String(cover.url) && (
                                   <span className="ml-2 text-green-600 text-xs font-semibold">Selected</span>
                                 )}
@@ -1018,20 +1389,31 @@ export function ApplicationModal({
                     />
                   </div>
                   <div>
-                    <FormControl fullWidth size="small" sx={{ mt: 2 }}>
-                      <InputLabel id="achievements-label" sx={{ fontSize: 14 }}>
-                        Choose achievements (optional)
-                      </InputLabel>
+                    <div className="mb-2">
+                      <span className="block font-semibold text-blue-700 text-base">Achievements</span>
+                      <span className="block text-sm text-gray-600">
+                        Select achievements to show off to the recruiter.
+                      </span>
+                    </div>
+                    {certs.length === 0 && (
+                      <div className="text-xs text-gray-500 mb-2">
+                        You haven&apos;t set up any achievements yet, set it in your profile!
+                      </div>
+                    )}
+                    <FormControl fullWidth size="small" sx={{ mt: 0 }}>
                       <Select
-                        labelId="achievements-label"
-                        label="Choose achievements (optional)"
                         multiple
                         value={form.achievements}
                         onChange={e => {
                           const val = e.target.value as string[];
                           setForm(prev => ({ ...prev, achievements: val }));
                         }}
-                        input={<OutlinedInput label="Choose achievements (optional)" sx={{ fontSize: 14 }} />}
+                        input={
+                          <OutlinedInput
+                            sx={{ fontSize: 14 }}
+                            placeholder="Choose achievements (optional)"
+                          />
+                        }
                         renderValue={(selected) => (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                             {(selected as string[]).map((value) => {
@@ -1080,24 +1462,35 @@ export function ApplicationModal({
                     </FormControl>
                   </div>
                   <div>
-                    <FormControl fullWidth size="small" sx={{ mt: 2 }}>
-                      <InputLabel id="portfolio-label" sx={{ fontSize: 14 }}>
-                        Choose portfolio pieces (optional)
-                      </InputLabel>
+                    <div className="mb-2">
+                      <span className="block font-semibold text-blue-700 text-base">Portfolio</span>
+                      <span className="block text-sm text-gray-600">
+                        Select portfolio pieces to show off to the recruiter.
+                      </span>
+                    </div>
+                    {portfolioItems.length === 0 && (
+                      <div className="text-xs text-gray-500 mb-2">
+                        You haven&apos;t set up any portfolio yet, set it in your profile!
+                      </div>
+                    )}
+                    <FormControl fullWidth size="small" sx={{ mt: 0 }}>
                       <Select
-                        labelId="portfolio-label"
-                        label="Choose portfolio pieces (optional)"
                         multiple
                         value={form.portfolio}
                         onChange={e => {
                           const val = e.target.value as string[];
                           setForm(prev => ({ ...prev, portfolio: val, portfolio_custom: "" }))
                         }}
-                        input={<OutlinedInput label="Choose portfolio pieces (optional)" sx={{ fontSize: 14 }} />}
+                        input={
+                          <OutlinedInput
+                            sx={{ fontSize: 14 }}
+                            placeholder="Choose portfolio pieces (optional)"
+                          />
+                        }
                         renderValue={(selected) => (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                             {(selected as string[]).map((value) => {
-                              const item = portfolioItems.find(i => i.url === value);
+                              const item = portfolioItems.find(i => i.attachmentUrl === value);
                               return (
                                 <Chip
                                   key={value}
@@ -1129,10 +1522,10 @@ export function ApplicationModal({
                           <ListSubheader sx={{ fontSize: 13, color: "#666" }}>Portfolio</ListSubheader>
                         )}
                         {portfolioItems
-                          .filter(item => !!item.url && typeof item.url === "string" && item.url.trim() !== "")
+                          .filter(item => typeof item.attachmentUrl === "string" && item.attachmentUrl.trim() !== "")
                           .map((item, idx) => {
-                            const display = item.title || item.name || item.url || `Portfolio #${idx + 1}`;
-                            const value = item.url as string;
+                            const display = item.title || item.name || item.attachmentUrl || `Portfolio #${idx + 1}`;
+                            const value = item.attachmentUrl as string;
                             return (
                               <MenuItem key={`portfolio-${idx}`} value={value} sx={{ fontSize: 14 }}>
                                 <Checkbox
@@ -1288,6 +1681,24 @@ export function ApplicationModal({
                         </p>
                       </div>
                     </div>
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="remember-details"
+                        checked={rememberDetails}
+                        onCheckedChange={v => setRememberDetails(v === true)}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <label
+                          htmlFor="remember-details"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Remember these details for quick apply
+                        </label>
+                         <p className="text-xs text-muted-foreground">
+                          Your details will be used to fill future applications automatically when using Quick Apply.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1313,8 +1724,7 @@ export function ApplicationModal({
                           !form.first_name.trim() ||
                           !form.last_name.trim() ||
                           !form.email.trim() ||
-                          !form.phone.trim() ||
-                          !form.address.trim()
+                          !form.phone.trim()
                         )
                       ) ||
                       (step === 2 &&
@@ -1328,7 +1738,7 @@ export function ApplicationModal({
                   </Button>
                 ) : (
                   <Button
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-blue-600 hover:bg-blue-700"
                     onClick={handleSubmit}
                     disabled={
                       submitting ||

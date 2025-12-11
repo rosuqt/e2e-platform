@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { TextField, MenuItem, Button, Switch, Tabs, Tab, Tooltip, CircularProgress, Autocomplete, Popper, Box } from "@mui/material"
+import { TextField, MenuItem, Button, Switch, Tabs, Tab, Tooltip, CircularProgress, Autocomplete, Popper, Box, ListSubheader } from "@mui/material"
 import { InfoOutlined } from "@mui/icons-material";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -332,7 +332,6 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
             <Tabs
               value={activeTab}
               onChange={(_e, newValue) => {
-                // Only allow tab change if the tab is enabled
                 if (newValue === 1) {
                   if (
                     !formData.companyName.trim() ||
@@ -582,12 +581,51 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                       },
                     }}
                   >
+                    <ListSubheader>BSIT (Information Technology)</ListSubheader>
                     <MenuItem value="technology">Technology</MenuItem>
-                    <MenuItem value="healthcare">Healthcare</MenuItem>
+                    <MenuItem value="software">Software</MenuItem>
+                    <MenuItem value="it-services">IT Services</MenuItem>
+                    <MenuItem value="telecommunications">Telecommunications</MenuItem>
+                    <MenuItem value="cybersecurity">Cybersecurity</MenuItem>
+                    <MenuItem value="networking">Networking</MenuItem>
+                    <MenuItem value="ecommerce">E-commerce</MenuItem>
+                    <MenuItem value="data">Data</MenuItem>
+                    <MenuItem value="cloud">Cloud</MenuItem>
+                    <MenuItem value="gaming">Gaming</MenuItem>
+                    <ListSubheader>BSBA (Business Administration)</ListSubheader>
+                    <MenuItem value="business">Business</MenuItem>
                     <MenuItem value="finance">Finance</MenuItem>
-                    <MenuItem value="education">Education</MenuItem>
+                    <MenuItem value="marketing">Marketing</MenuItem>
+                    <MenuItem value="banking">Banking</MenuItem>
                     <MenuItem value="retail">Retail</MenuItem>
-                    <MenuItem value="manufacturing">Manufacturing</MenuItem>
+                    <MenuItem value="management">Management</MenuItem>
+                    <MenuItem value="accounting">Accounting</MenuItem>
+                    <MenuItem value="sales">Sales</MenuItem>
+                    <MenuItem value="real-estate">Real Estate</MenuItem>
+                    <MenuItem value="logistics">Logistics</MenuItem>
+                    <ListSubheader>BSHM (Hospitality Management)</ListSubheader>
+                    <MenuItem value="hospitality">Hospitality</MenuItem>
+                    <MenuItem value="hotel">Hotel</MenuItem>
+                    <MenuItem value="restaurant">Restaurant</MenuItem>
+                    <MenuItem value="catering">Catering</MenuItem>
+                    <MenuItem value="tourism">Tourism</MenuItem>
+                    <MenuItem value="travel">Travel</MenuItem>
+                    <MenuItem value="events">Events</MenuItem>
+                    <MenuItem value="foodservice">Foodservice</MenuItem>
+                    <MenuItem value="cruise">Cruise</MenuItem>
+                    <MenuItem value="airline">Airline</MenuItem>
+                    <ListSubheader>BSTM (Tourism Management)</ListSubheader>
+                    <MenuItem value="tourism">Tourism</MenuItem>
+                    <MenuItem value="travel">Travel</MenuItem>
+                    <MenuItem value="airline">Airline</MenuItem>
+                    <MenuItem value="cruise">Cruise</MenuItem>
+                    <MenuItem value="hospitality">Hospitality</MenuItem>
+                    <MenuItem value="resort">Resort</MenuItem>
+                    <MenuItem value="recreation">Recreation</MenuItem>
+                    <MenuItem value="transportation">Transportation</MenuItem>
+                    <MenuItem value="marketing">Marketing</MenuItem>
+                    <MenuItem value="events">Events</MenuItem>
+                    <ListSubheader>Other</ListSubheader>
                     <MenuItem value="other">Other</MenuItem>
                   </TextField>
                   <label htmlFor="companyIndustry" className="text-sm text-gray-600">Select the industry the company operates in</label>
@@ -1016,7 +1054,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
 
         {activeTab === 2 && (
           <motion.div
-            className="space-y-8 p-8 w-[700px] mx-auto flex flex-col items-center justify-center"
+            className="space-y-8 p-8 flex flex-col items-center justify-center w-full"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}

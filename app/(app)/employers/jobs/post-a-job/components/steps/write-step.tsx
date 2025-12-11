@@ -1,38 +1,57 @@
-//Tempo Smart Writer
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Plus, Trash2, FileText, ListChecks, FileEdit, Lightbulb, ClipboardList } from "lucide-react"
+import { Plus, Trash2, FileText, ListChecks, FileEdit, Lightbulb, ClipboardList, AlertTriangle } from "lucide-react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "../ui/card"
 import type { JobPostingData } from "../../lib/types"
 import { TextField } from "@mui/material"
+import Tooltip from "@mui/material/Tooltip"
+import { getSession } from "next-auth/react"
 
 interface WriteStepProps {
   formData: JobPostingData
   updateFormData: (data: Partial<JobPostingData>) => void
   errors: Record<string, boolean>
   setErrors: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+  workType?: string
+  verifyStatus?: string | null
 }
 
-export function WriteStep({ formData, updateFormData, errors, setErrors }: WriteStepProps) {
+export function WriteStep({ formData, updateFormData, errors, setErrors, workType, verifyStatus: propVerifyStatus }: WriteStepProps) {
   console.log("WriteStep jobTitle:", formData.jobTitle)
+  console.log("WriteStep workType:", workType)
 
   const [mustHaves, setMustHaves] = useState<string[]>(
     formData.mustHaveQualifications.length ? formData.mustHaveQualifications : [""],
   )
-
   const [niceToHaves, setNiceToHaves] = useState<string[]>(
     formData.niceToHaveQualifications.length ? formData.niceToHaveQualifications : [""],
   )
-
   const [responsibilities, setResponsibilities] = useState<string[]>(
     formData.responsibilities?.length ? formData.responsibilities : [""],
   )
-
   const [loading, setLoading] = useState(false)
+  const [aiWarning, setAiWarning] = useState(false)
+  const [verifyStatus, setVerifyStatus] = useState<string | null>(propVerifyStatus ?? null)
+
+  useEffect(() => {
+    if (propVerifyStatus !== undefined && propVerifyStatus !== null) {
+      setVerifyStatus(propVerifyStatus)
+      return
+    }
+    async function fetchVerifyStatus() {
+      const session = await getSession()
+      const status =
+        session?.user && typeof session.user === "object" && "verifyStatus" in session.user
+          ? (session.user as { verifyStatus?: string }).verifyStatus ?? null
+          : null
+      setVerifyStatus(status)
+    }
+    fetchVerifyStatus()
+  }, [propVerifyStatus])
 
   const handleMustHaveChange = (index: number, value: string) => {
     const newMustHaves = [...mustHaves]
@@ -97,11 +116,12 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
 
   const handleSmartWriter = async () => {
     setLoading(true)
+    console.log("SmartWriter sending jobTitle:", formData.jobTitle, "workType:", workType)
     try {
       const res = await fetch("/api/ai-job-details", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobTitle: formData.jobTitle }),
+        body: JSON.stringify({ jobTitle: formData.jobTitle, workType }),
       })
       const aiDetails = await res.json()
       if (
@@ -123,6 +143,7 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
           niceToHaveQualifications: aiDetails.niceToHaveQualifications,
           responsibilities: aiDetails.responsibilities,
         })
+        setAiWarning(true)
       }
     } catch {
       alert("AI failed to generate job details. Please try again.")
@@ -152,15 +173,27 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
           <div className="bg-white/20 p-2 rounded-lg">
             <FileText className="h-5 w-5 text-white" />
           </div>
-
           <p className="text-sm">Write clear, detailed job descriptions with AI based on your job title.</p>
         </div>
-        <Button
-          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full border-none shadow-lg"
-          onClick={handleSmartWriter}
-        >
-          Smart Writer
-        </Button>
+        {verifyStatus === "basic" ? (
+          <Tooltip title="Verify your account to unlock Smart Writer AI job description generation.">
+            <span>
+              <Button
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full border-none shadow-lg opacity-50 cursor-not-allowed"
+                disabled
+              >
+                Smart Writer
+              </Button>
+            </span>
+          </Tooltip>
+        ) : (
+          <Button
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full border-none shadow-lg"
+            onClick={handleSmartWriter}
+          >
+            Smart Writer
+          </Button>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -170,6 +203,7 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
               <FileText className="h-4 w-4 text-blue-500" />
               <Label htmlFor="jobDescription" className="font-medium text-gray-700">
                 Job description
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="border-b border-gray-200">
@@ -204,7 +238,10 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-4">
               <ClipboardList className="h-5 w-5 text-blue-500" />
-              <h3 className="font-medium text-gray-800">Responsibilities</h3>
+              <h3 className="font-medium text-gray-800">
+                Responsibilities
+                <span className="text-red-500 ml-1">*</span>
+              </h3>
             </div>
             <motion.div className="space-y-2" layout>
               {loading
@@ -272,7 +309,10 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-gray-700">Must-haves</h4>
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Must-haves
+                    <span className="text-red-500 ml-1">*</span>
+                  </h4>
                   <div className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">Required</div>
                 </div>
                 <motion.div className="space-y-2" layout>
@@ -393,6 +433,7 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
               <FileText className="h-5 w-5 text-blue-500" />
               <Label htmlFor="jobSummary" className="font-medium text-gray-800">
                 Job Summary
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             {loading ? (
@@ -423,6 +464,12 @@ export function WriteStep({ formData, updateFormData, errors, setErrors }: Write
             </p>
           </CardContent>
         </Card>
+        {aiWarning && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg px-4 py-3 mb-4 mt-2 text-sm font-medium flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-yellow-600" />
+            <span>This was prepared using AI tools. Please ensure all details are correct before proceeding.</span>
+          </div>
+        )}
       </div>
     </div>
   )

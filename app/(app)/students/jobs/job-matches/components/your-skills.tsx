@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Button } from "@/components/ui/button"
 import { Progress } from "../components/progress"
 import { Badge } from "../components/badge"
-import { Dialog } from "@mui/material"
 import ViewSkillsModal from "./view-skills"
+import { RiAddCircleLine } from "react-icons/ri"
 
 type Skill = {
   name?: string
@@ -21,9 +20,10 @@ export function YourSkills() {
   const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false)
   const [skills, setSkills] = useState<Skill[]>([])
   const [expertise, setExpertise] = useState<Skill[]>([])
-  const [isViewAllOpen, setIsViewAllOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
     fetch("/api/students/student-profile/getHandlers")
       .then(res => res.json())
       .then(data => {
@@ -48,7 +48,9 @@ export function YourSkills() {
         } else {
           setExpertise([])
         }
+        setLoading(false)
       })
+      .catch(() => setLoading(false))
   }, [])
 
   const handleOpenSkillsModal = () => setIsSkillsModalOpen(true)
@@ -57,121 +59,103 @@ export function YourSkills() {
   return (
     <>
       <motion.div
-        className="bg-white rounded-2xl shadow-lg mb-6 p-4 border-2 border-blue-200 relative overflow-hidden"
+        className="rounded-xl shadow-lg mb-4 p-3 relative overflow-hidden border-2 border-blue-200"
+        style={{
+          background: "rgba(255,255,255,0.65)",
+          minHeight: 260,
+          height: "auto",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          boxShadow: "0 8px 32px rgba(60,120,220,0.10)"
+        }}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-blue-700">Your Skills & Expertise</h3>
-          <motion.button
-            className="text-blue-500 hover:text-blue-700 transition-colors"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-          </motion.button>
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="text-base font-semibold bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-400 bg-clip-text text-transparent">
+            Your Skills & Expertise
+          </h3>
         </div>
 
-        {/* Expertise with progress bars */}
-        <div className="space-y-3">
-          {expertise.length === 0 && (
-            <div className="text-sm text-gray-400">No expertise added yet.</div>
-          )}
-          {expertise.slice(0, 3).map((item, idx) => (
-            <div key={`expertise-bar-${idx}`} className="space-y-1">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-blue-700">
-                    {typeof item === "string" ? item : item.name}
-                  </span>
-                </div>
-                {typeof item !== "string" && item.level && (
-                  <span className="text-xs font-medium text-blue-600">{item.level}</span>
-                )}
-              </div>
-              {typeof item !== "string" && item.value && (
-                <Progress value={item.value} className="h-1.5" />
-              )}
+        {loading ? (
+          <div className="space-y-2">
+            <div className="h-4 w-1/2 bg-blue-100 rounded animate-pulse" />
+            <div className="h-3 w-full bg-blue-100 rounded animate-pulse" />
+            <div className="h-3 w-2/3 bg-blue-100 rounded animate-pulse" />
+            <div className="flex gap-1 mt-2">
+              <div className="h-6 w-16 bg-sky-100 rounded animate-pulse" />
+              <div className="h-6 w-12 bg-sky-100 rounded animate-pulse" />
+              <div className="h-6 w-10 bg-sky-100 rounded animate-pulse" />
             </div>
-          ))}
-          {expertise.length > 3 && (
-            <button
-              className="text-blue-600 text-sm hover:underline mt-2"
-              onClick={handleOpenSkillsModal}
-            >
-              View More
-            </button>
-          )}
-        </div>
-
-        {/* Skills as badges */}
-        <div className="mt-4 flex flex-wrap gap-2">
-          {skills.slice(0, 8).map((item, idx) => (
-            <Badge key={idx} className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
-              {typeof item === "string" ? item : item.name}
-            </Badge>
-          ))}
-          {skills.length > 8 && (
-            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
-              +{skills.length - 8} more
-            </Badge>
-          )}
-        </div>
-        <div className="mt-4 flex flex-col gap-2">
-          <Button
-            variant="outline"
-            className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
-            onClick={() => setIsViewAllOpen(true)}
-          >
-            View All
-          </Button>
-        </div>
-      </motion.div>
-
-      <Dialog open={isSkillsModalOpen} onClose={handleCloseSkillsModal}>
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-blue-700 mb-4">All Expertise & Skills</h3>
-          <div className="space-y-3">
-            {expertise.map((item, idx) => (
-              <div key={`expertise-modal-${idx}`} className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-blue-700">
+            <div className="mt-4 flex items-center justify-center">
+              <div className="h-10 w-full bg-blue-200 rounded-full animate-pulse" />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              {expertise.length === 0 && (
+                <div className="text-xs text-blue-400">No expertise added yet.</div>
+              )}
+              {expertise.slice(0, 2).map((item, idx) => (
+                <div key={`expertise-bar-${idx}`} className="space-y-0.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-400 bg-clip-text text-transparent">
                       {typeof item === "string" ? item : item.name}
                     </span>
+                    {typeof item !== "string" && item.level && (
+                      <span className="text-[10px] font-medium text-blue-500">{item.level}</span>
+                    )}
                   </div>
-                  {typeof item !== "string" && item.level && (
-                    <span className="text-xs font-medium text-blue-600">{item.level}</span>
+                  {typeof item !== "string" && item.value && (
+                    <Progress value={item.value} className="h-1" />
                   )}
                 </div>
-                {typeof item !== "string" && item.value && (
-                  <Progress value={item.value} className="h-1.5" />
-                )}
-              </div>
-            ))}
-            <div className="flex flex-wrap gap-2 mt-4">
-              {skills.map((item, idx) => (
-                <Badge key={`skill-modal-${idx}`} className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
+              ))}
+              {expertise.length > 2 && (
+                <button
+                  className="text-blue-500 text-xs hover:underline mt-1"
+                  onClick={handleOpenSkillsModal}
+                >
+                  View More
+                </button>
+              )}
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-1">
+              {skills.slice(0, 5).map((item, idx) => (
+                <Badge
+                  key={idx}
+                  className="bg-sky-100 border border-sky-300 text-sky-700 hover:bg-sky-200 transition-colors text-xs px-2 py-1 shadow-sm"
+                >
                   {typeof item === "string" ? item : item.name}
                 </Badge>
               ))}
+              {skills.length > 5 && (
+                <Badge className="bg-sky-100 border border-sky-300 text-sky-700 text-xs px-2 py-1 shadow-sm">
+                  +{skills.length - 5} more
+                </Badge>
+              )}
             </div>
-          </div>
-          <div className="mt-4">
-            <Button
-              variant="outline"
-              className="w-full text-blue-600 border-blue-200 hover:bg-blue-50"
-              onClick={handleCloseSkillsModal}
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+            <div className="mt-4 flex items-center justify-center">
+              <motion.button
+                className="w-full px-3 py-3 rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-400 text-white text-sm font-medium shadow-sm flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleOpenSkillsModal}
+              >
+                <RiAddCircleLine className="w-4 h-4" />
+                <span>View Skills</span>
+              </motion.button>
+            </div>
+          </>
+        )}
+      </motion.div>
 
       <ViewSkillsModal
-        open={isViewAllOpen}
-        onClose={() => setIsViewAllOpen(false)}
+        open={isSkillsModalOpen}
+        onClose={handleCloseSkillsModal}
         skills={skills}
         expertise={expertise}
       />

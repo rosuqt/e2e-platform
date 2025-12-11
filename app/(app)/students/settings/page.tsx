@@ -1,14 +1,16 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { User, Book, Sun, Bell, Shield,   Save, Moon } from "lucide-react"
+import { User, Book, Shield, Save } from "lucide-react"
 import { FormControl, InputLabel, Chip } from "@mui/material"
 import TextField from "@mui/material/TextField"
 import Autocomplete from "@mui/material/Autocomplete"
 import Checkbox from "@mui/material/Checkbox"
 import Box from "@mui/material/Box"
 import { parsePhoneNumberFromString, CountryCode } from "libphonenumber-js"
+import { toast } from "sonner"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,7 +18,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TabList } from "./components/tab-list"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import AddressAutocomplete from "@/components/AddressAutocomplete"
 import { countries } from "../../../(landing)/sign-up/data/countries"
 
 type StudentProfile = {
@@ -51,6 +52,8 @@ type Student = {
   email?: string
   student_profile?: StudentProfile
   s_job_pref?: SJobPref[] 
+  country?: string
+  city?: string
 }
 
 const jobTypes = [
@@ -93,10 +96,6 @@ const courses = [
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile")
-  const [darkMode, setDarkMode] = useState(false)
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [pushNotifications, setPushNotifications] = useState(true)
-  const [jobAlerts, setJobAlerts] = useState(true)
   const [student, setStudent] = useState<Student | null>(null)
   const [editJobType, setEditJobType] = useState<string[]>([])
   const [editRemoteOptions, setEditRemoteOptions] = useState<string | undefined>(undefined)
@@ -104,13 +103,17 @@ export default function SettingsPage() {
   const [editCourse, setEditCourse] = useState<string | undefined>(undefined);
   const [editYearLevel, setEditYearLevel] = useState<string | undefined>(undefined);
   const [editSection, setEditSection] = useState<string>("");
-  const [editAddress, setEditAddress] = useState<string>("");
   const [editCountryCode, setEditCountryCode] = useState<string>("")
   const [editPhone, setEditPhone] = useState<string>("")
   const [editUsername, setEditUsername] = useState<string>("")
   const [editPersonalEmail, setEditPersonalEmail] = useState<string>("")
   const [saving, setSaving] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<{ phone?: string; email?: string; section?: string }>({})
+  const [fieldErrors, setFieldErrors] = useState<{ phone?: string; email?: string; section?: string; country?: string; city?: string }>({})
+  const [countriesList, setCountriesList] = useState<{ code: string; name: string }[]>([])
+  const [editCountry, setEditCountry] = useState<string>("")
+  const [citiesList, setCitiesList] = useState<{ id: string; name: string }[]>([])
+  const [editCity, setEditCity] = useState<string>("")
+  const [citiesLoading, setCitiesLoading] = useState(false)
 
   useEffect(() => {
     fetch("/api/students/settings")
@@ -142,14 +145,34 @@ export default function SettingsPage() {
       setEditCourse(student.course)
       setEditYearLevel(student.year)
       setEditSection(student.section ?? "")
-      setEditAddress(student.address ?? "")
       const cc = student?.student_profile?.contact_info?.countryCode
       setEditCountryCode(cc !== undefined && cc !== null ? String(cc) : "")
       setEditPhone(student?.student_profile?.contact_info?.phone ?? "")
       setEditUsername(student?.student_profile?.username ?? "")
       setEditPersonalEmail(student?.student_profile?.contact_info?.email ?? "")
+      setEditCountry(student.country ?? "")
+      setEditCity(student.city ?? "")
     }
   }, [student])
+
+  useEffect(() => {
+    fetch("/api/students/apply/countries-api")
+      .then(res => res.json())
+      .then(data => setCountriesList(data.data || []))
+  }, [])
+
+  useEffect(() => {
+    if (editCountry) {
+      setCitiesLoading(true)
+      fetch(`/api/students/apply/cities-api?country=${encodeURIComponent(editCountry)}`)
+        .then(res => res.json())
+        .then(data => setCitiesList(data.data || []))
+        .finally(() => setCitiesLoading(false))
+    } else {
+      setCitiesList([])
+      setCitiesLoading(false)
+    }
+  }, [editCountry])
 
   const handleTabChange = (id: string) => {
     setActiveTab(id)
@@ -192,9 +215,16 @@ export default function SettingsPage() {
   const handlePersonalEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEditPersonalEmail(e.target.value)
   }
+  const handleCountryChange = (_: any, value: { code: string; name: string } | null) => {
+    setEditCountry(value ? value.code : "")
+    setEditCity("")
+  }
+  const handleCityChange = (_: any, value: { id: string; name: string } | null) => {
+    setEditCity(value ? value.name : "")
+  }
 
   const validateFields = () => {
-    const errors: { phone?: string; email?: string; section?: string } = {}
+    const errors: { phone?: string; email?: string; section?: string; country?: string; city?: string } = {}
     const country = countries.find((c) => c.phone === editCountryCode)
     const countryIso = country?.code as CountryCode | undefined
     let phoneInput = editPhone.trim()
@@ -250,6 +280,12 @@ export default function SettingsPage() {
         errors.email = "Email must be between 6 and 254 characters."
       }
     }
+    if (!editCountry.trim()) {
+      errors.country = "Country is required."
+    }
+    if (!editCity.trim()) {
+      errors.city = "City is required."
+    }
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -258,36 +294,45 @@ export default function SettingsPage() {
     if (!student) return;
     if (!validateFields()) return;
     setSaving(true);
-    const payload = {
-      address: editAddress,
-      course: editCourse,
-      year: editYearLevel,
-      section: editSection,
-      s_job_pref: {
-        job_type: editJobType,
-        remote_options: editRemoteOptions ? [editRemoteOptions] : [],
-        unrelated_jobs: editUnrelatedJobs,
-      },
-      contact_info: {
-        countryCode: editCountryCode,
-        phone: editPhone,
-        email: editPersonalEmail,
-      },
-      username: editUsername,
-    };
-    await fetch("/api/students/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    await toast.promise(
+      (async () => {
+        const payload = {
+          country: editCountry,
+          city: editCity,
+          course: editCourse,
+          year: editYearLevel,
+          section: editSection,
+          s_job_pref: {
+            job_type: editJobType,
+            remote_options: editRemoteOptions ? [editRemoteOptions] : [],
+            unrelated_jobs: editUnrelatedJobs,
+          },
+          contact_info: {
+            countryCode: editCountryCode,
+            phone: editPhone,
+            email: editPersonalEmail,
+          },
+          username: editUsername,
+        };
+        await fetch("/api/students/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      })(),
+      {
+        loading: "Saving changes...",
+        success: "Changes have been saved!",
+        error: "Failed to save changes.",
+        className: "bg-blue-600 border border-blue-200 text-white",
+      }
+    );
     setSaving(false);
   };
 
   const tabs = [
     { id: "profile", icon: User, label: "Profile", description: "Manage your personal information" },
     { id: "academic", icon: Book, label: "Academic", description: "View and edit academic details" },
-    { id: "appearance", icon: Sun, label: "Appearance", description: "Customize the application look" },
-    { id: "notifications", icon: Bell, label: "Notifications", description: "Manage notification settings" },
     { id: "account", icon: Shield, label: "Account", description: "Account preferences and password" },
   ]
 
@@ -430,44 +475,115 @@ export default function SettingsPage() {
                       </FormControl>
                       <p className="text-sm text-blue-500/70">Your active mobile or contact number</p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="address" className="text-blue-700">
-                        Address
-                      </Label>
-                      <FormControl fullWidth>
-                        <InputLabel shrink htmlFor="address" sx={{ display: "none" }}>Address</InputLabel>
-                        <AddressAutocomplete
-                          value={editAddress}
-                          onChange={setEditAddress}
-                          label={null}
-                          height={40}
-                          placeholder="Enter your address"
-                          className="text-base"
-                          sx={{
-                
-                            backgroundColor: "#eff6ff",
-                            "& .MuiOutlinedInput-root": {
-                              backgroundColor: "#eff6ff",
-                              "& fieldset": {
-                                borderColor: "#3b82f6",
-                              },
-                              "&:hover fieldset": {
-                                borderColor: "#2563eb",
-                              },
-                              "&.Mui-focused fieldset": {
-                                borderColor: "#2563eb",
-                              },
-                            },
-                            "& .MuiInputBase-input": {
-                              fontSize: "15px",
-                            },
-                          }}
-                          InputLabelProps={{ shrink: false }}
-                        />
-                      </FormControl>
-                      <p className="text-sm text-blue-500/70">Your present home address</p>
-                    </div>
-                  
+                    <Box className="flex gap-4">
+                      <div className="flex-1 space-y-2">
+                        <Label htmlFor="country" className="text-blue-700">
+                          Country
+                        </Label>
+                        <FormControl fullWidth>
+                          <Autocomplete
+                            options={countriesList}
+                            getOptionLabel={(option) => option.name}
+                            value={countriesList.find(c => c.code === editCountry) || null}
+                            onChange={handleCountryChange}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder="Country"
+                                variant="outlined"
+                                size="small"
+                                sx={{
+                                  minWidth: 180,
+                                  backgroundColor: "#eff6ff",
+                                  "& .MuiOutlinedInput-root": {
+                                    backgroundColor: "#eff6ff",
+                                    "& fieldset": {
+                                      borderColor: "#3b82f6",
+                                    },
+                                    "&:hover fieldset": {
+                                      borderColor: "#2563eb",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#2563eb",
+                                    },
+                                  },
+                                  "& .MuiInputBase-input": {
+                                    fontSize: "14px",
+                                  },
+                                }}
+                              />
+                            )}
+                            isOptionEqualToValue={(option, value) => option.code === value.code}
+                          />
+                          {fieldErrors.country && (
+                            <div className="text-red-500 text-xs mt-1">{fieldErrors.country}</div>
+                          )}
+                        </FormControl>
+                        <p className="text-sm text-blue-500/70">Your country of residence</p>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <Label htmlFor="city" className="text-blue-700">
+                          City
+                        </Label>
+                        <FormControl fullWidth>
+                          <Autocomplete
+                            options={citiesList}
+                            getOptionLabel={(option) => option.name}
+                            value={citiesList.find(c => c.name === editCity) || null}
+                            onChange={handleCityChange}
+                            loading={citiesLoading}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder="City"
+                                variant="outlined"
+                                size="small"
+                                sx={{
+                                  minWidth: 180,
+                                  backgroundColor: "#eff6ff",
+                                  "& .MuiOutlinedInput-root": {
+                                    backgroundColor: "#eff6ff",
+                                    "& fieldset": {
+                                      borderColor: "#3b82f6",
+                                    },
+                                    "&:hover fieldset": {
+                                      borderColor: "#2563eb",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#2563eb",
+                                    },
+                                  },
+                                  "& .MuiInputBase-input": {
+                                    fontSize: "14px",
+                                  },
+                                }}
+                                InputProps={{
+                                  ...params.InputProps,
+                                  endAdornment: (
+                                    <>
+                                      {citiesLoading ? (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', pr: 1 }}>
+                                          <svg className="animate-spin h-5 w-5 text-blue-400" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                                          </svg>
+                                        </Box>
+                                      ) : null}
+                                      {params.InputProps.endAdornment}
+                                    </>
+                                  ),
+                                }}
+                              />
+                            )}
+                            isOptionEqualToValue={(option, value) => option.name === value.name}
+                          />
+                          {fieldErrors.city && (
+                            <div className="text-red-500 text-xs mt-1">{fieldErrors.city}</div>
+                          )}
+                        </FormControl>
+                        <p className="text-sm text-blue-500/70">Your city of residence</p>
+                      </div>
+                    </Box>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -627,117 +743,6 @@ export default function SettingsPage() {
               </motion.div>
             )}
 
-            {activeTab === "appearance" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      {darkMode ? <Moon className="h-5 w-5 mr-2" /> : <Sun className="h-5 w-5 mr-2" />}
-                      Appearance
-                    </CardTitle>
-                    <CardDescription>Customize how the application looks</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Dark Mode</Label>
-                        <p className="text-sm text-blue-500/70">Toggle between light and dark theme</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Sun className="h-4 w-4 text-blue-600" />
-                        <Switch
-                          checked={darkMode}
-                          onCheckedChange={setDarkMode}
-                          className="data-[state=checked]:bg-blue-600"
-                        />
-                        <Moon className="h-4 w-4 text-blue-600" />
-                      </div>
-                    </div>
-                    <Separator className="my-4 bg-blue-100" />
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Color Theme</Label>
-                      <div className="grid grid-cols-5 gap-2">
-                        {["blue", "purple", "green", "orange", "red"].map((color) => (
-                          <div
-                            key={color}
-                            className={`h-10 rounded-md cursor-pointer transition-all hover:scale-105 ${
-                              color === "blue"
-                                ? "ring-2 ring-blue-500 ring-offset-2 bg-gradient-to-r from-blue-500 to-sky-400"
-                                : color === "purple"
-                                ? "bg-gradient-to-r from-purple-500 to-pink-400"
-                                : color === "green"
-                                ? "bg-gradient-to-r from-green-500 to-emerald-400"
-                                : color === "orange"
-                                ? "bg-gradient-to-r from-orange-500 to-amber-400"
-                                : "bg-gradient-to-r from-red-500 to-rose-400"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-sm text-blue-500/70">Select your preferred color theme</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            {activeTab === "notifications" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      <Bell className="h-5 w-5 mr-2" />
-                      Notifications
-                    </CardTitle>
-                    <CardDescription>Manage how you receive notifications</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Email Notifications</Label>
-                        <p className="text-sm text-blue-500/70">Receive notifications via email</p>
-                      </div>
-                      <Switch
-                        checked={emailNotifications}
-                        onCheckedChange={setEmailNotifications}
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Push Notifications</Label>
-                        <p className="text-sm text-blue-500/70">Receive notifications on your device</p>
-                      </div>
-                      <Switch
-                        checked={pushNotifications}
-                        onCheckedChange={setPushNotifications}
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Job Alerts</Label>
-                        <p className="text-sm text-blue-500/70">Get notified about new job opportunities</p>
-                      </div>
-                      <Switch
-                        checked={jobAlerts}
-                        onCheckedChange={setJobAlerts}
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
             {activeTab === "account" && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -878,34 +883,6 @@ export default function SettingsPage() {
                           Would you like job recommendations unrelated to your course?
                         </span>
                       </Box>
-                    </div>
-                    <Separator className="my-6" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-blue-700 mb-2">Change Password</h3>
-                      <Separator className="mb-6" />
-                      <div className="space-y-4">
-                        <Input
-                          type="password"
-                          placeholder="Current Password"
-                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
-                        />
-                        <Input
-                          type="password"
-                          placeholder="New Password"
-                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
-                        />
-                        <Input
-                          type="password"
-                          placeholder="Confirm New Password"
-                          className="border-blue-200 focus:border-blue-400 bg-blue-50/50 h-10"
-                        />
-                        <button
-                          type="button"
-                          className="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition"
-                        >
-                          Update Password
-                        </button>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>

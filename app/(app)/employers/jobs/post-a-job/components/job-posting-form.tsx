@@ -15,13 +15,14 @@ import { Button } from "@/components/ui/button"
 import { motion, AnimatePresence } from "framer-motion"
 import type { JobPostingData } from "../lib/types"
 import { Save } from "lucide-react"
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa"
+import { FaChevronLeft, FaChevronRight, FaExclamationTriangle } from "react-icons/fa"
 import Swal from "sweetalert2"
 import withReactContent from "sweetalert2-react-content"
 import { jwtDecode } from "jwt-decode"
 import { getSession } from "next-auth/react"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction } from "@/components/ui/alert-dialog"
 import { Toaster, toast } from "react-hot-toast"
+import Tooltip from "@mui/material/Tooltip"
 
 
 const MySwal = withReactContent(Swal)
@@ -34,8 +35,8 @@ export default function JobPostingForm() {
     location: "",
     remoteOptions: "",
     workType: "",
-    payType: "",
-    payAmount: "",
+    payType: "", // keep for type compatibility
+    payAmount: "", // keep for type compatibility
     recommendedCourse: "",
     verificationTier: "basic",
     jobDescription: "",
@@ -55,27 +56,50 @@ export default function JobPostingForm() {
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isPostingJob, setIsPostingJob] = useState(false)
   const [showUnauthorized, setShowUnauthorized] = useState(false)
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const [jobPostLimit, setJobPostLimit] = useState<number | null>(null)
+  const [jobPostCount, setJobPostCount] = useState<number | null>(null)
+  const [verifyStatus, setVerifyStatus] = useState<string | null>(null)
 
   useEffect(() => {
-    async function fetchEmployerId() {
+    async function fetchEmployerIdAndLimits() {
       const session = await getSession()
       const employerIdFromSession =
         session?.user && typeof session.user === "object" && "employerId" in session.user
           ? (session.user as { employerId?: string }).employerId
           : undefined
-      if (employerIdFromSession) {
-        setEmployerId(employerIdFromSession)
-      } else {
+      let eid = employerIdFromSession
+      if (!eid) {
         const token = localStorage.getItem("token")
         if (token) {
           const decoded: { id: string } = jwtDecode(token)
-          setEmployerId(decoded.id)
-        } else {
-          setEmployerId(null)
+          eid = decoded.id
         }
       }
+      if (eid) {
+        setEmployerId(eid)
+        const statusRes = await fetch(`/api/employers/verify-status?employerId=${eid}`)
+        if (statusRes.ok) {
+          const statusData = await statusRes.json()
+          setVerifyStatus(statusData.verify_status)
+          let limit = null
+          if (statusData.verify_status === "basic") limit = 3
+          else if (statusData.verify_status === "standard") limit = 5
+          setJobPostLimit(limit)
+          if (limit) {
+            const countRes = await fetch(`/api/employers/verify-status/jobpostCount?employerId=${eid}`)
+            if (countRes.ok) {
+              const countData = await countRes.json()
+              setJobPostCount(countData.count)
+              if (countData.count >= limit) setShowLimitModal(true)
+            }
+          }
+        }
+      } else {
+        setEmployerId(null)
+      }
     }
-    fetchEmployerId()
+    fetchEmployerIdAndLimits()
   }, [])
 
   useEffect(() => {
@@ -99,13 +123,12 @@ export default function JobPostingForm() {
         location: !formData.location.trim(),
         remoteOptions: !formData.remoteOptions.trim(),
         workType: !formData.workType.trim(),
-        payType: !formData.payType.trim(),
         recommendedCourse: !formData.recommendedCourse.trim(),
       }
     } else if (currentStep === 3) {
       newErrors = {
         jobDescription: !formData.jobDescription.trim(),
-        responsibilities: formData.responsibilities.every((item) => !item.trim()), 
+        responsibilities: formData.responsibilities.every((item) => !item.trim()),
         mustHaveQualifications: formData.mustHaveQualifications.every((item) => !item.trim()),
         jobSummary: !formData.jobSummary.trim(),
       }
@@ -128,6 +151,10 @@ export default function JobPostingForm() {
     setHasAttemptedNext(true)
     const isValid = validateFields()
     if (isValid) {
+      if (currentStep === 2 && !formData.workType) {
+        toast.error("Please select a Work Type before continuing.")
+        return
+      }
       if (currentStep < 5) {
         setCurrentStep(currentStep + 1)
         window.scrollTo(0, 0)
@@ -145,6 +172,7 @@ export default function JobPostingForm() {
   }
 
   const postJob = async () => {
+    if (showLimitModal) return
     console.log("postJob called")
     if (!employerId) {
       setShowUnauthorized(true)
@@ -155,13 +183,17 @@ export default function JobPostingForm() {
 
     const sanitizedFormData = {
       ...formData,
-      maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
+      maxApplicants: formData.maxApplicants
+        ? (typeof formData.maxApplicants === "string"
+            ? parseInt(formData.maxApplicants, 10) || null
+            : formData.maxApplicants)
+        : null,
       applicationDeadline: {
-        date: formData.applicationDeadline.date || null,
-        time: formData.applicationDeadline.time || null,
+        date: formData.applicationDeadline?.date || null,
+        time: formData.applicationDeadline?.time || null,
       },
-      perksAndBenefits: formData.perksAndBenefits.length > 0 ? formData.perksAndBenefits : null,
-      applicationQuestions: formData.applicationQuestions.length > 0 ? formData.applicationQuestions : null,
+      perksAndBenefits: Array.isArray(formData.perksAndBenefits) && formData.perksAndBenefits.length > 0 ? formData.perksAndBenefits : [],
+      applicationQuestions: Array.isArray(formData.applicationQuestions) && formData.applicationQuestions.length > 0 ? formData.applicationQuestions : [],
     }
 
     console.log("About to POST job with data:", sanitizedFormData)
@@ -173,7 +205,7 @@ export default function JobPostingForm() {
       credentials: "include",
       body: JSON.stringify({
         action: "publishJob",
-        formData: sanitizedFormData,
+        data: sanitizedFormData,
       }),
     })
     console.log("POST /api/employers/post-a-job response status:", response.status, "ok:", response.ok);
@@ -194,8 +226,8 @@ export default function JobPostingForm() {
       console.log("Result keys:", result && typeof result === "object" ? Object.keys(result) : [])
       console.log("Result.data:", result.data)
 
-      let createdJobId: string | undefined = undefined;
-      if (result.data) {
+      let createdJobId: string | undefined = result.job_id || undefined;
+      if (!createdJobId && result.data) {
         if (Array.isArray(result.data) && result.data.length > 0 && result.data[0].id) {
           createdJobId = result.data[0].id;
         } else if (typeof result.data === "object" && "id" in result.data) {
@@ -213,16 +245,25 @@ export default function JobPostingForm() {
         }
       }
 
-      console.log("Embeddings job_id:", createdJobId)
-      if (createdJobId) {
-        console.log("Calling embeddings API for job_id:", createdJobId)
-        const embeddingsRes = await fetch("/api/ai-matches/embeddings/job", {
+      if (createdJobId && employerId) {
+        await fetch("/api/ai-matches/embeddings/job", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ job_id: createdJobId }),
-        })
-        if (embeddingsRes.ok) {
-          console.log("Embeddings API called successfully")
+          body: JSON.stringify({ job_id: createdJobId })
+        });
+
+        const jobsRes = await fetch("/api/ai-matches/match/students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ job_id: createdJobId })
+        });
+
+        if (jobsRes.ok) {
+          await fetch("/api/ai-matches/rescore-job", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: createdJobId })
+          });
         }
       }
 
@@ -241,7 +282,13 @@ export default function JobPostingForm() {
 
     const sanitizedFormData = {
       ...formData,
-      maxApplicants: formData.maxApplicants ? parseInt(formData.maxApplicants, 10) || null : null,
+      maxApplicants: formData.maxApplicants
+        ? (typeof formData.maxApplicants === "string"
+            ? parseInt(formData.maxApplicants, 10) || null
+            : formData.maxApplicants)
+        : null,
+      perksAndBenefits: Array.isArray(formData.perksAndBenefits) && formData.perksAndBenefits.length > 0 ? formData.perksAndBenefits : [],
+      applicationQuestions: Array.isArray(formData.applicationQuestions) && formData.applicationQuestions.length > 0 ? formData.applicationQuestions : [],
     }
 
     const response = await fetch("/api/employers/post-a-job", {
@@ -252,12 +299,14 @@ export default function JobPostingForm() {
       credentials: "include",
       body: JSON.stringify({
         action: "saveDraft",
-        formData: sanitizedFormData,
+        data: sanitizedFormData,
       }),
     })
 
     if (response.ok) {
       localStorage.setItem("draftSaved", "true")
+      toast.success("Draft saved successfully!")
+      setIsSavingDraft(false)
       return
     }
     setIsSavingDraft(false)
@@ -283,6 +332,12 @@ export default function JobPostingForm() {
     })
   }
 
+  const getVerificationHref = () => {
+    if (verifyStatus === "full") return "/employers/verification/fully-verified"
+    if (verifyStatus === "standard") return "/employers/verification/partially-verified"
+    return "/employers/verification/unverified"
+  }
+
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -296,12 +351,21 @@ export default function JobPostingForm() {
       case 2:
         return <ValidationStep formData={formData} updateFormData={updateFormData} />
       case 3:
+        if (!formData.workType) {
+          return (
+            <div className="text-red-600 font-bold p-6">
+              Please select a Work Type before continuing.
+            </div>
+          )
+        }
+        console.log("job-posting-form: Passing workType to WriteStep:", formData.workType)
         return (
           <WriteStep
             formData={formData}
             updateFormData={updateFormData}
             errors={hasAttemptedNext ? errors : {}}
             setErrors={setErrors}
+            workType={formData.workType}
           />
         )
       case 4:
@@ -319,7 +383,7 @@ export default function JobPostingForm() {
                   location: "",
                   remoteOptions: "",
                   workType: "",
-                  payType: "",
+                  payType: "", 
                   payAmount: "",
                   recommendedCourse: "",
                   verificationTier: "basic",
@@ -383,7 +447,32 @@ export default function JobPostingForm() {
                     Create a job posting
                   </h1>
                 </div>
-
+                {showLimitModal && (
+                  <div className="bg-yellow-100 border border-yellow-400 rounded-lg p-4 mb-6 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FaExclamationTriangle className="text-yellow-600 text-xl" />
+                      <div>
+                        <div className="font-semibold text-yellow-800">
+                          You&apos;ve reached your limit of job postings based on your verification status.
+                        </div>
+                        <div className="text-yellow-700 text-sm mt-1">
+                          You can still create and save job drafts, but posting new jobs isn’t available right now. Upgrade your verification to post more jobs.
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      className="ml-4 bg-orange-600 text-white px-3 py-2 rounded text-sm font-semibold hover:bg-orange-700"
+                      onClick={async () => {
+                        setShowLimitModal(false)
+                        const href = getVerificationHref()
+                        await router.prefetch(href)
+                        router.push(href)
+                      }}
+                    >
+                      Verify Now
+                    </button>
+                  </div>
+                )}
                 <ProgressBar currentStep={currentStep} />
 
                 <AnimatePresence mode="wait">
@@ -442,19 +531,33 @@ export default function JobPostingForm() {
                           <FaChevronRight />
                         </Button>
                       ) : (
-                        <Button
-                          onClick={postJob}
-                          disabled={isPostingJob}
-                          className={`bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-9 py-4 rounded-full flex items-center gap-2 ${
-                            isPostingJob ? "opacity-50 cursor-not-allowed" : ""
-                          }`}
-                        >
-                          {isPostingJob ? (
-                            <span className="loader mr-2"></span>
-                          ) : (
-                            "Post Job"
-                          )}
-                        </Button>
+                        showLimitModal ? (
+                          <Tooltip title="You have reached your job posting limit for your verification status. Upgrade to post more jobs.">
+                            <span>
+                              <Button
+                                onClick={postJob}
+                                disabled
+                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-9 py-4 rounded-full flex items-center gap-2 opacity-50 cursor-not-allowed"
+                              >
+                                Post Job
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <Button
+                            onClick={postJob}
+                            disabled={isPostingJob}
+                            className={`bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 px-9 py-4 rounded-full flex items-center gap-2 ${
+                              isPostingJob ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                          >
+                            {isPostingJob ? (
+                              <span className="loader mr-2"></span>
+                            ) : (
+                              "Post Job"
+                            )}
+                          </Button>
+                        )
                       )}
                     </div>
                   </>

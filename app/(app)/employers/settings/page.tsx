@@ -1,435 +1,474 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { User, Book, Sun, Bell, Shield, Globe, FileText, Save, Moon } from "lucide-react"
-import { MenuItem, Select, FormControl, InputLabel } from "@mui/material"
-
+import { User, Shield, Save } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TabList } from "./components/tab-list"
-import { Switch } from "@/components/ui/switch"
-import { Separator } from "@/components/ui/separator"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import Tooltip from "@mui/material/Tooltip"
+import toast, { Toaster } from "react-hot-toast"
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile")
-  const [darkMode, setDarkMode] = useState(false)
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [pushNotifications, setPushNotifications] = useState(true)
-  const [jobAlerts, setJobAlerts] = useState(true)
-
   const tabs = [
     { id: "profile", icon: User, label: "Profile", description: "Manage your personal information" },
-    { id: "academic", icon: Book, label: "Academic", description: "View and edit academic details" },
-    { id: "appearance", icon: Sun, label: "Appearance", description: "Customize the application look" },
-    { id: "notifications", icon: Bell, label: "Notifications", description: "Manage notification settings" },
-    { id: "privacy", icon: Shield, label: "Privacy", description: "Control your privacy settings" },
-    { id: "preferences", icon: Globe, label: "Preferences", description: "Set your job preferences" },
-    { id: "resume", icon: FileText, label: "Resume", description: "Manage your resume and documents" },
+    { id: "security", icon: Shield, label: "Security", description: "Change your password" },
   ]
+
+  const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState({
+    first_name: "",
+    middle_name: "",
+    last_name: "",
+    suffix: "",
+    email: "",
+    phone: "",
+  })
+  const [editProfile, setEditProfile] = useState(profile)
+  const [saving, setSaving] = useState(false)
+  const [verifyStatus, setVerifyStatus] = useState<string | undefined>(undefined)
+  const [phoneError, setPhoneError] = useState<string>("")
+  const [firstNameError, setFirstNameError] = useState<string>("")
+  const [lastNameError, setLastNameError] = useState<string>("")
+
+  useEffect(() => {
+    setLoading(true)
+    fetch("/api/employers/settings")
+      .then(res => res.json())
+      .then(data => {
+        setProfile({
+          first_name: data.first_name || "",
+          middle_name: data.middle_name || "",
+          last_name: data.last_name || "",
+          suffix: data.suffix || "",
+          email: data.email || "",
+          phone: data.phone || "",
+        })
+        setEditProfile({
+          first_name: data.first_name || "",
+          middle_name: data.middle_name || "",
+          last_name: data.last_name || "",
+          suffix: data.suffix || "",
+          email: data.email || "",
+          phone: data.phone || "",
+        })
+        setVerifyStatus(data.verify_status)
+      })
+      .finally(() => setLoading(false))
+  }, [])
 
   const handleTabChange = (id: string) => {
     setActiveTab(id)
   }
 
+  const validatePhone = (value: string) => {
+    // Only digits, 10 digits, starts with 9
+    if (!/^\d{10}$/.test(value)) {
+      return "Phone number must be 10 digits."
+    }
+    if (!value.startsWith("9")) {
+      return "Phone number must start with 9."
+    }
+    return ""
+  }
+
+  const strictNameRegex = /^(Ma\. )?([A-Za-zñÑ]+([ '-][A-Za-zñÑ]+)*|'[A-Za-zñÑ]+)*$/;
+
+  const validateFirstName = (value: string) => {
+    if (value.length < 2 || value.length > 50) {
+      return "First name must be 2-50 characters."
+    }
+    if (!strictNameRegex.test(value)) {
+      return "First name can only contain letters, spaces, hyphens, apostrophes, 'Ma.' and ñ."
+    }
+    return ""
+  }
+
+  const validateLastName = (value: string) => {
+    if (value.length < 2 || value.length > 50) {
+      return "Last name must be 2-50 characters."
+    }
+    if (!strictNameRegex.test(value)) {
+      return "Last name can only contain letters, spaces, hyphens, apostrophes, and ñ."
+    }
+    return ""
+  }
+
+  const handleProfileChange = (field: string, value: string) => {
+    setEditProfile(prev => ({ ...prev, [field]: value }))
+    if (field === "phone") {
+      setPhoneError(validatePhone(value))
+    }
+    if (field === "first_name") {
+      setFirstNameError(validateFirstName(value))
+    }
+    if (field === "last_name") {
+      setLastNameError(validateLastName(value))
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    if (phoneError || firstNameError || lastNameError) return
+    setSaving(true)
+    await fetch("/api/employers/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editProfile),
+    })
+    setProfile(editProfile)
+    setSaving(false)
+    toast.success("Profile updated successfully!", { style: { background: "#e6ffed", color: "#059669" } })
+  }
+
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordError, setPasswordError] = useState<string>("")
+  const [changePasswordError, setChangePasswordError] = useState<string>("")
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState(false)
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string>("")
+
+  const passwordChecklist = [
+    { label: "Minimum 8 characters", valid: newPassword.length >= 8 },
+    { label: "At least one uppercase letter", valid: /[A-Z]/.test(newPassword) },
+    { label: "At least one special character", valid: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword) },
+  ]
+
+  const validateNewPassword = (value: string) => {
+    if (value.length < 8) return "Password must be at least 8 characters."
+    if (!/[A-Z]/.test(value)) return "Password must contain an uppercase letter."
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) return "Password must contain a special character."
+    return ""
+  }
+
+  useEffect(() => {
+    if (newPassword) {
+      setPasswordError(validateNewPassword(newPassword))
+    } else {
+      setPasswordError("")
+    }
+    setChangePasswordError("")
+    setChangePasswordSuccess(false)
+  }, [newPassword])
+
+  useEffect(() => {
+    if (confirmPassword && newPassword && confirmPassword !== newPassword) {
+      setConfirmPasswordError("Confirmation does not match new password.")
+    } else {
+      setConfirmPasswordError("")
+    }
+  }, [confirmPassword, newPassword])
+
+  const handleChangePassword = async () => {
+    setChangePasswordError("")
+    setChangePasswordSuccess(false)
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setChangePasswordError("All fields are required.")
+      return
+    }
+    if (passwordError) return
+    if (newPassword !== confirmPassword) {
+      setChangePasswordError("New password and confirmation do not match.")
+      return
+    }
+    setChangingPassword(true)
+    const res = await fetch("/api/employers/settings/passwordChange", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+    const result = await res.json()
+    if (result.success) {
+      setChangePasswordSuccess(true)
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      toast.success("Password changed successfully!", { style: { background: "#e6ffed", color: "#059669" } })
+    } else {
+      setChangePasswordError(result.error || "Failed to change password.")
+    }
+    setChangingPassword(false)
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 pb-10">
-      <div className="container mx-auto px-4 py-8">
-        <motion.div
-          className="mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="text-3xl font-bold text-blue-600 flex items-center">
-            <motion.div
-              className="mr-4 bg-blue-500 text-white p-3 rounded-2xl shadow-lg"
-              whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <User size={28} />
-            </motion.div>
-            <span className="bg-gradient-to-r from-blue-500 to-sky-400 text-transparent bg-clip-text">
-              Account Settings
-            </span>
-          </h1>
-          <p className="text-blue-600/70 mt-2 ml-16">Manage your profile, preferences, and account settings</p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <TabList items={tabs} defaultTab={activeTab} onTabChange={handleTabChange} />
-          </div>
-
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {activeTab === "profile" && (
+    <>
+      <Toaster position="top-center" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 pb-10">
+        <div className="container mx-auto px-4 py-8">
+          <motion.div
+            className="mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h1 className="text-3xl font-bold text-blue-600 flex items-center">
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
+                className="mr-4 bg-blue-500 text-white p-3 rounded-2xl shadow-lg"
+                whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.1 }}
+                transition={{ duration: 0.5 }}
               >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      <User className="h-5 w-5 mr-2" />
-                      Personal Information
-                    </CardTitle>
-                    <CardDescription>Your basic profile information</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name" className="text-blue-700">
-                        Full Name
-                      </Label>
-                      <Input id="name" value="John Doe" disabled className="bg-blue-50/50 border-blue-200" />
-                      <p className="text-sm text-blue-500/70">Your legal name as registered with the institution</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-blue-700">
-                        Email Address
-                      </Label>
-                      <Input id="email" value="john.doe@university.edu" disabled className="bg-blue-50/50 border-blue-200" />
-                      <p className="text-sm text-blue-500/70">Your institutional email address</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-blue-700">
-                        Phone Number
-                      </Label>
-                      <Input id="phone" placeholder="Enter your phone number" className="border-blue-200 focus:border-blue-400" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="bio" className="text-blue-700">
-                        Bio
-                      </Label>
-                      <textarea
-                        id="bio"
-                        placeholder="Tell employers about yourself"
-                        className="w-full min-h-[100px] rounded-md border border-blue-200 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      ></textarea>
-                      <p className="text-sm text-blue-500/70">Brief description for your profile</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                <User size={28} />
               </motion.div>
-            )}
+              <span className="bg-gradient-to-r from-blue-500 to-sky-400 text-transparent bg-clip-text">
+                Account Settings
+              </span>
+            </h1>
+            <p className="text-blue-600/70 mt-2 ml-16">Manage your profile and security settings</p>
+          </motion.div>
 
-            {activeTab === "academic" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      <Book className="h-5 w-5 mr-2" />
-                      Academic Information
-                    </CardTitle>
-                    <CardDescription>Your course and academic details</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <FormControl fullWidth className="mb-4">
-                      <InputLabel id="course-label">Course/Program</InputLabel>
-                      <Select labelId="course-label" id="course" defaultValue="">
-                        <MenuItem value="cs">Bachelor of Science in Computer Science</MenuItem>
-                        <MenuItem value="it">Bachelor of Science in Information Technology</MenuItem>
-                        <MenuItem value="is">Bachelor of Science in Information Systems</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <FormControl fullWidth className="mb-4">
-                      <InputLabel id="year-label">Year Level</InputLabel>
-                      <Select labelId="year-label" id="year" defaultValue="">
-                        <MenuItem value="1">First Year</MenuItem>
-                        <MenuItem value="2">Second Year</MenuItem>
-                        <MenuItem value="3">Third Year</MenuItem>
-                        <MenuItem value="4">Fourth Year</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <FormControl fullWidth className="mb-4">
-                      <InputLabel id="section-label">Section</InputLabel>
-                      <Select labelId="section-label" id="section" defaultValue="">
-                        <MenuItem value="A">Section A</MenuItem>
-                        <MenuItem value="B">Section B</MenuItem>
-                        <MenuItem value="C">Section C</MenuItem>
-                      </Select>
-                    </FormControl>
-                    <FormControl fullWidth>
-                      <InputLabel id="graduation-label">Expected Graduation Date</InputLabel>
-                      <Select labelId="graduation-label" id="graduation" defaultValue="">
-                        <MenuItem value="2023">2023</MenuItem>
-                        <MenuItem value="2024">2024</MenuItem>
-                        <MenuItem value="2025">2025</MenuItem>
-                        <MenuItem value="2026">2026</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Sidebar */}
+            <div className="lg:col-span-1">
+              <TabList items={tabs} defaultTab={activeTab} onTabChange={handleTabChange} />
+            </div>
 
-            {activeTab === "appearance" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      {darkMode ? <Moon className="h-5 w-5 mr-2" /> : <Sun className="h-5 w-5 mr-2" />}
-                      Appearance
-                    </CardTitle>
-                    <CardDescription>Customize how the application looks</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Dark Mode</Label>
-                        <p className="text-sm text-blue-500/70">Toggle between light and dark theme</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Sun className="h-4 w-4 text-blue-600" />
-                        <Switch
-                          checked={darkMode}
-                          onCheckedChange={setDarkMode}
-                          className="data-[state=checked]:bg-blue-600"
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Profile Tab */}
+              {activeTab === "profile" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                >
+                  <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
+                    <CardHeader>
+                      <CardTitle className="text-blue-600 flex items-center">
+                        <User className="h-5 w-5 mr-2" />
+                        Personal Information
+                      </CardTitle>
+                      <CardDescription>Your basic profile information</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {loading ? (
+                        <div className="animate-pulse space-y-4">
+                          <div className="h-10 bg-blue-100 rounded" />
+                          <div className="h-10 bg-blue-100 rounded" />
+                          <div className="h-10 bg-blue-100 rounded" />
+                          <div className="h-10 bg-blue-100 rounded" />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="first_name" className="text-blue-700">
+                              First Name
+                            </Label>
+                            <Input
+                              id="first_name"
+                              value={editProfile.first_name}
+                              onChange={e => handleProfileChange("first_name", e.target.value)}
+                              className={`border-blue-200 focus:border-blue-400 ${firstNameError ? "border-red-500" : ""}`}
+                            />
+                            {firstNameError && (
+                              <div className="text-red-600 text-sm mt-1">{firstNameError}</div>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="middle_name" className="text-blue-700">
+                              Middle Name
+                            </Label>
+                            <Input
+                              id="middle_name"
+                              value={editProfile.middle_name}
+                              onChange={e => handleProfileChange("middle_name", e.target.value)}
+                              className="border-blue-200 focus:border-blue-400"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="last_name" className="text-blue-700">
+                              Last Name
+                            </Label>
+                            <Input
+                              id="last_name"
+                              value={editProfile.last_name}
+                              onChange={e => handleProfileChange("last_name", e.target.value)}
+                              className={`border-blue-200 focus:border-blue-400 ${lastNameError ? "border-red-500" : ""}`}
+                            />
+                            {lastNameError && (
+                              <div className="text-red-600 text-sm mt-1">{lastNameError}</div>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="suffix" className="text-blue-700">
+                              Suffix
+                            </Label>
+                            <Input
+                              id="suffix"
+                              value={editProfile.suffix}
+                              onChange={e => handleProfileChange("suffix", e.target.value)}
+                              className="border-blue-200 focus:border-blue-400"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="email" className="text-blue-700">
+                              Email Address
+                            </Label>
+                            <Tooltip
+                              title={
+                                verifyStatus === "standard" || verifyStatus === "full"
+                                  ? "You cannot change your email because it has already been verified with us."
+                                  : ""
+                              }
+                              arrow
+                              disableHoverListener={!(verifyStatus === "standard" || verifyStatus === "full")}
+                            >
+                              <span>
+                                <Input
+                                  id="email"
+                                  value={editProfile.email}
+                                  onChange={e => handleProfileChange("email", e.target.value)}
+                                  className="border-blue-200 focus:border-blue-400"
+                                  disabled={verifyStatus === "standard" || verifyStatus === "full"}
+                                />
+                              </span>
+                            </Tooltip>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="phone" className="text-blue-700">
+                              Phone Number
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <span className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-md text-blue-700 select-none">
+                                +63
+                              </span>
+                              <Input
+                                id="phone"
+                                value={editProfile.phone}
+                                onChange={e => handleProfileChange("phone", e.target.value.replace(/\D/g, ""))}
+                                className={`border-blue-200 focus:border-blue-400 ${phoneError ? "border-red-500" : ""}`}
+                                style={{ flex: 1 }}
+                                maxLength={10}
+                              />
+                            </div>
+                            {phoneError && (
+                              <div className="text-red-600 text-sm mt-1">{phoneError}</div>
+                            )}
+                          </div>
+                          <div className="flex justify-end mt-6">
+                            <motion.button
+                              className="bg-gradient-to-r from-blue-500 to-sky-500 text-white px-8 py-3 rounded-2xl font-medium shadow-lg hover:shadow-blue-200/50 transition-all duration-200 flex items-center justify-center"
+                              whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.5)" }}
+                              whileTap={{ scale: 0.95 }}
+                              type="button"
+                              onClick={handleSaveProfile}
+                              disabled={saving || !!phoneError || !!firstNameError || !!lastNameError}
+                            >
+                              <Save className="mr-2 h-5 w-5" />
+                              {saving ? "Saving..." : "Save Changes"}
+                            </motion.button>
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {/* Security Tab */}
+              {activeTab === "security" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
+                    <CardHeader>
+                      <CardTitle className="text-blue-600 flex items-center">
+                        <Shield className="h-5 w-5 mr-2" />
+                        Security
+                      </CardTitle>
+                      <CardDescription>Change your password</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="current-password" className="text-blue-700">
+                          Current Password
+                        </Label>
+                        <Input
+                          id="current-password"
+                          type="password"
+                          placeholder="Enter current password"
+                          className="border-blue-200 focus:border-blue-400"
+                          value={currentPassword}
+                          onChange={e => setCurrentPassword(e.target.value)}
                         />
-                        <Moon className="h-4 w-4 text-blue-600" />
                       </div>
-                    </div>
-                    <Separator className="my-4 bg-blue-100" />
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Color Theme</Label>
-                      <div className="grid grid-cols-5 gap-2">
-                        {["blue", "purple", "green", "orange", "red"].map((color) => (
-                          <div
-                            key={color}
-                            className={`h-10 rounded-md cursor-pointer transition-all hover:scale-105 ${
-                              color === "blue"
-                                ? "ring-2 ring-blue-500 ring-offset-2 bg-gradient-to-r from-blue-500 to-sky-400"
-                                : color === "purple"
-                                ? "bg-gradient-to-r from-purple-500 to-pink-400"
-                                : color === "green"
-                                ? "bg-gradient-to-r from-green-500 to-emerald-400"
-                                : color === "orange"
-                                ? "bg-gradient-to-r from-orange-500 to-amber-400"
-                                : "bg-gradient-to-r from-red-500 to-rose-400"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-sm text-blue-500/70">Select your preferred color theme</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Font Size</Label>
-                      <RadioGroup defaultValue="medium" className="flex space-x-2">
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="small" id="small" className="text-blue-600" />
-                          <Label htmlFor="small" className="text-sm">
-                            Small
-                          </Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password" className="text-blue-700">
+                          New Password
+                        </Label>
+                        <Input
+                          id="new-password"
+                          type="password"
+                          placeholder="Enter new password"
+                          className={`border-blue-200 focus:border-blue-400 ${passwordError ? "border-red-500" : ""}`}
+                          value={newPassword}
+                          onChange={e => setNewPassword(e.target.value)}
+                        />
+                        <div className="mt-2 space-y-1">
+                          {passwordChecklist.map((item, idx) => (
+                            <div key={idx} className="flex items-center text-sm">
+                              <span className={`mr-2 ${item.valid ? "text-green-600" : "text-gray-400"}`}>
+                                {item.valid ? "✔" : "✗"}
+                              </span>
+                              <span className={item.valid ? "text-green-600" : "text-gray-500"}>{item.label}</span>
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="medium" id="medium" className="text-blue-600" />
-                          <Label htmlFor="medium" className="text-base">
-                            Medium
-                          </Label>
+                        {passwordError && (
+                          <div className="text-red-600 text-sm mt-1">{passwordError}</div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-password" className="text-blue-700">
+                          Confirm New Password
+                        </Label>
+                        <Input
+                          id="confirm-password"
+                          type="password"
+                          placeholder="Confirm new password"
+                          className={`border-blue-200 focus:border-blue-400 ${confirmPasswordError ? "border-red-500" : ""}`}
+                          value={confirmPassword}
+                          onChange={e => setConfirmPassword(e.target.value)}
+                        />
+                        {confirmPasswordError && (
+                          <div className="text-red-600 text-sm mt-1">{confirmPasswordError}</div>
+                        )}
+                      </div>
+                      {changePasswordError && (
+                        <div className="text-red-600 text-sm mt-1">
+                          {changePasswordError === "Current password is incorrect"
+                            ? "The current password you entered is incorrect."
+                            : changePasswordError}
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <RadioGroupItem value="large" id="large" className="text-blue-600" />
-                          <Label htmlFor="large" className="text-lg">
-                            Large
-                          </Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            {activeTab === "notifications" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      <Bell className="h-5 w-5 mr-2" />
-                      Notifications
-                    </CardTitle>
-                    <CardDescription>Manage how you receive notifications</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Email Notifications</Label>
-                        <p className="text-sm text-blue-500/70">Receive notifications via email</p>
+                      )}
+                      {changePasswordSuccess && (
+                        <div className="text-green-600 text-sm mt-1">Password changed successfully.</div>
+                      )}
+                      <div className="flex justify-end mt-6">
+                        <motion.button
+                          className="bg-gradient-to-r from-blue-500 to-sky-500 text-white px-8 py-3 rounded-2xl font-medium shadow-lg hover:shadow-blue-200/50 transition-all duration-200 flex items-center justify-center"
+                          whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.5)" }}
+                          whileTap={{ scale: 0.95 }}
+                          type="button"
+                          onClick={handleChangePassword}
+                          disabled={changingPassword || !!passwordError || !!confirmPasswordError}
+                        >
+                          <Save className="mr-2 h-5 w-5" />
+                          {changingPassword ? "Changing..." : "Change Password"}
+                        </motion.button>
                       </div>
-                      <Switch
-                        checked={emailNotifications}
-                        onCheckedChange={setEmailNotifications}
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Push Notifications</Label>
-                        <p className="text-sm text-blue-500/70">Receive notifications on your device</p>
-                      </div>
-                      <Switch
-                        checked={pushNotifications}
-                        onCheckedChange={setPushNotifications}
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Job Alerts</Label>
-                        <p className="text-sm text-blue-500/70">Get notified about new job opportunities</p>
-                      </div>
-                      <Switch
-                        checked={jobAlerts}
-                        onCheckedChange={setJobAlerts}
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            {activeTab === "privacy" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.5 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      <Shield className="h-5 w-5 mr-2" />
-                      Privacy
-                    </CardTitle>
-                    <CardDescription>Control your privacy settings</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Profile Visibility</Label>
-                      <Input
-                        id="visibility"
-                        placeholder="Public/Private"
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Resume Privacy</Label>
-                      <Input
-                        id="resume-privacy"
-                        placeholder="Public/Private"
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            {activeTab === "preferences" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.6 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      <Globe className="h-5 w-5 mr-2" />
-                      Preferences
-                    </CardTitle>
-                    <CardDescription>Set your job preferences</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Job Type</Label>
-                      <Input
-                        id="job-type"
-                        placeholder="Full-time/Part-time"
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Preferred Industries</Label>
-                      <Input
-                        id="industries"
-                        placeholder="e.g., Technology, Finance"
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            {activeTab === "resume" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.7 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      <FileText className="h-5 w-5 mr-2" />
-                      Resume
-                    </CardTitle>
-                    <CardDescription>Manage your resume and documents</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="resume" className="text-blue-700">
-                        Upload Resume
-                      </Label>
-                      <Input id="resume" type="file" className="border-blue-200 focus:border-blue-400" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Default Resume</Label>
-                      <Input
-                        id="default-resume"
-                        placeholder="General Resume"
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            <motion.div
-              className="flex justify-end mt-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.9 }}
-            >
-              <motion.button
-                className="bg-gradient-to-r from-blue-500 to-sky-500 text-white px-8 py-6 rounded-2xl font-medium shadow-lg hover:shadow-blue-200/50 transition-all duration-200 flex items-center justify-center"
-                whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(59, 130, 246, 0.5)" }}
-                whileTap={{ scale: 0.95 }}
-                type="button"
-              >
-                <Save className="mr-2 h-5 w-5" />
-                Save Changes
-              </motion.button>
-            </motion.div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }

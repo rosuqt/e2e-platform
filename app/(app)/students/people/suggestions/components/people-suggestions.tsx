@@ -1,18 +1,30 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Search, ChevronDown, Info, Users, Building2, GraduationCap } from "lucide-react"
 import { TbUserStar } from "react-icons/tb"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useSession } from "next-auth/react"
+import { Tooltip } from "@mui/material"
+import { FaRegSmileBeam } from "react-icons/fa"
 
 import SearchSection from "../../components/search-section"
 import { GridStudents } from "../../components/grid view cards/grid-students"
 import { GridEmployer } from "../../components/grid view cards/grid-employer"
 import { GridCompanies } from "../../components/grid view cards/grid-companies"
+
+type ApiCompany = {
+  id: string
+  company_name: string
+  company_industry: string
+  address?: string
+  logoUrl?: string
+}
 
 export default function PeopleSuggestions() {
   const [openModal, setOpenModal] = useState<string | null>(null)
@@ -23,19 +35,348 @@ export default function PeopleSuggestions() {
     companies: Company[]
   } | null>(null)
   const [searchTab, setSearchTab] = useState("students")
+  const [suggestedStudents, setSuggestedStudents] = useState<Student[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [suggestedEmployers, setSuggestedEmployers] = useState<Employer[]>([])
+  const [loadingEmployerSuggestions, setLoadingEmployerSuggestions] = useState(false)
+  const [suggestedCompanies, setSuggestedCompanies] = useState<Company[]>([])
+  const [loadingCompanySuggestions, setLoadingCompanySuggestions] = useState(false)
+  const { data: session } = useSession()
+  const currentStudentId = session?.user?.studentId ?? ""
 
-  const handleConnect = (id: string) => {
-    setConnectionStates((prev) => ({
-      ...prev,
-      [id]: prev[id] === "Connected" ? "Connect" : prev[id] === "Requested" ? "Connect" : "Requested",
-    }))
+  const [hiddenStudentIds, setHiddenStudentIds] = useState<string[]>([])
+  const [hiddenEmployerIds, setHiddenEmployerIds] = useState<string[]>([])
+  const [hiddenCompanyIds, setHiddenCompanyIds] = useState<string[]>([])
+
+  useEffect(() => {
+    async function fetchInitialSuggestions() {
+      if (!currentStudentId) return
+      setLoadingSuggestions(true)
+      const res = await fetch("/api/students/people/suggestions/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: currentStudentId, limit: 4 }),
+      })
+      const { students } = await res.json()
+      const mapped = await Promise.all(
+        (students as StudentApiRow[]).map(async s => {
+          let avatar = "/placeholder.svg?height=100&width=100"
+          let cover = ""
+          try {
+            const avatarRes = await fetch(`/api/students/people/suggestions/students?id=${s.id}&type=avatar`)
+            const avatarData = await avatarRes.json()
+            if (avatarData.signedUrl) avatar = avatarData.signedUrl
+          } catch {}
+          try {
+            const coverRes = await fetch(`/api/students/people/suggestions/students?id=${s.id}&type=cover`)
+            const coverData = await coverRes.json()
+            if (coverData.signedUrl) cover = coverData.signedUrl
+          } catch {}
+          return {
+            id: s.id,
+            name: `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim(),
+            title: s.course?.replace(/^BS\s*-\s*/i, "") ?? "",
+            field: s.course?.replace(/^BS\s*-\s*/i, "") ?? "",
+            avatar,
+            cover,
+            yearAndSection: `${s.year ?? ""} - ${s.section ?? ""}`,
+          }
+        })
+      )
+      setSuggestedStudents(mapped)
+      const states: Record<string, string> = {}
+      await Promise.all(
+        mapped.map(async student => {
+          if (student.id === currentStudentId) return
+          try {
+            const statusRes = await fetch(`/api/students/people/suggestions/students?senderId=${currentStudentId}&receiverId=${student.id}`)
+            const statusData = await statusRes.json()
+            if (statusData.status === "Requested") {
+              states[student.id] = "Requested"
+            } else {
+              states[student.id] = "Connect"
+            }
+          } catch {
+            states[student.id] = "Connect"
+          }
+        })
+      )
+      setConnectionStates(prev => ({ ...prev, ...states }))
+      setLoadingSuggestions(false)
+      setTimeout(fetchRestSuggestions, 0)
+    }
+    async function fetchRestSuggestions() {
+      const res = await fetch("/api/students/people/suggestions/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: currentStudentId }),
+      })
+      const { students } = await res.json()
+      const mapped = await Promise.all(
+        (students as StudentApiRow[]).map(async s => {
+          let avatar = "/placeholder.svg?height=100&width=100"
+          let cover = ""
+          try {
+            const avatarRes = await fetch(`/api/students/people/suggestions/students?id=${s.id}&type=avatar`)
+            const avatarData = await avatarRes.json()
+            if (avatarData.signedUrl) avatar = avatarData.signedUrl
+          } catch {}
+          try {
+            const coverRes = await fetch(`/api/students/people/suggestions/students?id=${s.id}&type=cover`)
+            const coverData = await coverRes.json()
+            if (coverData.signedUrl) cover = coverData.signedUrl
+          } catch {}
+          return {
+            id: s.id,
+            name: `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim(),
+            title: s.course?.replace(/^BS\s*-\s*/i, "") ?? "",
+            field: s.course?.replace(/^BS\s*-\s*/i, "") ?? "",
+            avatar,
+            cover,
+            yearAndSection: `${s.year ?? ""} - ${s.section ?? ""}`,
+          }
+        })
+      )
+      setSuggestedStudents(mapped)
+      const states: Record<string, string> = {}
+      await Promise.all(
+        mapped.map(async student => {
+          if (student.id === currentStudentId) return
+          try {
+            const statusRes = await fetch(`/api/students/people/suggestions/students?senderId=${currentStudentId}&receiverId=${student.id}`)
+            const statusData = await statusRes.json()
+            if (statusData.status === "Requested") {
+              states[student.id] = "Requested"
+            } else {
+              states[student.id] = "Connect"
+            }
+          } catch {
+            states[student.id] = "Connect"
+          }
+        })
+      )
+      setConnectionStates(prev => ({ ...prev, ...states }))
+    }
+    fetchInitialSuggestions()
+  }, [currentStudentId])
+
+  useEffect(() => {
+    async function fetchInitialEmployerSuggestions() {
+      setLoadingEmployerSuggestions(true)
+      const res = await fetch("/api/students/people/suggestions/employers?limit=4", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      const { employers } = await res.json()
+      const mapped = (employers as {
+        id: string
+        first_name: string | null
+        last_name: string | null
+        company_name: string | null
+        job_title: string | null
+        user_id: string | null
+        avatar: string
+        cover?: string
+      }[]).map(e => ({
+        id: e.id,
+        name: `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim(),
+        company: e.company_name ?? "",
+        job_title: e.job_title ?? "",
+        avatar: e.avatar || "/placeholder.svg?height=100&width=100",
+        cover: e.cover ?? "",
+      }))
+      setSuggestedEmployers(mapped)
+      const states: Record<string, string> = {}
+      await Promise.all(
+        mapped.map(async employer => {
+          try {
+            const statusRes = await fetch(`/api/students/people/suggestions/employers?employerId=${employer.id}`)
+            const statusData = await statusRes.json()
+            if (statusData.status === "Following") {
+              states[employer.id] = "Following"
+            } else {
+              states[employer.id] = "Follow"
+            }
+          } catch {
+            states[employer.id] = "Follow"
+          }
+        })
+      )
+      setConnectionStates(prev => ({ ...prev, ...states }))
+      setLoadingEmployerSuggestions(false)
+      setTimeout(fetchRestEmployerSuggestions, 0)
+    }
+    async function fetchRestEmployerSuggestions() {
+      const res = await fetch("/api/students/people/suggestions/employers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      const { employers } = await res.json()
+      const mapped = (employers as {
+        id: string
+        first_name: string | null
+        last_name: string | null
+        company_name: string | null
+        job_title: string | null
+        user_id: string | null
+        avatar: string
+        cover?: string
+      }[]).map(e => ({
+        id: e.id,
+        name: `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim(),
+        company: e.company_name ?? "",
+        job_title: e.job_title ?? "",
+        avatar: e.avatar || "/placeholder.svg?height=100&width=100",
+        cover: e.cover ?? "",
+      }))
+      setSuggestedEmployers(mapped)
+      const states: Record<string, string> = {}
+      await Promise.all(
+        mapped.map(async employer => {
+          try {
+            const statusRes = await fetch(`/api/students/people/suggestions/employers?employerId=${employer.id}`)
+            const statusData = await statusRes.json()
+            if (statusData.status === "Following") {
+              states[employer.id] = "Following"
+            } else {
+              states[employer.id] = "Follow"
+            }
+          } catch {
+            states[employer.id] = "Follow"
+          }
+        })
+      )
+      setConnectionStates(prev => ({ ...prev, ...states }))
+    }
+    fetchInitialEmployerSuggestions()
+  }, [currentStudentId])
+
+  useEffect(() => {
+    async function fetchInitialCompanySuggestions() {
+      setLoadingCompanySuggestions(true)
+      const res = await fetch("/api/students/people/suggestions/companies?limit=4")
+      const { companies } = await res.json()
+      const safeCompanies = Array.isArray(companies) ? companies : []
+      const mapped = (safeCompanies as ApiCompany[]).map(c => ({
+        id: c.id,
+        name: c.company_name,
+        industry: c.company_industry,
+        location: c.address ?? "",
+        avatar: c.logoUrl ?? "/placeholder.svg?height=100&width=100",
+        cover: (c as any).coverUrl ?? "",
+      }))
+      setSuggestedCompanies(mapped)
+      const states: Record<string, string> = {}
+      await Promise.all(
+        mapped.map(async company => {
+          try {
+            const statusRes = await fetch(`/api/students/people/sendFollow/companies?companyId=${company.id}`)
+            const statusData = await statusRes.json()
+            if (statusData.status === "Following") {
+              states[company.id] = "Following"
+            } else {
+              states[company.id] = "Follow"
+            }
+          } catch {
+            states[company.id] = "Follow"
+          }
+        })
+      )
+      setConnectionStates(prev => ({ ...prev, ...states }))
+      setLoadingCompanySuggestions(false)
+      setTimeout(fetchRestCompanySuggestions, 0)
+    }
+    async function fetchRestCompanySuggestions() {
+      const res = await fetch("/api/students/people/suggestions/companies")
+      const { companies } = await res.json()
+      const safeCompanies = Array.isArray(companies) ? companies : []
+      const mapped = (safeCompanies as ApiCompany[]).map(c => ({
+        id: c.id,
+        name: c.company_name,
+        industry: c.company_industry,
+        location: c.address ?? "",
+        avatar: c.logoUrl ?? "/placeholder.svg?height=100&width=100",
+        cover: (c as any).coverUrl ?? "",
+      }))
+      setSuggestedCompanies(mapped)
+      const states: Record<string, string> = {}
+      await Promise.all(
+        mapped.map(async company => {
+          try {
+            const statusRes = await fetch(`/api/students/people/sendFollow/companies?companyId=${company.id}`)
+            const statusData = await statusRes.json()
+            if (statusData.status === "Following") {
+              states[company.id] = "Following"
+            } else {
+              states[company.id] = "Follow"
+            }
+          } catch {
+            states[company.id] = "Follow"
+          }
+        })
+      )
+      setConnectionStates(prev => ({ ...prev, ...states }))
+    }
+    fetchInitialCompanySuggestions()
+  }, [currentStudentId])
+
+  const handleConnect = async (id: string) => {
+    const currentState = connectionStates[id]
+    if (currentState === "Requested") {
+      await fetch("/api/students/people/sendRequest", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senderId: currentStudentId, receiverId: id }),
+      })
+      setConnectionStates(prev => ({ ...prev, [id]: "Connect" }))
+    } else {
+      await fetch("/api/students/people/sendRequest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senderId: currentStudentId, receiverId: id }),
+      })
+      setConnectionStates(prev => ({ ...prev, [id]: "Requested" }))
+    }
   }
 
-  const handleFollow = (id: string) => {
-    setConnectionStates((prev) => ({
-      ...prev,
-      [id]: prev[id] === "Following" ? "Follow" : "Following",
-    }))
+  const handleFollow = async (id: string) => {
+    const currentState = connectionStates[id]
+    if (!currentStudentId) return
+    if (currentState === "Following") {
+      await fetch("/api/students/people/sendFollow", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employerId: id }),
+      })
+      setConnectionStates(prev => ({ ...prev, [id]: "Follow" }))
+    } else {
+      await fetch("/api/students/people/sendFollow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employerId: id }),
+      })
+      setConnectionStates(prev => ({ ...prev, [id]: "Following" }))
+    }
+  }
+
+  const handleFollowCompany = async (id: string) => {
+    const currentState = connectionStates[id]
+    if (!currentStudentId) return
+    if (currentState === "Following") {
+      await fetch("/api/students/people/sendFollow/companies", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: id }),
+      })
+      setConnectionStates(prev => ({ ...prev, [id]: "Follow" }))
+    } else {
+      await fetch("/api/students/people/sendFollow/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: id }),
+      })
+      setConnectionStates(prev => ({ ...prev, [id]: "Following" }))
+    }
   }
 
   const handleSearch = (params: { firstName: string; lastName: string }) => {
@@ -45,9 +386,9 @@ export default function PeopleSuggestions() {
       (firstName && name.toLowerCase().includes(firstName.toLowerCase())) ||
       (lastName && name.toLowerCase().includes(lastName.toLowerCase()))
 
-    const students = getStudents(100).filter(s => filterByName(s.name))
-    const employers = getEmployers(100).filter(e => filterByName(e.name))
-    const companies = getCompanies(100).filter(c => filterByName(c.name))
+    const students = suggestedStudents.filter(s => filterByName(s.name))
+    const employers = suggestedEmployers.filter(e => filterByName(e.name))
+    const companies = suggestedCompanies.filter(c => filterByName(c.name))
 
     setSearchResults({
       students,
@@ -58,6 +399,16 @@ export default function PeopleSuggestions() {
   }
 
   const handleCloseSearchResults = () => setSearchResults(null)
+
+  const handleHideStudent = (id: string) => {
+    setHiddenStudentIds(prev => [...prev, id])
+  }
+  const handleHideEmployer = (id: string) => {
+    setHiddenEmployerIds(prev => [...prev, id])
+  }
+  const handleHideCompany = (id: string) => {
+    setHiddenCompanyIds(prev => [...prev, id])
+  }
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -116,16 +467,20 @@ export default function PeopleSuggestions() {
               </TabsList>
               <div className="p-4">
                 <TabsContent value="students" className="mt-0">
-                  {searchResults.students.length > 0 ? (
+                  {searchResults.students.filter(s => !hiddenStudentIds.includes(s.id)).length > 0 ? (
                     <GridStudents
-                      students={searchResults.students.slice(0, 4)}
+                      students={searchResults.students.filter(s => !hiddenStudentIds.includes(s.id)).slice(0, 4)}
                       connectionStates={connectionStates}
                       onConnect={handleConnect}
+                      onHide={handleHideStudent}
                     />
                   ) : (
-                    <div className="text-center py-8 text-gray-500">No students found</div>
+                    <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+                      <FaRegSmileBeam className="w-8 h-8 mb-2 text-gray-400" />
+                      No Results found
+                    </div>
                   )}
-                  {searchResults.students.length > 4 && (
+                  {searchResults.students.filter(s => !hiddenStudentIds.includes(s.id)).length > 4 && (
                     <div className="text-center mt-4">
                       <Button
                         variant="outline"
@@ -138,16 +493,20 @@ export default function PeopleSuggestions() {
                   )}
                 </TabsContent>
                 <TabsContent value="employers" className="mt-0">
-                  {searchResults.employers.length > 0 ? (
+                  {searchResults.employers.filter(e => !hiddenEmployerIds.includes(e.id)).length > 0 ? (
                     <GridEmployer
-                      employers={searchResults.employers.slice(0, 4)}
+                      employers={searchResults.employers.filter(e => !hiddenEmployerIds.includes(e.id)).slice(0, 4)}
                       connectionStates={connectionStates}
                       onConnect={handleFollow}
+                      onHide={handleHideEmployer}
                     />
                   ) : (
-                    <div className="text-center py-8 text-gray-500">No employers found</div>
+                    <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+                      <FaRegSmileBeam className="w-8 h-8 mb-2 text-gray-400" />
+                      No employers found
+                    </div>
                   )}
-                  {searchResults.employers.length > 4 && (
+                  {searchResults.employers.filter(e => !hiddenEmployerIds.includes(e.id)).length > 4 && (
                     <div className="text-center mt-4">
                       <Button
                         variant="outline"
@@ -160,22 +519,27 @@ export default function PeopleSuggestions() {
                   )}
                 </TabsContent>
                 <TabsContent value="companies" className="mt-0">
-                  {searchResults.companies.length > 0 ? (
+                  {searchResults.companies.filter(c => !hiddenCompanyIds.includes(c.id)).length > 0 ? (
                     <GridCompanies
-                      companies={searchResults.companies.slice(0, 4).map(c => ({
+                      companies={searchResults.companies.filter(c => !hiddenCompanyIds.includes(c.id)).slice(0, 4).map(c => ({
                         id: c.id,
                         name: c.name,
                         industry: c.industry,
                         location: c.location,
-                        avatar: c.logo,
+                        avatar: c.avatar,
+                        cover: c.cover,
                       }))}
                       connectionStates={connectionStates}
-                      onConnect={handleFollow}
+                      onConnect={handleFollowCompany}
+                      onHide={handleHideCompany}
                     />
                   ) : (
-                    <div className="text-center py-8 text-gray-500">No companies found</div>
+                    <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+                      <FaRegSmileBeam className="w-8 h-8 mb-2 text-gray-400" />
+                      No companies found
+                    </div>
                   )}
-                  {searchResults.companies.length > 4 && (
+                  {searchResults.companies.filter(c => !hiddenCompanyIds.includes(c.id)).length > 4 && (
                     <div className="text-center mt-4">
                       <Button
                         variant="outline"
@@ -200,6 +564,10 @@ export default function PeopleSuggestions() {
         connectionStates={connectionStates}
         onConnect={handleConnect}
         onViewAll={() => setOpenModal("students")}
+        students={suggestedStudents.filter(s => !hiddenStudentIds.includes(s.id)).slice(0, 4)}
+        loading={loadingSuggestions}
+        onHide={handleHideStudent}
+        hiddenIds={hiddenStudentIds}
       />
 
       {/* Employers Section */}
@@ -209,6 +577,10 @@ export default function PeopleSuggestions() {
         connectionStates={connectionStates}
         onFollow={handleFollow}
         onViewAll={() => setOpenModal("employers")}
+        employers={suggestedEmployers.filter(e => !hiddenEmployerIds.includes(e.id)).slice(0, 4)}
+        loading={loadingEmployerSuggestions}
+        onHide={handleHideEmployer}
+        hiddenIds={hiddenEmployerIds}
       />
 
       {/* Companies Section */}
@@ -216,8 +588,12 @@ export default function PeopleSuggestions() {
         title="Companies you may be interested in"
         type="companies"
         connectionStates={connectionStates}
-        onFollow={handleFollow}
+        onFollow={handleFollowCompany}
         onViewAll={() => setOpenModal("companies")}
+        companies={suggestedCompanies.filter(c => !hiddenCompanyIds.includes(c.id)).slice(0, 4)}
+        loading={loadingCompanySuggestions}
+        onHide={handleHideCompany}
+        hiddenIds={hiddenCompanyIds}
       />
 
       {/* View All Modals */}
@@ -228,7 +604,7 @@ export default function PeopleSuggestions() {
         type="students"
         connectionStates={connectionStates}
         onConnect={handleConnect}
-        data={openModal === "search-students" ? searchResults?.students : undefined}
+        data={openModal === "students" ? suggestedStudents : openModal === "search-students" ? searchResults?.students : undefined}
       />
 
       <ViewAllModal
@@ -238,7 +614,8 @@ export default function PeopleSuggestions() {
         type="employers"
         connectionStates={connectionStates}
         onFollow={handleFollow}
-        data={openModal === "search-employers" ? searchResults?.employers : undefined}
+        data={openModal === "employers" ? suggestedEmployers : openModal === "search-employers" ? searchResults?.employers : undefined}
+        loading={loadingEmployerSuggestions}
       />
 
       <ViewAllModal
@@ -247,8 +624,9 @@ export default function PeopleSuggestions() {
         title="Companies you may be interested in"
         type="companies"
         connectionStates={connectionStates}
-        onFollow={handleFollow}
-        data={openModal === "search-companies" ? searchResults?.companies : undefined}
+        onFollow={handleFollowCompany}
+        data={openModal === "companies" ? suggestedCompanies : openModal === "search-companies" ? searchResults?.companies : undefined}
+        loading={loadingCompanySuggestions}
       />
     </div>
   )
@@ -261,9 +639,24 @@ interface SuggestionSectionProps {
   onConnect?: (id: string) => void
   onFollow?: (id: string) => void
   onViewAll: () => void
+  students?: Student[]
+  employers?: Employer[]
+  companies?: Company[]
+  loading?: boolean
+  onHide?: (id: string) => void
+  hiddenIds?: string[]
 }
 
-function SuggestionSection({ title, type, connectionStates, onConnect, onFollow, onViewAll }: SuggestionSectionProps) {
+function SuggestionSection({ title, type, connectionStates, onConnect, onFollow, onViewAll, students, employers, companies, loading, onHide, hiddenIds }: SuggestionSectionProps) {
+  const visibleStudents = students?.filter(s => !hiddenIds?.includes(s.id)) ?? []
+  const visibleEmployers = employers?.filter(e => !hiddenIds?.includes(e.id)) ?? []
+  const visibleCompanies = companies?.filter(c => !hiddenIds?.includes(c.id)) ?? []
+
+  const noSuggestions =
+    (type === "students" && visibleStudents.length === 0) ||
+    (type === "employers" && visibleEmployers.length === 0) ||
+    (type === "companies" && visibleCompanies.length === 0)
+
   return (
     <div className="bg-white rounded-xl shadow-md mb-6 overflow-hidden border border-blue-200">
       <div className="flex justify-between items-center p-4 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-blue-100">
@@ -289,40 +682,65 @@ function SuggestionSection({ title, type, connectionStates, onConnect, onFollow,
           </div>
 
           <div className="flex items-center text-sm text-blue-600">
-            <Info size={14} className="mr-1" />
-            {type === "students" && "People you might know from your school"}
-            {type === "employers" && "People you might want to follow"}
-            {type === "companies" && "Based on your interests"}
+            {type === "students" ? (
+              <>
+                <Tooltip title="Suggestions are based on matching your course, year, and section. Find classmates and friends easily!">
+                  <span>
+                    <Info size={14} className="mr-1" />
+                  </span>
+                </Tooltip>
+                People you might know from your school
+              </>
+            ) : type === "employers" ? (
+              <>
+                <Tooltip title="Suggestions are based on employers registered in your school network.">
+                  <span>
+                    <Info size={14} className="mr-1" />
+                  </span>
+                </Tooltip>
+                Based on your school network
+              </>
+            ) : (
+              <>
+                <Tooltip title="Company suggestions are based on your course and interests.">
+                  <span>
+                    <Info size={14} className="mr-1" />
+                  </span>
+                </Tooltip>
+                Companies based on your course
+              </>
+            )}
           </div>
         </div>
 
-        {type === "students" && (
+        {noSuggestions ? (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+            <FaRegSmileBeam className="w-10 h-10 mb-2 text-gray-400" />
+            No suggestions available right now. Check back soon!
+          </div>
+        ) : type === "students" ? (
           <GridStudents
-            students={getStudents(4)}
+            students={visibleStudents}
             connectionStates={connectionStates}
             onConnect={onConnect!}
+            loading={loading}
+            onHide={onHide}
           />
-        )}
-
-        {type === "employers" && (
+        ) : type === "employers" ? (
           <GridEmployer
-            employers={getEmployers(4)}
+            employers={visibleEmployers}
             connectionStates={connectionStates}
             onConnect={onFollow!}
+            loading={loading}
+            onHide={onHide}
           />
-        )}
-
-        {type === "companies" && (
+        ) : (
           <GridCompanies
-            companies={getCompanies(4).map(c => ({
-              id: c.id,
-              name: c.name,
-              industry: c.industry,
-              location: c.location, 
-              avatar: c.logo,     
-            }))}
+            companies={visibleCompanies}
             connectionStates={connectionStates}
             onConnect={onFollow!}
+            loading={loading}
+            onHide={onHide}
           />
         )}
       </div>
@@ -339,6 +757,7 @@ interface ViewAllModalProps {
   onConnect?: (id: string) => void
   onFollow?: (id: string) => void
   data?: Student[] | Employer[] | Company[]
+  loading?: boolean
 }
 
 function ViewAllModal({
@@ -350,29 +769,21 @@ function ViewAllModal({
   onConnect,
   onFollow,
   data,
+  loading,
 }: ViewAllModalProps) {
-  const [hasScrolled, setHasScrolled] = useState(false)
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const bottom = e.currentTarget.scrollHeight - e.currentTarget.scrollTop === e.currentTarget.clientHeight
-    if (bottom && !hasScrolled) {
-      setHasScrolled(true)
-    }
-  }
+  const [hasScrolled] = useState(false)
 
   const displayData = (): Student[] | Employer[] | Company[] => {
     if (data) return data
-
     if (type === "students") return getStudents(12)
     if (type === "employers") return getEmployers(12)
     if (type === "companies") return getCompanies(12)
-
     return []
   }
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             {type === "students" && <GraduationCap size={18} className="mr-2" />}
@@ -381,8 +792,6 @@ function ViewAllModal({
             {title}
           </DialogTitle>
         </DialogHeader>
-
-        {/* Removed Tabs and show only the main content */}
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center text-sm text-gray-600">
             Sort by
@@ -391,16 +800,13 @@ function ViewAllModal({
             </button>
           </div>
         </div>
-
-        <div className="overflow-y-auto max-h-[50vh] pr-2" onScroll={handleScroll}>
-          {/* Responsive grid with min-w for cards */}
+        <div className="overflow-y-auto max-h-[60vh] pr-2">
           <div
-            className="grid gap-4"
+            className="grid gap-6"
             style={{
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))"
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))"
             }}
           >
-            {/* Use grid components for each type */}
             {(() => {
               const items = displayData()
               if (items.length === 0) {
@@ -425,23 +831,20 @@ function ViewAllModal({
                     employers={items as Employer[]}
                     connectionStates={connectionStates}
                     onConnect={onFollow!}
+                    loading={loading}
                   />
                 )
               }
-              // companies
-              return (
-                <GridCompanies
-                  companies={(items as Company[]).map(c => ({
-                    id: c.id,
-                    name: c.name,
-                    industry: c.industry,
-                    location: c.location,
-                    avatar: c.logo,
-                  }))}
-                  connectionStates={connectionStates}
-                  onConnect={onFollow!}
-                />
-              )
+              if (type === "companies") {
+                return (
+                  <GridCompanies
+                    companies={items as Company[]}
+                    connectionStates={connectionStates}
+                    onConnect={onFollow!}
+                    loading={loading}
+                  />
+                )
+              }
             })()}
             {hasScrolled && (
               <div className="col-span-full text-center py-6 text-gray-500">No more suggestions</div>
@@ -453,13 +856,13 @@ function ViewAllModal({
   )
 }
 
-// Types and Mock Data
 interface Student {
   id: string
   name: string
   title: string
   field: string
   avatar: string
+  cover?: string
   yearAndSection: string
 }
 
@@ -469,14 +872,26 @@ interface Employer {
   company: string
   job_title: string
   avatar: string
+  cover?: string
 }
 
 interface Company {
   id: string
   name: string
   industry: string
-  logo: string
+  avatar: string
   location: string
+  cover?: string
+}
+
+interface StudentApiRow {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  course: string | null
+  year: string | null
+  section: string | null
+  user_id: string | null
 }
 
 function getStudents(count: number): Student[] {
@@ -638,58 +1053,69 @@ function getCompanies(count: number): Company[] {
       name: "Nexora Technologies",
       industry: "Tech & IT",
       location: "Alabang",
-      logo: "/placeholder.svg?height=100&width=100",
+      avatar: "",
+      cover: "",
     },
     {
       id: "c2",
       name: "Visionary Ventures",
       industry: "Business & Finance",
       location: "Makati",
-      logo: "/placeholder.svg?height=100&width=100",
+      avatar: "",
+      cover: "",
     },
     {
       id: "c3",
       name: "LuxeVoyage Travel",
       industry: "Hospitality & Tourism",
       location: "Pasay",
-      logo: "/placeholder.svg?height=100&width=100",
+      avatar: "",
+      cover: "",
     },
     {
       id: "c4",
       name: "Golden Spoon Catering",
       location: "San Juan",
       industry: "Food & Beverage",
-      logo: "/placeholder.svg?height=100&width=100",
+      avatar: "",
+      cover: "",
     },
     {
       id: "c5",
       name: "Nexora Technologies",
       location: "Alabang",
       industry: "Tech & IT",
-      logo: "/placeholder.svg?height=100&width=100",
+      avatar: "",
+      cover: "",
     },
     {
       id: "c6",
       name: "Visionary Ventures",
       industry: "Business & Finance",
       location: "Makati",
-      logo: "/placeholder.svg?height=100&width=100",
+      avatar: "",
+      cover: "",
     },
     {
       id: "c7",
       name: "LuxeVoyage Travel",
       industry: "Hospitality & Tourism",
       location: "Pasay",
-      logo: "/placeholder.svg?height=100&width=100",
+      avatar: "",
+      cover: "",
     },
     {
       id: "c8",
       name: "Golden Spoon Catering",
       industry: "Food & Beverage",
       location: "San Juan",
-      logo: "/placeholder.svg?height=100&width=100",
+      avatar: "",
+      cover: "",
     },
-  ]
+  ].map(company => ({
+    ...company,
+    avatar: company.avatar && company.avatar.trim() !== "" ? company.avatar : "/placeholder.svg?height=100&width=100"
+  }))
 
   const result = [...companies]
   while (result.length < count) {

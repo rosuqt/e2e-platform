@@ -1,64 +1,44 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
+import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { StarIcon, Search, ChevronDown } from "lucide-react"
 import Image from "next/image"
 
 export default function RatingsTab() {
-  const reviews = [
-    {
-      id: 1,
-      reviewer: "Alex Johnson",
-      position: "Former UI/UX Designer",
-      rating: 4,
-      date: "03-27-2023",
-      review:
-        "I worked at TechCorp for 3 years and overall had a positive experience. The culture is collaborative and supportive, with plenty of opportunities for professional growth. Management is accessible and responsive to employee concerns. Work-life balance was generally good, though it could get intense during product launches.",
-      metrics: {
-        culture: 4.5,
-        worklife: 3.5,
-        career: 4.0,
-        benefits: 4.0,
-        management: 3.5,
-      },
-      avatar: "/placeholder.svg?height=60&width=60",
-    },
-    {
-      id: 2,
-      reviewer: "Maria Rodriguez",
-      position: "Current Frontend Developer",
-      rating: 5,
-      date: "02-15-2023",
-      review:
-        "TechCorp is an amazing place to work! The company truly values its employees and invests in their growth. I've been here for 2 years and have had multiple opportunities to learn new skills and take on challenging projects. The benefits are excellent, and the flexible work arrangements make it easy to maintain work-life balance.",
-      metrics: {
-        culture: 5.0,
-        worklife: 4.5,
-        career: 5.0,
-        benefits: 4.5,
-        management: 4.5,
-      },
-      avatar: "/placeholder.svg?height=60&width=60",
-    },
-    {
-      id: 3,
-      reviewer: "David Kim",
-      position: "Former Product Manager",
-      rating: 3,
-      date: "01-30-2023",
-      review:
-        "TechCorp has a lot of potential but struggles with some organizational issues. While the technical teams are strong, decision-making can be slow and communication between departments isn't always clear. Benefits are competitive and colleagues are talented and friendly. Career advancement could be more structured and transparent.",
-      metrics: {
-        culture: 3.5,
-        worklife: 3.0,
-        career: 2.5,
-        benefits: 4.0,
-        management: 2.5,
-      },
-      avatar: "/placeholder.svg?height=60&width=60",
-    },
-  ]
+  const [reviews, setReviews] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/employers/fetchRatings")
+      .then(res => res.json())
+      .then(data => {
+        setReviews(Array.isArray(data) ? data : [])
+        setLoading(false)
+      })
+      .catch(() => {
+        setReviews([])
+        setLoading(false)
+      })
+  }, [])
+
+  const avgRating = useMemo(() => {
+    if (!reviews.length) return 0
+    return Math.round(
+      (reviews.reduce((sum, r) => sum + (r.company_rating || 0), 0) / reviews.length) * 10
+    ) / 10
+  }, [reviews])
+
+  const ratingCounts = useMemo(() => {
+    const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } as const
+    reviews.forEach(r => {
+      const val = Math.round(r.company_rating || 0)
+      if (val >= 1 && val <= 5) (counts as Record<number, number>)[val]++
+    })
+    return counts
+  }, [reviews])
 
   return (
     <div>
@@ -66,19 +46,19 @@ export default function RatingsTab() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <h3 className="text-lg font-medium mb-2">Total Reviews</h3>
-            <div className="text-4xl font-bold">128</div>
+            <div className="text-4xl font-bold">{reviews.length}</div>
             <p className="text-sm text-gray-500 mt-1">Reviews from current and former employees</p>
           </div>
 
           <div>
             <h3 className="text-lg font-medium mb-2">Average Rating</h3>
             <div className="flex items-center gap-2">
-              <span className="text-4xl font-bold">4.2</span>
+              <span className="text-4xl font-bold">{avgRating}</span>
               <div className="flex">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <StarIcon
                     key={star}
-                    className={`w-5 h-5 ${star <= 4 ? "text-yellow-400 fill-yellow-400" : star <= 5 ? "text-gray-300" : "text-gray-300"}`}
+                    className={`w-5 h-5 ${avgRating >= star ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
                   />
                 ))}
               </div>
@@ -105,22 +85,14 @@ export default function RatingsTab() {
                                 : "bg-red-500"
                       }`}
                       style={{
-                        width: `${
-                          rating === 5
-                            ? "45%"
-                            : rating === 4
-                              ? "30%"
-                              : rating === 3
-                                ? "15%"
-                                : rating === 2
-                                  ? "7%"
-                                  : "3%"
-                        }`,
+                        width: reviews.length
+                          ? `${((ratingCounts as Record<number, number>)[rating] / reviews.length) * 100}%`
+                          : "0%",
                       }}
                     ></div>
                   </div>
                   <span className="text-sm w-6 text-right">
-                    {rating === 5 ? "58" : rating === 4 ? "38" : rating === 3 ? "19" : rating === 2 ? "9" : "4"}
+                    {(ratingCounts as Record<number, number>)[rating]}
                   </span>
                 </div>
               ))}
@@ -154,60 +126,74 @@ export default function RatingsTab() {
         </div>
 
         <div className="space-y-6">
-          {reviews.map((review, index) => (
-            <div key={review.id} className={`${index !== reviews.length - 1 ? "border-b pb-6" : ""}`}>
-              <div className="flex gap-4">
-                <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
-                  <Image
-                    src={review.avatar || "/placeholder.svg"}
-                    alt={review.reviewer}
-                    width={48}
-                    height={48}
-                    className="object-cover"
-                  />
-                </div>
-
-                <div className="flex-1">
-                  <div className="flex justify-between">
-                    <h3 className="font-medium">{review.reviewer}</h3>
-                    <div className="flex items-center gap-2">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <StarIcon
-                            key={star}
-                            className={`w-4 h-4 ${star <= review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm text-gray-500">{review.date}</span>
-                    </div>
+          {loading ? (
+            <div className="text-center text-gray-500">Loading...</div>
+          ) : reviews.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">No ratings yet.</div>
+          ) : (
+            reviews.map((review, index) => (
+              <div key={review.id || index} className={`${index !== reviews.length - 1 ? "border-b pb-6" : ""}`}>
+                <div className="flex gap-4">
+                  <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                    <Image
+                      src={review.registered_students?.profile_img || "/placeholder.svg"}
+                      alt={review.registered_students?.first_name || "Reviewer"}
+                      width={48}
+                      height={48}
+                      className="object-cover"
+                    />
                   </div>
 
-                  <div className="text-sm text-gray-600 mt-1">{review.position}</div>
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <h3 className="font-medium">
+                        {review.registered_students?.first_name
+                          ? `${review.registered_students.first_name} ${review.registered_students.last_name || ""}`
+                          : "Reviewer"}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <StarIcon
+                              key={star}
+                              className={`w-4 h-4 ${review.company_rating >= star ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {review.created_at ? new Date(review.created_at).toLocaleDateString() : ""}
+                        </span>
+                      </div>
+                    </div>
 
-                  <p className="text-sm text-gray-600 mt-3">{review.review}</p>
+                    <div className="text-sm text-gray-600 mt-1">
+                      {review.job_postings?.job_title
+                        ? <>Position: <span className="font-medium">{review.job_postings.job_title}</span></>
+                        : null}
+                    </div>
 
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <Badge variant="outline" className="text-xs bg-gray-50">
-                      Company Culture: {review.metrics.culture}/5
-                    </Badge>
-                    <Badge variant="outline" className="text-xs bg-gray-50">
-                      Work-Life Balance: {review.metrics.worklife}/5
-                    </Badge>
-                    <Badge variant="outline" className="text-xs bg-gray-50">
-                      Career Growth: {review.metrics.career}/5
-                    </Badge>
-                    <Badge variant="outline" className="text-xs bg-gray-50">
-                      Benefits: {review.metrics.benefits}/5
-                    </Badge>
-                    <Badge variant="outline" className="text-xs bg-gray-50">
-                      Management: {review.metrics.management}/5
-                    </Badge>
+                    <p className="text-sm text-gray-600 mt-3">
+                      {review.company_comment && review.company_comment.trim().length > 0
+                        ? review.company_comment
+                        : "No comment provided."}
+                    </p>
+
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <Badge variant="outline" className="text-xs bg-gray-50">
+                        Company Rating: {review.company_rating || "—"}/5
+                      </Badge>
+                      <Badge variant="outline" className="text-xs bg-gray-50">
+                        Professionalism: {review.recruiter_rating || "—"}/5
+                      </Badge>
+                      <Badge variant="outline" className="text-xs bg-gray-50">
+                        Work Environment: {review.overall_rating || "—"}/5
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         <div className="text-center mt-6">

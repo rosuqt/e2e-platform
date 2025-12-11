@@ -5,8 +5,14 @@ import { authOptions } from "../../../../lib/authOptions"
 
 export async function POST(request: NextRequest) {
   try {
-    const { jobId, action } = await request.json()
-    
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+    }
+    const { jobId, action } = body
+
     if (!jobId || !action) {
       return NextResponse.json({ error: "Missing jobId or action" }, { status: 400 })
     }
@@ -15,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "view") {
       const session = await getServerSession(authOptions)
-      let userId: string | null = null
+      let userId = null
 
       if (session?.user && typeof session.user === "object") {
         if ("studentId" in session.user && typeof (session.user as Record<string, unknown>).studentId === "string") {

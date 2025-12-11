@@ -1,13 +1,23 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion } from "framer-motion";
 import {  Clock, Users, Bookmark, Briefcase, Calendar, Globe } from "lucide-react";
 import Image from "next/image";
 import { IoIosRocket } from "react-icons/io";
 import { useEffect, useState } from "react";
 import { PiMoneyDuotone, PiBuildingsFill } from "react-icons/pi";
-import { calculateSkillsMatch } from "../../../../../../lib/match-utils";
 import { AiFillSmile, AiOutlineMeh } from "react-icons/ai";
 import { TbMoodConfuzed } from "react-icons/tb";
 import { SiStarship } from "react-icons/si";
+import { useSession } from "next-auth/react";
+import QuickApplyModal from "./quick-apply-modal";
+import { ApplicationModal } from "./application-modal";
+import ApplicationModalQuickVersion from "./application-modal-quick-version";
+import { Tooltip, CircularProgress } from "@mui/material";
+import { HiBadgeCheck } from "react-icons/hi";
+import { BadgeCheck as LuBadgeCheck } from "lucide-react";
+import { styled } from "@mui/material/styles";
+import { tooltipClasses } from "@mui/material";
+import JobDetails from "./job-details"; // Ensure this import exists
 
 type Employer = {
   first_name?: string;
@@ -16,6 +26,7 @@ type Employer = {
 };
 
 type Job = {
+  company_id: string | undefined;
   work_type?: string; 
   id: number | string;
   title?: string;
@@ -29,9 +40,18 @@ type Job = {
   application_deadline?: string;
   skills?: string[];
   match_percentage?: number;
+  gpt_score?: number;
   employers?: Employer;
-  registered_employers?: { company_name?: string };
-  registered_companies?: { company_logo_image_path?: string };
+  registered_employers?: { 
+    company_name?: string;
+    verify_status?: string;
+    company_id?: string; // <-- add this
+    [key: string]: any;
+  };
+  registered_companies?: { 
+    company_logo_image_path?: string;
+    company_id?: string; // <-- add this
+  };
   company_logo_image_path?: string; 
   pay_type?: string;
   pay_amount?: string | number;
@@ -63,18 +83,37 @@ function formatPostedDate(postedDate?: string) {
 }
 
 function getMatchIcon(percent: number) {
-  if (percent >= 70) return <AiFillSmile color="#4CAF50" size={24} />;
-  if (percent >= 40) return <AiOutlineMeh color="#FFC107" size={24} />;
+  if (percent >= 60) return <AiFillSmile color="#4CAF50" size={24} />;
+  if (percent >= 31) return <AiOutlineMeh color="#FFC107" size={24} />;
   return <TbMoodConfuzed color="#F44336" size={24} />;
 }
+
+const CustomTooltip = styled(Tooltip)(() => ({
+  [`& .${tooltipClasses.tooltip}`]: {
+    backgroundColor: "#fff",
+    color: "#222",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+    fontSize: 13,
+    borderRadius: 8,
+    padding: "8px 14px",
+    fontWeight: 500,
+    letterSpacing: 0.1,
+  },
+  [`& .${tooltipClasses.arrow}`]: {
+    color: "#fff",
+  },
+}));
 
 function JobCard({
   isSelected,
   onSelect,
-  onQuickApply,
   job,
   onSaveToggle,
   companyLogoImagePath,
+  studentPreferredTypes,
+  studentPreferredLocations,
+  shouldHighlight,
+  onShowDetails,
 }: {
   id: number | string;
   isSelected: boolean;
@@ -83,6 +122,10 @@ function JobCard({
   job: Job;
   onSaveToggle?: (jobId: number | string, isSaved: boolean) => void;
   companyLogoImagePath?: string | null;
+  studentPreferredTypes?: string[];
+  studentPreferredLocations?: string[];
+  shouldHighlight?: boolean;
+  onShowDetails?: (job: Job, ratings: { companyRating: any, posterRating: any }) => void;
 }) {
   function getDaysLeft(deadline?: string): string {
     if (!deadline) return "No application deadline";
@@ -115,12 +158,21 @@ function JobCard({
   const postedDate = formatPostedDate(job.created_at);
   const jobSummary = job.job_summary;
 
+  const { data: session } = useSession();
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [skills, setSkills] = useState<string[]>([]);
   const [logoLoading, setLogoLoading] = useState(true);
-  const [studentSkills, setStudentSkills] = useState<string[]>([]);
   const [viewTracked, setViewTracked] = useState(false);
+  const [matchPercent, setMatchPercent] = useState<number | null>(null);
+  const [matchLoading, setMatchLoading] = useState<boolean>(false);
+  const [showQuickApplyModal, setShowQuickApplyModal] = useState(false);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [showApplicationModalQuickVersion, setShowApplicationModalQuickVersion] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
+  const [loadingApply, setLoadingApply] = useState(false);
+  const [quickApplyProcessing, setQuickApplyProcessing] = useState(false);
+  const [companyRating, setCompanyRating] = useState<{ rating: number, count: number } | null>(null);
+  const [posterRating, setPosterRating] = useState<{ rating: number, count: number } | null>(null);
 
   const logoPath =
     companyLogoImagePath ||
@@ -136,7 +188,6 @@ function JobCard({
       const publicUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/company.logo/${companyLogoImagePath}`;
       setLogoUrl(publicUrl);
       setLogoLoading(false);
-      console.log("JobCard preview logoUrl:", publicUrl);
       return;
     }
     setLogoLoading(true);
@@ -146,19 +197,6 @@ function JobCard({
         setLogoUrl(null);
         setLogoLoading(false);
         return;
-      }
-      const cacheKey = `companyLogoUrl:${logoPath}`;
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (parsed && typeof parsed === "object" && parsed.url && typeof parsed.url === "string") {
-            setLogoUrl(parsed.url);
-            setLogoLoading(false);
-            return;
-          }
-        } catch {}
-        sessionStorage.removeItem(cacheKey);
       }
       const res = await fetch("/api/employers/get-signed-url", {
         method: "POST",
@@ -172,10 +210,8 @@ function JobCard({
       if (!ignore) {
         if (json.signedUrl && typeof json.signedUrl === "string") {
           setLogoUrl(json.signedUrl);
-          sessionStorage.setItem(cacheKey, JSON.stringify({ url: json.signedUrl }));
         } else {
           setLogoUrl(null);
-          sessionStorage.removeItem(cacheKey);
         }
         setLogoLoading(false);
       }
@@ -198,42 +234,120 @@ function JobCard({
     return () => { ignore = true; }
   }, [job.id]);
 
+
   useEffect(() => {
     let ignore = false;
-    async function fetchSkills() {
-      if (!job.id) return;
-      const res = await fetch(`/api/jobs/${job.id}/skills`);
-      const json = await res.json();
-      if (!ignore) setSkills(Array.isArray(json.skills) ? json.skills : []);
+    async function fetchMatchScore() {
+      if (!job.id || !session?.user?.studentId) {
+        if (!ignore) {
+          setMatchPercent(null);
+          setMatchLoading(false);
+        }
+        return;
+      }
+      if (!ignore) setMatchLoading(true);
+      try {
+        const score =
+          typeof job.gpt_score === "number"
+            ? job.gpt_score
+            : null;
+        if (score !== null) {
+          setMatchPercent(Math.max(10, score));
+          setMatchLoading(false);
+          return;
+        }
+        const res = await fetch("/api/ai-matches/fetch-current-matches", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: session.user.studentId }),
+        });
+        const json = await res.json();
+        if (!ignore) {
+          const match = Array.isArray(json.matches)
+            ? json.matches.find((m: { job_id: string | number }) => String(m.job_id) === String(job.id))
+            : null;
+          const apiScore =
+            typeof match?.gpt_score === "number"
+              ? match.gpt_score
+              : null;
+          setMatchPercent(apiScore !== null ? Math.max(10, apiScore) : null);
+        }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (err) {
+        if (!ignore) {
+          setMatchPercent(null);
+        }
+      } finally {
+        if (!ignore) setMatchLoading(false);
+      }
     }
-    fetchSkills();
+    fetchMatchScore();
     return () => { ignore = true; };
-  }, [job.id]);
+  }, [job.id, session?.user?.studentId]);
 
   useEffect(() => {
-    fetch("/api/students/student-profile/getHandlers")
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data.skills)) setStudentSkills(data.skills);
-        else if (typeof data.skills === "string") {
-          try {
-            const arr = JSON.parse(data.skills);
-            if (Array.isArray(arr)) setStudentSkills(arr);
-            else setStudentSkills(
-              (data.skills as string).split(",").map((s: string) => s.trim()).filter((s: string) => !!s)
-            );
-          } catch {
-            setStudentSkills(
-              (data.skills as string).split(",").map((s: string) => s.trim()).filter((s: string) => !!s)
-            );
-          }
-        } else setStudentSkills([]);
-      })
-      .catch(() => setStudentSkills([]));
-  }, []);
+    if (!session?.user?.studentId || !job.id) return;
 
-  const matchPercentRaw = studentSkills.length > 0 ? calculateSkillsMatch(studentSkills, skills) : null;
-  const matchPercent = matchPercentRaw !== null ? Math.max(10, matchPercentRaw) : null;
+    setLoadingApply(true);
+    fetch("/api/students/apply/check-apply-exist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: session.user.studentId, jobId: job.id }),
+    })
+      .then((res) => res.json())
+      .then((data) => setHasApplied(data.exists))
+      .catch(() => setHasApplied(false))
+      .finally(() => setLoadingApply(false));
+  }, [session?.user?.studentId, job.id]);
+
+  useEffect(() => {
+    if (!job) return;
+    const companyId =
+      job.registered_companies?.company_id ||
+      job.registered_employers?.company_id ||
+      job.company_id;
+    const posterId = (job.employers as any)?.id;
+
+    async function fetchRatings() {
+      try {
+        const res = await fetch("/api/employers/fetchRatings/fetchRatingsView", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            company_id: companyId,
+            poster_id: posterId,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.company) {
+            setCompanyRating({
+              rating: typeof data.company.rating === "number" ? data.company.rating : 0,
+              count: typeof data.company.count === "number" ? data.company.count : 0,
+            });
+          } else {
+            setCompanyRating(null);
+          }
+          if (data.poster) {
+            setPosterRating({
+              rating: typeof data.poster.rating === "number" ? data.poster.rating : 0,
+              count: typeof data.poster.count === "number" ? data.poster.count : 0,
+            });
+          } else {
+            setPosterRating(null);
+          }
+        } else {
+          setCompanyRating(null);
+          setPosterRating(null);
+        }
+      } catch {
+        setCompanyRating(null);
+        setPosterRating(null);
+      }
+    }
+
+    fetchRatings();
+  }, [job]);
 
   async function toggleSave(e: React.MouseEvent) {
     e.stopPropagation();
@@ -276,220 +390,365 @@ function JobCard({
     }
   }
 
-  const trackJobClick = async () => {
-    if (job.id === "preview") return
-    
-    try {
-      await fetch("/api/employers/job-metrics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId: job.id, action: "click" }),
-      })
-    } catch (error) {
-      console.error("Failed to track job click:", error)
+  const matchedPrefs: string[] = [];
+  const jobWorkTypeNorm = (job.work_type || "").toLowerCase().trim();
+  const jobRemoteNorm = (job.remote_options || "").toLowerCase().trim();
+  if (Array.isArray(studentPreferredTypes) && studentPreferredTypes.length > 0) {
+    const prefTypesNorm = studentPreferredTypes.map(p => String(p).toLowerCase().trim());
+    if (prefTypesNorm.includes(jobWorkTypeNorm) && (job.work_type || "").trim().length > 0) {
+      matchedPrefs.push(job.work_type || jobWorkTypeNorm);
+    }
+  }
+  if (Array.isArray(studentPreferredLocations) && studentPreferredLocations.length > 0) {
+    const prefLocNorm = studentPreferredLocations.map(p => String(p).toLowerCase().trim());
+    if (prefLocNorm.includes(jobRemoteNorm) && (job.remote_options || "").trim().length > 0) {
+      matchedPrefs.push(job.remote_options || jobRemoteNorm);
     }
   }
 
+  async function handleQuickApply() {
+    if (!session?.user?.studentId || quickApplyProcessing) return;
+    setQuickApplyProcessing(true);
+    const res = await fetch("/api/students/apply/quick-apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: session.user.studentId }),
+    });
+    const json = await res.json();
+    if (json.exists) {
+      if (!hasApplied) {
+        try {
+          const copyRes = await fetch("/api/students/apply/copy-to-applications", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId: session.user.studentId, jobId: job.id }),
+          });
+          const copyJson = await copyRes.json();
+          if (copyJson.success) {
+            setHasApplied(true);
+          }
+          setShowApplicationModalQuickVersion(true);
+        } catch {
+          setShowApplicationModalQuickVersion(true);
+        }
+      } else {
+        setShowApplicationModalQuickVersion(true);
+      }
+      setShowQuickApplyModal(false);
+      setShowApplicationModal(false);
+    } else {
+      setShowApplicationModal(false);
+      setShowQuickApplyModal(true);
+    }
+    setQuickApplyProcessing(false);
+  }
+
+  const posterVerificationTier =
+    job.registered_employers?.verify_status ||
+    (job as any).verification_tier ||
+    "basic";
+
   return (
-    <motion.div
-      className={`bg-white rounded-lg shadow-sm p-5 border-l-4 ${
-        isSelected ? "border-l-blue-500 border-blue-200" : "border-l-transparent border-gray-200"
-      } relative overflow-hidden mt-2`}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      onMouseEnter={trackJobView}
-      whileHover={{
-        y: -2,
-        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-        borderColor: "rgba(96, 165, 250, 0.8)",
-      }}
-    >
-      <div className="flex justify-between">
-        <div className="flex gap-3">
+    <>
+      <motion.div
+        className={`bg-white rounded-lg shadow-sm p-5 border-l-4 ${
+          isSelected ? "border-l-blue-500 border-blue-200" : "border-l-transparent border-gray-200"
+        } relative overflow-hidden mt-2`}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        onMouseEnter={trackJobView}
+        whileHover={{
+          y: -2,
+          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+          borderColor: "rgba(96, 165, 250, 0.8)",
+        }}
+      >
+        {shouldHighlight && (
           <motion.div
-            className="w-12 h-12 bg-black rounded-full flex items-center justify-center overflow-hidden text-white"
-            whileHover={{ scale: 1.1 }}
-          >
-            {logoLoading ? (
-              <div className="w-12 h-12 rounded-full animate-pulse bg-gradient-to-br from-blue-400 via-blue-500 to-purple-400" />
-            ) : logoUrl && logoUrl.startsWith("http") ? (
-              <Image
-                src={logoUrl}
-                alt="Company logo"
-                width={48}
-                height={48}
-                className="object-cover"
-                onLoad={() => setLogoLoading(false)}
-                onError={() => setLogoLoading(false)}
-              />
-            ) : (
-              <div className="w-12 h-12 flex items-center justify-center bg-gray-200 rounded-full">
-                <PiBuildingsFill className="w-6 h-6" color="#6B7280" />
-              </div>
-            )}
-          </motion.div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-lg text-gray-800">{title}</h3>
-              {postedDate === "Posted today" && (
-                <span className="ml-2 bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-                  New
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-gray-500">
-              {company}
-              {location && location !== "Unknown Location" && (
-                <>  <span className="text-gray-400">| {location}</span></>
-              )}
-            </p>
-          </div>
-        </div>
-        <motion.button
-          className={`text-gray-400 hover:text-blue-500 transition-colors ${saved ? "text-blue-500" : ""}`}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={toggleSave}
-          disabled={loading}
-        >
-          <Bookmark
-            size={20}
-            className={`${saved ? "fill-blue-500 text-blue-500" : ""}`}
-          />
-        </motion.button>
-      </div>
-
-      {jobSummary && (
-        <p className="text-gray-700 text-sm mt-2">
-          {jobSummary}
-        </p>
-      )}
-
-      {description && (
-        <p className="text-gray-600 text-sm mt-3">
-          {description}
-        </p>
-      )}
-
-      {studentSkills.length > 0 ? (
-        <motion.div
-          className="mt-4 px-4 py-2 rounded-lg flex items-center gap-2 pointer-events-none"
-          style={{
-            background:
-              matchPercent !== null && matchPercent >= 70
-                ? "#E6F4EA"
-                : matchPercent !== null && matchPercent >= 40
-                ? "#FFF8E1"
-                : "#FDECEA",
-            color:
-              matchPercent !== null && matchPercent >= 70
-                ? "#256029"
-                : matchPercent !== null && matchPercent >= 40
-                ? "#8D6E00"
-                : "#B71C1C"
-          }}
-          whileHover={{ scale: 1.06 }}
-        >
-          {getMatchIcon(matchPercent ?? 0)}
-          <span>
-            You are {matchPercent}% match to this job.
-          </span>
-        </motion.div>
-      ) : (
-        <motion.div
-          className="mt-4 px-4 py-2 rounded-lg flex items-center gap-2 pointer-events-none"
-          style={{
-            background: "#F3F4F6",
-            color: "#6B7280"
-          }}
-          whileHover={{ scale: 1.06 }}
-        >
-          <SiStarship size={22} color="#9CA3AF" />
-          <span>
-            Looks like you&apos;re new here! Set up your profile to get a match for you.
-          </span>
-        </motion.div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 text-sm text-gray-600">
-        <div className="flex items-center">
-          <Clock className="h-4 w-4 mr-2 text-gray-400" />
-          <span>{getDaysLeft(deadline)}</span>
-        </div>
-        <div className="flex items-center">
-          <Briefcase className="h-4 w-4 mr-2 text-gray-400" />
-          <span>{type}</span>
-        </div>
-        <div className="flex items-center">
-          <PiMoneyDuotone  className="h-4 w-4 mr-2 text-gray-400" />
-          <span>
-            {payType}
-            {payAmount !== "N/A" && ` / ${payAmount}`}
-          </span>
-        </div>
-        <div className="flex items-center">
-          <Users className="h-4 w-4 mr-2 text-gray-400" />
-          <span>
-            {typeof vacancies === "number" && vacancies > 0
-              ? `${vacancies} vacancies left`
-              : "Unlimited Applicants"}
-          </span>
-        </div>
-        <div className="flex items-center">
-          <Globe className="h-4 w-4 mr-2 text-gray-400" />
-          <span>{remoteOptions}</span>
-        </div>
-        <div className="flex items-center">
-          <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-          <span className="text-gray-500">{postedDate}</span>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex gap-2 w-full sm:w-auto">
-          {isSelected ? (
-            <motion.button
-              className="bg-blue-500 hover:bg-gray-300 text-white px-6 py-2 rounded-full font-medium shadow-sm flex-1 sm:flex-none flex items-center justify-center"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect();
-              }}
-            >
-              Close
-            </motion.button>
-          ) : (
-            <motion.button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-sm flex-1 sm:flex-none flex items-center justify-center"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                trackJobView();
-                trackJobClick();
-                onSelect();
-              }}
-            >
-              View Details
-            </motion.button>
-          )}
-          <motion.button
-            className="bg-white hover:bg-blue-50 text-blue-600 px-6 py-2 rounded-full font-medium shadow-sm border border-blue-600 flex-1 sm:flex-none flex items-center justify-center gap-2"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onQuickApply();
+            className="absolute inset-0 pointer-events-none"
+            initial={{
+              x: "-100%",
+              background:
+                "linear-gradient(90deg, rgba(216,180,254,0) 0%, rgba(216,180,254,0.9) 35%, rgba(251,207,232,0.9) 65%, rgba(251,207,232,0) 100%)",
             }}
+            animate={{ x: "100%" }}
+            transition={{ duration: 2, ease: "easeInOut" }}
+          />
+        )}
+        <div className="flex justify-between">
+          <div className="flex gap-3">
+            <motion.div
+              className="w-12 h-12 bg-black rounded-full flex items-center justify-center overflow-hidden text-white"
+              whileHover={{ scale: 1.1 }}
+            >
+              {logoLoading ? (
+                <div className="w-12 h-12 rounded-full animate-pulse bg-gradient-to-br from-blue-400 via-blue-500 to-purple-400" />
+              ) : logoUrl && logoUrl.startsWith("http") ? (
+                <Image
+                  src={logoUrl}
+                  alt="Company logo"
+                  width={48}
+                  height={48}
+                  className="object-cover"
+                  onLoad={() => setLogoLoading(false)}
+                  onError={() => setLogoLoading(false)}
+                />
+              ) : (
+                <div className="w-12 h-12 flex items-center justify-center bg-gray-200 rounded-full">
+                  <PiBuildingsFill className="w-6 h-6" color="#6B7280" />
+                </div>
+              )}
+            </motion.div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
+                  {title}
+                  {/* Job poster verification badge */}
+                  {posterVerificationTier === "full" ? (
+                    <CustomTooltip title="Job poster is fully verified" arrow>
+                      <span style={{ display: "inline-flex" }}>
+                        <HiBadgeCheck className="w-4 h-4 text-blue-600" />
+                      </span>
+                    </CustomTooltip>
+                  ) : posterVerificationTier === "standard" ? (
+                    <CustomTooltip title="Job poster is partially verified" arrow>
+                      <span style={{ display: "inline-flex" }}>
+                        <LuBadgeCheck className="w-4 h-4" style={{ color: "#7c3aed" }} />
+                      </span>
+                    </CustomTooltip>
+                  ) : null}
+                </h3>
+                {matchedPrefs.length > 0 && (
+                  <div
+                    className="flex items-center gap-2"
+                    title="These are your set preferences"
+                    aria-label="Your set preferences"
+                    role="group"
+                  >
+                    {matchedPrefs.map((p, i) => (
+                      <span
+                        key={`${p}-${i}`}
+                        title={p === job.work_type ? "Matches your job type preference" : "Matches your remote preference"}
+                        className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700"
+                        aria-label={`preference-badge-${i}`}
+                      >
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {postedDate === "Posted today" && (
+                  <span className="ml-2 bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                    New
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-500">
+                {company}
+                {location && location !== "Unknown Location" && (
+                  <>  <span className="text-gray-400">| {location}</span></>
+                )}
+              </p>
+            </div>
+          </div>
+          <motion.button
+            className={`text-gray-400 hover:text-blue-500 transition-colors ${saved ? "text-blue-500" : ""}`}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={toggleSave}
+            disabled={loading}
           >
-            <IoIosRocket className="w-4 h-4" />
-            Quick Apply
+            <Bookmark
+              size={20}
+              className={`${saved ? "fill-blue-500 text-blue-500" : ""}`}
+            />
           </motion.button>
         </div>
-      </div>
-    </motion.div>
+
+        {jobSummary && (
+          <p className="text-gray-700 text-sm mt-2">
+            {jobSummary}
+          </p>
+        )}
+
+        {description && (
+          <p className="text-gray-600 text-sm mt-3">
+            {description}
+          </p>
+        )}
+
+        {matchLoading ? (
+          <div className="mt-4 px-4 py-2 rounded-lg flex items-center gap-2 animate-pulse bg-gradient-to-r from-purple-400 via-blue-400 to-purple-300 min-h-[44px]" />
+        ) : matchPercent !== null ? (
+          <motion.div
+            className="mt-4 px-4 py-2 rounded-lg flex items-center gap-2 pointer-events-none"
+            style={{
+              background:
+                matchPercent >= 60
+                  ? "#E6F4EA"
+                  : matchPercent >= 31
+                  ? "#FFF8E1"
+                  : "#FDECEA",
+              color:
+                matchPercent >= 60
+                  ? "#256029"
+                  : matchPercent >= 31
+                  ? "#8D6E00"
+                  : "#B71C1C"
+            }}
+            whileHover={{ scale: 1.06 }}
+          >
+            {getMatchIcon(matchPercent)}
+            <span>
+              You are <span style={{
+                color:
+                  matchPercent >= 60
+                    ? "#256029"
+                    : matchPercent >= 31
+                    ? "#F59E42"
+                    : "#EF4444",
+                fontWeight: 700
+              }}>{matchPercent}%</span> match to this job.
+            </span>
+          </motion.div>
+        ) : (
+          <motion.div
+            className="mt-4 px-4 py-2 rounded-lg flex items-center gap-2 pointer-events-none"
+            style={{
+              background: "#F3F4F6",
+              color: "#6B7280"
+            }}
+            whileHover={{ scale: 1.06 }}
+          >
+            <SiStarship size={22} color="#9CA3AF" />
+            <span>
+              Looks like you&apos;re new here! Set up your profile to get a match for you.
+            </span>
+          </motion.div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 text-sm text-gray-600">
+          <div className="flex items-center">
+            <Clock className="h-4 w-4 mr-2 text-gray-400" />
+            <span>{getDaysLeft(deadline)}</span>
+          </div>
+          <div className="flex items-center">
+            <Briefcase className="h-4 w-4 mr-2 text-gray-400" />
+            <span>{type}</span>
+          </div>
+          <div className="flex items-center">
+            <PiMoneyDuotone  className="h-4 w-4 mr-2 text-gray-400" />
+            <span>
+              {payType}
+              {payAmount !== "N/A" && ` / ${payAmount}`}
+            </span>
+          </div>
+          <div className="flex items-center">
+            <Users className="h-4 w-4 mr-2 text-gray-400" />
+            <span>
+              {typeof vacancies === "number" && vacancies > 0
+                ? `${vacancies} vacancies left`
+                : "Unlimited Applicants"}
+            </span>
+          </div>
+          <div className="flex items-center">
+            <Globe className="h-4 w-4 mr-2 text-gray-400" />
+            <span>{remoteOptions}</span>
+          </div>
+          <div className="flex items-center">
+            <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+            <span className="text-gray-500">{postedDate}</span>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex gap-2 w-full sm:w-auto">
+            {isSelected ? (
+              <motion.button
+                className="bg-blue-500 hover:bg-gray-300 text-white px-6 py-2 rounded-full font-medium shadow-sm flex-1 sm:flex-none flex items-center justify-center"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect();
+                }}
+              >
+                Close
+              </motion.button>
+            ) : (
+              <motion.button
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium shadow-sm flex-1 sm:flex-none flex items-center justify-center"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect();
+                }}
+              >
+                View Details
+              </motion.button>
+            )}
+            <motion.button
+              className={`px-6 py-2 rounded-full font-medium shadow-sm border flex-1 sm:flex-none flex items-center justify-center gap-2 ${
+                hasApplied
+                  ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
+                  : "bg-white hover:bg-blue-50 text-blue-600 border-blue-600"
+              }`}
+              whileHover={hasApplied || loadingApply || quickApplyProcessing ? {} : { scale: 1.03 }}
+              whileTap={hasApplied || loadingApply || quickApplyProcessing ? {} : { scale: 0.97 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleQuickApply();
+              }}
+              disabled={hasApplied || loadingApply || quickApplyProcessing}
+            >
+              {(loadingApply || quickApplyProcessing) ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                <Tooltip title={hasApplied ? "Looks like you’ve applied before — no need to apply again." : ""}>
+                  <span className="flex items-center gap-2">
+                    <IoIosRocket className="w-4 h-4" />
+                    {hasApplied ? "Submitted" : "Quick Apply"}
+                  </span>
+                </Tooltip>
+              )}
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
+      <QuickApplyModal
+        open={showQuickApplyModal}
+        onClose={() => setShowQuickApplyModal(false)}
+        onSubscribe={() => {
+          setShowQuickApplyModal(false);
+          setShowApplicationModal(true);
+        }}
+        jobTitle={title}
+      />
+      {showApplicationModal && (
+        <ApplicationModal
+          jobId={String(job.id)}
+          jobTitle={title}
+          onClose={() => setShowApplicationModal(false)} gpt_score={0}        />
+      )}
+      {showApplicationModalQuickVersion && (
+        <ApplicationModalQuickVersion
+          onClose={() => setShowApplicationModalQuickVersion(false)}
+          jobId={String(job.id)} 
+        />
+      )}
+      {/* Example usage: pass ratings to JobDetails when showing details */}
+      {onShowDetails && (
+        <JobDetails
+          jobId={String(job.id)}
+          companyRating={companyRating}
+          posterRating={posterRating}
+          onClose={onSelect} // <-- add this line
+          // ...other props...
+        />
+      )}
+    </>
   );
 }
 

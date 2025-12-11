@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import {
@@ -8,99 +9,57 @@ import {
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
   Zap,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import supabase from "@/lib/supabase"
 
-const statsCards = [
-  {
-    title: "Total Users",
-    value: "2,853",
-    change: "+12%",
-    trend: "up",
-    icon: Users,
-    color: "from-blue-500 to-cyan-500",
-    bgColor: "from-blue-50 to-cyan-50",
-  },
-  {
-    title: "Active Employers",
-    value: "432",
-    change: "+8%",
-    trend: "up",
-    icon: Building2,
-    color: "from-emerald-500 to-teal-500",
-    bgColor: "from-emerald-50 to-teal-50",
-  },
-  {
-    title: "Companies",
-    value: "1,234",
-    change: "+18%",
-    trend: "up",
-    icon: FileText,
-    color: "from-purple-500 to-pink-500",
-    bgColor: "from-purple-50 to-pink-50",
-  },
-  {
-    title: "Pending Reports",
-    value: "24",
-    change: "-4%",
-    trend: "down",
-    icon: BarChart3,
-    color: "from-orange-500 to-red-500",
-    bgColor: "from-orange-50 to-red-50",
-  },
-]
-
-const recentActivities = [
-  {
-    id: 1,
-    type: "user",
-    title: "New admin account created",
-    description: "John Smith created a new admin account",
-    time: "2 hours ago",
-    icon: Users,
-    color: "from-blue-500 to-cyan-500",
-  },
-  {
-    id: 2,
-    type: "company",
-    title: "Company verification completed",
-    description: "TechCorp Inc. has been verified",
-    time: "4 hours ago",
-    icon: CheckCircle,
-    color: "from-emerald-500 to-teal-500",
-  },
-  {
-    id: 3,
-    type: "report",
-    title: "New bug report submitted",
-    description: "Critical issue reported in job application system",
-    time: "6 hours ago",
-    icon: AlertTriangle,
-    color: "from-orange-500 to-red-500",
-  },
-]
-const topEmployers = [
-  { id: 1, name: "TechCorp Inc.", listings: 18, growth: "+15%" },
-  { id: 2, name: "InnovateLab", listings: 16, growth: "+12%" },
-  { id: 3, name: "DataSystems", listings: 14, growth: "+8%" },
-  { id: 4, name: "CloudTech", listings: 12, growth: "+22%" },
-  { id: 5, name: "StartupHub", listings: 10, growth: "+5%" },
-]
-
 export default function Dashboard() {
   const [showFeedback, setShowFeedback] = useState<boolean>(false)
   const [loading, setLoading] = useState(false)
   const [settingId, setSettingId] = useState<string | null>(null)
+  const [counts, setCounts] = useState({
+    totalUsers: 0,
+    activeEmployers: 0,
+    companies: 0,
+    totalStudents: 0
+  })
+  const [topCompanies, setTopCompanies] = useState<
+    {
+      company_logo_url: any, company_id: string; company_name: string; applicant_count: number 
+}[]
+  >([])
+  const [verificationCounts, setVerificationCounts] = useState({
+    pending: 0,
+    partiallyCompleted: 0,
+    approved: 0
+  })
+
+  useEffect(() => {
+    fetch("/api/superadmin/dashboard/fetchCounts")
+      .then(res => res.json())
+      .then(data => {
+        setCounts({
+          totalUsers: (data.totalAdmins ?? 0) + (data.totalEmployers ?? 0) + (data.totalStudents ?? 0),
+          activeEmployers: data.totalEmployers ?? 0,
+          companies: data.totalCompanies ?? 0,
+          totalStudents: data.totalStudents ?? 0
+        })
+      })
+  }, [])
+
+  useEffect(() => {
+    fetch("/api/admin/fetchTopCompany")
+      .then(res => res.json())
+      .then(data => {
+        console.log("Top companies API response:", data); // Debug log
+        setTopCompanies(data.companies ?? [])
+      })
+  }, [])
 
   useEffect(() => {
     const fetchSetting = async () => {
@@ -130,6 +89,18 @@ export default function Dashboard() {
     fetchSetting()
   }, [])
 
+  useEffect(() => {
+    fetch("/api/superadmin/dashboard/fetchVerification")
+      .then(res => res.json())
+      .then(data => {
+        setVerificationCounts({
+          pending: data.pending ?? 0,
+          partiallyCompleted: data.partiallyCompleted ?? 0,
+          approved: data.approved ?? 0
+        })
+      })
+  }, [])
+
   const handleToggle = async () => {
     setLoading(true)
     if (settingId) {
@@ -151,6 +122,45 @@ export default function Dashboard() {
     }
     setLoading(false)
   }
+
+  const statsCards = [
+    {
+      title: "Total Users",
+      value: counts.totalUsers.toLocaleString(),
+      change: "+12%",
+      trend: "up",
+      icon: Users,
+      color: "from-blue-500 to-cyan-500",
+      bgColor: "from-blue-50 to-cyan-50",
+    },
+    {
+      title: "Active Employers",
+      value: counts.activeEmployers.toLocaleString(),
+      change: "+8%",
+      trend: "up",
+      icon: Building2,
+      color: "from-emerald-500 to-teal-500",
+      bgColor: "from-emerald-50 to-teal-50",
+    },
+    {
+      title: "Companies",
+      value: counts.companies.toLocaleString(),
+      change: "+18%",
+      trend: "up",
+      icon: FileText,
+      color: "from-purple-500 to-pink-500",
+      bgColor: "from-purple-50 to-pink-50",
+    },
+    {
+      title: "Total Students",
+      value: counts.totalStudents.toLocaleString(),
+      change: "+4%",
+      trend: "up",
+      icon: BarChart3,
+      color: "from-orange-500 to-red-500",
+      bgColor: "from-orange-50 to-red-50",
+    },
+  ]
 
   return (
     <div className="space-y-8">
@@ -246,135 +256,68 @@ export default function Dashboard() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-8">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+        <TabsList className="grid w-full grid-cols-1 rounded-2xl bg-gray-100 p-1.5 h-auto">
           <TabsTrigger
             value="overview"
             className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
           >
             Overview
           </TabsTrigger>
-          <TabsTrigger
-            value="analytics"
-            className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
-          >
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger
-            value="reports"
-            className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-6 font-semibold"
-          >
-            Reports
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8">
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Chart Placeholder */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="lg:col-span-2"
-            >
-              <Card className="border-0 shadow-lg bg-white">
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold text-gray-900">User Registration Trends</CardTitle>
-                  <CardDescription className="text-gray-600">
-                    Monthly user registrations over the past year
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[350px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
-                    <div className="text-center">
-                      <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 font-medium text-lg">Chart: Monthly user registrations</p>
-                      <p className="text-gray-400 text-sm mt-2">Interactive chart will be displayed here</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Recent Activities */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <Card className="border-0 shadow-lg bg-white h-full">
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold text-gray-900">Recent Activities</CardTitle>
-                  <CardDescription className="text-gray-600">Latest system activities</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {recentActivities.map((activity, index) => (
-                      <motion.div
-                        key={activity.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.5 + index * 0.1 }}
-                        className="flex items-start space-x-4 p-4 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer group"
-                      >
-                        <div
-                          className={cn(
-                            "w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center",
-                            activity.color,
-                          )}
-                        >
-                          <activity.icon className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                            {activity.title}
-                          </p>
-                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">{activity.description}</p>
-                          <div className="flex items-center space-x-1 mt-2">
-                            <Clock className="w-3 h-3 text-gray-400" />
-                            <p className="text-xs text-gray-500">{activity.time}</p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
           </div>
 
           <div className="grid gap-8 lg:grid-cols-2">
-            {/* Top Employers */}
+            {/* Top Companies */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
               <Card className="border-0 shadow-lg bg-white">
                 <CardHeader>
-                  <CardTitle className="text-xl font-bold text-gray-900">Top Employers</CardTitle>
-                  <CardDescription className="text-gray-600">Most active employers on the platform</CardDescription>
+                  <CardTitle className="text-xl font-bold text-gray-900">Top Companies</CardTitle>
+                  <CardDescription className="text-gray-600">Most active companies by applicants</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {topEmployers.map((employer, index) => (
-                      <motion.div
-                        key={employer.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.6 + index * 0.1 }}
-                        className="flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-colors group"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                            <Building2 className="w-6 h-6 text-indigo-600" />
+                    {topCompanies.length === 0 ? (
+                      <div className="text-gray-500 text-center py-8">
+                        No company data available.<br />
+                        {/* Optionally show debug info */}
+                        Please check if companies exist or if the API is returning data.
+                      </div>
+                    ) : (
+                      topCompanies.slice(0, 5).map((company, index) => (
+                        <motion.div
+                          key={company.company_id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.6 + index * 0.1 }}
+                          className="flex items-center justify-between p-4 rounded-2xl hover:bg-gray-50 transition-colors group"
+                        >
+                          <div className="flex items-center gap-2">
+                            {company.company_logo_url ? (
+                              <img
+                                src={company.company_logo_url}
+                                alt={company.company_name}
+                                className="h-8 w-8 rounded-full object-cover border border-gray-200"
+                              />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center"></div>
+                            )}
+                            <div>
+                              <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                                {company.company_name || "Unnamed Company"}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                {typeof company.applicant_count === "number" ? company.applicant_count : 0} total applications
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                              {employer.name}
-                            </p>
-                            <p className="text-sm text-gray-600">{employer.listings} job listings</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 font-semibold px-3 py-1 rounded-full">
-                            {employer.growth}
-                          </Badge>
-                          <TrendingUp className="w-5 h-5 text-emerald-500" />
-                        </div>
-                      </motion.div>
-                    ))}
+                          <TrendingUp className="h-5 w-5 text-emerald-500" />
+                        </motion.div>
+                      ))
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -390,14 +333,14 @@ export default function Dashboard() {
                 <CardContent className="space-y-8">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-700">Pending</span>
-                      <span className="font-bold text-2xl text-yellow-600">7</span>
+                      <span className="font-semibold text-gray-700">Pending (basic)</span>
+                      <span className="font-bold text-2xl text-yellow-600">{verificationCounts.pending}</span>
                     </div>
                     <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                       <motion.div
                         className="h-full bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full"
                         initial={{ width: 0 }}
-                        animate={{ width: "35%" }}
+                        animate={{ width: `${verificationCounts.pending > 0 ? Math.min(verificationCounts.pending / (verificationCounts.pending + verificationCounts.partiallyCompleted + verificationCounts.approved) * 100, 100) : 0}%` }}
                         transition={{ delay: 0.8, duration: 1 }}
                       />
                     </div>
@@ -405,14 +348,14 @@ export default function Dashboard() {
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-700">Verified This Month</span>
-                      <span className="font-bold text-2xl text-emerald-600">15</span>
+                      <span className="font-semibold text-gray-700">Partially Completed (standard)</span>
+                      <span className="font-bold text-2xl text-blue-600">{verificationCounts.partiallyCompleted}</span>
                     </div>
                     <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                       <motion.div
-                        className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
+                        className="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full"
                         initial={{ width: 0 }}
-                        animate={{ width: "75%" }}
+                        animate={{ width: `${verificationCounts.partiallyCompleted > 0 ? Math.min(verificationCounts.partiallyCompleted / (verificationCounts.pending + verificationCounts.partiallyCompleted + verificationCounts.approved) * 100, 100) : 0}%` }}
                         transition={{ delay: 1, duration: 1 }}
                       />
                     </div>
@@ -420,14 +363,14 @@ export default function Dashboard() {
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-700">Rejected</span>
-                      <span className="font-bold text-2xl text-red-600">2</span>
+                      <span className="font-semibold text-gray-700">Approved (full)</span>
+                      <span className="font-bold text-2xl text-emerald-600">{verificationCounts.approved}</span>
                     </div>
                     <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                       <motion.div
-                        className="h-full bg-gradient-to-r from-red-400 to-red-500 rounded-full"
+                        className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
                         initial={{ width: 0 }}
-                        animate={{ width: "10%" }}
+                        animate={{ width: `${verificationCounts.approved > 0 ? Math.min(verificationCounts.approved / (verificationCounts.pending + verificationCounts.partiallyCompleted + verificationCounts.approved) * 100, 100) : 0}%` }}
                         transition={{ delay: 1.2, duration: 1 }}
                       />
                     </div>
@@ -436,46 +379,6 @@ export default function Dashboard() {
               </Card>
             </motion.div>
           </div>
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Card className="border-0 shadow-lg bg-white">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-gray-900">Advanced Analytics</CardTitle>
-                <CardDescription className="text-gray-600">Detailed platform analytics and insights</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[500px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
-                  <div className="text-center">
-                    <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium text-lg">Advanced Analytics Dashboard</p>
-                    <p className="text-gray-400 text-sm mt-2">Comprehensive analytics will be displayed here</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </TabsContent>
-
-        <TabsContent value="reports">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <Card className="border-0 shadow-lg bg-white">
-              <CardHeader>
-                <CardTitle className="text-xl font-bold text-gray-900">System Reports</CardTitle>
-                <CardDescription className="text-gray-600">Generated reports and statistics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[500px] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border-2 border-dashed border-gray-200">
-                  <div className="text-center">
-                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium text-lg">System Reports</p>
-                    <p className="text-gray-400 text-sm mt-2">Detailed reports and statistics will be displayed here</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </TabsContent>
       </Tabs>
     </div>

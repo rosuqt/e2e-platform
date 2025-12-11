@@ -10,6 +10,8 @@ import {
   Typography,
   Slider,
   MenuItem,
+  Modal,
+  Typography as MuiTypography
 } from "@mui/material";
 import type { SlideProps } from "@mui/material";
 import { Star } from "lucide-react";
@@ -53,8 +55,15 @@ export default function AddExpertiseModal({
   onSave,
   error,
   initial,
-  editMode
-}: AddExpertiseModalProps) {
+  editMode,
+  skills,
+  onSkillRemove,
+  expertise
+}: AddExpertiseModalProps & {
+  skills?: string[];
+  onSkillRemove?: (skill: string) => Promise<void>;
+  expertise?: { skill: string; mastery: number }[];
+}) {
   const [skill, setSkill] = useState("");
   const [mastery, setMastery] = useState(50);
   const [saving, setSaving] = useState(false);
@@ -63,6 +72,8 @@ export default function AddExpertiseModal({
   const [showSkillInput, setShowSkillInput] = useState(false);
   const [focusedSuggestion, setFocusedSuggestion] = useState<number>(-1);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [showSkillWarning, setShowSkillWarning] = useState(false);
+  const [pendingExpertise, setPendingExpertise] = useState<{ skill: string; mastery: number } | null>(null);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -99,9 +110,50 @@ export default function AddExpertiseModal({
     }))
   );
 
+  const normalized = (str: string) => str.replace(/\s+/g, "").toLowerCase();
+
+  const expertiseExists = () =>
+    Array.isArray(expertise) &&
+    expertise.some(
+      (exp: { skill: string }) =>
+        normalized(exp.skill) === normalized(showSkillInput ? skillInput : skill)
+    );
+
+  const skillExistsInSkills = () =>
+    Array.isArray(skills) &&
+    skills.some(
+      (s: string) => normalized(s) === normalized(skillInput || skill)
+    );
+
+  useEffect(() => {
+    if (open) {
+      if (
+        Array.isArray(expertise) &&
+        expertise.some(
+          (exp: { skill: string }) =>
+            normalized(exp.skill) === normalized(showSkillInput ? skillInput : skill)
+        )
+      ) {
+        setLocalError("This expertise already exists.");
+      } else {
+        setLocalError(null);
+      }
+    }
+  }, [open, skillInput, skill, expertise, showSkillInput]);
+
   const handleSkillInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSkillInput(e.target.value);
     setFocusedSuggestion(-1);
+    if (
+      Array.isArray(expertise) &&
+      expertise.some(
+        (exp: { skill: string }) => normalized(exp.skill) === normalized(e.target.value)
+      )
+    ) {
+      setLocalError("This skill already exists as an expertise.");
+    } else {
+      setLocalError(null);
+    }
   };
 
   const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -149,8 +201,13 @@ export default function AddExpertiseModal({
   };
 
   const handleSave = async () => {
-    setSaving(true);
     setLocalError(null);
+    if (skillExistsInSkills() && !editMode) {
+      setPendingExpertise({ skill: skillInput || skill, mastery });
+      setShowSkillWarning(true);
+      return;
+    }
+    setSaving(true);
     const studentId = (session?.user as { studentId?: string })?.studentId;
     if (studentId && !editMode) {
       const res = await fetch("/api/students/student-profile/postHandlers", {
@@ -173,308 +230,406 @@ export default function AddExpertiseModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId }),
       });
+      await fetch("/api/ai-matches/match/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
+      await fetch("/api/ai-matches/rescore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
     }
     onSave?.({ skill, mastery });
     handleClose();
   };
 
+  const handleSkillWarningConfirm = async () => {
+    setShowSkillWarning(false);
+    if (pendingExpertise && typeof onSkillRemove === "function") {
+      await onSkillRemove(pendingExpertise.skill);
+    }
+    setSkill(pendingExpertise?.skill || "");
+    setSkillInput(pendingExpertise?.skill || "");
+    setMastery(pendingExpertise?.mastery || 50);
+    setPendingExpertise(null);
+    setSaving(true);
+    handleSave();
+  };
+
   return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      TransitionComponent={SlideUp}
-      PaperProps={{
-        sx: {
-          p: 0,
-          minWidth: 500,
-          maxWidth: 600,
-          boxShadow: 8,
-          background: "#fff",
-          borderRadius: 3,
-          overflow: "hidden"
-        }
-      }}
-    >
-      <DialogContent sx={{ p: 0 }}>
-        <Box
-          sx={{
-            background: "linear-gradient(90deg, #2563eb 0%, #38bdf8 100%)",
-            p: 4,
-            color: "#fff",
-            position: "relative"
-          }}
-        >
-          <Button
-            onClick={handleClose}
+    <>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        TransitionComponent={SlideUp}
+        PaperProps={{
+          sx: {
+            p: 0,
+            minWidth: 500,
+            maxWidth: 600,
+            boxShadow: 8,
+            background: "#fff",
+            borderRadius: 3,
+            overflow: "hidden"
+          }
+        }}
+      >
+        <DialogContent sx={{ p: 0 }}>
+          <Box
             sx={{
-              position: "absolute",
-              top: 12,
-              right: 12,
-              minWidth: 0,
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
+              background: "linear-gradient(90deg, #2563eb 0%, #38bdf8 100%)",
+              p: 4,
               color: "#fff",
-              background: "rgba(30, 41, 59, 0.18)",
-              zIndex: 2,
-              "&:hover": { background: "rgba(30,41,59,0.28)" }
+              position: "relative"
             }}
           >
-            <svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-              <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-            </svg>
-          </Button>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Box
+            <Button
+              onClick={handleClose}
               sx={{
-                p: 1.5,
-                background: "rgba(255,255,255,0.18)",
-                borderRadius: 2,
-                display: "flex",
-                alignItems: "center"
+                position: "absolute",
+                top: 12,
+                right: 12,
+                minWidth: 0,
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                color: "#fff",
+                background: "rgba(30, 41, 59, 0.18)",
+                zIndex: 2,
+                "&:hover": { background: "rgba(30,41,59,0.28)" }
               }}
             >
-              <Star size={28} color="#fff" />
-            </Box>
-            <Box>
-              <Typography sx={{ fontWeight: 600, fontSize: 22, color: "#fff" }}>
-                {editMode ? "Edit Expertise" : "Add Expertise"}
-              </Typography>
-              <Typography sx={{ color: "#dbeafe", fontSize: 15 }}>
-                Enter your skill and mastery level
-              </Typography>
+              <svg width={20} height={20} viewBox="0 0 20 20" fill="none">
+                <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+              </svg>
+            </Button>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Box
+                sx={{
+                  p: 1.5,
+                  background: "rgba(255,255,255,0.18)",
+                  borderRadius: 2,
+                  display: "flex",
+                  alignItems: "center"
+                }}
+              >
+                <Star size={28} color="#fff" />
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 600, fontSize: 22, color: "#fff" }}>
+                  {editMode ? "Edit Expertise" : "Add Expertise"}
+                </Typography>
+                <Typography sx={{ color: "#dbeafe", fontSize: 15 }}>
+                  Enter your skill and mastery level
+                </Typography>
+              </Box>
             </Box>
           </Box>
-        </Box>
-        <Box sx={{ p: 4, pt: 3 }}>
-          <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
-              Expertise Name
-            </Typography>
-            <Box sx={{ position: "relative" }}>
-              <TextField
-                fullWidth
-                value={showSkillInput ? skillInput : skill}
-                onChange={handleSkillInput}
-                onFocus={() => setShowSkillInput(true)}
-                onBlur={handleSkillBlur}
-                onKeyDown={handleSkillKeyDown}
-                variant="outlined"
-                placeholder="e.g. JavaScript"
-                select={false}
-                sx={{
-                  background: "#fff",
-                  borderRadius: 2,
-                  mb: 2,
-                  fontSize: 15,
-                  "& .MuiOutlinedInput-root": { fontSize: 15 }
-                }}
-                inputProps={{ maxLength: 50 }}
-                autoComplete="off"
-                error={!!localError || !!error}
-                helperText={localError || error || ""}
-              />
-              {showSkillInput && (
-                <Box
+          <Box sx={{ p: 4, pt: 3 }}>
+            <Box sx={{ mb: 2 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
+                Expertise Name
+              </Typography>
+              <Box sx={{ position: "relative" }}>
+                <TextField
+                  fullWidth
+                  value={showSkillInput ? skillInput : skill}
+                  onChange={handleSkillInput}
+                  onFocus={() => setShowSkillInput(true)}
+                  onBlur={handleSkillBlur}
+                  onKeyDown={handleSkillKeyDown}
+                  variant="outlined"
+                  placeholder="e.g. JavaScript"
+                  select={false}
                   sx={{
-                    position: "absolute",
-                    left: 0,
-                    top: 48,
-                    width: "100%",
-                    bgcolor: "#fff",
-                    border: "1px solid #bfdbfe",
+                    background: "#fff",
                     borderRadius: 2,
-                    boxShadow: 3,
-                    zIndex: 10,
-                    maxHeight: 260,
-                    overflowY: "auto"
+                    mb: 2,
+                    fontSize: 15,
+                    "& .MuiOutlinedInput-root": { fontSize: 15 }
+                  }}
+                  inputProps={{ maxLength: 50 }}
+                  autoComplete="off"
+                  error={!!localError || !!error}
+                  helperText={expertiseExists() ? "This expertise already exists." : (localError || error || "")}
+                  InputProps={{
+                    endAdornment: (showSkillInput ? skillInput : skill) ? (
+                      <Button
+                        sx={{
+                          minWidth: 0,
+                          p: 0.5,
+                          color: "#64748b",
+                          background: "transparent",
+                          borderRadius: "50%",
+                          '&:hover': { background: "#f3f4f6" }
+                        }}
+                        onClick={() => {
+                          setSkill("");
+                          setSkillInput("");
+                        }}
+                        tabIndex={-1}
+                      >
+                        <svg width={18} height={18} viewBox="0 0 20 20" fill="none">
+                          <circle cx="10" cy="10" r="9" fill="#f3f4f6"/>
+                          <path d="M7 7l6 6M13 7l-6 6" stroke="#64748b" strokeWidth={2} strokeLinecap="round"/>
+                        </svg>
+                      </Button>
+                    ) : null
+                  }}
+                />
+                {showSkillInput && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      left: 0,
+                      top: 48,
+                      width: "100%",
+                      bgcolor: "#fff",
+                      border: "1px solid #bfdbfe",
+                      borderRadius: 2,
+                      boxShadow: 3,
+                      zIndex: 10,
+                      maxHeight: 260,
+                      overflowY: "auto"
+                    }}
+                  >
+                    {filteredSuggestions.map((group, groupIdx) => (
+                      <Box key={group.category}>
+                        <Box sx={{
+                          px: 2,
+                          py: 1,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#2563eb",
+                          bgcolor: "#f0f9ff",
+                          borderBottom: "1px solid #e0e7ef",
+                          position: "sticky",
+                          top: 0,
+                          zIndex: 1
+                        }}>
+                          {group.category}
+                        </Box>
+                        {group.skills.map((s: string, idx: number) => {
+                          const flatIdx =
+                            filteredSuggestions
+                              .slice(0, groupIdx)
+                              .reduce((acc, g) => acc + g.skills.length, 0) + idx;
+                          return (
+                            <Box
+                              key={s}
+                              sx={{
+                                px: 2,
+                                py: 1.5,
+                                cursor: "pointer",
+                                bgcolor: flatIdx === focusedSuggestion ? "#dbeafe" : "#fff",
+                                fontSize: 15,
+                                "&:hover": { bgcolor: "#dbeafe" }
+                              }}
+                              onMouseDown={() => {
+                                setSkill(s);
+                                setSkillInput(s);
+                                setShowSkillInput(false);
+                              }}
+                              onMouseEnter={() => setFocusedSuggestion(flatIdx)}
+                            >
+                              {s}
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            </Box>
+            <Box sx={{ mb: 2 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb", display: "flex", alignItems: "center", gap: 1 }}>
+                Mastery Level
+                <span style={{ color: "#2563eb", fontWeight: 600, marginLeft: 8, fontSize: 15 }}>
+                  {mastery}%
+                </span>
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <Box sx={{ width: "100%", mr: 2 }}>
+                  <Slider
+                    value={mastery}
+                    onChange={(_, v) => setMastery(typeof v === "number" ? v : v[0])}
+                    min={0}
+                    max={100}
+                    step={1}
+                    sx={{ width: "100%" }}
+                    marks={[
+                      { value: 20, label: "" },
+                      { value: 50, label: "" },
+                      { value: 80, label: "" },
+                      { value: 100, label: "" }
+                    ]}
+                  />
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mt: "-8px", px: "2px" }}>
+                    <Typography sx={{ fontSize: 13, color: "#2563eb", fontWeight: 500 }}>Beginner</Typography>
+                    <Typography sx={{ fontSize: 13, color: "#2563eb", fontWeight: 500 }}>Intermediate</Typography>
+                    <Typography sx={{ fontSize: 13, color: "#2563eb", fontWeight: 500 }}>Advanced</Typography>
+                    <Typography sx={{ fontSize: 13, color: "#2563eb", fontWeight: 500 }}>Expert</Typography>
+                  </Box>
+                </Box>
+                <TextField
+                  select
+                  value={mastery}
+                  onChange={e => setMastery(Number(e.target.value))}
+                  variant="outlined"
+                  placeholder="Select level"
+                  sx={{
+                    width: 140,
+                    background: "#fff",
+                    borderRadius: 2,
+                    fontSize: 15,
+                    "& .MuiOutlinedInput-root": { fontSize: 15 }
                   }}
                 >
-                  {filteredSuggestions.map((group, groupIdx) => (
-                    <Box key={group.category}>
-                      <Box sx={{
-                        px: 2,
-                        py: 1,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#2563eb",
-                        bgcolor: "#f0f9ff",
-                        borderBottom: "1px solid #e0e7ef",
-                        position: "sticky",
-                        top: 0,
-                        zIndex: 1
-                      }}>
-                        {group.category}
-                      </Box>
-                      {group.skills.map((s: string, idx: number) => {
-                        const flatIdx =
-                          filteredSuggestions
-                            .slice(0, groupIdx)
-                            .reduce((acc, g) => acc + g.skills.length, 0) + idx;
-                        return (
-                          <Box
-                            key={s}
-                            sx={{
-                              px: 2,
-                              py: 1.5,
-                              cursor: "pointer",
-                              bgcolor: flatIdx === focusedSuggestion ? "#dbeafe" : "#fff",
-                              fontSize: 15,
-                              "&:hover": { bgcolor: "#dbeafe" }
-                            }}
-                            onMouseDown={() => {
-                              setSkill(s);
-                              setSkillInput(s);
-                              setShowSkillInput(false);
-                            }}
-                            onMouseEnter={() => setFocusedSuggestion(flatIdx)}
-                          >
-                            {s}
-                          </Box>
-                        );
-                      })}
-                    </Box>
+                  <MenuItem value="" disabled>
+                    Select level
+                  </MenuItem>
+                  {masteryLevels.map(l => (
+                    <MenuItem value={l.value} key={l.value}>{l.label}</MenuItem>
                   ))}
-                </Box>
-              )}
-            </Box>
-          </Box>
-          <Box sx={{ mb: 2 }}>
-            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb", display: "flex", alignItems: "center", gap: 1 }}>
-              Mastery Level
-              <span style={{ color: "#2563eb", fontWeight: 600, marginLeft: 8, fontSize: 15 }}>
-                {mastery}%
-              </span>
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Box sx={{ width: "100%", mr: 2 }}>
-                <Slider
-                  value={mastery}
-                  onChange={(_, v) => setMastery(typeof v === "number" ? v : v[0])}
-                  min={0}
-                  max={100}
-                  step={1}
-                  sx={{ width: "100%" }}
-                  marks={[
-                    { value: 20, label: "" },
-                    { value: 50, label: "" },
-                    { value: 80, label: "" },
-                    { value: 100, label: "" }
-                  ]}
-                />
-                <Box sx={{ display: "flex", justifyContent: "space-between", mt: "-8px", px: "2px" }}>
-                  <Typography sx={{ fontSize: 13, color: "#2563eb", fontWeight: 500 }}>Beginner</Typography>
-                  <Typography sx={{ fontSize: 13, color: "#2563eb", fontWeight: 500 }}>Intermediate</Typography>
-                  <Typography sx={{ fontSize: 13, color: "#2563eb", fontWeight: 500 }}>Advanced</Typography>
-                  <Typography sx={{ fontSize: 13, color: "#2563eb", fontWeight: 500 }}>Expert</Typography>
-                </Box>
+                </TextField>
               </Box>
-              <TextField
-                select
-                value={mastery}
-                onChange={e => setMastery(Number(e.target.value))}
-                variant="outlined"
-                placeholder="Select level"
-                sx={{
-                  width: 140,
-                  background: "#fff",
-                  borderRadius: 2,
-                  fontSize: 15,
-                  "& .MuiOutlinedInput-root": { fontSize: 15 }
-                }}
-              >
-                <MenuItem value="" disabled>
-                  Select level
-                </MenuItem>
-                {masteryLevels.map(l => (
-                  <MenuItem value={l.value} key={l.value}>{l.label}</MenuItem>
-                ))}
-              </TextField>
+              <Box sx={{ display: "flex", justifyContent: "flex-start", mt: 1 }}>
+                <Button
+                  variant="text"
+                  sx={{
+                    color: "#2563eb",
+                    fontWeight: 500,
+                    textTransform: "none",
+                    fontSize: 15,
+                    px: 1,
+                    minWidth: 0
+                  }}
+                  onClick={() => setShowGauge(true)}
+                >
+                  Unsure? Click here.
+                </Button>
+              </Box>
             </Box>
-            <Box sx={{ display: "flex", justifyContent: "flex-start", mt: 1 }}>
+            <Box sx={{ display: "flex", gap: 2, pt: 2 }}>
               <Button
-                variant="text"
+                variant="outlined"
+                onClick={handleClose}
                 sx={{
+                  flex: 1,
                   color: "#2563eb",
+                  borderColor: "#2563eb",
                   fontWeight: 500,
-                  textTransform: "none",
                   fontSize: 15,
-                  px: 1,
-                  minWidth: 0
+                  background: "#fff",
+                  "&:hover": { borderColor: "#1e40af", background: "#f1f5f9" }
                 }}
-                onClick={() => setShowGauge(true)}
               >
-                Unsure? Click here.
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={!skill || saving || expertiseExists()}
+                sx={{
+                  flex: 1,
+                  background: "#2563eb",
+                  color: "#fff",
+                  fontWeight: 500,
+                  fontSize: 16,
+                  px: 3,
+                  boxShadow: "none",
+                  letterSpacing: 1,
+                  "&:hover": { background: "#1e40af" }
+                }}
+              >
+                {saving ? (
+                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg className="animate-spin" style={{ height: 20, width: 20 }} viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#fff" strokeWidth="4" fill="none"/>
+                      <path className="opacity-75" fill="#fff" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                  </span>
+                ) : "Save"}
               </Button>
             </Box>
           </Box>
-          <Box sx={{ display: "flex", gap: 2, pt: 2 }}>
-            <Button
-              variant="outlined"
-              onClick={handleClose}
+          {showGauge && (
+            <Box
               sx={{
-                flex: 1,
-                color: "#2563eb",
-                borderColor: "#2563eb",
-                fontWeight: 500,
-                fontSize: 15,
-                background: "#fff",
-                "&:hover": { borderColor: "#1e40af", background: "#f1f5f9" }
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                bgcolor: "rgba(255,255,255,0.98)",
+                zIndex: 10,
+                borderRadius: 3,
+                overflow: "auto"
               }}
             >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!skill || saving}
-              sx={{
-                flex: 1,
-                background: "#2563eb",
-                color: "#fff",
-                fontWeight: 500,
-                fontSize: 16,
-                px: 3,
-                boxShadow: "none",
-                letterSpacing: 1,
-                "&:hover": { background: "#1e40af" }
-              }}
-            >
-              Save
-            </Button>
+              <ExpertiseScore
+                open={showGauge}
+                onClose={() => setShowGauge(false)}
+                onApply={level => {
+                  setMastery(level);
+                  setShowGauge(false);
+                }}
+                category={
+                  flatSuggestions.find(s => s.skill === (showSkillInput ? skillInput : skill))?.category ||
+                  categories.find(cat =>
+                    expertiseSuggestions[cat].some(sugg => sugg === (showSkillInput ? skillInput : skill))
+                  ) ||
+                  undefined
+                }
+              />
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
+      {showSkillWarning && (
+        <Modal open={showSkillWarning} onClose={() => setShowSkillWarning(false)}>
+          <Box sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            bgcolor: "#fff",
+            borderRadius: 3,
+            boxShadow: 8,
+            p: 4,
+            minWidth: 340,
+            maxWidth: 400
+          }}>
+            <MuiTypography variant="h6" sx={{ mb: 2, color: "#2563eb", fontWeight: 600 }}>
+              Skill Already Exists
+            </MuiTypography>
+            <MuiTypography sx={{ mb: 3, color: "#334155" }}>
+              It looks like you&apos;ve already added this skill. We&apos;ll move it to your expertise section so employers can see your proficiency level for this skill.
+            </MuiTypography>
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <Button
+                variant="contained"
+                sx={{ background: "#2563eb", color: "#fff", flex: 1 }}
+                onClick={handleSkillWarningConfirm}
+              >
+                Understood
+              </Button>
+              <Button
+                variant="outlined"
+                sx={{ flex: 1, color: "#2563eb", borderColor: "#2563eb" }}
+                onClick={() => {
+                  setShowSkillWarning(false);
+                  setPendingExpertise(null);
+                }}
+              >
+                Cancel
+              </Button>
+            </Box>
           </Box>
-        </Box>
-        {showGauge && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              bgcolor: "rgba(255,255,255,0.98)",
-              zIndex: 10,
-              borderRadius: 3,
-              overflow: "auto"
-            }}
-          >
-            <ExpertiseScore
-              open={showGauge}
-              onClose={() => setShowGauge(false)}
-              onApply={level => {
-                setMastery(level);
-                setShowGauge(false);
-              }}
-              category={
-                flatSuggestions.find(s => s.skill === (showSkillInput ? skillInput : skill))?.category ||
-                categories.find(cat =>
-                  expertiseSuggestions[cat].some(sugg => sugg === (showSkillInput ? skillInput : skill))
-                ) ||
-                undefined
-              }
-            />
-          </Box>
-        )}
-      </DialogContent>
-    </Dialog>
+        </Modal>
+      )}
+    </>
   );
 }

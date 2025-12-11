@@ -135,6 +135,20 @@ ${portfolio}
           .eq("id", job_id)
           .single();
 
+        const jobSkills: string[] = [
+          ...(job?.ai_skills ?? []),
+          ...(job?.tags ?? []),
+          ...(job?.must_have_qualifications ?? []),
+          ...(job?.nice_to_have_qualifications ?? [])
+        ].map(s => typeof s === "string" ? s.toLowerCase().trim() : "").filter(Boolean);
+
+        const studentSkills: string[] = [
+          ...(student?.skills ?? []),
+          ...(student?.expertise ?? [])
+        ].map(s => typeof s === "string" ? s.toLowerCase().trim() : "").filter(Boolean);
+
+        const skillsMatched = studentSkills.filter(s => jobSkills.includes(s)).length;
+
         const jobText = `
 Job Title: ${job?.job_title || ""}
 Description: ${job?.job_description || ""}
@@ -147,8 +161,8 @@ Nice to have: ${(job?.nice_to_have_qualifications || []).join?.(", ") || ""}
         let gptScore;
         try {
           gptScore = await askGptForScore(studentText, jobText);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
-          console.error("GPT scoring failed for", job_id, err);
           gptScore = null;
         }
 
@@ -158,7 +172,8 @@ Nice to have: ${(job?.nice_to_have_qualifications || []).join?.(", ") || ""}
           match_score: jobMatch.similarity * 100,
           raw_similarity: jobMatch.similarity,
           gpt_score: gptScore,
-          last_scored_at: new Date().toISOString()
+          last_scored_at: new Date().toISOString(),
+          skills_matched: skillsMatched
         };
 
         await supabase.from("job_matches").upsert([up], { onConflict: "student_id,job_id" });

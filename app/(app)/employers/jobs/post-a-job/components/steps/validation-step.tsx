@@ -139,7 +139,7 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
                     disabled={loading === "basic"}
                     onClick={() => {
                       setLoading("basic")
-                      router.push("/employers/verification/fully-verified")
+                      window.open("/employers/verification/fully-verified", "_blank")
                     }}
                   >
                     {loading === "basic" ? (
@@ -260,7 +260,7 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
                     disabled={loading === "standard"}
                     onClick={() => {
                       setLoading("standard")
-                      router.push("/employers/verification/fully-verified")
+                      window.open("/employers/verification/fully-verified", "_blank")
                     }}
                   >
                     {loading === "standard" ? (
@@ -380,7 +380,7 @@ export function ValidationStep({ formData, updateFormData }: ValidationStepProps
                   disabled={loading === "full"}
                   onClick={() => {
                     setLoading("full")
-                    router.push("/employers/verification/fully-verified")
+                    window.open("/employers/verification/fully-verified", "_blank")
                   }}
                 >
                   {loading === "full" ? (

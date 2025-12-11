@@ -17,7 +17,7 @@ async function getEmployerIdAndRoleFromSession(req: NextRequest): Promise<{ empl
 async function getEmployerDetails(employer_id: string) {
   const { data: employer, error } = await supabase
     .from("registered_employers")
-    .select("id, first_name, last_name, email, job_title, verify_status, company_name")
+    .select("id, first_name, last_name, suffix, email, job_title, verify_status, company_name")
     .eq("id", employer_id)
     .single();
   if (error || !employer) {

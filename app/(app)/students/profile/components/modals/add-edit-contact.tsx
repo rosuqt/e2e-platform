@@ -10,10 +10,6 @@ import {
   Typography
 } from "@mui/material";
 import type { SlideProps } from "@mui/material";
-import Autocomplete from "@mui/material/Autocomplete";
-import Popper from "@mui/material/Popper";
-import Image from "next/image";
-import { countries } from "../../../../../(landing)/sign-up/data/countries";
 import { FaLinkedin, FaFacebook, FaTwitter, FaInstagram, FaGithub, FaYoutube, FaGlobe } from "react-icons/fa6";
 import { X } from "lucide-react";
 import { SiIndeed } from "react-icons/si";
@@ -50,7 +46,6 @@ type AddEditContactModalProps = {
   }) => void;
   initial?: {
     email?: string;
-    countryCode?: string;
     phone?: string;
     socials?: SocialLink[];
   };
@@ -63,10 +58,11 @@ export default function AddEditContactModal({
   initial
 }: AddEditContactModalProps) {
   const [email, setEmail] = useState(initial?.email || "");
-  const [countryCode, setCountryCode] = useState(initial?.countryCode || "");
+  // Always use PH country code "63"
+  const countryCode = "63";
   const [phone, setPhone] = useState(initial?.phone || "");
   const [socials, setSocials] = useState<SocialLink[]>(initial?.socials || []);
-  const [errors, setErrors] = useState<{ email?: string; phone?: string; countryCode?: string; socials?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; phone?: string; socials?: string }>({});
   const [saving, setSaving] = useState(false);
   const { data: session } = useSession();
 
@@ -76,7 +72,6 @@ export default function AddEditContactModal({
   const handleClose = () => {
     onClose?.();
     setEmail(initial?.email || "");
-    setCountryCode(initial?.countryCode || "");
     setPhone(initial?.phone || "");
     setSocials(initial?.socials || []);
     setErrors({});
@@ -86,16 +81,18 @@ export default function AddEditContactModal({
   const validate = () => {
     const errs: typeof errors = {};
     if (!email) errs.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = "Invalid email format";
-    if (!countryCode) errs.countryCode = "Country code required";
+    else if (
+      !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email) ||
+      email.length < 6 ||
+      email.length > 254
+    ) {
+      errs.email = "Enter a valid email address";
+    }
     if (!phone) errs.phone = "Phone number required";
     else if (
-      (countryCode === "63" || countryCode === "+63") &&
-      (!/^9\d{9}$/.test(phone))
+      !/^9\d{9}$/.test(phone)
     ) {
-      errs.phone = "PH mobile must start with 9 and be 10 digits (e.g. 9123456789)";
-    } else if (!/^\d{7,15}$/.test(phone)) {
-      errs.phone = "Invalid phone number";
+      errs.phone = "Enter a valid PH mobile number (starts with 9, 10 digits, e.g. 9123456789)";
     }
     if (socials.some(s => !s.url || !s.url.trim())) {
       errs.socials = "All selected socials must have a URL";
@@ -244,50 +241,23 @@ export default function AddEditContactModal({
             />
           </Box>
           <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            {/* Remove country code selection, show static PH code */}
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#2563eb" }}>
                 Country Code <span style={{ color: "#ef4444" }}>*</span>
               </Typography>
-              <Autocomplete
-                id="countryCode"
-                options={countries}
-                autoHighlight
-                disablePortal
-                PopperComponent={(props) => <Popper {...props} placement="bottom-start" />}
-                getOptionLabel={(option) => `${option.code} (+${option.phone})`}
-                renderOption={(props, option) => {
-                  const { key, ...optionProps } = props;
-                  return (
-                    <Box
-                      key={key}
-                      component="li"
-                      sx={{ '& > img': { mr: 2, flexShrink: 0 } }}
-                      {...optionProps}
-                    >
-                      <Image
-                        loading="lazy"
-                        width={20}
-                        height={15}
-                        src={`https://flagcdn.com/w20/${option.code.toLowerCase()}.png`}
-                        alt=""
-                      />
-                      {option.code} (+{option.phone})
-                    </Box>
-                  );
+              <TextField
+                fullWidth
+                value={"+63"}
+                disabled
+                variant="outlined"
+                sx={{
+                  background: "#f1f5f9",
+                  borderRadius: 2,
+                  mb: 1,
+                  fontSize: 15,
+                  "& .MuiOutlinedInput-root": { fontSize: 15 }
                 }}
-                value={countries.find((c) => c.phone === countryCode) || null}
-                onChange={(event, newValue) => {
-                  setCountryCode(newValue?.phone || "");
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Country Code"
-                    error={!!errors.countryCode}
-                    helperText={errors.countryCode}
-                  />
-                )}
-                sx={{ minWidth: 120 }}
               />
             </Box>
             <Box sx={{ flex: 2 }}>
@@ -309,7 +279,7 @@ export default function AddEditContactModal({
                 }}
                 error={!!errors.phone}
                 helperText={errors.phone}
-                inputProps={{ maxLength: 15, minLength: 7 }}
+                inputProps={{ maxLength: 10, minLength: 10 }}
               />
             </Box>
           </Box>

@@ -28,7 +28,7 @@ import { TfiMoreAlt } from "react-icons/tfi"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { ArrowUpRight } from "lucide-react"
 import InterviewScheduleModal from "./modals/interview-schedule"
-import { FaHandHoldingUsd, FaRegCalendarTimes } from "react-icons/fa"
+import { FaHandHoldingUsd, FaRegCalendarTimes, FaUserCheck } from "react-icons/fa"
 import { Dialog as UIDialog, DialogContent as UIDialogContent, DialogHeader, DialogTitle as UIDialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import TimelineTab from "./tabs/timeline-tab"
 import ResumeTab from "./tabs/resume-tab"
@@ -37,7 +37,7 @@ import { motion } from "framer-motion"
 import SendOfferModal from "./modals/send-offer"
 import QuestionsTab from "./tabs/questions-tab"
 import { calculateSkillsMatch } from "../../../../../../lib/match-utils"
-
+import Tooltip from "@mui/material/Tooltip"
 
 type AnswersMap = Record<string, string | string[]>;
 
@@ -85,6 +85,7 @@ interface Applicant {
   portfolio?: string[]
   raw_achievements?: string | string[] | Record<string, unknown> | null | undefined
   raw_portfolio?: string | string[] | Record<string, unknown> | null | undefined
+  gpt_score?: number
 }
 
 interface RecruiterApplicationDetailsProps {
@@ -101,6 +102,7 @@ const statusIconMap: Record<string, { icon: React.JSX.Element; iconBg: string }>
   waitlisted: { icon: <Clock className="h-4 w-4 text-white" />, iconBg: "bg-blue-400" },
   rejected: { icon: <XCircle className="h-4 w-4 text-white" />, iconBg: "bg-red-500" },
   hired: { icon: <CheckCircle className="h-4 w-4 text-white" />, iconBg: "bg-green-600" },
+  offersent: { icon: <FaHandHoldingUsd className="h-4 w-4 text-white" />, iconBg: "bg-yellow-400" },
 }
 
 type TimelineEvent = {
@@ -151,6 +153,8 @@ export function RecruiterApplicationDetailsModal({
   const [jobSkills, setJobSkills] = useState<string[]>([])
   const [showMarkDoneModal, setShowMarkDoneModal] = useState(false)
   const [markDoneLoading, setMarkDoneLoading] = useState(false)
+  const [showHireModal, setShowHireModal] = useState(false)
+  const [hireLoading, setHireLoading] = useState(false)
   useEffect(() => {
     setResumeUrl(null)
     setTimeline([])
@@ -214,10 +218,12 @@ export function RecruiterApplicationDetailsModal({
 
   if (!applicant) return null
 
-  const matchScore = calculateSkillsMatch(
-    applicant?.skills || [],
-    jobSkills
-  )
+  const matchScore = typeof applicant?.gpt_score === "number"
+    ? Math.round(applicant.gpt_score)
+    : calculateSkillsMatch(
+        applicant?.skills || [],
+        jobSkills
+      )
 
   const contactInfo = applicant && typeof applicant.contactInfo === "object" && applicant.contactInfo !== null
     ? (applicant.contactInfo as {
@@ -233,14 +239,24 @@ export function RecruiterApplicationDetailsModal({
     job_id: applicant.job_id,
     name: `${applicant.first_name || "Applicant"} ${applicant.last_name || ""}`.trim(),
     title: applicant.job_title || "Job Applicant",
-    status: applicant.status || "New",
+    status: applicant.status
+      ? applicant.status.replace(/_/g, "").replace(/\s+/g, " ").trim()
+      : "New",
     statusColor:
       (applicant.status || "").toLowerCase() === "interview"
         ? "bg-purple-100 text-purple-700"
         : (applicant.status || "").toLowerCase() === "invited"
         ? "bg-green-100 text-green-700"
         : "bg-yellow-100 text-yellow-700",
-    location: applicant.address || "N/A",
+    location: Array.isArray(applicant.address)
+      ? applicant.address.filter(Boolean).join(", ")
+      : typeof applicant.address === "string"
+      ? applicant.address
+      : applicant.location && Array.isArray(applicant.location)
+      ? applicant.location.filter(Boolean).join(", ")
+      : typeof applicant.location === "string"
+      ? applicant.location
+      : "N/A",
     experience: applicant.experience_years || "N/A",
     appliedDate: applicant.applied_date || applicant.applied_at || "N/A",
     matchScore,
@@ -309,6 +325,25 @@ export function RecruiterApplicationDetailsModal({
     }
   }
 
+  async function handleHireApplicant() {
+    if (!applicant?.application_id) return
+    setHireLoading(true)
+    try {
+      await fetch("/api/employers/applications/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: applicant.application_id, action: "hire" }),
+      })
+      setIsModalOpen(false)
+      if (typeof refreshApplicants === "function") {
+        setTimeout(() => refreshApplicants(), 100)
+      }
+    } finally {
+      setHireLoading(false)
+      setShowHireModal(false)
+    }
+  }
+
   return (
     <>
       <Dialog open={isModalOpen} onOpenChange={open => {
@@ -356,9 +391,13 @@ export function RecruiterApplicationDetailsModal({
                       ? "bg-blue-100 text-blue-700 px-3 py-1 text-sm font-medium pointer-events-none"
                       : application.status.toLowerCase() === "hired"
                       ? "bg-green-600 text-white px-3 py-1 text-sm font-medium pointer-events-none"
+                      : application.status.toLowerCase() === "offersent"
+                      ? "bg-yellow-100 text-yellow-700 px-3 py-1 text-sm font-medium pointer-events-none"
                       : "bg-yellow-100 text-yellow-700 px-3 py-1 text-sm font-medium pointer-events-none"
                   }>
-                    {application.status.charAt(0).toUpperCase() + application.status.slice(1).toLowerCase() === "Interview scheduled"
+                    {application.status.toLowerCase() === "waitlisted"
+                      ? "Completed Interview"
+                      : application.status.toLowerCase() === "interview scheduled"
                       ? "Interview Scheduled"
                       : application.status.charAt(0).toUpperCase() + application.status.slice(1).toLowerCase()}
                   </Badge>
@@ -397,6 +436,7 @@ export function RecruiterApplicationDetailsModal({
               onOpenCancelInterviewModal={() => setCancelInterviewOpen(true)}
               setIsModalOpen={setIsModalOpen}
               setShowSendOfferModal={setShowSendOfferModal}
+              setShowHireModal={setShowHireModal}
             />
           </div>
         </DialogContent>
@@ -515,6 +555,48 @@ export function RecruiterApplicationDetailsModal({
           </div>
         </UIDialogContent>
       </UIDialog>
+      {/* Hire Applicant Modal */}
+      <UIDialog open={showHireModal} onOpenChange={setShowHireModal}>
+        <UIDialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+          <div className="flex flex-col items-center justify-center py-8 px-6 bg-white">
+            <div className="flex flex-col items-center">
+              <div className="mb-4 w-14 h-14 bg-green-100 rounded-full flex items-center justify-center shadow">
+                <FaUserCheck className="w-7 h-7 text-green-600" />
+              </div>
+              <UIDialogTitle className="text-lg text-center font-semibold mb-2">
+                Confirm Official Hire
+              </UIDialogTitle>
+              <DialogDescription className="text-center text-gray-600 mb-4">
+                You are about to officially mark <span className="font-semibold text-green-700">{applicant?.first_name}</span> as <span className="font-semibold text-green-700">Hired</span>.<br />
+                <span className="text-xs text-muted-foreground block mt-2">
+                  This action means you have hired this applicant, such as in real life or through your company.
+                </span>
+              </DialogDescription>
+            </div>
+            <div className="flex gap-3 w-full mt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowHireModal(false)}
+                className="flex-1 border-gray-300"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleHireApplicant}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                disabled={hireLoading}
+              >
+                {hireLoading ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                ) : (
+                  "Yes, Mark as Hired"
+                )}
+              </Button>
+            </div>
+          </div>
+        </UIDialogContent>
+      </UIDialog>
     </>
   )
 }
@@ -525,7 +607,7 @@ interface Application {
   title: string
   status: string
   statusColor: string
-  location: string
+  location: string | string[]
   experience: string
   appliedDate: string
   matchScore: number
@@ -591,7 +673,8 @@ function RecruiterApplicationDetailsContent({
   onOpenCancelInterviewModal,
   onOpenMarkDoneModal,
   setIsModalOpen,
-  setShowSendOfferModal
+  setShowSendOfferModal,
+  setShowHireModal
 }: {
   application: Application & { expertise?: { skill: string; mastery: number }[], resume?: string, job_id?: string, application_answers?: AnswersMap, achievements?: string[], portfolio?: string[], profile_image_url?: string },
   resumeUrl?: string | null,
@@ -601,7 +684,8 @@ function RecruiterApplicationDetailsContent({
   onOpenCancelInterviewModal?: () => void,
   onOpenMarkDoneModal?: () => void,
   setIsModalOpen?: (open: boolean) => void,
-  setShowSendOfferModal?: (open: boolean) => void
+  setShowSendOfferModal?: (open: boolean) => void,
+  setShowHireModal?: (open: boolean) => void
 }) {
   const { data: session } = useSession()
   const [notes, setNotes] = useState<RecruiterNote[]>([])
@@ -617,6 +701,7 @@ function RecruiterApplicationDetailsContent({
   // const open = Boolean(anchorEl)
   const [signedAchievements, setSignedAchievements] = useState<{ name: string; url: string }[]>([])
   const [signedPortfolio, setSignedPortfolio] = useState<{ name: string; url: string }[]>([])
+  const verifyStatus = session?.user?.verifyStatus
 
   useEffect(() => {
     const employerId = (session?.user as { employerId?: string })?.employerId
@@ -827,7 +912,9 @@ function RecruiterApplicationDetailsContent({
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xl font-bold">{application.matchScore}%</span>
+                  <span className={`text-xl font-bold${verifyStatus !== "full" ? " blur-sm select-none" : ""}`}>
+                    {application.matchScore}%
+                  </span>
                 </div>
               </div>
               <div className="flex-1">
@@ -842,7 +929,7 @@ function RecruiterApplicationDetailsContent({
                     fontWeight: 600,
                     fontSize: "1.125rem"
                   }}
-                  className="font-semibold"
+                  className={`font-semibold${verifyStatus !== "full" ? " blur-sm select-none" : ""}`}
                 >
                   {application.matchScore >= 70
                     ? "This Applicant Is a Strong Match"
@@ -850,16 +937,18 @@ function RecruiterApplicationDetailsContent({
                     ? "This Applicant Is a Partial Match"
                     : "This Applicant Isn’t a Strong Match"}
                 </h3>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className={`text-xs text-muted-foreground mt-1${verifyStatus !== "full" ? " blur-sm select-none" : ""}`}>
                   {application.matchScore >= 70
                     ? "Their background and skills closely match what this role is looking for — it could be a great fit!"
                     : application.matchScore >= 40
                     ? "They match some key aspects of this role. With a bit of alignment, it could be a solid opportunity."
                     : "Their profile doesn’t closely match the main requirements for this role, but other opportunities may suit them better."}
                 </p>
-                <div className="mt-2 text-sm text-blue-700 font-medium">
-                  {matchedSkillsCount} Skills Matched
-                </div>
+                {verifyStatus === "full" && matchedSkillsCount > 0 && (
+                  <div className="mt-2 text-sm text-blue-700 font-medium">
+                    {matchedSkillsCount} Skills Matched
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -889,7 +978,13 @@ function RecruiterApplicationDetailsContent({
             </div>
             <div className="flex items-start gap-3 mb-2 mt-5">
               <span className="text-sm font-medium text-blue-700 min-w-[70px]">Location:</span>
-              <span className="text-sm whitespace-pre-line">{application.location}</span>
+              <span className="text-sm whitespace-pre-line">
+                {typeof application.location === "string"
+                  ? application.location
+                  : Array.isArray(application.location)
+                  ? application.location.filter(Boolean).join(", ")
+                  : "N/A"}
+              </span>
             </div>  
           </div>
 
@@ -1066,7 +1161,11 @@ function RecruiterApplicationDetailsContent({
         </TabsContent>
 
         <TabsContent value="timeline" className="space-y-4 pt-4">
-          <TimelineTab timeline={application.timeline || []} status={(application.status || "").toLowerCase()} />
+          <TimelineTab timeline={application.timeline || []} status={
+  application.status.toLowerCase() === "waitlisted"
+    ? "completed interview"
+    : application.status.toLowerCase()
+} />
         </TabsContent>
 
         <TabsContent value="notes" className="space-y-4 pt-4">
@@ -1256,15 +1355,45 @@ function RecruiterApplicationDetailsContent({
                         <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
                         View Job Listing
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={e => {
+                          e.preventDefault();
+                          fetch("/api/employers/applications/actions", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ application_id: application.id, action: "reject" }),
+                          }).then(() => setIsModalOpen?.(false))
+                        }}
+                      >
+                        <XCircle className="h-4 w-4 mr-2 text-red-500" />
+                        Reject
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={e => {
+                          e.preventDefault();
+                          setIsModalOpen?.(false)
+                          setTimeout(() => setShowHireModal?.(true), 200)
+                        }}
+                      >
+                        <FaUserCheck className="w-4 h-4 mr-2 text-green-600" />
+                        Mark as Hired
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Button
-                    variant="outline"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Reject
-                  </Button>
+                  <Tooltip title="Manually mark this applicant as hired." arrow>
+                    <span>
+                      <Button
+                        className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                        onClick={() => {
+                          setIsModalOpen?.(false)
+                          setTimeout(() => setShowHireModal?.(true), 200)
+                        }}
+                      >
+                        <FaUserCheck className="h-4 w-4 mr-2" />
+                        Mark as Hired
+                      </Button>
+                    </span>
+                  </Tooltip>
                 </>
               )
             }
@@ -1284,15 +1413,7 @@ function RecruiterApplicationDetailsContent({
                 </>
               )
             }
-      
-            return (
-              <>
-                <Button variant="outline">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Contact
-                </Button>
-              </>
-            )
+
           })()}
         </div>
         <div className="flex gap-2 justify-end w-full">
@@ -1301,17 +1422,21 @@ function RecruiterApplicationDetailsContent({
             if (status === "new") {
               return (
                 <>
-                  <Button
-                    variant="outline"
-                    className="text-green-700 border-green-200 hover:bg-green-50 flex items-center gap-2"
-                    onClick={() => {
-                      setIsModalOpen?.(false)
-                      setTimeout(() => onOpenMarkDoneModal?.(), 200)
-                    }}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                    Mark as Done
-                  </Button>
+                  <Tooltip title="Click to manually mark this interview as finished." arrow>
+                    <span>
+                      <Button
+                        variant="outline"
+                        className="text-green-700 border-green-200 hover:bg-green-50 flex items-center gap-2"
+                        onClick={() => {
+                          setIsModalOpen?.(false)
+                          setTimeout(() => onOpenMarkDoneModal?.(), 200)
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                        Mark as Done
+                      </Button>
+                    </span>
+                  </Tooltip>
                   <Button
                     className="bg-cyan-600 hover:bg-cyan-700 text-white flex items-center gap-2"
                     onClick={async () => {
@@ -1332,17 +1457,21 @@ function RecruiterApplicationDetailsContent({
             if (status === "shortlisted") {
               return (
                 <>
-                  <Button
-                    variant="outline"
-                    className="text-green-700 border-green-200 hover:bg-green-50 flex items-center gap-2"
-                    onClick={() => {
-                      setIsModalOpen?.(false)
-                      setTimeout(() => onOpenMarkDoneModal?.(), 200)
-                    }}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                    Mark as Done
-                  </Button>
+                  <Tooltip title="Click to manually mark this interview as finished." arrow>
+                    <span>
+                      <Button
+                        variant="outline"
+                        className="text-green-700 border-green-200 hover:bg-green-50 flex items-center gap-2"
+                        onClick={() => {
+                          setIsModalOpen?.(false)
+                          setTimeout(() => onOpenMarkDoneModal?.(), 200)
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                        Mark as Done
+                      </Button>
+                    </span>
+                  </Tooltip>
                   <Button
                     className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
                     onClick={() => {
@@ -1358,17 +1487,21 @@ function RecruiterApplicationDetailsContent({
             if (status === "interview" || status === "interview scheduled") {
               return (
                 <>
-                  <Button
-                    variant="outline"
-                    className="text-green-700 border-green-200 hover:bg-green-50 flex items-center gap-2"
-                    onClick={() => {
-                      setIsModalOpen?.(false)
-                      setTimeout(() => onOpenMarkDoneModal?.(), 200)
-                    }}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                    Mark as Done
-                  </Button>
+                  <Tooltip title="Click to manually mark this interview as finished." arrow>
+                    <span>
+                      <Button
+                        variant="outline"
+                        className="text-green-700 border-green-200 hover:bg-green-50 flex items-center gap-2"
+                        onClick={() => {
+                          setIsModalOpen?.(false)
+                          setTimeout(() => onOpenMarkDoneModal?.(), 200)
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                        Mark as Done
+                      </Button>
+                    </span>
+                  </Tooltip>
                   <Button
                     variant="outline"
                     className="border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100"
@@ -1405,9 +1538,6 @@ function RecruiterApplicationDetailsContent({
                 </>
               )
             }
-            if (status === "hired") {
-              return null
-            }
             if (status === "rejected") {
               return null
             }
@@ -1440,7 +1570,7 @@ function getMatchMessage(percent: number) {
   return "Low skill match for this job"
 }
 
-function normalizeFiles(arr: (string | { name: string; url: string })[] = []): { name: string; url: string }[] {
+function normalizeFiles(arr: (string | { name: string; url: string })[] = []) : { name: string; url: string }[] {
   return arr.map(item => {
     if (typeof item === "string") {
       const name = item.split("/").pop() || item

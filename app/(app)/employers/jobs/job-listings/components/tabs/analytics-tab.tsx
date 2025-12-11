@@ -1,4 +1,6 @@
-"use client"
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+  "use client"
 
 import { useState, useEffect } from "react"
 import {
@@ -20,18 +22,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Calendar, Clock, Users, Eye, MousePointerClick, FileText, Search, CalendarX } from "lucide-react"
 import Chip from "@mui/material/Chip"
-import { CircularProgressbar, buildStyles } from "react-circular-progressbar"
 import "react-circular-progressbar/dist/styles.css"
 import { IconCloudDemo } from "@/components/magicui/skill-cloud"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-const matchPercentageData = [
-  { range: "90-100%", count: 5, color: "#4f46e5" }, 
-  { range: "80-89%", count: 8, color: "#2563eb" }, 
-  { range: "70-79%", count: 6, color: "#7c3aed" },
-  { range: "60-69%", count: 3, color: "#eab308" },
-  { range: "Below 60%", count: 1, color: "#ea580c" },
-]
+import { Lock } from "@mui/icons-material"
+import { useSession } from "next-auth/react"
 
 interface JobAnalyticsProps {
   jobId?: string
@@ -121,7 +116,7 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
     { name: "Waitlisted", value: 0, color: "#3b82f6" },
     { name: "Hired", value: 0, color: "#059669" },
     { name: "Rejected", value: 0, color: "#dc2626" },
-  ])
+  ])  
   const [topApplicants, setTopApplicants] = useState<TopApplicant[]>([])
   const [loadingTopApplicants, setLoadingTopApplicants] = useState(false)
   const [upcomingInterviews, setUpcomingInterviews] = useState<AgendaItem[]>([])
@@ -133,6 +128,16 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
     weeklyData: [],
     totalRecords: 0
   })
+  const [matchPercentageData, setMatchPercentageData] = useState([
+    { range: "90-100%", count: 0, color: "#4f46e5" },
+    { range: "80-89%", count: 0, color: "#2563eb" },
+    { range: "70-79%", count: 0, color: "#7c3aed" },
+    { range: "60-69%", count: 0, color: "#eab308" },
+    { range: "Below 60%", count: 0, color: "#ea580c" },
+  ])
+  const [jobSkills, setJobSkills] = useState<string[]>([])
+  const { data: session } = useSession?.() ?? {};
+  const verifyStatus = session?.user?.verifyStatus;
 
   const fetchApplicationStatus = async () => {
     if (!jobId) return
@@ -190,21 +195,21 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
 
   const fetchTopApplicants = async () => {
     if (!jobId) return
-    
+
     try {
       setLoadingTopApplicants(true)
       const response = await fetch(`/api/employers/fetch-applicants/${jobId}/recent-applicants`)
       if (response.ok) {
         const applicants: ApplicantResponse[] = await response.json()
-        
+
         const sortedApplicants = applicants
-          .sort((a: ApplicantResponse, b: ApplicantResponse) => b.match_score - a.match_score)
+          .sort((a: ApplicantResponse, b: ApplicantResponse) => (b.match_score ?? 0) - (a.match_score ?? 0))
           .slice(0, 5)
-        
+
         const applicantsWithImages = await Promise.all(
           sortedApplicants.map(async (applicant: ApplicantResponse): Promise<TopApplicant> => {
             if (!applicant.student_id) return { ...applicant, profile_image_url: "" }
-            
+
             try {
               const detailsRes = await fetch(`/api/employers/applications/getStudentDetails?student_id=${applicant.student_id}`)
               const details: StudentDetails = await detailsRes.json()
@@ -224,17 +229,17 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
                   profile_image_url = signedUrlData.signedUrl
                 }
               }
-              return { ...applicant, profile_image_url }
+              return { ...applicant, profile_image_url, match_score: applicant.match_score }
             } catch {
-              return { ...applicant, profile_image_url: "" }
+              return { ...applicant, profile_image_url: "", match_score: applicant.match_score }
             }
           })
         )
-        
+
         setTopApplicants(applicantsWithImages)
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
-      console.error('Failed to fetch top applicants:', err)
       setTopApplicants([])
     } finally {
       setLoadingTopApplicants(false)
@@ -274,6 +279,56 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
     fetchTopApplicants()
     fetchUpcomingInterviews()
   }, [jobId, timeRange, employerId])
+
+  useEffect(() => {
+    if (!employerId || !jobId) {
+      setMatchPercentageData([
+        { range: "90-100%", count: 0, color: "#4f46e5" },
+        { range: "80-89%", count: 0, color: "#2563eb" },
+        { range: "70-79%", count: 0, color: "#7c3aed" },
+        { range: "60-69%", count: 0, color: "#eab308" },
+        { range: "Below 60%", count: 0, color: "#ea580c" },
+      ])
+      return
+    }
+    fetch("/api/ai-matches/fetch-current-candidates", {
+      method: "POST",
+      body: JSON.stringify({ employer_id: employerId }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!Array.isArray(data.candidates)) {
+          setMatchPercentageData([
+            { range: "90-100%", count: 0, color: "#4f46e5" },
+            { range: "80-89%", count: 0, color: "#2563eb" },
+            { range: "70-79%", count: 0, color: "#7c3aed" },
+            { range: "60-69%", count: 0, color: "#eab308" },
+            { range: "Below 60%", count: 0, color: "#ea580c" },
+          ])
+          return
+        }
+        const candidates = data.candidates.filter((c: { job_id: any }) => String(c.job_id) === String(jobId))
+       
+
+
+        const buckets = [
+          { range: "90-100%", count: 0, color: "#4f46e5" },
+          { range: "80-89%", count: 0, color: "#2563eb" },
+          { range: "70-79%", count: 0, color: "#7c3aed" },
+          { range: "60-69%", count: 0, color: "#eab308" },
+          { range: "Below 60%", count: 0, color: "#ea580c" },
+        ]
+        candidates.forEach((c: { gpt_score: any }) => {
+          const score = Number(c.gpt_score)
+          if (score >= 90) buckets[0].count++
+          else if (score >= 80) buckets[1].count++
+          else if (score >= 70) buckets[2].count++
+          else if (score >= 60) buckets[3].count++
+          else buckets[4].count++
+        })
+        setMatchPercentageData(buckets)
+      })
+  }, [employerId, jobId])
 
   const calculatePercentageChange = (current: number, previous: number) => {
     if (previous === 0) return current > 0 ? 100 : 0
@@ -358,6 +413,29 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
         return { backgroundColor: '#f3f4f6', color: '#374151' }
     }
   }
+
+  useEffect(() => {
+    if (!jobId) {
+      setJobSkills([])
+      return
+    }
+    fetch(`/api/job-listings/fetchSkills?jobId=${jobId}`)
+      .then(res => res.json())
+      .then(res => {
+        let aiSkills: string[] = []
+        if (Array.isArray(res.ai_skills)) {
+          aiSkills = res.ai_skills
+        } else if (typeof res.ai_skills === "string") {
+          try {
+            aiSkills = JSON.parse(res.ai_skills)
+          } catch {
+            aiSkills = []
+          }
+        }
+        setJobSkills(aiSkills)
+      })
+      .catch(() => setJobSkills([]))
+  }, [jobId])
 
   return (
     <div className="space-y-6">
@@ -520,15 +598,13 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
         </div>
       )}
       
-      {/* Main analytics grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Candidate Match Percentage Graph */}
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Candidate Match Percentage</CardTitle>
             <CardDescription>Distribution of applicants by match percentage</CardDescription>
           </CardHeader>
-          <CardContent className="h-80">
+          <CardContent className="h-80" style={verifyStatus !== "full" ? { filter: "blur(6px)", pointerEvents: "none", userSelect: "none", position: "relative" } : {}}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={matchPercentageData}
@@ -545,10 +621,15 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            {verifyStatus !== "full" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+                <Lock className="text-blue-600 mb-2" style={{ fontSize: 40 }} />
+                <span className="text-blue-700 text-base font-semibold text-center">Verify to unlock Candidate Match</span>
+              </div>
+            )}
           </CardContent>
         </Card>
         
-        {/* Application Breakdown */}
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Application Breakdown</CardTitle>
@@ -590,7 +671,6 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
           </CardContent>
         </Card>
         
-        {/* Job Posting Overview */}
         <Card className="col-span-1 md:col-span-2">
           <CardHeader>
             <CardTitle>Job Posting Performance</CardTitle>
@@ -616,7 +696,6 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
         </Card>
      
         
-        {/* Top Applicants */}
         <Card className="col-span-1 h-[460px] flex flex-col w-full">
           <CardHeader>
             <CardTitle>Top Applicants</CardTitle>
@@ -679,7 +758,6 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
           </CardContent>
         </Card>
         
-        {/* Top Skills Cloud */}
         <Card className="col-span-1 h-[460px] flex flex-col w-full">
           <CardHeader>
             <CardTitle>Top Skills</CardTitle>
@@ -688,14 +766,14 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
           <CardContent className="flex-1 flex items-center justify-center">
             <div className="w-full flex items-center justify-center">
               <div className="w-[320px] h-[320px] md:w-[360px] md:h-[360px]">
-                <IconCloudDemo />
+                {/* @ts-expect-error */}
+                <IconCloudDemo skills={jobSkills} />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
       
-      {/* Additional metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="col-span-1 md:col-span-1">
           <CardHeader className="pb-2">
@@ -764,31 +842,6 @@ export default function JobAnalytics({ jobId, employerId }: JobAnalyticsProps) {
                 View Interview Calendar
               </Button>
             )}
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-1 md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Candidate Match Percentage</CardTitle>
-            <CardDescription>
-              This represents the percentage of applicants who are a strong match for the job based on their qualifications.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-center items-center h-full">
-              <div className="w-32 h-32">
-                <CircularProgressbar
-                  value={75} 
-                  text={`75%`}
-                  styles={buildStyles({
-                    textSize: "16px",
-                    textColor: "#4f46e5", 
-                    pathColor: "#4f46e5",
-                    trailColor: "#e5e7eb",
-                  })}
-                />
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>

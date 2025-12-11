@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import {
@@ -7,14 +8,11 @@ import {
   MapPin,
   Briefcase,
   Eye,
-  BarChart3,
   Edit,
-  Share2,
   Pause,
   Trash2,
   MessageSquare,
   UserCheck,
-  FileText,
   BookOpen,
   Award,
   Bus,
@@ -28,6 +26,7 @@ import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } 
 import { MdWarningAmber, MdBlock, MdLock } from "react-icons/md";
 import { Tooltip as MuiTooltip } from "@mui/material"
 import { toast } from "react-hot-toast"
+import { Lock } from "@mui/icons-material"
 
 import ApplicantsTab from "./applicants-tab"
 import JobAnalytics from "./analytics-tab"
@@ -94,6 +93,7 @@ const PERKS_MAP = [
 
 export default function EmployerJobOverview({ selectedJob, onClose, onSuccess, initialTab }: { selectedJob: string | null; onClose: () => void; onSuccess?: () => void; initialTab?: string }) {
   const { data: session } = useSession()
+  const verifyStatus = session?.user?.verifyStatus
   const [jobData, setJobData] = React.useState<JobData | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -116,17 +116,14 @@ export default function EmployerJobOverview({ selectedJob, onClose, onSuccess, i
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [hasApplications, setHasApplications] = React.useState<boolean | null>(null)
   const [checkingApplications, setCheckingApplications] = React.useState(false)
+  const [matchQualityCounts, setMatchQualityCounts] = React.useState({
+    excellent: 0,
+    good: 0,
+    fair: 0,
+    poor: 0,
+  });
 
   const employerId = (session?.user as { employerId?: string })?.employerId
-
-  const handleViewAnalytics = () => {
-    setActiveTab("analytics");
-    setTimeout(() => {
-      if (analyticsRef.current) {
-        analyticsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 100);
-  };
 
   const checkForApplications = async () => {
     if (!selectedJob) return
@@ -208,6 +205,30 @@ export default function EmployerJobOverview({ selectedJob, onClose, onSuccess, i
   React.useEffect(() => {
     if (initialTab) setActiveTab(initialTab)
   }, [initialTab])
+
+  React.useEffect(() => {
+    if (!employerId || !selectedJob) return;
+    fetch("/api/ai-matches/fetch-current-candidates", {
+      method: "POST",
+      body: JSON.stringify({ employer_id: employerId }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!Array.isArray(data.candidates)) return;
+        const candidates = data.candidates.filter(
+          (c: { job_id: any }) => String(c.job_id) === String(selectedJob)
+        );
+        let excellent = 0, good = 0, fair = 0, poor = 0;
+        candidates.forEach((c: { gpt_score: any }) => {
+          const score = Number(c.gpt_score);
+          if (score >= 90) excellent++;
+          else if (score >= 70) good++;
+          else if (score >= 50) fair++;
+          else poor++;
+        });
+        setMatchQualityCounts({ excellent, good, fair, poor });
+      });
+  }, [employerId, selectedJob]);
 
   if (loading) {
     return (
@@ -342,18 +363,7 @@ export default function EmployerJobOverview({ selectedJob, onClose, onSuccess, i
             </MuiTooltip>
             <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
               <span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 text-gray-700 hover:bg-purple-50 hover:text-purple-700"
-                  onClick={undefined}
-                  disabled={isArchived}
-                  tabIndex={isArchived ? -1 : 0}
-                  aria-disabled={isArchived}
-                >
-                  <Share2 className="h-4 w-4" />
-                  Share
-                </Button>
+  
               </span>
             </MuiTooltip>
           </div>
@@ -679,16 +689,22 @@ export default function EmployerJobOverview({ selectedJob, onClose, onSuccess, i
                     <CardHeader>
                       <CardTitle className="text-lg">Match Quality</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    {verifyStatus !== "full" && (
+                      <div className="flex flex-col items-center justify-center py-4">
+                        <Lock className="text-blue-600 mb-2" style={{ fontSize: 40 }} />
+                        <span className="text-blue-700 text-base font-semibold text-center">Verify to unlock Match Quality</span>
+                      </div>
+                    )}
+                    <CardContent className="space-y-4" style={verifyStatus !== "full" ? { filter: "blur(6px)", pointerEvents: "none", userSelect: "none" } : {}}>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="flex items-center gap-1">
                             <span className="w-2 h-2 rounded-full bg-green-500"></span>
                             Excellent (90%+)
                           </span>
-                          <span className="font-medium">-</span>
+                          <span className="font-medium">{matchQualityCounts.excellent}</span>
                         </div>
-                        <LinearProgress variant="determinate" value={0} className="h-2" />
+                        <LinearProgress variant="determinate" value={matchQualityCounts.excellent} className="h-2" />
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
@@ -696,9 +712,9 @@ export default function EmployerJobOverview({ selectedJob, onClose, onSuccess, i
                             <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                             Good (70-89%)
                           </span>
-                          <span className="font-medium">-</span>
+                          <span className="font-medium">{matchQualityCounts.good}</span>
                         </div>
-                        <LinearProgress variant="determinate" value={0} className="h-2" />
+                        <LinearProgress variant="determinate" value={matchQualityCounts.good} className="h-2" />
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
@@ -706,9 +722,9 @@ export default function EmployerJobOverview({ selectedJob, onClose, onSuccess, i
                             <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
                             Fair (50-69%)
                           </span>
-                          <span className="font-medium">-</span>
+                          <span className="font-medium">{matchQualityCounts.fair}</span>
                         </div>
-                        <LinearProgress variant="determinate" value={0} className="h-2" />
+                        <LinearProgress variant="determinate" value={matchQualityCounts.fair} className="h-2" />
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
@@ -716,61 +732,10 @@ export default function EmployerJobOverview({ selectedJob, onClose, onSuccess, i
                             <span className="w-2 h-2 rounded-full bg-red-500"></span>
                             Poor (Below 50%)
                           </span>
-                          <span className="font-medium">-</span>
+                          <span className="font-medium">{matchQualityCounts.poor}</span>
                         </div>
-                        <LinearProgress variant="determinate" value={0} className="h-2" />
+                        <LinearProgress variant="determinate" value={matchQualityCounts.poor} className="h-2" />
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Quick Actions</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
-                        <span>
-                          <Button
-                            className="w-full justify-start text-blue-600 hover:text-blue-900"
-                            variant="outline"
-                            disabled={isArchived}
-                            tabIndex={isArchived ? -1 : 0}
-                            aria-disabled={isArchived}
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            Download Applicant CSV
-                          </Button>
-                        </span>
-                      </MuiTooltip>
-                      <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
-                        <span>
-                          <Button
-                            className="w-full justify-start text-blue-600 hover:text-blue-900"
-                            variant="outline"
-                            onClick={isArchived ? undefined : handleViewAnalytics}
-                            disabled={isArchived}
-                            tabIndex={isArchived ? -1 : 0}
-                            aria-disabled={isArchived}
-                          >
-                            <BarChart3 className="h-4 w-4 mr-2" />
-                            View Full Analytics
-                          </Button>
-                        </span>
-                      </MuiTooltip>
-                      <MuiTooltip title={isArchived ? "Disabled because this job is archived" : ""}>
-                        <span>
-                          <Button
-                            className="w-full justify-start text-blue-600 hover:text-blue-900"
-                            variant="outline"
-                            disabled={isArchived}
-                            tabIndex={isArchived ? -1 : 0}
-                            aria-disabled={isArchived}
-                          >
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Message All Applicants
-                          </Button>
-                        </span>
-                      </MuiTooltip>
                     </CardContent>
                   </Card>
                 </div>

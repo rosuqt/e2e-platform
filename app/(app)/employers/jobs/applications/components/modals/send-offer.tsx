@@ -1,5 +1,5 @@
 "use client"
-import { useState, forwardRef, useEffect } from "react"
+import { useState, forwardRef, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,7 @@ import {
   Checkbox,
   ListItemText,
   Avatar,
-  CircularProgress,
-  Autocomplete,
+  CircularProgress
 } from "@mui/material"
 import type { SlideProps } from "@mui/material"
 import Lottie from "lottie-react"
@@ -82,22 +81,14 @@ function SendOfferModal({
   editMode,
   onOfferSent
 }: SendOfferModalProps & { onOfferSent?: (application_id: string) => void }) {
-  const jobPost = initial?.job_postings
-  const [salary, setSalary] = useState(() => {
-    if (initial?.salary) return initial.salary;
-    if (
-      jobPost?.pay_amount === "" ||
-      (jobPost?.pay_amount && jobPost.pay_amount.trim().toLowerCase() === "no pay")
-    ) return "No pay";
-    return jobPost?.pay_amount ?? "";
-  })
+  const [salary, setSalary] = useState("")
   const [startDate, setStartDate] = useState(initial?.start_date ?? "")
   const [notes] = useState(initial?.notes ?? "")
   const [saving, setSaving] = useState(false)
-  const [employmentType, setEmploymentType] = useState(initial?.employment_type ?? jobPost?.work_type ?? "Full-time")
-  const [workSetup, setWorkSetup] = useState(initial?.work_setup ?? jobPost?.remote_options ?? "Onsite")
+  const [employmentType, setEmploymentType] = useState(initial?.employment_type ?? "Full-time")
+  const [workSetup, setWorkSetup] = useState(initial?.work_setup ?? "Onsite")
   const [workSchedule, setWorkSchedule] = useState(initial?.work_schedule ?? "")
-  const [salaryType, setSalaryType] = useState(initial?.salary_type ?? jobPost?.pay_type ?? "Monthly")
+  const [salaryType, setSalaryType] = useState("Monthly")
   const [bonuses, setBonuses] = useState<string[]>(
     initial?.bonuses
       ? initial.bonuses.split(",").map(s => s.trim()).filter(Boolean)
@@ -108,12 +99,11 @@ function SendOfferModal({
       ? initial.allowances.split(",").map(s => s.trim()).filter(Boolean)
       : []
   );
-  const [benefits, setBenefits] = useState(initial?.benefits ?? jobPost?.perks_and_benefits ?? [])
+  const [benefits, setBenefits] = useState(initial?.benefits ?? [])
   const [offerExpiry, setOfferExpiry] = useState(initial?.offer_expiry ?? "")
   const [customMessage, setCustomMessage] = useState(initial?.custom_message ?? "")
   const [contractFile, setContractFile] = useState<File | null>(null)
   const [salaryError, setSalaryError] = useState<string | null>(null)
-  const [showBenefits, setShowBenefits] = useState(false)
   const [success, setSuccess] = useState(false)
   const [checkingMode, setCheckingMode] = useState(true)
 
@@ -150,6 +140,14 @@ function SendOfferModal({
     { label: "8:00 AM–6:00 PM", start: "08:00", end: "18:00" },
     { label: "10:00 AM–7:00 PM", start: "10:00", end: "19:00" }
   ]
+
+  const salarySuggestions: Record<string, string[]> = {
+    Monthly: ["₱8,000", "₱10,000", "₱12,000", "₱15,000", "₱20,000"],
+    Annual: ["₱100,000", "₱150,000", "₱200,000", "₱250,000", "₱300,000"],
+    Weekly: ["₱2,000", "₱2,500", "₱3,000", "₱4,000"],
+    Daily: ["₱400", "₱500", "₱600", "₱800"],
+    Hourly: ["₱50", "₱75", "₱100", "₱150"]
+  }
 
   const validate = () => {
     let valid = true
@@ -218,8 +216,8 @@ function SendOfferModal({
         custom_message: customMessage,
         contract_file_url
       }
-      if (initial && (initial as { id?: string }).id) {
-        payload.id = (initial as { id?: string }).id
+      if (initial?.id) {
+        payload.id = initial.id
       }
       const res = await fetch("/api/employers/applications/postJobOffer", {
         method: "POST",
@@ -279,77 +277,104 @@ function SendOfferModal({
     if (
       salary !== (initial?.salary ?? "") ||
       startDate !== (initial?.start_date ?? "") ||
-      employmentType !== (initial?.employment_type ?? jobPost?.work_type ?? "Full-time") ||
-      workSetup !== (initial?.work_setup ?? jobPost?.remote_options ?? "Onsite") ||
+      employmentType !== (initial?.employment_type ?? "Full-time") ||
+      workSetup !== (initial?.work_setup ?? "Onsite") ||
       workSchedule !== (initial?.work_schedule ?? "") ||
-      salaryType !== (initial?.salary_type ?? jobPost?.pay_type ?? "Monthly") ||
+      salaryType !== (initial?.salary_type ?? "Monthly") ||
       offerExpiry !== (initial?.offer_expiry ?? "") ||
       customMessage !== (initial?.custom_message ?? "") ||
       bonuses.join(", ") !== (initial?.bonuses ?? "") ||
       allowances.join(", ") !== (initial?.allowances ?? "") ||
-      JSON.stringify([...benefitOptions.filter(opt => selectedBenefitIds.includes(opt.id)).map(opt => opt.label), ...benefits]) !== JSON.stringify(initial?.benefits ?? jobPost?.perks_and_benefits ?? [])
+      JSON.stringify([...benefitOptions.filter(opt => selectedBenefitIds.includes(opt.id)).map(opt => opt.label), ...benefits]) !== JSON.stringify(initial?.benefits ?? [])
     ) return false
     return true
   }
 
+
+  const handleViewContract = async () => {
+    if (!initial?.contract_file_url) return
+    try {
+      const url = initial.contract_file_url
+      const parts = url.split("/storage/v1/object/public/")
+      if (parts.length < 2) return window.open(url, "_blank")
+      const [bucket, ...pathArr] = parts[1].split("/")
+      const path = pathArr.join("/")
+      const res = await fetch("/api/employers/get-signed-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bucket, path })
+      })
+      const data = await res.json()
+      if (data.signedUrl) {
+        window.open(data.signedUrl, "_blank")
+      } else {
+        window.open(url, "_blank")
+      }
+    } catch {
+      window.open(initial.contract_file_url, "_blank")
+    }
+  }
+
+  const prevOpen = useRef<boolean>(false)
+  const prevInitialId = useRef<string | undefined>(undefined)
+
   useEffect(() => {
-    if (initial?.salary) {
-      setSalary(initial.salary);
-    } else if (
-      jobPost?.pay_amount === "" ||
-      (jobPost?.pay_amount && jobPost.pay_amount.trim().toLowerCase() === "no pay")
-    ) {
-      setSalary("No pay");
-    } else {
-      setSalary(jobPost?.pay_amount ?? "");
-    }
-    setEmploymentType(initial?.employment_type ?? jobPost?.work_type ?? "Full-time")
-    setWorkSetup(initial?.work_setup ?? jobPost?.remote_options ?? "Onsite")
-    setSalaryType(initial?.salary_type ?? jobPost?.pay_type ?? "Monthly")
-    setOfferExpiry(initial?.offer_expiry ?? "")
-    setCustomMessage(initial?.custom_message ?? "")
-    setStartDate(initial?.start_date ?? "")
-    setWorkSchedule(initial?.work_schedule ?? "")
-    const incomingBenefits = initial?.benefits ?? jobPost?.perks_and_benefits ?? []
-    const mappedIds = benefitOptions
-      .filter(opt => incomingBenefits.includes(opt.label) || incomingBenefits.includes(opt.id))
-      .map(opt => opt.id)
-    setSelectedBenefitIds(mappedIds)
-    setBenefits(incomingBenefits.filter(b => !benefitOptions.some(opt => opt.label === b || opt.id === b)))
-    setBonuses(
-      initial?.bonuses
-        ? initial.bonuses.split(",").map(s => s.trim()).filter(Boolean)
-        : []
-    );
-    setAllowances(
-      initial?.allowances
-        ? initial.allowances.split(",").map(s => s.trim()).filter(Boolean)
-        : []
-    );
-    if (initial?.work_schedule) {
-      const [days, times] = initial.work_schedule.split(",")
-      if (days) {
-        if (days.includes("–")) {
-          const [startDay, endDay] = days.split("–").map(d => d.trim())
-          const startIdx = daysOfWeek.indexOf(startDay)
-          const endIdx = daysOfWeek.indexOf(endDay)
-          if (startIdx !== -1 && endIdx !== -1) {
-            setSelectedDays(daysOfWeek.slice(startIdx, endIdx + 1))
+    const shouldReset =
+      (!prevOpen.current && open) ||
+      (open && initial?.id && prevInitialId.current !== initial.id)
+    if (shouldReset) {
+      setSalary(initial?.salary ?? "")
+      setEmploymentType(initial?.employment_type ?? "Full-time")
+      setWorkSetup(initial?.work_setup ?? "Onsite")
+      setSalaryType(initial?.salary_type ?? "Monthly")
+      setOfferExpiry(initial?.offer_expiry ?? "")
+      setCustomMessage(initial?.custom_message ?? "")
+      setStartDate(initial?.start_date ?? "")
+      setWorkSchedule(initial?.work_schedule ?? "")
+      setBonuses(
+        initial?.bonuses
+          ? initial.bonuses.split(",").map(s => s.trim()).filter(Boolean)
+          : []
+      )
+      setAllowances(
+        initial?.allowances
+          ? initial.allowances.split(",").map(s => s.trim()).filter(Boolean)
+          : []
+      )
+      const incomingBenefits = initial?.benefits ?? []
+      const mappedIds = benefitOptions
+        .filter(opt => incomingBenefits.includes(opt.label) || incomingBenefits.includes(opt.id))
+        .map(opt => opt.id)
+      setSelectedBenefitIds(mappedIds)
+      setBenefits(incomingBenefits.filter(b => !benefitOptions.some(opt => opt.label === b || opt.id === b)))
+      if (initial?.work_schedule) {
+        const [days, times] = initial.work_schedule.split(",")
+        if (days) {
+          if (days.includes("–")) {
+            const [startDay, endDay] = days.split("–").map(d => d.trim())
+            const startIdx = daysOfWeek.indexOf(startDay)
+            const endIdx = daysOfWeek.indexOf(endDay)
+            if (startIdx !== -1 && endIdx !== -1) {
+              setSelectedDays(daysOfWeek.slice(startIdx, endIdx + 1))
+            }
+          } else {
+            setSelectedDays(days.split("/").map(d => d.trim()))
           }
-        } else {
-          setSelectedDays(days.split("/").map(d => d.trim()))
         }
-      }
-      if (times) {
-        const [start, end] = times.split("–").map(t => t.trim())
-        setStartTime(start || "")
-        setEndTime(end || "")
+        if (times) {
+          const [start, end] = times.split("–").map(t => t.trim())
+          setStartTime(start || "")
+          setEndTime(end || "")
+        }
+      } else {
+        setSelectedDays([])
+        setStartTime("")
+        setEndTime("")
       }
     }
-    setTimeout(() => {
-      setWorkSetup(val => val ? val : "Onsite")
-    }, 0)
-  }, [initial, jobPost])
+    prevOpen.current = open
+    prevInitialId.current = initial?.id
+  }, [open, initial])
 
   useEffect(() => {
     if (selectedDays.length && startTime && endTime) {
@@ -359,9 +384,11 @@ function SendOfferModal({
   }, [selectedDays, startTime, endTime])
 
   useEffect(() => {
-    setCheckingMode(true)
-    setTimeout(() => setCheckingMode(false), 400)
-  }, [initial, editMode])
+    if (open) {
+      setCheckingMode(true)
+      setTimeout(() => setCheckingMode(false), 400)
+    }
+  }, [open])
 
   if (checkingMode) {
     return (
@@ -433,6 +460,15 @@ function SendOfferModal({
               : "Congratulations! Your offer is on its way. We hope this is the start of something amazing for both of you."
             }
           </Typography>
+          {initial?.contract_file_url && (
+            <Button
+              variant="outlined"
+              sx={{ mt: 3, color: "#22c55e", borderColor: "#22c55e", fontWeight: 500, fontSize: 15, background: "#fff", '&:hover': { borderColor: "#16a34a", background: "#dcfce7" } }}
+              onClick={handleViewContract}
+            >
+              View Contract
+            </Button>
+          )}
         </DialogContent>
         <Box sx={{ px: 3, pb: 3, pt: 0, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 2 }}>
           <Button onClick={handleClose} variant="outlined" sx={{ color: "#16a34a", borderColor: "#16a34a", fontWeight: 600, fontSize: 16, background: "#fff", borderRadius: 2, px: 4, '&:hover': { borderColor: "#166534", background: "#f1f5f9" } }}>Close</Button>
@@ -441,20 +477,6 @@ function SendOfferModal({
     )
   }
 
-  const bonusSuggestions = [
-    "Performance Bonus",
-    "Completion Bonus",
-    "Referral Bonus",
-    "Sales Commission",
-    "Attendance Bonus"
-  ];
-  const allowanceSuggestions = [
-    "Meal Allowance",
-    "Transportation Allowance",
-    "Internet Allowance",
-    "Uniform Allowance",
-    "Housing Allowance"
-  ];
 
   return (
     <Dialog
@@ -649,24 +671,19 @@ function SendOfferModal({
                 variant="outlined"
                 sx={{ background: "#fff", borderRadius: 2, mb: 1, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
                 renderValue={selected => selected ? selected : "Enter or select salary offer"}
-                MenuProps={{ PaperProps: { style: { maxHeight: 200 } } }}
+                MenuProps={{ PaperProps: { style: { maxHeight: 300 } } }}
               >
-                {jobPost?.pay_amount &&
-                  jobPost.pay_amount.trim().toLowerCase() !== "no pay" &&
-                  jobPost.pay_amount !== "" && (
-                    <MenuItem value={jobPost.pay_amount}>
-                      {jobPost.pay_amount}
-                    </MenuItem>
-                )}
                 <MenuItem value="">
                   Custom...
                 </MenuItem>
-                {(jobPost?.pay_amount === "" ||
-                  (jobPost?.pay_amount && jobPost.pay_amount.trim().toLowerCase() === "no pay")) && (
+                {(/ojt|internship/i.test(employmentType)) && (
                   <MenuItem value="No pay">
                     No pay
                   </MenuItem>
                 )}
+                {salarySuggestions[salaryType]?.map(val => (
+                  <MenuItem key={val} value={val}>{val}</MenuItem>
+                ))}
               </Select>
 
               {salary === "" && (
@@ -682,96 +699,39 @@ function SendOfferModal({
                   style={{ marginTop: 8 }}
                 />
               )}
-            </Box>
-            <Box sx={{ width: 180 }}>
-              <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#22c55e" }}>
-                Salary Type
-              </Typography>
-              <Select
-                fullWidth
-                value={salaryType}
-                onChange={e => setSalaryType(e.target.value)}
-                variant="outlined"
-                sx={{ background: "#fff", borderRadius: 2, mb: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
-              >
-                <MenuItem value="Monthly">Monthly</MenuItem>
-                <MenuItem value="Annual">Annual</MenuItem>
-                <MenuItem value="Weekly"></MenuItem>           
-                <MenuItem value="Daily">Daily</MenuItem>
-                <MenuItem value="Hourly">Hourly</MenuItem>
-              </Select>
-            </Box>
-          </Box>
-          <Box sx={{ mb: 3 }}>
-            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#22c55e" }}>
-              Bonuses / Commissions
-            </Typography>
-            <Autocomplete
-              multiple
-              freeSolo
-              options={bonusSuggestions}
-              value={bonuses}
-              onChange={(_, value) => setBonuses(value)}
-              renderInput={params => (
+              {salary !== "" && (
                 <TextField
-                  {...params}
                   fullWidth
+                  value={salary}
+                  onChange={e => setSalary(e.target.value)}
+                  error={!!salaryError}
+                  helperText={salaryError}
                   variant="outlined"
-                  placeholder="Add bonuses or commissions (optional)"
-                  sx={{ background: "#fff", borderRadius: 2, mb: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
+                  sx={{ background: "#fff", borderRadius: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 }, mt: 1 }}
                 />
               )}
-            />
-          </Box>
-          <Box sx={{ mb: 3 }}>
-            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#22c55e" }}>
-              Other Allowances
-            </Typography>
-            <Autocomplete
-              multiple
-              freeSolo
-              options={allowanceSuggestions}
-              value={allowances}
-              onChange={(_, value) => setAllowances(value)}
-              renderInput={params => (
-                <TextField
-                  {...params}
-                  fullWidth
-                  variant="outlined"
-                  placeholder="Add other allowances (optional)"
-                  sx={{ background: "#fff", borderRadius: 2, mb: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
-                />
-              )}
-            />
-          </Box>
-          <Box sx={{ mb: 3 }}>
-            <Button onClick={() => setShowBenefits(v => !v)} sx={{ mb: 1, color: '#22c55e', fontWeight: 500, fontSize: 15 }}>
-              {showBenefits ? 'Hide Benefits' : 'Show Benefits'}
-            </Button>
-            {showBenefits && (
-              <Box sx={{ border: '1px solid #dcfce7', borderRadius: 2, p: 2, background: '#fff' }}>
-                <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: '#22c55e' }}>
-                  Benefits
+            </Box>
+            {salary !== "No pay" && (
+              <Box sx={{ width: 180 }}>
+                <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#22c55e" }}>
+                  Salary Type
                 </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-                  {benefitOptions.map(opt => (
-                    <Button
-                      key={opt.id}
-                      variant={selectedBenefitIds.includes(opt.id) ? 'contained' : 'outlined'}
-                      onClick={() => setSelectedBenefitIds(ids => ids.includes(opt.id) ? ids.filter(x => x !== opt.id) : [...ids, opt.id])}
-                      sx={{ color: selectedBenefitIds.includes(opt.id) ? '#fff' : '#22c55e', background: selectedBenefitIds.includes(opt.id) ? '#22c55e' : '#fff', borderColor: '#22c55e', fontWeight: 500, fontSize: 14, display: 'flex', alignItems: 'center', gap: 1 }}
-                    >
-                      {opt.label}
-                    </Button>
-                  ))}
-                </Box>
-           
+                <Select
+                  fullWidth
+                  value={salaryType}
+                  onChange={e => setSalaryType(e.target.value)}
+                  variant="outlined"
+                  sx={{ background: "#fff", borderRadius: 2, mb: 2, fontSize: 15, "& .MuiOutlinedInput-root": { fontSize: 15 } }}
+                >
+                  <MenuItem value="Monthly">Monthly</MenuItem>
+                  <MenuItem value="Annual">Annual</MenuItem>
+                  <MenuItem value="Weekly">Weekly</MenuItem>
+                  <MenuItem value="Daily">Daily</MenuItem>
+                  <MenuItem value="Hourly">Hourly</MenuItem>
+                </Select>
               </Box>
             )}
           </Box>
-          <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#16a34a', mb: 2 }}>
-            Offer Terms
-          </Typography>
           <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
             <Box sx={{ flex: 1 }}>
               <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#22c55e" }}>
@@ -836,6 +796,25 @@ function SendOfferModal({
                 }}
               />
             </Button>
+            {editMode && initial?.contract_file_url && (
+              <Box sx={{ mt: 1 }}>
+                <span
+                  style={{
+                    color: "#22c55e",
+                    textDecoration: "underline",
+                    cursor: "pointer",
+                    fontWeight: 500,
+                    fontSize: 15,
+                    background: "none",
+                    border: "none",
+                    padding: 0
+                  }}
+                  onClick={handleViewContract}
+                >
+                  {initial.contract_file_url.split("/").pop()}
+                </span>
+              </Box>
+            )}
           </Box>
           <Box sx={{ display: "flex", gap: 2, pt: 2 }}>
             <Button

@@ -360,8 +360,19 @@ function JobListings({
       fetch("/api/job-listings/drafts").then(res => res.json()),
       fetch("/api/job-listings/archived").then(res => res.json())
     ]).then(([jobsData, draftsData, archivedData]) => {
-      setJobs(Array.isArray(jobsData) ? jobsData : jobsData.data || [])
-      
+      const mappedJobs: EmployerJobCardJob[] = Array.isArray(jobsData)
+        ? jobsData.map((job: Record<string, unknown>) => ({
+            ...job,
+            tags: Array.isArray(job.tags) ? job.tags : [],
+          }))
+        : Array.isArray(jobsData.data)
+        ? jobsData.data.map((job: Record<string, unknown>) => ({
+            ...job,
+            tags: Array.isArray(job.tags) ? job.tags : [],
+          }))
+        : [];
+      setJobs(mappedJobs);
+
       const mappedDrafts: EmployerJobCardJob[] = Array.isArray(draftsData.data)
         ? draftsData.data.map((draft: Record<string, unknown>) => ({
             id: String(draft.id),
@@ -374,17 +385,25 @@ function JobListings({
             recommended_course: typeof draft.recommended_course === "string" ? draft.recommended_course : undefined,
             paused: false,
             companyName: undefined,
+            tags: Array.isArray(draft.tags) ? draft.tags : [],
           }))
-        : []
-      setDrafts(mappedDrafts)
-      
-      setArchivedJobs(Array.isArray(archivedData.data) ? archivedData.data : [])
-      setLoading(false)
+        : [];
+      setDrafts(mappedDrafts);
+
+      const mappedArchived: EmployerJobCardJob[] = Array.isArray(archivedData.data)
+        ? archivedData.data.map((job: Record<string, unknown>) => ({
+            ...job,
+            tags: Array.isArray(job.tags) ? job.tags : [],
+          }))
+        : [];
+      setArchivedJobs(mappedArchived);
+
+      setLoading(false);
     }).catch(() => {
-      setJobs([])
-      setDrafts([])
-      setArchivedJobs([])
-      setLoading(false)
+      setJobs([]);
+      setDrafts([]);
+      setArchivedJobs([]);
+      setLoading(false);
     })
   }, []);
 
@@ -456,7 +475,7 @@ function JobListings({
       activeTab === "all"
         ? status === "active" || status === "paused" || status === "closed"
         : status === activeTab
-    
+
     let matchesLocation = true
     if (locationFilter !== "All job types") {
       if (locationFilter.toLowerCase() === "internship") {
@@ -469,10 +488,11 @@ function JobListings({
     let matchesSearch = true
     if (debouncedSearchTerm.trim()) {
       const searchLower = debouncedSearchTerm.toLowerCase()
-      matchesSearch = 
+      matchesSearch =
         (job.title?.toLowerCase().includes(searchLower) ?? false) ||
         (job.type?.toLowerCase().includes(searchLower) ?? false) ||
-        (job.companyName?.toLowerCase().includes(searchLower) ?? false)
+        (job.companyName?.toLowerCase().includes(searchLower) ?? false) ||
+        (Array.isArray(job.tags) && job.tags.some(tag => tag.name.toLowerCase().includes(searchLower)))
     }
 
     return matchesTab && matchesLocation && matchesSearch
@@ -492,9 +512,10 @@ function JobListings({
     let matchesSearch = true
     if (debouncedSearchTerm.trim()) {
       const searchLower = debouncedSearchTerm.toLowerCase()
-      matchesSearch = 
+      matchesSearch =
         (job.title?.toLowerCase().includes(searchLower) ?? false) ||
-        (job.type?.toLowerCase().includes(searchLower) ?? false)
+        (job.type?.toLowerCase().includes(searchLower) ?? false) ||
+        (Array.isArray(job.tags) && job.tags.some(tag => tag.name.toLowerCase().includes(searchLower)))
     }
 
     return matchesLocation && matchesSearch
@@ -581,10 +602,21 @@ function JobListings({
         fetch("/api/job-listings/drafts"),
         fetch("/api/job-listings/archived")
       ])
-      
+
       const jobsData = await jobsRes.json()
-      setJobs(Array.isArray(jobsData) ? jobsData : jobsData.data || [])
-      
+      const mappedJobs: EmployerJobCardJob[] = Array.isArray(jobsData)
+        ? jobsData.map((job: Record<string, unknown>) => ({
+            ...job,
+            tags: Array.isArray(job.tags) ? job.tags : [],
+          }))
+        : Array.isArray(jobsData.data)
+        ? jobsData.data.map((job: Record<string, unknown>) => ({
+            ...job,
+            tags: Array.isArray(job.tags) ? job.tags : [],
+          }))
+        : [];
+      setJobs(mappedJobs);
+
       const draftsData = await draftsRes.json()
       const mappedDrafts: EmployerJobCardJob[] = Array.isArray(draftsData.data)
         ? draftsData.data.map((draft: Record<string, unknown>) => ({
@@ -598,12 +630,19 @@ function JobListings({
             recommended_course: typeof draft.recommended_course === "string" ? draft.recommended_course : undefined,
             paused: false,
             companyName: undefined,
+            tags: Array.isArray(draft.tags) ? draft.tags : [],
           }))
-        : []
-      setDrafts(mappedDrafts)
-      
+        : [];
+      setDrafts(mappedDrafts);
+
       const archivedData = await archivedRes.json()
-      setArchivedJobs(Array.isArray(archivedData.data) ? archivedData.data : [])
+      const mappedArchived: EmployerJobCardJob[] = Array.isArray(archivedData.data)
+        ? archivedData.data.map((job: Record<string, unknown>) => ({
+            ...job,
+            tags: Array.isArray(job.tags) ? job.tags : [],
+          }))
+        : [];
+      setArchivedJobs(mappedArchived);
     } catch (error) {
       console.error("Error refetching data:", error)
     } finally {
@@ -690,7 +729,7 @@ function JobListings({
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   type="text"
-                  placeholder="Search job title or keywords"
+                  placeholder="Search job title, tags or keywords"
                   className="pl-10 border-blue-200 focus-visible:ring-blue-500 bg-white text-black pr-10"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}

@@ -1,0 +1,137 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { NextResponse } from "next/server";
+import { getAdminSupabase } from "@/lib/supabase";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../../lib/authOptions";
+
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => ({} as any));
+  let employerId = body?.employer_id;
+
+  if (!employerId) {
+    const session = await getServerSession(authOptions);
+    employerId = (session?.user as { employerId?: string })?.employerId;
+  }
+
+  if (!employerId) {
+    return NextResponse.json({ error: "Missing employer_id" }, { status: 400 });
+  }
+
+  const supabase = getAdminSupabase();
+
+  const { data: jobs, error: jobsError } = await supabase
+    .from("job_postings")
+    .select("id,job_title")
+    .eq("employer_id", employerId);
+
+  if (jobsError) {
+    return NextResponse.json({ error: jobsError.message }, { status: 500 });
+  }
+
+  const jobIds = Array.isArray(jobs) ? jobs.map((j: any) => j.id).filter(Boolean) : [];
+  if (!jobIds.length) {
+    return NextResponse.json({ candidates: [] });
+  }
+
+  const { data: matches, error: matchesError } = await supabase
+    .from("job_matches")
+    .select("student_id, job_id, gpt_score, last_scored_at")
+    .in("job_id", jobIds)
+    .gte("gpt_score", 40);
+
+  if (matchesError) {
+    return NextResponse.json({ error: matchesError.message }, { status: 500 });
+  }
+
+  const studentIds = Array.isArray(matches) ? matches.map((m: any) => m.student_id).filter(Boolean) : [];
+  if (!studentIds.length) {
+    return NextResponse.json({ candidates: [] });
+  }
+
+  const { data: students, error: studentsError } = await supabase
+    .from("registered_students")
+    .select("id, email, first_name, last_name, year, section, course, address, is_alumni, user_id, student_profile(profile_img,cover_image)")
+    .in("id", studentIds);
+
+  if (studentsError) {
+    return NextResponse.json({ error: studentsError.message }, { status: 500 });
+  }
+
+  const studentsMap = Array.isArray(students) ? Object.fromEntries(students.map((s: any) => [s.id, s])) : {};
+
+  function parseAddressField(address: unknown): string[] {
+    if (Array.isArray(address)) return address as string[]
+    if (typeof address === "string") {
+      try {
+        const arr = JSON.parse(address)
+        if (Array.isArray(arr)) return arr as string[]
+        return address.split(",").map(s => s.trim()).filter(Boolean)
+      } catch {
+        return address.split(",").map(s => s.trim()).filter(Boolean)
+      }
+    }
+    if (address && typeof address === "object" && address !== null) {
+      const values = Object.values(address as object)
+      if (values.every(v => typeof v === "string")) return values as string[]
+    }
+    return []
+  }
+
+  const results = await Promise.all(
+    matches.map(async (m: any) => {
+      const student = studentsMap[m.student_id] || {};
+      let profileImgUrl = "";
+      let coverImgUrl = "";
+      const imgPath = student?.student_profile?.profile_img;
+      const coverPath = student?.student_profile?.cover_image;
+      if (imgPath) {
+        const { data } = await supabase.storage
+          .from("user.avatars")
+          .createSignedUrl(imgPath, 60 * 60);
+        if (data?.signedUrl) profileImgUrl = data.signedUrl;
+      }
+      if (coverPath) {
+        const { data } = await supabase.storage
+          .from("user.covers")
+          .createSignedUrl(coverPath, 60 * 60);
+        if (data?.signedUrl) coverImgUrl = data.signedUrl;
+      }
+
+      let applicationStatus = "";
+      const { data: appData } = await supabase
+        .from("applications")
+        .select("status")
+        .eq("student_id", m.student_id)
+        .eq("job_id", m.job_id)
+        .single();
+      if (appData?.status) applicationStatus = appData.status;
+
+      return {
+        student_id: m.student_id,
+        job_id: m.job_id,
+        gpt_score: m.gpt_score,
+        last_scored_at: m.last_scored_at,
+        first_name: student.first_name || "",
+        last_name: student.last_name || "",
+        email: student.email || "",
+        year: student.year || "",
+        section: student.section || "",
+        course: student.course || "",
+        address: (() => {
+          const arr = parseAddressField(student.address)
+          if (arr.length > 1) return arr[1]
+          if (arr.length === 1) return arr[0]
+          return ""
+        })(),
+        is_alumni: student.is_alumni || false,
+        user_id: student.user_id || "",
+        profile_img_url: profileImgUrl,
+        cover_img_url: coverImgUrl,
+        job_title: (jobs.find((j: any) => j.id === m.job_id)?.job_title) || "",
+        application_status: applicationStatus,
+      };
+    })
+  );
+
+  return NextResponse.json({ candidates: results });
+}

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 import React, { useEffect, useState, useRef } from "react"
 import { Bookmark, Bookmark as BookmarkFilled, Clock, Briefcase, Star, MapPin , Globe} from "lucide-react"
@@ -8,10 +9,15 @@ import { PiFileMagnifyingGlassBold } from "react-icons/pi"
 import { AiFillSmile, AiOutlineMeh } from "react-icons/ai"
 import { TbMoodConfuzed } from "react-icons/tb"
 import { SiStarship } from "react-icons/si"
-import { calculateSkillsMatch } from "../../../../../lib/match-utils"
 import { Tooltip, Badge } from "@mui/material"
-import { useSession } from "next-auth/react"
+import { useSession, signOut } from "next-auth/react"
 import Link from "next/link"
+import Lottie from "lottie-react"
+import blueLoaderAnimation from "../../../../../public/animations/blue_loader.json"
+import { HiBadgeCheck } from "react-icons/hi"
+import { BadgeCheck as LuBadgeCheck } from "lucide-react"
+import { styled } from "@mui/material/styles"
+import { tooltipClasses } from "@mui/material/Tooltip"
 
 const logoUrlCache: Record<string, string> = {}
 
@@ -32,6 +38,7 @@ interface Job {
   registered_employers?: {
     company_name?: string | null
     company_logo?: string | null
+    verify_status?: string | null
   } | null
   remote_options?: string | null
 }
@@ -49,6 +56,22 @@ type JobCardsProps = {
   }
 }
 
+const CustomTooltip = styled(Tooltip)(() => ({
+  [`& .${tooltipClasses.tooltip}`]: {
+    backgroundColor: "#fff",
+    color: "#222",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+    fontSize: 13,
+    borderRadius: 8,
+    padding: "8px 14px",
+    fontWeight: 500,
+    letterSpacing: 0.1,
+  },
+  [`& .${tooltipClasses.arrow}`]: {
+    color: "#fff",
+  },
+}))
+
 const JobCards: React.FC<JobCardsProps> = ({
   onSelectJob,
   selectedJob,
@@ -62,8 +85,7 @@ const JobCards: React.FC<JobCardsProps> = ({
   const [page, setPage] = useState(1)
   const [savedJobIds, setSavedJobIds] = useState<string[]>([])
   const [saving, setSaving] = useState<string | null>(null)
-  const [studentSkills, setStudentSkills] = useState<string[]>([])
-  const [jobSkillsMap, setJobSkillsMap] = useState<Record<string, string[]>>({})
+
   const [viewedJobs, setViewedJobs] = useState<Set<string>>(new Set())
   const [matchScores, setMatchScores] = useState<Record<string, number | null>>({})
   const [studentPrefs, setStudentPrefs] = useState<{ workTypes: string[], remoteOptions: string[] }>({ workTypes: [], remoteOptions: [] });
@@ -71,6 +93,8 @@ const JobCards: React.FC<JobCardsProps> = ({
   const pageSize = 8
   const firstCardRef = useRef<HTMLDivElement | null>(null)
   const { data: session } = useSession()
+  const jobsToHideRef = useRef<Set<string>>(new Set())
+  const [companyRatings, setCompanyRatings] = useState<Record<string, { rating: number, count: number }>>({})
 
   useEffect(() => {
     async function fetchAllJobs() {
@@ -84,6 +108,23 @@ const JobCards: React.FC<JobCardsProps> = ({
 
       while (hasMore) {
         const res = await fetch(`/api/students/job-listings?page=${page}&limit=${pageSize}`)
+        if (res.status === 401 || res.status === 400) {
+          try {
+            const data = await res.json()
+            if (
+              data &&
+              typeof data.message === "string" &&
+              data.message.toLowerCase().includes("invalidjwt")
+            ) {
+              await signOut({ redirect: false })
+              window.location.reload()
+              return
+            }
+          } catch {}
+          setError("Session expired. Please sign in again.")
+          setLoading(false)
+          return
+        }
         if (!res.ok) break
         const data = await res.json()
         const jobsArray = Array.isArray(data) ? data : Array.isArray(data.jobs) ? data.jobs : []
@@ -139,7 +180,7 @@ const JobCards: React.FC<JobCardsProps> = ({
   useEffect(() => {
     fetch("/api/students/job-listings/saved-jobs")
       .then(res => res.json())
-      .then(data => {
+      .then((data) => {
         if (Array.isArray(data.jobIds)) setSavedJobIds(data.jobIds.map(String))
       })
   }, [])
@@ -185,76 +226,82 @@ const JobCards: React.FC<JobCardsProps> = ({
     },
   }
 
-  const filteredJobs = jobs.filter((job: Job) => {
-    const matchesTitle =
-      !searchTitle ||
-      (job.job_title && job.job_title.toLowerCase().includes(searchTitle.toLowerCase()))
-    const matchesLocation =
-      !searchLocation ||
-      (job.location && job.location.toLowerCase().includes(searchLocation.toLowerCase()))
-    const matchesWorkType =
-      !filters.workType ||
-      (job.work_type && job.work_type.toLowerCase().includes(filters.workType.toLowerCase()))
-    const matchesRemoteOption =
-      !filters.remoteOption ||
-      (job.location && job.location.toLowerCase().includes(filters.remoteOption.toLowerCase())) ||
-      (job.remote_options && job.remote_options.toLowerCase().includes(filters.remoteOption.toLowerCase()))
-
-    let matchesListedAnytime = true
-    if (filters.listedAnytime && job.created_at) {
-      const now = Date.now()
-      const created = new Date(job.created_at).getTime()
-      if (filters.listedAnytime === "24h") {
-        matchesListedAnytime = created >= now - 24 * 60 * 60 * 1000
-      } else if (filters.listedAnytime === "7d") {
-        matchesListedAnytime = created >= now - 7 * 24 * 60 * 60 * 1000
-      } else if (filters.listedAnytime === "30d") {
-        matchesListedAnytime = created >= now - 30 * 24 * 60 * 60 * 1000
-      }
-    }
-
-    return matchesTitle && matchesLocation && matchesWorkType && matchesRemoteOption && matchesListedAnytime
-  })
-
   useEffect(() => {
-    fetch("/api/students/student-profile/getHandlers")
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data.skills)) setStudentSkills(data.skills)
-        else if (typeof data.skills === "string") {
-          try {
-            const arr = JSON.parse(data.skills)
-            if (Array.isArray(arr)) setStudentSkills(arr)
-            else setStudentSkills(
-              (data.skills as string).split(",").map((s: string) => s.trim()).filter((s: string) => !!s)
-            )
-          } catch {
-            setStudentSkills(
-              (data.skills as string).split(",").map((s: string) => s.trim()).filter((s: string) => !!s)
-            )
-          }
-        } else setStudentSkills([])
-      })
-      .catch(() => setStudentSkills([]))
-  }, [])
-
-  useEffect(() => {
-    async function fetchSkillsForJobs() {
-      const map: Record<string, string[]> = {}
-      await Promise.all(jobs.map(async (job) => {
-        if (!job.id) return
-        try {
-          const res = await fetch(`/api/jobs/${job.id}/skills`)
-          const json = await res.json()
-          map[job.id] = Array.isArray(json.skills) ? json.skills : []
-        } catch {
-          map[job.id] = []
-        }
-      }))
-      setJobSkillsMap(map)
+    if (!jobs.length) return
+    const standardJobs = jobs.filter(job => job.registered_employers?.verify_status === "standard")
+    const companyJobCounts: Record<string, number> = {}
+    for (const job of standardJobs) {
+      const company =
+        job.registered_employers?.company_name ||
+        job.employers?.company_name ||
+        [job.employers?.first_name, job.employers?.last_name].filter(Boolean).join(" ") ||
+        ""
+      if (!companyJobCounts[company]) companyJobCounts[company] = 0
+      companyJobCounts[company]++
     }
-    if (jobs.length > 0) fetchSkillsForJobs()
+    const jobsToHide: Set<string> = new Set()
+    for (const company in companyJobCounts) {
+      const jobsOfCompany = standardJobs.filter(job =>
+        (job.registered_employers?.company_name ||
+          job.employers?.company_name ||
+          [job.employers?.first_name, job.employers?.last_name].filter(Boolean).join(" ") ||
+          "") === company
+      )
+      let hideCount = Math.min(3, 1 + Math.floor(jobsOfCompany.length / 5))
+      if (jobsOfCompany.length > 10) hideCount = Math.min(5, Math.floor(jobsOfCompany.length / 3))
+      if (hideCount > jobsOfCompany.length) hideCount = jobsOfCompany.length
+      const shuffled = [...jobsOfCompany]
+        .map(j => j.id)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, hideCount)
+      shuffled.forEach(id => jobsToHide.add(String(id)))
+    }
+    jobsToHideRef.current = jobsToHide
   }, [jobs])
+
+  const filteredJobs = jobs
+    .filter((job: Job) => job.registered_employers?.verify_status !== "basic")
+    .filter((job: Job) => {
+      const matchesTitle =
+        !searchTitle ||
+        (job.job_title && job.job_title.toLowerCase().includes(searchTitle.toLowerCase()))
+      const matchesLocation =
+        !searchLocation ||
+        (job.location && job.location.toLowerCase().includes(searchLocation.toLowerCase()))
+      const matchesWorkType =
+        !filters.workType ||
+        (job.work_type && job.work_type.toLowerCase().includes(filters.workType.toLowerCase()))
+      const matchesRemoteOption =
+        !filters.remoteOption ||
+        (job.location && job.location.toLowerCase().includes(filters.remoteOption.toLowerCase())) ||
+        (job.remote_options && job.remote_options.toLowerCase().includes(filters.remoteOption.toLowerCase()))
+
+      let matchesListedAnytime = true
+      if (filters.listedAnytime && job.created_at) {
+        const now = Date.now()
+        const created = new Date(job.created_at).getTime()
+        if (filters.listedAnytime === "24h") {
+          matchesListedAnytime = created >= now - 24 * 60 * 60 * 1000
+        } else if (filters.listedAnytime === "7d") {
+          matchesListedAnytime = created >= now - 7 * 24 * 60 * 60 * 1000
+        } else if (filters.listedAnytime === "30d") {
+          matchesListedAnytime = created >= now - 30 * 24 * 60 * 60 * 1000
+        }
+      }
+
+      return matchesTitle && matchesLocation && matchesWorkType && matchesRemoteOption && matchesListedAnytime
+    })
+
+  const fullJobs = filteredJobs.filter(job => job.registered_employers?.verify_status === "full")
+  const standardJobs = filteredJobs.filter(job => job.registered_employers?.verify_status === "standard")
+  const visibleStandardJobs = standardJobs.filter(job => !jobsToHideRef.current.has(String(job.id)))
+  const jobsToDisplay = [
+    ...fullJobs,
+    ...visibleStandardJobs,
+  ]
+  const totalPages = Math.ceil(jobsToDisplay.length / pageSize)
+  const paginatedJobs = jobsToDisplay.slice((page - 1) * pageSize, page * pageSize)
+
 
   useEffect(() => {
     async function fetchMatchScores() {
@@ -270,7 +317,11 @@ const JobCards: React.FC<JobCardsProps> = ({
         const scores: Record<string, number | null> = {}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         data.matches.forEach((m: any) => {
-          scores[m.job_id] = typeof m.gpt_score === "number" ? m.gpt_score : null
+          if (typeof m.gpt_score === "number" && m.gpt_score > 5) {
+            scores[m.job_id] = m.gpt_score;
+          } else {
+            scores[m.job_id] = null;
+          }
         })
         setMatchScores(scores)
       }
@@ -284,10 +335,39 @@ const JobCards: React.FC<JobCardsProps> = ({
     return <TbMoodConfuzed color="#F44336" size={20} />
   }
 
+  useEffect(() => {
+    async function fetchRatings() {
+      const ratings: Record<string, { rating: number, count: number }> = {}
+      const companyIds = Array.from(
+        new Set(
+          jobs
+            .map(job => (job as any).company_id)
+            .filter(Boolean)
+        )
+      )
+      await Promise.all(
+        companyIds.map(async (companyId) => {
+          try {
+            
+            const res = await fetch(`/api/employers/fetchRatings/fetchCompanyAvg?companyId=${encodeURIComponent(companyId)}`)
+            if (res.ok) {
+              const data = await res.json()
+              if (typeof data.rating === "number" && typeof data.count === "number") {
+                ratings[companyId] = { rating: data.rating, count: data.count }
+              }
+            }
+          } catch {}
+        })
+      )
+      setCompanyRatings(ratings)
+    }
+    if (jobs.length) fetchRatings()
+  }, [jobs])
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-40">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-400 border-solid"></div>
+        <Lottie animationData={blueLoaderAnimation} loop className="w-20 h-20" />
       </div>
     )
   }
@@ -329,9 +409,6 @@ const JobCards: React.FC<JobCardsProps> = ({
     )
   }
 
-  const totalPages = Math.ceil(filteredJobs.length / pageSize)
-  const paginatedJobs = filteredJobs.slice((page - 1) * pageSize, page * pageSize)
-
   function JobCardLogo({ logoPath, fallback }: { logoPath?: string | null, fallback: React.ReactNode }) {
     const [logoUrl, setLogoUrl] = useState<string | null>(() => {
       const safeLogoPath = typeof logoPath === "string" ? logoPath : "";
@@ -346,6 +423,10 @@ const JobCards: React.FC<JobCardsProps> = ({
             if (parsed && typeof parsed === "object" && parsed.url && typeof parsed.url === "string") {
               logoUrlCache[safeLogoPath] = parsed.url;
               return parsed.url;
+            }
+            // Add: handle "notfound" marker
+            if (parsed && parsed.notfound) {
+              return null;
             }
           } catch {
             sessionStorage.removeItem(`companyLogoUrl:${safeLogoPath}`);
@@ -383,6 +464,12 @@ const JobCards: React.FC<JobCardsProps> = ({
             setLoadingLogo(false);
             return;
           }
+          // Add: handle "notfound" marker
+          if (parsed && parsed.notfound) {
+            setLogoUrl(null);
+            setLoadingLogo(false);
+            return;
+          }
         } catch {
           sessionStorage.removeItem(cacheKey);
         }
@@ -398,6 +485,14 @@ const JobCards: React.FC<JobCardsProps> = ({
               path: safeLogoPath,
             }),
           });
+          if (res.status === 401 || res.status === 400) {
+            // Cache notfound marker
+            if (typeof window !== "undefined")
+              sessionStorage.setItem(cacheKey, JSON.stringify({ notfound: true }));
+            setLogoUrl(null);
+            setLoadingLogo(false);
+            return;
+          }
           const json = await res.json();
           if (!ignore) {
             if (json.signedUrl && typeof json.signedUrl === "string") {
@@ -406,12 +501,18 @@ const JobCards: React.FC<JobCardsProps> = ({
                 sessionStorage.setItem(cacheKey, JSON.stringify({ url: json.signedUrl }));
               setLogoUrl(json.signedUrl);
             } else {
+              // Cache notfound marker
+              if (typeof window !== "undefined")
+                sessionStorage.setItem(cacheKey, JSON.stringify({ notfound: true }));
               setLogoUrl(null);
             }
             setLoadingLogo(false);
           }
         } catch {
           if (!ignore) {
+            // Cache notfound marker
+            if (typeof window !== "undefined")
+              sessionStorage.setItem(cacheKey, JSON.stringify({ notfound: true }));
             setLogoUrl(null);
             setLoadingLogo(false);
           }
@@ -513,12 +614,7 @@ const JobCards: React.FC<JobCardsProps> = ({
           } else {
             logoPath = undefined;
           }
-          const jobSkills = jobSkillsMap[job.id] || [];
-          const matchPercent = matchScores[job.id] ?? (
-            studentSkills.length > 0 && jobSkills.length > 0
-              ? calculateSkillsMatch(studentSkills, jobSkills)
-              : null
-          );
+          const matchPercent = matchScores[job.id] ?? null
           const matchedPrefs: string[] = [];
           const jobWorkType = (job.work_type || "").toLowerCase().trim();
           const jobRemoteOption = (job.remote_options || "").toLowerCase().trim();
@@ -528,6 +624,8 @@ const JobCards: React.FC<JobCardsProps> = ({
           if (studentPrefs.remoteOptions.length > 0 && studentPrefs.remoteOptions.includes(jobRemoteOption)) {
             matchedPrefs.push(job.remote_options || "");
           }
+          const companyId = (job as any).company_id
+          const ratingObj = companyId ? companyRatings[companyId] : undefined
           const card = (
             <motion.div
               key={job.id}
@@ -546,6 +644,7 @@ const JobCards: React.FC<JobCardsProps> = ({
                 boxShadow: "0 10px 15px -5px rgba(0, 0, 0, 0.1)",
               }}
               transition={{ duration: 0.2 }}
+              data-company-id={companyId}
             >
               <motion.button
                 className="absolute top-2 right-2 flex items-center justify-center w-12 h-12 rounded-full bg-transparent hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors duration-200 z-20"
@@ -617,21 +716,38 @@ const JobCards: React.FC<JobCardsProps> = ({
                       ? job.job_title.slice(0, 47) + "..."
                       : job.job_title}
                   </h3>
-                  <p className="text-sm text-blue-600">
+                  <p className="text-sm text-blue-600 flex items-center">
                     {job.employers
                       ? `${job.employers.first_name} ${job.employers.last_name}`
                       : "Unknown Employer"}
                     {job.registered_employers?.company_name
                       ? ` | ${job.registered_employers.company_name}`
                       : ""}
+                    {job.registered_employers?.verify_status === "full" ? (
+                      <CustomTooltip title="Fully verified and trusted company" arrow>
+                        <span style={{ display: "inline-flex", marginLeft: 8 }}>
+                          <HiBadgeCheck className="w-4 h-4 text-blue-600" />
+                        </span>
+                      </CustomTooltip>
+                    ) : job.registered_employers?.verify_status === "standard" ? (
+                      <CustomTooltip title="Partially verified, exercise some caution" arrow>
+                        <span style={{ display: "inline-flex", marginLeft: 8 }}>
+                          <LuBadgeCheck className="w-4 h-4" style={{ color: "#7c3aed" }} />
+                        </span>
+                      </CustomTooltip>
+                    ) : null}
                   </p>
                   <div className="flex items-center mt-1">
                     <div className="flex">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <Star key={star} size={14} className="text-yellow-400" fill="rgb(250 204 21)" />
+                        <Star key={star} size={14} className={ratingObj && ratingObj.rating >= star ? "text-yellow-400" : "text-gray-300"} fill={ratingObj && ratingObj.rating >= star ? "rgb(250 204 21)" : "none"} />
                       ))}
                     </div>
-                    <span className="text-xs ml-1 text-blue-500">{"4.5/5 (N/A)"}</span>
+                    <span className="text-xs ml-1 text-blue-500">
+                      {ratingObj
+                        ? `${ratingObj.rating.toFixed(1)}/5 (${ratingObj.count} rating${ratingObj.count === 1 ? "" : "s"})`
+                        : <span className="text-gray-400">No Ratings Yet</span>}
+                    </span>
                   </div>
                 </div>
               </div>

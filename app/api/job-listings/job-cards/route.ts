@@ -29,8 +29,6 @@ export async function GET() {
         location,
         remote_options,
         work_type,
-        pay_type,
-        pay_amount,
         recommended_course,
         job_description,
         job_summary,
@@ -56,7 +54,8 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message, details: error }, { status: 500 });
+      console.error("Supabase error:", error); // log error for debugging
+      return NextResponse.json({ error: error.message, details: error, supabaseHint: error.hint }, { status: 500 });
     }
 
     if (!Array.isArray(data)) {
@@ -123,8 +122,7 @@ export async function GET() {
           title: job.job_title ?? "",
           status,
           closing,
-          type: job.work_type ?? "",
-          salary: job.pay_amount != null ? String(job.pay_amount) : "",
+          type: job.work_type ?? "",  
           posted,
           recommended_course: job.recommended_course ?? "",
           paused: job.paused ?? false,
@@ -132,6 +130,7 @@ export async function GET() {
           total_applicants: stats.total_applicants,
           qualified_applicants: stats.qualified_applicants,
           interviews: stats.interviews,
+          tags: Array.isArray(job.tags) ? job.tags : [],
         };
       });
 

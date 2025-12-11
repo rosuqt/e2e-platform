@@ -48,13 +48,16 @@ import { Dialog,  DialogContent, DialogHeader, DialogTitle, DialogDescription, D
 import { RiCalendarScheduleLine, RiEmotionSadLine } from "react-icons/ri"
 import { LuCalendarCog } from "react-icons/lu"
 import { FaHandHoldingUsd, FaRegCalendarTimes, FaUserCheck } from "react-icons/fa"
-import { FaCalendarCheck, FaHandHoldingDollar, FaRegFolderOpen } from "react-icons/fa6"
+import { FaCalendarCheck, FaRegFolderOpen } from "react-icons/fa6"
 import { calculateSkillsMatch } from "../../../../../../lib/match-utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { BsMailbox2Flag } from "react-icons/bs"
 import { LuSquarePen } from "react-icons/lu"
 import { TbMailStar } from "react-icons/tb"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
+import TopHighestMatchApplicants from "./topHighest"
+import { IoCalendarSharp } from "react-icons/io5"
 
 type JobPosting = {
   job_title?: string
@@ -93,6 +96,7 @@ type Applicant = {
   perks_and_benefits?: string[]
   location?: string
   is_invited?: boolean
+  gpt_score?: number
 }
 
 function Pagination({
@@ -198,6 +202,7 @@ function Pagination({
 const capitalize = (str?: string) => {
   if (!str) return ""
   if (str.toLowerCase() === "offer_sent") return "Offer Sent"
+  if (str.toLowerCase() === "waitlisted") return "Interview Completed"
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
@@ -254,7 +259,13 @@ export default function RecruiterApplicationTracker() {
 const allLocations = Array.from(
   new Set(
     applicants
-      .map(a => a.address?.split(",")[0].trim())
+      .map(a => {
+        if (Array.isArray(a.address)) return a.address.filter(Boolean).join(", ")
+        if (typeof a.address === "string") return a.address
+        if (Array.isArray(a.location)) return a.location.filter(Boolean).join(", ")
+        if (typeof a.location === "string") return a.location
+        return ""
+      })
       .filter((loc): loc is string => Boolean(loc))
   )
 )
@@ -426,9 +437,14 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
       )
     }
     if (filters.location && filters.location.length > 0) {
-      filtered = filtered.filter(a =>
-        filters.location.includes(a.address ? a.address.split(",")[0].trim() : "")
-      )
+      filtered = filtered.filter(a => {
+        let loc = ""
+        if (Array.isArray(a.address)) loc = a.address.filter(Boolean).join(", ")
+        else if (typeof a.address === "string") loc = a.address
+        else if (Array.isArray(a.location)) loc = a.location.filter(Boolean).join(", ")
+        else if (typeof a.location === "string") loc = a.location
+        return filters.location.includes(loc)
+      })
     }
     if (filters.course && filters.course.length > 0) {
       filtered = filtered.filter(a => filters.course.includes(a.course))
@@ -454,6 +470,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
     if (!applicantStatus) return ""
     const status = capitalize(applicantStatus)
     if (status === "Interview scheduled" || status === "Interview Scheduled") return "Interview"
+    if (status === "Interview Completed" || status === "Interview finished") return "Interview"
     return status
   }
 
@@ -897,13 +914,10 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                           {filteredApplicants.filter(a => getTabStatus(a.status) === "Interview").length}
                         </span>
                       </TabsTrigger>
-                      <TabsTrigger value="waitlisted" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-blue-600 hover:border-blue-300 data-[state=active]:text-blue-600 data-[state=active]:border-blue-600 group">
-                        Waitlisted
-                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-700 group-data-[state=active]:bg-blue-100 group-data-[state=active]:text-blue-700 transition-colors">
-                          {filteredApplicants.filter(a => {
-                            const status = a.status ? a.status.toLowerCase() : ""
-                            return status === "waitlisted" || status === "offer_sent"
-                          }).length}
+                      <TabsTrigger value="offers_sent" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-lime-600 hover:border-lime-300 data-[state=active]:text-lime-600 data-[state=active]:border-lime-600 group">
+                        Offers Sent
+                        <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-400 group-hover:bg-lime-100 group-hover:text-lime-700 group-data-[state=active]:bg-lime-100 group-data-[state=active]:text-lime-700 transition-colors">
+                          {filteredApplicants.filter(a => (a.status && a.status.toLowerCase() === "offer_sent")).length}
                         </span>
                       </TabsTrigger>
                       <TabsTrigger value="hired" className="flex-1 text-center py-2 text-sm font-medium text-gray-400 border-b-4 border-transparent hover:text-green-700 hover:border-green-200 data-[state=active]:text-green-700 data-[state=active]:border-green-700 group">
@@ -930,7 +944,6 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                               if (tab === "shortlisted") return filteredApplicants.filter(a => capitalize(a.status) === "Shortlisted").length
                               if (tab === "interview") return filteredApplicants.filter(a => getTabStatus(a.status) === "Interview").length
                               if (tab === "invited") return filteredApplicants.filter(a => capitalize(a.status) === "Invited").length
-                              if (tab === "waitlisted") return filteredApplicants.filter(a => capitalize(a.status) === "Waitlisted").length
                               if (tab === "rejected") return filteredApplicants.filter(a => capitalize(a.status) === "Rejected").length
                               if (tab === "hired") return filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "hired").length
                               return 0
@@ -1079,7 +1092,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1126,7 +1139,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1173,7 +1186,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1191,64 +1204,155 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                       }
                     </TabsContent>
                     <TabsContent value="interview" className="mt-4 space-y-4">
+  {
+    (() => {
+      const ongoing = sortApplicants(filteredApplicants.filter(a => capitalize(a.status) === "Interview scheduled"))
+      const finished = sortApplicants(filteredApplicants.filter(a => capitalize(a.status) === "Interview Completed" || capitalize(a.status) === "Interview finished"))
+      const totalOngoingPages = Math.max(1, Math.ceil(ongoing.length / limit))
+      const totalFinishedPages = Math.max(1, Math.ceil(finished.length / limit))
+      const paginatedOngoing = ongoing.slice((page - 1) * limit, page * limit)
+      const paginatedFinished = finished.slice((page - 1) * limit, page * limit)
+      return (
+        <>
+          <div>
+            <div className="font-semibold text-purple-700 mb-2">Ongoing Interviews</div>
+            {paginatedOngoing.length === 0 ? (
+              <div className="flex flex-col items-center justify-center min-h-[120px]">
+                <IoCalendarSharp  size={40} className="text-gray-300 mb-2" />
+                <div className="text-base font-semibold text-gray-500">No Upcoming Interviews</div>
+              </div>
+            ) : (
+              <>
+                {paginatedOngoing.map(app =>
+                  <ApplicantCard
+                    key={app.application_id}
+                    applicant={app}
+                    selected={selectedApplication === app.application_id}
+                    setSelected={() => setSelectedApplication(app.application_id)}
+                    handleViewDetails={handleViewDetails}
+                    handleInviteToInterview={handleInviteToInterview}
+                    handleReschedInterview={handleReschedInterview}
+                    onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
+                    onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                    setOfferApplicant={setOfferApplicant}
+                    setSendOfferModalOpen={setSendOfferModalOpen}
+                    matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                    handleViewOffer={handleViewOffer}
+                    setApplicants={setApplicants}
+                  />
+                )}
+                {totalOngoingPages > 1 && (
+                  <Pagination
+                    totalPages={totalOngoingPages}
+                    currentPage={page}
+                    onPageChange={setPage}
+                  />
+                )}
+              </>
+            )}
+          </div>
+          <div className="border-t border-gray-200 my-6"></div>
+          <div>
+            <div className="font-semibold text-blue-700 mb-2">Completed Interviews</div>
+            {paginatedFinished.length === 0 ? (
+              <div className="flex flex-col items-center justify-center min-h-[120px]">
+                <FaCalendarCheck  size={40} className="text-gray-300 mb-2" />
+                <div className="text-base font-semibold text-gray-500">No Completed Interviews</div>
+              </div>
+            ) : (
+              <>
+                {paginatedFinished.map(app =>
+                  <ApplicantCard
+                    key={app.application_id}
+                    applicant={app}
+                    selected={selectedApplication === app.application_id}
+                    setSelected={() => setSelectedApplication(app.application_id)}
+                    handleViewDetails={handleViewDetails}
+                    handleInviteToInterview={handleInviteToInterview}
+                    handleReschedInterview={handleReschedInterview}
+                    onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
+                    onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+                    setOfferApplicant={setOfferApplicant}
+                    setSendOfferModalOpen={setSendOfferModalOpen}
+                    matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                    handleViewOffer={handleViewOffer}
+                    setApplicants={setApplicants}
+                  />
+                )}
+                {totalFinishedPages > 1 && (
+                  <Pagination
+                    totalPages={totalFinishedPages}
+                    currentPage={page}
+                    onPageChange={setPage}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )
+    })()
+  }
+</TabsContent>
+                    <TabsContent value="offers_sent" className="mt-4 space-y-4">
+  {
+    (() => {
+      const filtered = sortApplicants(filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "offer_sent"))
+      const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
+      const paginated = filtered.slice((page - 1) * limit, page * limit)
+      if (filtered.length === 0) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[220px]">
+            <BsMailbox2Flag size={64} className="text-lime-300 mb-2" />
+            <div className="text-lg font-semibold text-lime-500">No offers sent</div>
+            <div className="text-sm text-lime-400 mt-1">Applicants with sent offers will appear here.</div>
+          </div>
+        )
+      }
+      return (
+        <>
+          {paginated.map(app =>
+            <ApplicantCard
+              key={app.application_id}
+              applicant={app}
+              selected={selectedApplication === app.application_id}
+              setSelected={() => setSelectedApplication(app.application_id)}
+              handleViewDetails={handleViewDetails}
+              handleInviteToInterview={handleInviteToInterview}
+              handleReschedInterview={handleReschedInterview}
+              onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
+              onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
+              setOfferApplicant={setOfferApplicant}
+              setSendOfferModalOpen={setSendOfferModalOpen}
+              matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+              handleViewOffer={handleViewOffer}
+              setApplicants={setApplicants}
+            />
+          )}
+          {totalPages > 1 && (
+            <Pagination
+              totalPages={totalPages}
+              currentPage={page}
+              onPageChange={setPage}
+            />
+          )}
+        </>
+      )
+    })()
+  }
+</TabsContent>
+                    <TabsContent value="hired" className="mt-4 space-y-4">
                       {
                         (() => {
-                          const filtered = sortApplicants(filteredApplicants.filter(a => getTabStatus(a.status) === "Interview"))
-                          const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
-                          const paginated = filtered.slice((page - 1) * limit, page * limit)
-                          if (filtered.length === 0) {
-                            return (
-                              <div className="flex flex-col items-center justify-center min-h-[220px]">
-                                <TbUserSearch size={64} className="text-gray-300 mb-2"  />
-                                <div className="text-lg font-semibold text-gray-500">No interviews scheduled</div>
-                                <div className="text-sm text-blue-500 mt-1">Invite applicants to interview</div>
-                              </div>
-                            )
-                          }
-                          return (
-                            <>
-                              {paginated.map(app =>
-                                <ApplicantCard
-                                  key={app.application_id}
-                                  applicant={app}
-                                  selected={selectedApplication === app.application_id}
-                                  setSelected={() => setSelectedApplication(app.application_id)}
-                                  handleViewDetails={handleViewDetails}
-                                  handleInviteToInterview={handleInviteToInterview}
-                                  handleReschedInterview={handleReschedInterview}
-                                  onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
-                                  onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
-                                  setOfferApplicant={setOfferApplicant}
-                                  setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
-                                  handleViewOffer={handleViewOffer}
-                                  setApplicants={setApplicants}
-                                />
-                              )}
-                              {totalPages > 1 && (
-                                <Pagination
-                                  totalPages={totalPages}
-                                  currentPage={page}
-                                  onPageChange={setPage}
-                                />
-                              )}
-                            </>
-                          )
-                        })()
-                      }
-                    </TabsContent>
-                    <TabsContent value="invited" className="mt-4 space-y-4">
-                      {
-                        (() => {
-                          const filtered = sortApplicants(filteredApplicants.filter(a => capitalize(a.status) === "Invited"))
+                          const filtered = sortApplicants(filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "hired"))
                           const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
                           const paginated = filtered.slice((page - 1) * limit, page * limit)
                           if (filtered.length === 0) {
                             return (
                               <div className="flex flex-col items-center justify-center min-h-[220px]">
                                 <TbUserSearch size={64} className="text-gray-300 mb-2" />
-                                <div className="text-lg font-semibold text-gray-500">No invitations sent</div>
-                                <div className="text-sm text-blue-500 mt-1">Invite applicants to interview</div>
+                                <div className="text-lg font-semibold text-gray-500">No hired applicants</div>
+                                <div className="text-sm text-green-500 mt-1">Hired applicants will appear here</div>
                               </div>
                             )
                           }
@@ -1267,7 +1371,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1314,104 +1418,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                                   onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
                                   setOfferApplicant={setOfferApplicant}
                                   setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
-                                  handleViewOffer={handleViewOffer}
-                                  setApplicants={setApplicants}
-                                />
-                              )}
-                              {totalPages > 1 && (
-                                <Pagination
-                                  totalPages={totalPages}
-                                  currentPage={page}
-                                  onPageChange={setPage}
-                                />
-                              )}
-                            </>
-                          )
-                        })()
-                      }
-                    </TabsContent>
-                    <TabsContent value="waitlisted" className="mt-4 space-y-4">
-                      {
-                        (() => {
-                          const filtered = sortApplicants(filteredApplicants.filter(a => {
-                            const status = a.status ? a.status.toLowerCase() : ""
-                            return status === "waitlisted" || status === "offer_sent"
-                          }))
-                          const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
-                          const paginated = filtered.slice((page - 1) * limit, page * limit)
-                          if (filtered.length === 0) {
-                            return (
-                              <div className="flex flex-col items-center justify-center min-h-[220px]">
-                                <TbUserSearch size={64} className="text-gray-300 mb-2" />
-                                <div className="text-lg font-semibold text-gray-500">No waitlisted applicants</div>
-                                <div className="text-sm text-blue-500 mt-1">Waitlisted applicants will appear here</div>
-                              </div>
-                            )
-                          }
-                          return (
-                            <>
-                              {paginated.map(app =>
-                                <ApplicantCard
-                                  key={app.application_id}
-                                  applicant={app}
-                                  selected={selectedApplication === app.application_id}
-                                  setSelected={() => setSelectedApplication(app.application_id)}
-                                  handleViewDetails={handleViewDetails}
-                                  handleInviteToInterview={handleInviteToInterview}
-                                  handleReschedInterview={handleReschedInterview}
-                                  onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
-                                  onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
-                                  setOfferApplicant={setOfferApplicant}
-                                  setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
-                                  handleViewOffer={handleViewOffer}
-                                  setApplicants={setApplicants}
-                                />
-                              )}
-                              {totalPages > 1 && (
-                                <Pagination
-                                  totalPages={totalPages}
-                                  currentPage={page}
-                                  onPageChange={setPage}
-                                />
-                              )}
-                            </>
-                          )
-                        })()
-                      }
-                    </TabsContent>
-                    <TabsContent value="hired" className="mt-4 space-y-4">
-                      {
-                        (() => {
-                          const filtered = sortApplicants(filteredApplicants.filter(a => a.status && a.status.toLowerCase() === "hired"))
-                          const totalPages = Math.max(1, Math.ceil(filtered.length / limit))
-                          const paginated = filtered.slice((page - 1) * limit, page * limit)
-                          if (filtered.length === 0) {
-                            return (
-                              <div className="flex flex-col items-center justify-center min-h-[220px]">
-                                <TbUserSearch size={64} className="text-gray-300 mb-2" />
-                                <div className="text-lg font-semibold text-gray-500">No hired applicants</div>
-                                <div className="text-sm text-green-500 mt-1">Hired applicants will appear here</div>
-                              </div>
-                            )
-                          }
-                          return (
-                            <>
-                              {paginated.map(app =>
-                                <ApplicantCard
-                                  key={app.application_id}
-                                  applicant={app}
-                                  selected={selectedApplication === app.application_id}
-                                  setSelected={() => setSelectedApplication(app.application_id)}
-                                  handleViewDetails={handleViewDetails}
-                                  handleInviteToInterview={handleInviteToInterview}
-                                  handleReschedInterview={handleReschedInterview}
-                                  onShortlist={async () => await updateApplicantStatus(app.application_id, "shortlist")}
-                                  onReject={async () => await updateApplicantStatus(app.application_id, "reject")}
-                                  setOfferApplicant={setOfferApplicant}
-                                  setSendOfferModalOpen={setSendOfferModalOpen}
-                                  matchScore={calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
+                                  matchScore={typeof app.gpt_score === "number" ? Math.round(app.gpt_score) : calculateSkillsMatch(app.skills || [], jobSkillsMap[app.job_id] || [])}
                                   handleViewOffer={handleViewOffer}
                                   setApplicants={setApplicants}
                                 />
@@ -1488,84 +1495,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                 </CardContent>
               </Card>
 
-              <Card className="shadow-sm border-blue-100">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center">
-                    Top 3 Highest Match Applicants
-                    <Badge className="ml-2 bg-green-500 text-white text-xs">95%+ Match</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        name: "Alex Johnson",
-                        title: "Senior Frontend Developer",
-                        match: "98%",
-                        skills: ["React", "TypeScript", "Next.js"],
-                        experience: "5 years",
-                      },
-                      {
-                        name: "Emily Zhang",
-                        title: "Frontend Engineer",
-                        match: "97%",
-                        skills: ["React", "JavaScript", "CSS"],
-                        experience: "4 years",
-                      },
-                      {
-                        name: "Michael Brown",
-                        title: "UI Developer",
-                        match: "95%",
-                        skills: ["React", "Tailwind", "TypeScript"],
-                        experience: "3 years",
-                      },
-                    ].map((candidate, index) => (
-                      <div
-                        key={index}
-                        className="border border-green-100 rounded-lg p-3 hover:bg-green-50 transition-colors"
-                      >
-                        <div className="flex gap-3 items-start">
-                          <Avatar
-                            sx={{
-                              width: 40,
-                              height: 40,
-                              fontWeight: "bold",
-                              bgcolor: "#DCFCE7",
-                              color: "#15803D",
-                              fontSize: 22,
-                            }}
-                          >
-                            {candidate.name.charAt(0)}
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex justify-between">
-                              <p className="font-medium text-gray-800">{candidate.name}</p>
-                              <Badge className="bg-green-100 text-green-700">{candidate.match} Match</Badge>
-                            </div>
-                            <p className="text-xs text-gray-500">{candidate.title}</p>
-                            <p className="text-xs text-gray-500 mt-1">{candidate.experience}</p>
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {candidate.skills.map((skill, i) => (
-                                <span key={i} className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                                  {skill}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-3 flex gap-2">
-                          <Button size="sm" className="bg-blue-600 text-xs flex-1">
-                            View Details
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 text-xs flex-1">
-                            Invite to Interview
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <TopHighestMatchApplicants />
             </div>
           </div>
         </div>
@@ -1591,6 +1521,7 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                     socials: [],
                     countryCode: "",
                   },
+                  gpt_score: selectedApplicant.gpt_score
                 }
               : null
           }
@@ -1680,9 +1611,21 @@ function ApplicantCard({
   setApplicants: React.Dispatch<React.SetStateAction<Applicant[]>>
 }) {
 
-  const formattedLocation = applicant.address
-    ? applicant.address.split(",")[0].trim()
-    : ""
+  const formattedLocation = (() => {
+    if (Array.isArray(applicant.address)) {
+      if (applicant.address.length > 1) return applicant.address[1]
+      if (applicant.address.length === 1) return applicant.address[0]
+      return ""
+    }
+    if (typeof applicant.address === "string") return applicant.address
+    if (Array.isArray(applicant.location)) {
+      if (applicant.location.length > 1) return applicant.location[1]
+      if (applicant.location.length === 1) return applicant.location[0]
+      return ""
+    }
+    if (typeof applicant.location === "string") return applicant.location
+    return ""
+  })()
 
   function formatAppliedAt(dateString?: string) {
     if (!dateString) return ""
@@ -1697,8 +1640,6 @@ function ApplicantCard({
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
     const diffHours = Math.floor(diffMs / 3600000)
-
-
 
     const diffDays = Math.floor(diffMs / 86400000)
     const diffWeeks = Math.floor(diffDays / 7)
@@ -1718,13 +1659,18 @@ function ApplicantCard({
 
   const formattedAppliedAt = applicant.applied_at ? formatAppliedAt(applicant.applied_at) : ""
 
+  const { data: session } = useSession()
+  const verifyStatus = session?.user?.verifyStatus
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
   const [loadingShortlist, setLoadingShortlist] = useState(false)
   const [loadingReject, setLoadingReject] = useState(false)
+ 
   const [rejectOpen, setRejectOpen] = useState(false)
   const [cancelInterviewOpen, setCancelInterviewOpen] = useState(false)
   const [markDoneOpen, setMarkDoneOpen] = useState(false)
+ 
   const [markDoneLoading, setMarkDoneLoading] = useState(false)
   const router = useRouter()
 
@@ -1742,6 +1688,8 @@ function ApplicantCard({
     setLoadingShortlist(false)
     setCancelInterviewOpen(false)
   }
+
+
 
   async function handleMarkAsDone() {
     setMarkDoneLoading(true)
@@ -1897,7 +1845,7 @@ function ApplicantCard({
             ? "border-l-purple-500"
             : capitalize(applicant.status) === "Offer Sent"
             ? "border-l-lime-400"
-            : capitalize(applicant.status) === "Waitlisted"
+            : capitalize(applicant.status) === "Interview Completed"
             ? "border-l-blue-500"
             : capitalize(applicant.status) === "Hired"
             ? "border-l-green-600 bg-green-50"
@@ -1941,7 +1889,7 @@ function ApplicantCard({
                     ? "bg-red-100 text-red-700 hover:bg-red-300 hover:text-red-800 pointer-events-none"
                     : capitalize(applicant.status) === "Offer Sent"
                     ? "bg-lime-100 text-lime-700 hover:bg-lime-200 hover:text-lime-800 pointer-events-none"
-                    : capitalize(applicant.status) === "Waitlisted"
+                    : capitalize(applicant.status) === "Interview Completed"
                     ? "bg-blue-100 text-blue-700 hover:bg-blue-300 hover:text-blue-800 pointer-events-none"
                     : capitalize(applicant.status) === "Hired"
                     ? "bg-green-600 text-white pointer-events-none"
@@ -1976,26 +1924,49 @@ function ApplicantCard({
           </div>
         </div>
         <div className="flex gap-1 items-center">
-          <Tooltip title={getMatchTooltip(matchScore)} arrow>
-            <span>
-              <motion.div whileHover={{ scale: 1.15 }}>
-                <Badge
-                  className={
-                    (matchScore >= 70
-                      ? "bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800"
-                      : matchScore >= 40
-                      ? "bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800"
-                      : "bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"
-                    )
-                    + " whitespace-nowrap min-w-[70px]"
-                  }
-                  style={{ cursor: "pointer-events-none" }}
-                >
-                  {matchScore}% Match
-                </Badge>
-              </motion.div>
-            </span>
-          </Tooltip>
+          {verifyStatus !== "full" ? (
+            <Tooltip title="You need to verify your account to see applicant match scores." arrow>
+              <span>
+                <motion.div whileHover={{ scale: 1.15 }}>
+                  <Badge
+                    className={
+                      (matchScore >= 70
+                        ? "bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800"
+                        : matchScore >= 40
+                        ? "bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800"
+                        : "bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"
+                      )
+                      + " whitespace-nowrap min-w-[70px] blur-sm select-none"
+                    }
+                    style={{ cursor: "pointer-events-none", filter: "blur(3px)" }}
+                  >
+                    {matchScore}% Match
+                  </Badge>
+                </motion.div>
+              </span>
+            </Tooltip>
+          ) : (
+            <Tooltip title={getMatchTooltip(matchScore)} arrow>
+              <span>
+                <motion.div whileHover={{ scale: 1.15 }}>
+                  <Badge
+                    className={
+                      (matchScore >= 70
+                        ? "bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800"
+                        : matchScore >= 40
+                        ? "bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800"
+                        : "bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800"
+                      )
+                      + " whitespace-nowrap min-w-[70px]"
+                    }
+                    style={{ cursor: "pointer-events-none" }}
+                  >
+                    {matchScore}% Match
+                  </Badge>
+                </motion.div>
+              </span>
+            </Tooltip>
+          )}
           <div>
             <button
               className="text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50"
@@ -2198,7 +2169,7 @@ function ApplicantCard({
             
             </>
           )}
-          {(capitalize(applicant.status) === "Shortlisted" || capitalize(applicant.status) === "Interview scheduled" || capitalize(applicant.status) === "Interview" || capitalize(applicant.status) === "Invited" || capitalize(applicant.status) === "Waitlisted") && (
+          {(capitalize(applicant.status) === "Shortlisted" || capitalize(applicant.status) === "Interview scheduled" || capitalize(applicant.status) === "Interview" || capitalize(applicant.status) === "Invited") && (
             <>
               {capitalize(applicant.status) === "Shortlisted" && (
                 <Button
@@ -2220,17 +2191,6 @@ function ApplicantCard({
                 >
                   <LuCalendarCog className="w-4 h-4" />
                   Resched
-                </Button>
-              )}
-              {capitalize(applicant.status) === "Waitlisted" && (
-                <Button
-                  size="sm"
-                  className="bg-green-100 text-green-700 hover:bg-green-200 flex items-center gap-1 text-xs font-medium shadow-none border-0"
-                  style={{ boxShadow: 'none', border: 'none' }}
-                  onClick={e => { e.stopPropagation(); setOfferApplicant(applicant); setSendOfferModalOpen(true); }}
-                >
-                  <FaHandHoldingDollar className="w-4 h-4 mr-1" />
-                  Send offer
                 </Button>
               )}
               <Button
@@ -2305,6 +2265,35 @@ function ApplicantCard({
               </Button>
             </>
           )}
+          {capitalize(applicant.status) === "Interview Completed" && (
+            <>
+              <Button
+                size="sm"
+                className="bg-green-100 text-green-700 hover:bg-green-200 flex items-center gap-1 text-xs font-medium shadow-none border-0"
+                style={{ boxShadow: 'none', border: 'none' }}
+                onClick={e => {
+                  e.stopPropagation()
+                  setOfferApplicant({ ...applicant, job_postings: applicant.job_postings })
+                  setSendOfferModalOpen(true)
+                }}
+              >
+                <ArrowUpRight className="w-4 h-4 mr-1" />
+                Send Offer
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 text-xs"
+                onClick={e => {
+                  e.stopPropagation()
+                  setSelected()
+                  handleViewDetails(applicant.application_id, e)
+                }}
+              >
+                View Details
+              </Button>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <span className="text-xs text-gray-500">
@@ -2320,8 +2309,8 @@ function ApplicantCard({
               ? "Invitation sent"
               : capitalize(applicant.status) === "Shortlisted"
               ? "Shortlisted"
-              : capitalize(applicant.status) === "Waitlisted"
-              ? "Waitlisted"
+              : capitalize(applicant.status) === "Interview Completed"
+              ? "Interview Completed"
               : capitalize(applicant.status) === "Offer Sent"
               ? "Offer Sent"
               : capitalize(applicant.status) === "Hired"

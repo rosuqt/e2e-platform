@@ -38,7 +38,6 @@ export async function GET() {
       .in("employer_id", employerIds)
     if (profiles) {
       for (const prof of profiles) {
-        console.log("profile_img for employer_id", prof.employer_id, ":", prof.profile_img)
         employerProfiles[prof.employer_id] = { profile_img: prof.profile_img }
       }
     }
@@ -86,7 +85,6 @@ export async function GET() {
       }
       return []
     }
-    console.log("RAW achievements:", app.achievements, "RAW portfolio:", app.portfolio)
     const achievementsArr = parseArrayField(app.achievements)
     const portfolioArr = parseArrayField(app.portfolio)
     return {
@@ -125,7 +123,6 @@ export async function GET() {
     }
   }
 
-  console.log("applicationsWithJobTitle profile_img:", applicationsWithJobTitle.map(a => a.profile_img))
 
   return NextResponse.json({ applications: applicationsWithJobTitle, applicationStatus })
 }
@@ -178,20 +175,28 @@ export async function POST(req: Request) {
 
   const { applicationId, note } = body
   if (!applicationId || !note) {
+    console.log("Missing applicationId or note:", { applicationId, note })
     return NextResponse.json({ error: "Missing applicationId or note" }, { status: 400 })
   }
 
-  const { data: app } = await supabase
+
+  const { data: app, error: fetchError } = await supabase
     .from("applications")
     .select("notes")
-    .eq("id", applicationId)
+    .eq("application_id", applicationId)
     .single()
 
-  let notesArr = []
+  if (fetchError) {
+    console.error("Error fetching existing notes:", fetchError)
+    return NextResponse.json({ error: "Failed to fetch existing notes" }, { status: 500 })
+  }
+
+  let notesArr: { note: string; date_added: string; isEmployer: boolean }[] = []
   if (app && app.notes) {
     try {
-      notesArr = JSON.parse(app.notes)
-    } catch {
+      notesArr = JSON.parse(app.notes as string)
+    } catch (e) {
+      console.error("Error parsing existing notes JSON:", e, "raw:", app.notes)
       notesArr = []
     }
   }
@@ -201,14 +206,18 @@ export async function POST(req: Request) {
     isEmployer: false
   })
 
+
   const { error: updateError } = await supabase
     .from("applications")
     .update({ notes: JSON.stringify(notesArr) })
-    .eq("id", applicationId)
+    .eq("application_id", applicationId)
 
   if (updateError) {
+    console.error("Error updating notes:", updateError)
     return NextResponse.json({ error: "Failed to add note" }, { status: 500 })
   }
 
-  return NextResponse.json({ success: true })
+  const studentNotes = notesArr.filter(n => n && n.isEmployer === false)
+
+  return NextResponse.json({ success: true, notes: studentNotes })
 }

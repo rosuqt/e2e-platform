@@ -424,6 +424,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                       <Input
                         type="number"
                         min="1"
+                        max="10000"
                         value={formData.maxApplicants}
                         onChange={(e) => {
                           const value = e.target.value;
@@ -437,8 +438,8 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                             setMaxApplicantsError("Enter a valid number greater than 0.");
                             updateFormData({ maxApplicants: "" });
                           } else if (num > 10000) {
-                            setMaxApplicantsError("Number of applicants is too high.");
-                            updateFormData({ maxApplicants: value });
+                            setMaxApplicantsError("Number of applicants must not exceed 10,000.");
+                            updateFormData({ maxApplicants: "" });
                           } else {
                             setMaxApplicantsError(null);
                             updateFormData({ maxApplicants: value });

@@ -3,13 +3,10 @@
 import React from "react"
 import { Fragment } from "react"
 import { Dialog, Transition } from "@headlessui/react"
-import { X, MapPin, Building, Clock, DollarSign, CheckCircle, Wrench } from "lucide-react"
+import { X, MapPin, Building, Clock, PiggyBank, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
-import { countries } from "../../sign-up/data/countries"
 import { Toaster, toast } from "react-hot-toast"
-import { parsePhoneNumberFromString, CountryCode } from "libphonenumber-js"
-import { createClient } from "@supabase/supabase-js"
 
 type JobModalProps = {
   job: {
@@ -64,27 +61,6 @@ const suffixes = [
   "Esq."
 ]
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-
-async function uploadToSupabase(file: File, careerId: string, type: "resume" | "cover_letter", firstName: string, lastName: string) {
-  const ext = file.name.split(".").pop()
-  const safeFirst = firstName.replace(/[^a-zA-Z0-9]/g, "")
-  const safeLast = lastName.replace(/[^a-zA-Z0-9]/g, "")
-  const filename = `${safeFirst}_${safeLast}_${type === "resume" ? "RESUME" : "COVERLETTER"}.${ext}`
-  const folder = type === "resume" ? "resume" : "cover_letter"
-  const path = `sti-careers/${careerId}/${folder}/${filename}`
-
-  const { error } = await supabase.storage.from("application.records").upload(path, file, {
-    upsert: true,
-    cacheControl: "3600"
-  })
-  if (error) {
-    toast.error(error.message || "Upload failed")
-    throw error
-  }
-  return path
-}
-
 export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
   const [activeTab, setActiveTab] = useState<"details" | "apply">("details")
   const [formData, setFormData] = useState<FormData>({
@@ -93,7 +69,7 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
     middleName: "",
     suffix: "",
     email: "",
-    countryCode: "",
+    countryCode: "63", // always PH
     phone: "",
     resume: null,
     coverLetter: null,
@@ -102,6 +78,7 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isLoadingCareers, setIsLoadingCareers] = useState(false)
+  const [alreadyApplied, setAlreadyApplied] = useState(false)
 
   React.useEffect(() => {
     if (isOpen) {
@@ -112,7 +89,7 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
         middleName: "",
         suffix: "",
         email: "",
-        countryCode: "",
+        countryCode: "63", 
         phone: "",
         resume: null,
         coverLetter: null,
@@ -121,8 +98,11 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
       setIsSubmitting(false)
       setIsSubmitted(false)
       setIsLoadingCareers(true)
+      setAlreadyApplied(false)
       if (typeof window !== "undefined") {
         setTimeout(() => setIsLoadingCareers(false), 1000)
+        const appliedJobs = JSON.parse(sessionStorage.getItem("appliedJobs") || "[]")
+        if (appliedJobs.includes(job.raw?.id)) setAlreadyApplied(true)
       } else {
         setIsLoadingCareers(false)
       }
@@ -133,77 +113,95 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
     const errors: FormErrors = {}
     if (!data.firstName.trim()) {
       errors.firstName = "First Name is required."
-    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(data.firstName)) {
-      errors.firstName = "Only letters, single space or dash between names allowed."
-    } else if (data.firstName.length < 1 || data.firstName.length > 36) {
-      errors.firstName = "Must be between 1 and 36 characters."
+    } else {
+      // Allow Ma. prefix, letters (including ñ), spaces, hyphens, apostrophes
+      // 2-50 characters, no digits, no special symbols except allowed
+      const firstName = data.firstName.trim()
+      const allowed =
+        /^((Ma\.\s?)?)([A-Za-zñÑ]+([ '-][A-Za-zñÑ]+)*|'[A-Za-zñÑ]+)*$/u
+      if (firstName.length < 2 || firstName.length > 50) {
+        errors.firstName = "First Name must be 2-50 characters."
+      } else if (!allowed.test(firstName)) {
+        errors.firstName =
+          "Only letters, spaces, hyphens, apostrophes, and 'Ma.' prefix allowed. No digits or special symbols."
+      } else if (/[0-9]/.test(firstName)) {
+        errors.firstName = "No digits allowed."
+      }
     }
 
-    if (data.middleName && !/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(data.middleName)) {
-      errors.middleName = "Only letters, single space or dash between names allowed."
-    } else if (data.middleName && data.middleName.length > 35) {
-      errors.middleName = "Must not exceed 35 characters."
+    // Middle Name validation
+    if (data.middleName) {
+      const middleName = data.middleName.trim()
+      const allowed = /^([A-Za-zñÑ]+([ -][A-Za-zñÑ]+)*)$/u
+      if (middleName.length < 1 || middleName.length > 50) {
+        errors.middleName = "Middle Name must be 1-50 characters."
+      } else if (!allowed.test(middleName)) {
+        errors.middleName = "Only letters, hyphens, and spaces allowed. No digits or special symbols."
+      }
     }
 
+    // Last Name validation
     if (!data.lastName.trim()) {
       errors.lastName = "Last Name is required."
-    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(data.lastName)) {
-      errors.lastName = "Only letters, single space or dash between names allowed."
-    } else if (data.lastName.length < 1 || data.lastName.length > 35) {
-      errors.lastName = "Last Name must be between 1 and 35 characters."
+    } else {
+      // Allow letters (including ñ), spaces, hyphens, apostrophes
+      // 2-50 characters, no digits, no special symbols except allowed
+      const lastName = data.lastName.trim()
+      const allowed =
+        /^([A-Za-zñÑ]+([ '-][A-Za-zñÑ]+)*|'[A-Za-zñÑ]+)*$/u
+      if (lastName.length < 2 || lastName.length > 50) {
+        errors.lastName = "Last Name must be 2-50 characters."
+      } else if (!allowed.test(lastName)) {
+        errors.lastName =
+          "Only letters, spaces, hyphens, apostrophes, and enye (ñ) allowed. No digits or special symbols."
+      } else if (/[0-9]/.test(lastName)) {
+        errors.lastName = "No digits allowed."
+      }
     }
 
-    if (!data.countryCode.trim()) {
-      errors.countryCode = "Country Code is required."
-    }
-
+    // Phone validation (PH only)
     if (!data.phone.trim()) {
       errors.phone = "Phone Number is required."
     } else {
-      const country = countries.find((c) => c.phone === data.countryCode)
-      const countryIso = country?.code as CountryCode | undefined
-      let phoneInput = data.phone.trim()
-      if (countryIso === "PH" && phoneInput.startsWith("0")) {
-        phoneInput = phoneInput.substring(1)
-      }
-      if (
-        (data.countryCode === "63" || data.countryCode === "+63") &&
-        (!/^9\d{9}$/.test(phoneInput))
-      ) {
-        errors.phone = "PH mobile must start with 9 and be 10 digits (e.g. 9123456789)"
-      } else if (!/^\d{7,15}$/.test(phoneInput)) {
-        errors.phone = "Invalid phone number"
-      } else {
-        const phoneNumber = countryIso
-          ? parsePhoneNumberFromString(phoneInput, countryIso)
-          : undefined
-        if (!countryIso) {
-          errors.countryCode = "Invalid country code."
-        } else if (!phoneNumber || !phoneNumber.isValid()) {
-          errors.phone = "Invalid phone number for selected country."
-        }
+      const phoneInput = data.phone.trim()
+      // Must start with +63, exactly 11 digits, no letters/special chars except +
+      if (!/^\+63\d{10}$/.test(phoneInput)) {
+        errors.phone = "PH format: +63 followed by 10 digits (e.g. +639123456789)"
+      } else if (/[^\d+]/.test(phoneInput)) {
+        errors.phone = "Only digits allowed after +63."
+      } else if (phoneInput.length !== 13) {
+        errors.phone = "Phone number must be exactly 11 digits (+63XXXXXXXXXX)."
       }
     }
 
     if (!data.email.trim()) {
       errors.email = "Email is required."
     } else {
-      const emailRegex = /^[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/
-      const domainPart = data.email.split('@')[1]
-      if (!emailRegex.test(data.email)) {
-        errors.email = "Invalid email format."
-      } else if (
-        domainPart &&
-        domainPart
-          .split('.')
-          .some(
-            label =>
-              label.startsWith('-') ||
-              label.endsWith('-')
-          )
-      ) {
-        errors.email = "Invalid email format."
-      } else if (data.email.length < 6 || data.email.length > 254) {
+      const email = data.email.trim()
+      // Must contain @, domain, no spaces, no multiple @, no multiple periods, not start/end with period, must end with .com
+      if (/\s/.test(email)) {
+        errors.email = "Email must not contain spaces."
+      } else if ((email.match(/@/g) || []).length !== 1) {
+        errors.email = "Email must contain exactly one '@'."
+      } else if (email.startsWith('.') || email.endsWith('.')) {
+        errors.email = "Email must not start or end with a period."
+      } else if (/\.\./.test(email)) {
+        errors.email = "Email must not contain consecutive periods."
+      } else if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
+        errors.email = "Email must contain a valid domain."
+      } else if (!/\.com$/.test(email.toLowerCase())) {
+        errors.email = "Email must end with '.com'."
+      } else {
+        const [local, domain] = email.split('@')
+        if (!local || !domain) {
+          errors.email = "Email must contain a valid local and domain part."
+        } else if (local.endsWith('-') || domain.startsWith('-') || domain.endsWith('-')) {
+          errors.email = "Email must not start or end domain/local with hyphen."
+        } else if (local.startsWith('.') || domain.startsWith('.') || domain.endsWith('.')) {
+          errors.email = "Email must not start or end with a period."
+        }
+      }
+      if (email.length < 6 || email.length > 254) {
         errors.email = "Email must be between 6 and 254 characters."
       }
     }
@@ -217,6 +215,22 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
       const allowed = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
       if (!allowed.includes(data.coverLetter.type)) errors.coverLetter = "Accepted formats: PDF, DOC, DOCX."
       if (data.coverLetter.size > 2 * 1024 * 1024) errors.coverLetter = "File size must be under 2MB."
+    }
+    // Suffix validation
+    if (data.suffix) {
+      const suffixAllowed = [
+        "Jr", "Jr.", "Sr", "Sr.",
+        "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV",
+        "MD", "PhD", "Esq", "Esq."
+      ]
+      const suffixInput = data.suffix.trim().replace(/\.$/, "") // remove trailing dot for comparison
+      const validRoman = /^(II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV)$/i
+      if (
+        !suffixAllowed.some(s => s.replace(/\.$/, "").toLowerCase() === suffixInput.toLowerCase()) &&
+        !validRoman.test(suffixInput)
+      ) {
+        errors.suffix = "Suffix must be Jr, Sr, II-XV, MD, PhD, or Esq."
+      }
     }
     return errors
   }
@@ -237,36 +251,14 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (alreadyApplied) {
+      toast.error("You have already applied for this job in this session.")
+      return
+    }
     const errors = validate(formData)
     setFormErrors(errors)
     if (Object.keys(errors).length > 0) return
     setIsSubmitting(true)
-    let resumePath = ""
-    let coverLetterPath = ""
-    try {
-      if (formData.resume) {
-        resumePath = await uploadToSupabase(
-          formData.resume,
-          job.raw?.id || "",
-          "resume",
-          formData.firstName,
-          formData.lastName
-        )
-      }
-      if (formData.coverLetter) {
-        coverLetterPath = await uploadToSupabase(
-          formData.coverLetter,
-          job.raw?.id || "",
-          "cover_letter",
-          formData.firstName,
-          formData.lastName
-        )
-      }
-    } catch {
-      toast.error("Failed to upload files.")
-      setIsSubmitting(false)
-      return
-    }
     const fd = new FormData()
     fd.append("career_id", job.raw?.id || "")
     fd.append("first_name", formData.firstName)
@@ -276,8 +268,8 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
     fd.append("email", formData.email)
     fd.append("country_code", formData.countryCode)
     fd.append("phone", formData.phone)
-    if (resumePath) fd.append("resume_path", resumePath)
-    if (coverLetterPath) fd.append("cover_letter_path", coverLetterPath)
+    if (formData.resume) fd.append("resume", formData.resume)
+    if (formData.coverLetter) fd.append("coverLetter", formData.coverLetter)
     try {
       const res = await fetch("/api/superadmin/careers/applications", {
         method: "POST",
@@ -287,6 +279,14 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
         toast.success("Application submitted successfully!")
         setIsSubmitting(false)
         setIsSubmitted(true)
+        if (typeof window !== "undefined") {
+          const appliedJobs = JSON.parse(sessionStorage.getItem("appliedJobs") || "[]")
+          if (!appliedJobs.includes(job.raw?.id)) {
+            appliedJobs.push(job.raw?.id)
+            sessionStorage.setItem("appliedJobs", JSON.stringify(appliedJobs))
+          }
+        }
+        setAlreadyApplied(true)
       } else {
         const err = await res.json()
         toast.error(err?.error || "Failed to submit application.")
@@ -364,7 +364,7 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                     </div>
 
                     <div className="flex items-center text-gray-600">
-                      <DollarSign className="h-4 w-4 mr-2 text-blue-700" />
+                      <PiggyBank className="h-4 w-4 mr-2 text-blue-700" />
                       <span>
                         {(() => {
                           if (job.salary && job.salary.includes(",")) {
@@ -478,7 +478,24 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                       </div>
                     ) : (
                       <div>
-                        {isSubmitted ? (
+                        {alreadyApplied ? (
+                          <div className="text-center py-8">
+                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                              <CheckCircle className="h-6 w-6 text-yellow-600" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">Already Applied</h3>
+                            <p className="text-gray-600 mb-6">
+                              You have already applied for this job in this session.
+                            </p>
+                            <Button
+                              variant="outline"
+                              className="border-blue-700 text-blue-700 hover:bg-blue-50"
+                              onClick={onClose}
+                            >
+                              Close
+                            </Button>
+                          </div>
+                        ) : isSubmitted ? (
                           <div className="text-center py-8">
                             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
                               <CheckCircle className="h-6 w-6 text-green-600" />
@@ -579,26 +596,16 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                                   <label htmlFor="countryCode" className="block text-sm font-medium text-gray-700 mb-1">
                                     Country Code <span className="text-red-600">*</span>
                                   </label>
-                                  <select
+                                  <input
                                     id="countryCode"
                                     name="countryCode"
-                                    required
-                                    className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                      formErrors.countryCode ? "border-red-500" : "border-gray-300"
-                                    }`}
-                                    value={formData.countryCode}
-                                    onChange={handleInputChange}
-                                  >
-                                    <option value="">Select</option>
-                                    {countries.map((country) => (
-                                      <option key={country.code} value={country.phone}>
-                                        +{country.phone} ({country.label})
-                                      </option>
-                                    ))}
-                                  </select>
-                                  {formErrors.countryCode && (
-                                    <p className="text-xs text-red-600 mt-1">{formErrors.countryCode}</p>
-                                  )}
+                                    type="text"
+                                    value="+63"
+                                    disabled
+                                    className="w-full rounded-md border px-3 py-2 bg-gray-100 text-gray-700"
+                                    tabIndex={-1}
+                                  />
+                                  {/* No error display needed, always PH */}
                                 </div>
                                 <div className="w-3/5">
                                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
@@ -609,11 +616,13 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                                     id="phone"
                                     name="phone"
                                     required
+                                    placeholder="+639XXXXXXXXX"
                                     className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                                       formErrors.phone ? "border-red-500" : "border-gray-300"
                                     }`}
                                     value={formData.phone}
                                     onChange={handleInputChange}
+                                    maxLength={13}
                                   />
                                   {formErrors.phone && (
                                     <p className="text-xs text-red-600 mt-1">{formErrors.phone}</p>
@@ -644,10 +653,7 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                               <label htmlFor="resume" className="block text-sm font-medium text-gray-700 mb-1">
                                 Resume/CV
                               </label>
-                              <div className="flex items-center mb-2 gap-2">
-                                <Wrench className="w-4 h-4 text-red-600" />
-                                <span className="text-red-600 font-semibold text-xs">Under maintenance</span>
-                              </div>
+              
                               <div
                                 className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-md px-3 py-8 cursor-pointer transition
                                   ${formErrors.resume ? "border-red-500 bg-red-50" : "border-gray-300 bg-gray-50 hover:border-blue-500"}
@@ -700,10 +706,7 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                               <label htmlFor="coverLetter" className="block text-sm font-medium text-gray-700 mb-1">
                                 Cover Letter (optional)
                               </label>
-                              <div className="flex items-center mb-2 gap-2">
-                                <Wrench className="w-4 h-4 text-red-600" />
-                                <span className="text-red-600 font-semibold text-xs">Under maintenance</span>
-                              </div>
+                       
                               <div
                                 className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-md px-3 py-8 cursor-pointer transition
                                   ${formErrors.coverLetter ? "border-red-500 bg-red-50" : "border-gray-300 bg-gray-50 hover:border-blue-500"}

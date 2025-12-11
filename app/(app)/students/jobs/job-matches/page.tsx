@@ -4,44 +4,54 @@ import { useState, useRef, useEffect } from "react"
 import {
   Search,
   ChevronDown,
-  CheckCircle,
-  Clock,
-  Mail,
-  Bookmark,
-  Wifi,
+  X,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
 
 import Drawer from "@mui/material/Drawer"
 import { createPortal } from "react-dom"
 import FilterModal from "../job-listings/components/filter-modal"
 import JobCard from "../job-listings/components/job-cards"
 import JobDetails from "../job-listings/components/job-details"
-import YourSkills from "./components/your-skills"
-import RecoSkills from "./components/reco-skills"
 import { useRouter } from "next/navigation"
+import MatchAnalysis from "./components/match-analysis"
+import YourSkills from "./components/your-skills"
+import { GiFairyWand } from "react-icons/gi"
+import Lottie from "lottie-react"
+import notFoundAnimation from "../../../../../public/animations/not-found.json"
+import loadingAnimation from "../../../../../public/animations/loading_purpleblue.json"
+import MatchBoosterPopup from "./components/match-booster"
 
 export default function JobListingPage() {
   useEffect(() => {
-    document.documentElement.classList.add("overflow-hidden");
+    window.scrollTo(0, 0)
+    if (localStorage.getItem("openMatchBooster") === "1") {
+      setShowBooster(true)
+      localStorage.removeItem("openMatchBooster")
+    }
+  }, [])
 
-    return () => {
-      document.documentElement.classList.remove("overflow-hidden");
-    };
-  }, []);
-
-  const [selectedJob, setSelectedJob] = useState<number | null>(null)
+  const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false)
   const [showProfileColumn, setShowProfileColumn] = useState(true) 
+  const [showBooster, setShowBooster] = useState(false)
   const router = useRouter();
 
   const rightSectionRef = useRef<HTMLDivElement | null>(null)
   const leftSectionRef = useRef<HTMLDivElement | null>(null)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100">
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-sky-100">
+
       {/* Mobile Navigation */}
       <div className="flex items-center justify-between p-4 bg-white shadow-sm md:hidden">
         <Drawer
@@ -73,7 +83,7 @@ export default function JobListingPage() {
       >
         {/* Left Column - User Profile - Hidden on mobile, visible on md and up */}
         {showProfileColumn && (
-          <div className="hidden md:block w-80 flex-shrink-0 overflow-y-auto border-r border-blue-200 relative">
+          <div className="hidden md:block w-80 flex-shrink-0 border-r border-blue-200 relative">
             {/* Go Back Button */}
             <button
               className="absolute right-2 z-20 bg-white border border-blue-200 rounded-full p-1 shadow hover:bg-blue-50 transition-colors"
@@ -144,10 +154,20 @@ export default function JobListingPage() {
               w-[35%] max-w-[600px]
             `}
           >
-            <JobDetails onClose={() => setSelectedJob(null)} />
+            <JobDetails
+              onClose={() => setSelectedJob(null)}
+              jobId={selectedJob || ""}
+            />
           </div>
         )}
       </div>
+      {showBooster && (
+        <MatchBoosterPopup
+          open={showBooster}
+          onClose={() => setShowBooster(false)}
+          matchScore={0}
+        />
+      )}
     </div>
   )
 }
@@ -163,16 +183,15 @@ function MobileUserProfile() {
 function UserProfile({ router }: { router?: ReturnType<typeof useRouter> }) {
   return (
     <div className="p-4 mt-1">
-      {/* Your Skills */}
-      <YourSkills />
 
-      {/* Recommended Skills */}
-      <RecoSkills />
+      <MatchAnalysis />
+
+      <YourSkills />
 
       {/* Go Back Button */}
       {router && (
         <button
-          className="flex items-center gap-2 px-3 py-2 -mt-4 bg-white border border-blue-200 rounded-full text-blue-600 hover:bg-blue-50 transition-colors"
+          className="flex items-center gap-2 px-3 py-2  bg-white border border-blue-200 rounded-full text-blue-600 hover:bg-blue-50 transition-colors"
           onClick={() => router.push("/students/jobs/job-listings")}
         >
           <svg
@@ -198,50 +217,194 @@ function UserProfile({ router }: { router?: ReturnType<typeof useRouter> }) {
 }
 
 // Job Listings Component
-function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | null) => void; selectedJob: number | null }) {
-  const [showQuickApply, setShowQuickApply] = useState(false);
-  const [currentJobId, setCurrentJobId] = useState<number | null>(null);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("recommended");
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | null) => void; selectedJob: string | null }) {
+  const [jobIds, setJobIds] = useState<(string | number)[]>([])
+
+  type Job = {
+    id: string | number
+    job_id?: string | number
+    title?: string
+    job_title?: string
+    company?: string
+    registered_employers?: { company_name?: string }
+    employers?: { company_name?: string; first_name?: string; last_name?: string }
+    posted_at?: string
+    gpt_score?: number
+    location?: string
+    type?: string
+    salary?: number
+    error?: boolean
+    [key: string]: unknown
+  }
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showQuickApply, setShowQuickApply] = useState(false)
+  const [currentJobId, setCurrentJobId] = useState<number | null>(null)
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [activeTab] = useState("recommended")
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [searchInput, setSearchInput] = useState("")
+
+  type Filters = {
+    location?: string
+    type?: string
+    salaryMin?: number
+    salaryMax?: number
+  }
+  const [filters, setFilters] = useState<Filters>({})
+  const [sortBy, setSortBy] = useState("relevant")
+  const [page, setPage] = useState(1)
+  const [limit] = useState(10)
+  const [totalPagesState, setTotalPagesState] = useState<number>(1)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    fetch("/api/match-booster/fetchJobMatches", { method: "POST" })
+      .then(res => res.json())
+      .then(data => {
+        const ids = Array.isArray(data.jobs) ? data.jobs.map((j: Job) => j.id || j.job_id) : []
+        setJobIds(ids)
+        setTotalPagesState(Math.max(1, Math.ceil(ids.length / limit)))
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [limit])
+
+  useEffect(() => {
+    if (jobIds.length === 0) {
+      setJobs([])
+      return
+    }
+    setLoading(true)
+    Promise.all(
+      jobIds.map(id =>
+        fetch(`/api/students/job-listings/${id}`)
+          .then(res => res.json())
+          .catch(() => null)
+      )
+    ).then(results => {
+      let filteredSortedJobs = results
+        .filter((j: Job | null): j is Job => !!j && !j.error)
+      if (sortBy === "score-desc") {
+        filteredSortedJobs = filteredSortedJobs.slice().sort((a, b) => {
+          const aScore = typeof a.gpt_score === "number" ? a.gpt_score : -Infinity;
+          const bScore = typeof b.gpt_score === "number" ? b.gpt_score : -Infinity;
+          if (aScore === -Infinity && bScore === -Infinity) return 0;
+          if (aScore === -Infinity) return 1;
+          if (bScore === -Infinity) return -1;
+          return bScore - aScore;
+        });
+      } else if (sortBy === "score-asc") {
+        filteredSortedJobs = filteredSortedJobs.slice().sort((a, b) => {
+          const aScore = typeof a.gpt_score === "number" ? a.gpt_score : Infinity;
+          const bScore = typeof b.gpt_score === "number" ? b.gpt_score : Infinity;
+          if (aScore === Infinity && bScore === Infinity) return 0;
+          if (aScore === Infinity) return 1;
+          if (bScore === Infinity) return -1;
+          return aScore - bScore;
+        });
+      } else if (sortBy === "newest") {
+        filteredSortedJobs = filteredSortedJobs.slice().sort((a, b) => {
+          const aDate = a.posted_at ? new Date(a.posted_at).getTime() : 0;
+          const bDate = b.posted_at ? new Date(b.posted_at).getTime() : 0;
+          return bDate - aDate;
+        });
+      }
+      setJobs(filteredSortedJobs);
+      setLoading(false);
+    })
+  }, [jobIds, sortBy])
 
   useEffect(() => {
     const handleScroll = () => {
-      if (!scrollContainerRef.current) return;
-
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-
+      if (!scrollContainerRef.current) return
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
       scrollTimeoutRef.current = setTimeout(() => {
-        if (scrollContainerRef.current!.scrollTop > 50) {
-          setIsHeaderCollapsed(true);
-        } else {
-          setIsHeaderCollapsed(false);
-        }
-      }, 100);
-    };
-
-    const scrollContainer = scrollContainerRef.current;
-    if (scrollContainer) {
-      scrollContainer.addEventListener("scroll", handleScroll);
-      return () => {
-        scrollContainer.removeEventListener("scroll", handleScroll);
-        if (scrollTimeoutRef.current) {
-          clearTimeout(scrollTimeoutRef.current);
-        }
-      };
+        setIsHeaderCollapsed(scrollContainerRef.current!.scrollTop > 50)
+      }, 100)
     }
-  }, []);
+    const scrollContainer = scrollContainerRef.current
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", handleScroll)
+      return () => {
+        scrollContainer.removeEventListener("scroll", handleScroll)
+        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [isHeaderCollapsed])
+
+  type TabKey = "recommended" | "recent"
+  const tabFilters: Record<TabKey, (job: Job) => boolean> = {
+    recommended: () => true,
+    recent: (job: Job) => {
+      if (!job.posted_at) return false
+      const postedDate = new Date(job.posted_at)
+      const now = new Date()
+      return (now.getTime() - postedDate.getTime()) < 1000 * 60 * 60 * 24 * 7
+    },
+  }
+
+  const applyFilters = (jobList: Job[]) => {
+    let filtered = jobList
+    if (activeTab && tabFilters[activeTab as TabKey]) {
+      filtered = filtered.filter(tabFilters[activeTab as TabKey])
+    }
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase()
+      filtered = filtered.filter(
+        job => {
+          const title =
+            (job.title || job.job_title || "").toString().trim().toLowerCase()
+          const company =
+            (job.company ||
+              job.registered_employers?.company_name ||
+              job.employers?.company_name ||
+              (job.employers?.first_name ? job.employers?.first_name + " " + job.employers?.last_name : "") ||
+              "").toString().trim().toLowerCase()
+          return title.includes(term) || company.includes(term)
+        }
+      )
+    }
+    if (filters.location !== undefined) {
+      filtered = filtered.filter(
+        job =>
+          job.location !== undefined &&
+          job.location.toLowerCase().includes(filters.location!.toLowerCase())
+      )
+    }
+    if (filters.type) {
+      filtered = filtered.filter(job => job.type && job.type === filters.type)
+    }
+    if (filters.salaryMin !== undefined) {
+      filtered = filtered.filter(job => job.salary !== undefined && filters.salaryMin !== undefined && job.salary >= filters.salaryMin)
+    }
+    if (typeof filters.salaryMax === "number") {
+      filtered = filtered.filter(job => job.salary !== undefined && job.salary <= filters.salaryMax!)
+    }
+    return filtered
+  }
+
+  const filteredJobs = applyFilters(jobs)
+  const paginatedJobs = filteredJobs.slice((page - 1) * limit, page * limit)
+
+  let matchMessage = ""
+  if (filteredJobs.length >= 10) {
+    matchMessage = `You’re on a roll! We found ${filteredJobs.length} job matches that could be your next big step!`
+  } else if (filteredJobs.length >= 4) {
+    matchMessage = `Your effort’s paying off—${filteredJobs.length} jobs match your skills and goals!`
+  } else {
+    matchMessage = `Don’t be discouraged — new opportunities appear every day!`
+  }
 
   return (
     <div className="flex flex-col h-full">
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto h-full">
         <div className="sticky top-0 z-30 pt-2 pb-4 bg-gradient-to-br from-blue-50 to-sky-100 mx-2 -mb-6">
           <motion.div
-            className=" mt-3 bg-gradient-to-r from-blue-700 to-blue-500 rounded-2xl shadow-xl text-white mb-4 relative overflow-hidden"
+            className=" mt-3 bg-gradient-to-r from-blue-500 via-indigo-500 to-sky-400 rounded-2xl shadow-xl text-white  relative overflow-hidden"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -285,113 +448,262 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: number | 
               transition={{ duration: 0.5, delay: 0.3 }}
               whileHover={{ boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
             >
-              <Input
-                type="text"
-                placeholder="Search jobs"
-                className="border-0 text-black focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 sm:mb-0 flex-1"
-              />
-              <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+              <div className="relative flex-1 w-full">
+                <Input
+                  type="text"
+                  placeholder="Search jobs"
+                  className="border-0 text-black focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 sm:mb-0 flex-1 pr-10"
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
+                />
+                {searchInput && (
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
+                    onClick={() => {
+                      setSearchInput("")
+                      setSearchTerm("")
+                    }}
+                    tabIndex={0}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <Button
+                className="bg-blue-400 hover:bg-blue-700 w-full sm:w-auto"
+                onClick={() => setSearchTerm(searchInput)}
+              >
                 <Search className="mr-2 h-4 w-4" />
                 Search
               </Button>
             </motion.div>
+            <div className="flex items-center justify-between mt-2">
+              <motion.div
+                className="flex items-center text-base text-white font-semibold"
+                initial={{ x: -80, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 120, damping: 18, delay: 0.4 }}
+              >
+                <GiFairyWand className="mr-2 h-5 w-5" />
+                {loading ? (
+                  <span className="h-5 w-48 bg-white/30 rounded animate-pulse inline-block" />
+                ) : (
+                  <motion.span
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: selectedJob === null ? 1 : 0 }}
+                    transition={{ duration: 0.4 }}
+                    style={{ display: "inline-block" }}
+                  >
+                    {matchMessage}
+                  </motion.span>
+                )}
+              </motion.div>
+              <div className="flex items-center gap-4">
+                <div className="relative flex items-center gap-1">
+                  <span className="text-sm font-medium text-white">Sort by</span>
+                  <Select
+                    value={sortBy}
+                    onValueChange={val => setSortBy(val)}
+                  >
+                    <SelectTrigger className="bg-white/10 px-3 py-1 rounded-full text-sm font-medium text-white border border-white/30 hover:bg-white/20 flex items-center w-[180px] h-8">
+                      <SelectValue>
+                        {(() => {
+                          if (sortBy === "newest") return "Newest";
+                          return "Relevant";
+                        })()}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="relevant">Relevant</SelectItem>
+                      <SelectItem value="newest">Newest</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  className="bg-white/10 px-3 py-1 rounded-full text-sm font-medium text-white border border-white/30 hover:bg-white/20"
+                  onClick={() => setIsFilterOpen(!isFilterOpen)}
+                >
+                  {isFilterOpen ? "Close Filters" : "Filters"}
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+
+            </div>
           </motion.div>
 
           <div className="flex items-center justify-between pb-2 mb-2 scrollbar-hide">
-            <div className="flex overflow-x-auto space-x-2">
-              {[{ id: "recommended", label: "Recommended", icon: <CheckCircle className="w-3 h-3" /> },
-                { id: "recent", label: "Recent", icon: <Clock className="w-3 h-3" /> },
-                { id: "saved", label: "Saved", icon: <Bookmark className="w-3 h-3" /> },
-                { id: "applied", label: "Applied", icon: <Mail className="w-3 h-3" /> },
-                { id: "remote", label: "Remote", icon: <Wifi className="w-3 h-3" /> },
-              ].map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  className={`${
-                    selectedJob !== null
-                      ? "w-10 h-10 rounded-full flex items-center justify-center bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"
-                      : `px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap flex items-center gap-1 ${
-                          activeTab === tab.id
-                            ? "bg-blue-600 text-white shadow-md"
-                            : "bg-white text-blue-600 border border-blue-200 hover:bg-blue-50"
-                        }`
-                  }`}
-                  onClick={() => setActiveTab(tab.id)}
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {tab.icon}
-                  {selectedJob === null && <span>{tab.label}</span>}
-                  {activeTab === tab.id && selectedJob === null && (
-                    <span className="ml-1 bg-white text-blue-600 text-xs rounded-full px-1.5">24</span>
-                  )}
-                </motion.button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 ">
-              <div className="relative flex items-center gap-1">
-                <span className="text-sm font-medium text-blue-600">Sort by</span>
-                <motion.button
-                  className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 flex items-center gap-1"
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Relevance
-                  <ChevronDown className="h-3 w-3" />
-                </motion.button>
-              </div>
-              <Button
-                className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50"
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-              >
-                {isFilterOpen ? "Close Filters" : "Filters"}
-              </Button>
-            </div>
+
           </div>
         </div>
 
-        <div className="space-y-4 p-4 ">
-          {[0, 1, 2, 3, 4].map((id) => {
-            const job = {
-              id,
-              title: `Job Title ${id + 1}`,
-              company: `Company ${id + 1}`,
-              location: "Metro Manila",
-              salary: "₱30,000/mo",
-              type: "Full-time",
-  
-            };
-            return (
-              <JobCard
-                key={id}
-                id={id}
-                job={job}
-                isSelected={selectedJob === id}
-                onSelect={() => onSelectJob(selectedJob === id ? null : id)}
-                onQuickApply={() => {
-                  setCurrentJobId(id);
-                  setShowQuickApply(true);
-                }}
-              />
-            );
-          })}
+        <div className="space-y-4 p-4 mb-20 ">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center min-h-[300px]">
+              <div className="w-44 h-44 mx-auto">
+                <Lottie animationData={loadingAnimation} loop={true} />
+              </div>
+              <span className="mt-4 text-blue-700 font-semibold text-base animate-pulse">
+                Loading job matches, please wait...
+              </span>
+            </div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[300px]">
+              <div className="bg-white rounded-full shadow-lg flex items-center justify-center mt-10 w-64 h-64">
+                <Lottie animationData={notFoundAnimation} loop={true} />
+              </div>
+              <span className="mt-4 text-gray-500 font-medium text-base text-center">
+                Uh oh, looks like your perfect match hasn’t shown up yet! Try tweaking your search or check back soon.
+              </span>
+            </div>
+          ) : (
+            paginatedJobs.map(
+              ({
+                id,
+                gpt_score,
+                company_id,
+                ...rest
+              }) => (
+                <JobCard
+                  key={id}
+                  id={id}
+                  job={{ ...rest, id, gpt_score, company_id: typeof company_id === "string" ? company_id : "preview" }}
+                  isSelected={selectedJob === String(id)}
+                  onSelect={() => onSelectJob(selectedJob === String(id) ? null : String(id))}
+                  onQuickApply={() => {
+                    setCurrentJobId(typeof id === "number" ? id : Number(id))
+                    setShowQuickApply(true)
+                  }}
+                />
+              )
+            )
+          ) }
         </div>
+        {!loading && filteredJobs.length > 0 && totalPagesState > 1 && (
+          <Pagination
+            totalPages={totalPagesState}
+            currentPage={page}
+            onPageChange={setPage}
+          />
+        )}
       </div>
-
       {isFilterOpen &&
         createPortal(
           <FilterModal
             onClose={() => setIsFilterOpen(false)}
-            onApply={() => setIsFilterOpen(false)}
-            currentFilters={{}}
+            onApply={(newFilters: Filters) => {
+              setFilters(newFilters)
+              setIsFilterOpen(false)
+            }}
+            currentFilters={filters}
           />,
           document.body
         )}
-
       {showQuickApply &&
         createPortal(<QuickApplyModal jobId={currentJobId!} onClose={() => setShowQuickApply(false)} />, document.body)}
     </div>
   );
+}
+
+// Pagination Component
+function Pagination({
+  totalPages = 1,
+  currentPage = 1,
+  onPageChange,
+}: {
+  totalPages?: number
+  currentPage?: number
+  onPageChange?: (page: number) => void
+}) {
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      onPageChange?.(page)
+    }
+  }
+
+  const getVisiblePages = () => {
+    const delta = 2
+    const range = []
+    const rangeWithDots = []
+
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i)
+    }
+
+    if (currentPage - delta > 2) {
+      rangeWithDots.push(1, "…")
+    } else {
+      rangeWithDots.push(1)
+    }
+
+    rangeWithDots.push(...range)
+
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push("…", totalPages)
+    } else if (totalPages > 1) {
+      rangeWithDots.push(totalPages)
+    }
+
+    return rangeWithDots
+  }
+
+  const visiblePages = getVisiblePages()
+
+  return (
+    <div className="flex flex-col items-center gap-2 min-h-[130px]">
+      <div className="flex items-center gap-1 relative">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="flex items-center gap-1 px-3 text-gray-600 hover:text-blue-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronDown className="w-4 h-4 rotate-90" />
+          <span className="text-sm font-medium">Previous</span>
+        </button>
+        <div className="flex items-center relative mx-4">
+          {visiblePages.map((page) => (
+            <div key={page} className="relative">
+              {page === "…" ? (
+                <span className="px-3 py-2 text-gray-400 text-sm">…</span>
+              ) : (
+                <button
+                  onClick={() => handlePageChange(page as number)}
+                  className={`relative px-3 py-2 text-sm font-medium transition-colors ${
+                    currentPage === page ? "text-blue-600" : "text-gray-600 hover:text-blue-500"
+                  }`}
+                >
+                  {page}
+                  {currentPage === page && (
+                    <motion.div
+                      layoutId="pagination-indicator"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full"
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 30,
+                      }}
+                    />
+                  )}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="flex items-center gap-1 px-3 py-2 text-gray-600 hover:text-blue-500 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+        >
+          <span className="text-sm font-medium">Next</span>
+          <ChevronDown className="w-4 h-4 -rotate-90" />
+        </button>
+      </div>
+      <div className="text-sm text-gray-500" style={{ minHeight: 20 }}>
+        Page {currentPage} of {totalPages}
+      </div>
+    </div>
+  )
 }
 
 // Quick Apply Modal

@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized: No studentId in session.user" }, { status: 401 })
   }
 
-  const { course, yearLevel, section, jobType, remoteOption, unrelatedJobRecommendations } = await req.json()
+  const { course, yearLevel, section, jobType, remoteOption, unrelatedJobRecommendations, isAlumni } = await req.json()
 
   const { error } = await supabase
     .from("registered_students")
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       course,
       year: yearLevel,
       section,
+      is_alumni: !!isAlumni,
     }], { onConflict: "id" })
 
   if (error) {
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   const educations = [{
     level: "College",
-    years: "Present",
+    years: isAlumni ? "Graduated" : "Present",
     degree: "BS - Information Technology",
     school: "STI College Alabang",
     acronym: "STI",
@@ -93,5 +94,5 @@ export async function POST(req: NextRequest) {
 
   console.log("Inserted student_profile for:", student_id, "educations:", educations, "username:", username);
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, student_id })
 }

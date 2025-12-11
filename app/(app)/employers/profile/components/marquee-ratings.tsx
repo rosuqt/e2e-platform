@@ -1,124 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-
-const reviews = [
-	{
-		name: "Ally Rozu",
-		username: "@allyrozu",
-		body: "I've never seen anything like this before. It's amazing. I love it.",
-		img: "https://avatar.vercel.sh/allyrozu",
-		star: 5,
-	},
-	{
-		name: "Ariza Kemly",
-		username: "@arizakemly",
-		body: "I don't know what to say. I'm speechless. This is amazing.",
-		img: "https://avatar.vercel.sh/arizakemly",
-		star: 4,
-	},
-	{
-		name: "Zeyn Kemlerina",
-		username: "@zeynkemlerina",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/zeynkemlerina",
-		star: 5,
-	},
-	{
-		name: "Suzeyn Adrian",
-		username: "@suzeynadrian",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/suzeynadrian",
-		star: 4,
-	},
-	{
-		name: "Edrina Valentines",
-		username: "@edrinavalentines",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/edrinavalentines",
-		star: 5,
-	},
-	{
-		name: "Vivi Reri",
-		username: "@vivireri",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/vivireri",
-		star: 4,
-	},
-	{
-		name: "Wu Speki",
-		username: "@wuspeki",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/wuspeki",
-		star: 5,
-	},
-	{
-		name: "Sif Alro",
-		username: "@sifalro",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/sifalro",
-		star: 4,
-	},
-	{
-		name: "Rozu Ally",
-		username: "@rozually",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/rozually",
-		star: 5,
-	},
-	{
-		name: "Kemlerina Zeyn",
-		username: "@kemlerinazeyn",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/kemlerinazeyn",
-		star: 4,
-	},
-	{
-		name: "Adrian Ariza",
-		username: "@adrianariza",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/adrianariza",
-		star: 5,
-	},
-	{
-		name: "Reri Suzeyn",
-		username: "@rerisuzeyn",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/rerisuzeyn",
-		star: 4,
-	},
-	{
-		name: "Valentines Wu",
-		username: "@valentineswu",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/valentineswu",
-		star: 5,
-	},
-	{
-		name: "Speki Edrina",
-		username: "@speki edrina",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/spekiedrina",
-		star: 4,
-	},
-	{
-		name: "Kemly Sif",
-		username: "@kemlysif",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/kemlysif",
-		star: 5,
-	},
-	{
-		name: "Alro Vivi",
-		username: "@alrovivi",
-		body: "I'm at a loss for words. This is amazing. I love it.",
-		img: "https://avatar.vercel.sh/alrovivi",
-		star: 4,
-	},
-];
-
-// Only show 2 rows of 4 cards each
-const firstRow = reviews.slice(0, 4);
-const secondRow = reviews.slice(4, 8);
+import { FaRegSmileBeam } from "react-icons/fa";
 
 const ReviewCard = ({
 	img,
@@ -150,7 +33,6 @@ const ReviewCard = ({
 					<p className="text-xs font-medium dark:text-white/40">{username}</p>
 				</div>
 			</div>
-			{/* Star rating display */}
 			<div className="mt-1 flex flex-row items-center gap-0.5">
 				{Array.from({ length: 5 }).map((_, i) => (
 					<span
@@ -170,19 +52,57 @@ const ReviewCard = ({
 	);
 };
 
-// Static cards, no marquee
-export function RatingsCards() {
+// Accept ratings as prop
+export function RatingsCards({ ratings }: { ratings?: any[] }) {
+	const cards =
+		Array.isArray(ratings) && ratings.length > 0
+			? ratings.slice(0, 8).map((r) => {
+				const student = r.registered_students || {};
+				return {
+					name:
+						student.first_name && student.last_name
+							? `${student.first_name} ${student.last_name}`
+							: student.first_name || "Anonymous",
+					username: student.email
+						? `@${student.email.split("@")[0]}`
+						: "",
+					body: r.overall_comment && r.overall_comment.trim().length > 0
+						? r.overall_comment
+						: "No comment provided.",
+					img:
+						student.profile_img ||
+						"https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images//default-pfp.jpg",
+					star: typeof r.overall_rating === "number" ? r.overall_rating : 0,
+				};
+			})
+			: [];
+
+	const firstRow = cards.slice(0, 4);
+	const secondRow = cards.slice(4, 8);
+
 	return (
 		<div className="space-y-4 w-full">
 			<div className="flex flex-row flex-nowrap gap-4 justify-center overflow-x-auto">
-				{firstRow.map((review) => (
-					<ReviewCard key={review.username} {...review} />
-				))}
+				{firstRow.length > 0 ? (
+					firstRow.map((review, i) => (
+						<ReviewCard key={review.username + i} {...review} />
+					))
+				) : (
+					<div className="flex flex-col items-center justify-center text-gray-500 text-center w-full py-8">
+						<FaRegSmileBeam size={36} className="mb-2 text-blue-400" />
+						<div>
+							No ratings yet!<br />
+							Be the first to leave a review and help others.
+						</div>
+					</div>
+				)}
 			</div>
 			<div className="flex flex-row flex-nowrap gap-4 justify-center overflow-x-auto">
-				{secondRow.map((review) => (
-					<ReviewCard key={review.username} {...review} />
-				))}
+				{secondRow.length > 0
+					? secondRow.map((review, i) => (
+							<ReviewCard key={review.username + "2" + i} {...review} />
+					  ))
+					: null}
 			</div>
 		</div>
 	);

@@ -1,5 +1,5 @@
 import { Avatar, IconButton, Menu, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material"
-import { Star, MoreHorizontal, Trash2, Eye } from "lucide-react"
+import { Star, MoreHorizontal, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 
@@ -86,12 +86,13 @@ function CompanyListItem({
       </div>
       <div className="flex items-center gap-2">
         <Button
-          variant="default"
+          variant="outline"
           size="sm"
-          className="rounded-full bg-blue-500 text-white hover:bg-blue-600 border-0"
+          className="rounded-full border-blue-600 text-blue-600 bg-white hover:text-blue-700 flex items-center justify-center"
+          onClick={handleUnfollowClick}
         >
-          <Eye className="h-4 w-4 mr-1" />
-          View Profile
+          <Trash2 className="h-4 w-4 mr-1" />
+          Unfollow
         </Button>
         <IconButton onClick={handleMenuOpen} size="small">
           <MoreHorizontal className="h-4 w-4" />

@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   const { data: profile, error } = await supabase
     .from("student_profile")
-    .select("uploaded_resume_url, uploaded_cover_letter_url, certs")
+    .select("uploaded_resume_url, uploaded_cover_letter_url, certs, portfolio")
     .eq("student_id", student_id)
     .single();
 
@@ -73,6 +73,19 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  let portfolioWithSignedUrls: Record<string, unknown>[] = [];
+  if (Array.isArray(profile?.portfolio)) {
+    portfolioWithSignedUrls = await Promise.all(
+      profile.portfolio.map(async (item: Record<string, unknown>) => {
+        if (item.attachmentUrl) {
+          const signedUrl = await getSignedUrl(item.attachmentUrl as string);
+          return { ...item, signedUrl };
+        }
+        return item;
+      })
+    );
+  }
+
   console.log({
     resumeUrls,
     coverLetterUrls,
@@ -86,6 +99,7 @@ export async function GET(req: NextRequest) {
     certs: certsWithSignedUrls,
     uploaded_resume_url: profile?.uploaded_resume_url,
     uploaded_cover_letter_url: profile?.uploaded_cover_letter_url,
+    portfolio: portfolioWithSignedUrls,
   });
 }
 

@@ -3,7 +3,6 @@
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { Eye, EyeOff, Lock, User,  Shield,  Zap, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,6 +37,12 @@ export default function LoginPage() {
 
     if (res?.error) {
       setError(res.error)
+      setIsLoading(false)
+      return
+    }
+
+    if (!res?.ok) {
+      setError("Invalid credentials or unable to sign in. Please try again.")
       setIsLoading(false)
       return
     }
@@ -274,14 +279,6 @@ export default function LoginPage() {
                       <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
                     </Button>
                   </div>
-                  <div>
-                    <Link
-                      href="#"
-                      className="text-sm text-blue-600 hover:text-indigo-800 font-medium transition-colors"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
                 </motion.div>
 
                 <motion.div
@@ -290,14 +287,7 @@ export default function LoginPage() {
                   transition={{ delay: 0.5, duration: 0.5 }}
                   className="flex items-center space-x-3"
                 >
-                  <input
-                    type="checkbox"
-                    id="remember"
-                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2"
-                  />
-                  <Label htmlFor="remember" className="text-gray-700 font-medium">
-                    Remember me for 30 days
-                  </Label>
+                  {/* Removed remember me checkbox */}
                 </motion.div>
 
                 <motion.div
@@ -345,6 +335,15 @@ export default function LoginPage() {
                   </div>
                 </div>
               </motion.div>
+              <div className="mt-6 flex justify-center">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-2xl bg-transparent border border-blue-300 text-blue-600 font-medium hover:bg-blue-50 transition-colors"
+                  onClick={() => router.push("/sign-in")}
+                >
+                  Switch back to normal login
+                </button>
+              </div>
             </CardContent>
           </Card>
 

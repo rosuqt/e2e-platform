@@ -29,8 +29,8 @@ export default function DraftsModal({
     location: "",
     remoteOptions: "",
     workType: "",
-    payType: "",
-    payAmount: "",
+    payType: "", // Added back
+    payAmount: "", // Added back
     recommendedCourse: "",
     verificationTier: "basic",
     jobDescription: "",
@@ -130,8 +130,8 @@ export default function DraftsModal({
               location: d.location as string ?? "",
               remoteOptions: d.remote_options as string ?? "",
               workType: d.work_type as string ?? "",
-              payType: d.pay_type as string ?? "",
-              payAmount: d.pay_amount as string ?? "",
+              payType: d.pay_type as string ?? "", // Added back
+              payAmount: d.pay_amount as string ?? "", // Added back
               recommendedCourse: typeof d.recommended_course === "string" && d.recommended_course.trim()
                 ? d.recommended_course.trim()
                 : "",
@@ -229,8 +229,8 @@ export default function DraftsModal({
         location: d.location as string ?? "",
         remoteOptions: d.remote_options as string ?? "",
         workType: d.work_type as string ?? "",
-        payType: d.pay_type as string ?? "",
-        payAmount: d.pay_amount as string ?? "",
+        payType: d.pay_type as string ?? "", // Added back
+        payAmount: d.pay_amount as string ?? "", // Added back
         recommendedCourse:
           typeof d.recommended_course === "string" && d.recommended_course.trim()
             ? d.recommended_course.trim()
@@ -270,7 +270,6 @@ export default function DraftsModal({
         location: !formData.location.trim(),
         remoteOptions: !formData.remoteOptions.trim(),
         workType: !formData.workType.trim(),
-        payType: !formData.payType.trim(),
         recommendedCourse: !formData.recommendedCourse.trim(),
       }
     } else if (currentStep === 2) {
@@ -341,6 +340,11 @@ export default function DraftsModal({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ job_id: publishedJobId }),
           })
+          await fetch("/api/ai-matches/rescore-job", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: publishedJobId }),
+          })
         }
       } else {
         const response = await fetch("/api/employers/post-a-job", {
@@ -388,8 +392,8 @@ export default function DraftsModal({
         location: formData.location,
         remote_options: formData.remoteOptions,
         work_type: formData.workType,
-        pay_type: formData.payType,
-        pay_amount: formData.payAmount,
+        pay_type: formData.payType, // Added back
+        pay_amount: formData.payAmount, // Added back
         recommended_course: formData.recommendedCourse,
         verification_tier: formData.verificationTier,
         job_description: formData.jobDescription,

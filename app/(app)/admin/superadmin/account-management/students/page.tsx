@@ -6,13 +6,13 @@ import {
   Download,
   MoreHorizontal,
   Eye,
-  Trash,
   Edit,
   Mail,
   Phone,
   GraduationCap,
   Calendar,
   User,
+  Archive,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -30,12 +30,6 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import MuiAvatar from "@mui/material/Avatar"
-import MuiDialog from "@mui/material/Dialog"
-import MuiDialogTitle from "@mui/material/DialogTitle"
-import MuiDialogContent from "@mui/material/DialogContent"
-import MuiDialogContentText from "@mui/material/DialogContentText"
-import MuiDialogActions from "@mui/material/DialogActions"
-import MuiButton from "@mui/material/Button"
 import MuiMenu from "@mui/material/Menu"
 import MuiMenuItem from "@mui/material/MenuItem"
 import MuiIconButton from "@mui/material/IconButton"
@@ -58,15 +52,16 @@ interface Student {
   address: string
   dateOfBirth: string
   department: string
+  is_archived?: boolean
 }
 
 export default function StudentsManagement() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("active")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
+  const [selectedCourse, setSelectedCourse] = useState<string>("all")
   const [selectedYear, setSelectedYear] = useState<string>("all")
   const [page, setPage] = useState(1)
   const pageSize = 7
@@ -85,7 +80,6 @@ export default function StudentsManagement() {
       setIsLoading(false)
       if (!res.ok) return
       const { students: apiStudents } = await res.json()
-      console.log("Frontend received students:", apiStudents)
       if (Array.isArray(apiStudents)) {
         setStudents(
           apiStudents.map((s: Record<string, unknown>) => {
@@ -112,6 +106,7 @@ export default function StudentsManagement() {
               address: String(s.address ?? ""),
               dateOfBirth: "",
               department: "",
+              is_archived: !!s.is_archived,
             }
           }) as unknown as Student[]
         )
@@ -120,18 +115,19 @@ export default function StudentsManagement() {
     fetchStudents()
   }, [])
 
-  const departments = Array.from(
-    new Set(
-      students
-        .map((student) => student.department)
-        .filter((dept) => dept && dept !== "") 
-    )
-  )
+
   const years = Array.from(
     new Set(
       students
         .map((student) => student.year)
         .filter((year) => year && year !== "") 
+    )
+  )
+  const courses = Array.from(
+    new Set(
+      students
+        .map((student) => student.course)
+        .filter((course) => course && course !== "")
     )
   )
 
@@ -143,15 +139,13 @@ export default function StudentsManagement() {
       student.course.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesTab =
-      (activeTab === "active" && student.status === "active") ||
-      (activeTab === "inactive" && student.status === "inactive") ||
-      (activeTab === "graduated" && student.status === "graduated") ||
-      (activeTab === "on_leave" && student.status === "on_leave") ||
+      (activeTab === "active" && !student.is_archived) ||
+      (activeTab === "archived" && student.is_archived) ||
       activeTab === "all"
 
-    const matchesDepartment = selectedDepartment === "all" || student.department === selectedDepartment
+    const matchesCourse = selectedCourse === "all" || student.course === selectedCourse
     const matchesYear = selectedYear === "all" || student.year === selectedYear
-    return matchesSearch && matchesTab && matchesDepartment && matchesYear
+    return matchesSearch && matchesTab && matchesCourse && matchesYear
   })
 
   const pageCount = Math.ceil(filteredStudents.length / pageSize)
@@ -201,13 +195,22 @@ export default function StudentsManagement() {
     }
   }
 
-  const handleDeleteStudent = (student: Student) => {
+  const handleArchiveDialog = (student: Student) => {
     setSelectedStudent(student)
-    setIsDeleteDialogOpen(true)
+    setIsArchiveDialogOpen(true)
   }
 
-  const confirmDeleteStudent = () => {
-    setIsDeleteDialogOpen(false)
+  const confirmArchiveStudent = async () => {
+    if (!selectedStudent) return
+    await fetch("/api/superadmin/actions/isArchived", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: selectedStudent.id }),
+    })
+    setStudents(students.map(s =>
+      s.id === selectedStudent.id ? { ...s, is_archived: true } : s
+    ))
+    setIsArchiveDialogOpen(false)
   }
 
   const exportStudents = () => {
@@ -291,15 +294,15 @@ export default function StudentsManagement() {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                      <Select value={selectedCourse} onValueChange={setSelectedCourse}>
                         <SelectTrigger className="w-[180px] rounded-2xl border-gray-200 focus:border-indigo-300 focus:ring-indigo-200 h-12">
-                          <SelectValue placeholder="Department" />
+                          <SelectValue placeholder="Course" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
-                          <SelectItem value="all">All Departments</SelectItem>
-                          {departments.map((dept) => (
-                            <SelectItem key={dept} value={dept}>
-                              {dept}
+                          <SelectItem value="all">Course</SelectItem>
+                          {courses.map((course) => (
+                            <SelectItem key={course} value={course}>
+                              {course}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -322,7 +325,7 @@ export default function StudentsManagement() {
                 </div>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-                  <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+                  <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
                     <TabsTrigger
                       value="all"
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
@@ -333,60 +336,34 @@ export default function StudentsManagement() {
                       value="active"
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
                     >
-                      Active ({students.filter((s) => s.status === "active").length})
+                      Active ({students.filter((s) => !s.is_archived).length})
                     </TabsTrigger>
                     <TabsTrigger
-                      value="inactive"
+                      value="archived"
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
                     >
-                      Inactive ({students.filter((s) => s.status === "inactive").length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="graduated"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
-                    >
-                      Graduated ({students.filter((s) => s.status === "graduated").length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="on_leave"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
-                    >
-                      On Leave ({students.filter((s) => s.status === "on_leave").length})
+                      Archived ({students.filter((s) => s.is_archived).length})
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="all" className="mt-4">
                     <StudentsTable
                       students={paginatedStudents}
                       onViewStudent={handleViewStudent}
-                      onDeleteStudent={handleDeleteStudent}
+                      onArchiveStudent={handleArchiveDialog}
                     />
                   </TabsContent>
                   <TabsContent value="active" className="mt-4">
                     <StudentsTable
                       students={paginatedStudents}
                       onViewStudent={handleViewStudent}
-                      onDeleteStudent={handleDeleteStudent}
+                      onArchiveStudent={handleArchiveDialog}
                     />
                   </TabsContent>
-                  <TabsContent value="inactive" className="mt-4">
+                  <TabsContent value="archived" className="mt-4">
                     <StudentsTable
                       students={paginatedStudents}
                       onViewStudent={handleViewStudent}
-                      onDeleteStudent={handleDeleteStudent}
-                    />
-                  </TabsContent>
-                  <TabsContent value="graduated" className="mt-4">
-                    <StudentsTable
-                      students={paginatedStudents}
-                      onViewStudent={handleViewStudent}
-                      onDeleteStudent={handleDeleteStudent}
-                    />
-                  </TabsContent>
-                  <TabsContent value="on_leave" className="mt-4">
-                    <StudentsTable
-                      students={paginatedStudents}
-                      onViewStudent={handleViewStudent}
-                      onDeleteStudent={handleDeleteStudent}
+                      onArchiveStudent={handleArchiveDialog}
                     />
                   </TabsContent>
                 </Tabs>
@@ -421,7 +398,6 @@ export default function StudentsManagement() {
         </Card>
       </motion.div>
 
-      {/* View Student Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[600px] rounded-3xl">
           <DialogHeader>
@@ -562,26 +538,27 @@ export default function StudentsManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog using MUI */}
-      <MuiDialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
-        <MuiDialogTitle>Are you sure you want to delete this student?</MuiDialogTitle>
-        <MuiDialogContent>
-          <MuiDialogContentText>
-            This action cannot be undone. This will permanently delete the student record and remove all associated
-            data from the system.
-          </MuiDialogContentText>
-        </MuiDialogContent>
-        <MuiDialogActions>
-          <MuiButton onClick={() => setIsDeleteDialogOpen(false)}>Cancel</MuiButton>
-          <MuiButton
-            onClick={confirmDeleteStudent}
-            color="error"
-            variant="contained"
-          >
-            Delete
-          </MuiButton>
-        </MuiDialogActions>
-      </MuiDialog>
+      <Dialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
+        <DialogContent className="sm:max-w-[400px] rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Archive Student?</DialogTitle>
+            <DialogDescription className="text-gray-600 text-base">
+              This will archive the student record and remove access from the system.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsArchiveDialogOpen(false)} className="rounded-xl px-6">
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmArchiveStudent}
+              className="rounded-xl px-6 bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              Archive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -589,11 +566,11 @@ export default function StudentsManagement() {
 function StudentsTable({
   students,
   onViewStudent,
-  onDeleteStudent,
+  onArchiveStudent,
 }: {
   students: Student[]
   onViewStudent: (student: Student) => void
-  onDeleteStudent: (student: Student) => void
+  onArchiveStudent: (student: Student) => void
 }) {
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
   const [menuStudentId, setMenuStudentId] = useState<string | null>(null)
@@ -684,6 +661,7 @@ function StudentsTable({
                       onClick={() => {
                         handleMenuClose()
                       }}
+                      sx={{ display: "none" }}
                     >
                       <Edit className="mr-2 h-4 w-4" />
                       Edit
@@ -691,12 +669,12 @@ function StudentsTable({
                     <MuiMenuItem
                       onClick={() => {
                         handleMenuClose()
-                        onDeleteStudent(student)
+                        onArchiveStudent(student)
                       }}
-                      sx={{ color: "red" }}
+                      sx={{ color: "orange" }}
                     >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Delete
+                      <Archive className="mr-2 h-4 w-4" />
+                      Archive
                     </MuiMenuItem>
                   </MuiMenu>
                 </td>

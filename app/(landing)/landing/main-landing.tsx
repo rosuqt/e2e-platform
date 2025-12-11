@@ -1,29 +1,36 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from "react"
-import { motion } from "framer-motion"
-import Link from "next/link"
-import Image from "next/image"
-import { ArrowRight, CheckCircle, Globe, Briefcase, GraduationCap, Users, Search, ChevronUp } from "lucide-react"
-import supabase from "@/lib/supabase"
+import React, { useEffect, useState } from "react";
+import { motion, easeOut } from "framer-motion";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  ArrowRight,
+  CheckCircle,
+  Globe,
+  Briefcase,
+  GraduationCap,
+  Users,
+  Search,
+  ChevronUp,
+} from "lucide-react";
+import supabase from "@/lib/supabase";
 
-import CompanyCard from "./components/company-showcase"
-import FeatureCard from "./components/feature-card"
-import InterviewCard from "./components/interview-card"
-import HowItWorksSection from "./components/how-it-works"
-import CourseSelector from "./components/course-selector"
-import LandingFooter from "./components/landing-footer"
+import CompanyCard from "./components/company-showcase";
+import FeatureCard from "./components/feature-card";
+import InterviewCard from "./components/interview-card";
+import HowItWorksSection from "./components/how-it-works";
+import CourseSelector from "./components/course-selector";
+import LandingFooter from "./components/landing-footer";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 60 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut" },
+    transition: { duration: 0.6, ease: easeOut },
   },
-}
-
-
+};
 
 const features = [
   {
@@ -41,43 +48,51 @@ const features = [
   {
     icon: <Users className="w-8 h-8 text-white" />,
     title: "Show off your Skills",
-    description: "Showcase your skills and expertise to stand out. Let employers see what you bring to the table.",
+    description:
+      "Showcase your skills and expertise to stand out. Let employers see what you bring to the table.",
   },
-]
+];
 
 export default function MainLanding() {
-  const [showScrollTop, setShowScrollTop] = useState(false)
-  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null)
-  const [bgImageUrl, setBgImageUrl] = useState<string | null>(null)
-  const [stiHiringImageUrl, setStiHiringImageUrl] = useState<string | null>(null)
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+  const [bgImageUrl, setBgImageUrl] = useState<string | null>(null);
+  const [stiHiringImageUrl, setStiHiringImageUrl] = useState<string | null>(
+    null
+  );
+  const [metrics, setMetrics] = useState<{
+    companyVerifyStatus?: Record<string, number>;
+    registeredStudents?: number;
+    hiredCount?: number;
+  }>({});
 
   useEffect(() => {
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > window.innerHeight)
-    }
+      setShowScrollTop(window.scrollY > window.innerHeight);
+    };
 
-    window.addEventListener("scroll", handleScroll)
+    window.addEventListener("scroll", handleScroll);
     return () => {
-      window.removeEventListener("scroll", handleScroll)
-    }
-  }, [])
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   useEffect(() => {
     const handleDoubleClick = (e: MouseEvent) => {
       if (e.detail > 1) {
-        e.preventDefault()
+        e.preventDefault();
       }
-    }
+    };
 
-    document.addEventListener("mousedown", handleDoubleClick)
+    document.addEventListener("mousedown", handleDoubleClick);
     return () => {
-      document.removeEventListener("mousedown", handleDoubleClick)
-    }
-  }, [])
+      document.removeEventListener("mousedown", handleDoubleClick);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchHeroImage = async () => {
@@ -115,6 +130,12 @@ export default function MainLanding() {
     fetchStiHiringImage();
   }, []);
 
+  useEffect(() => {
+    fetch("/api/fetchNumbermetrics")
+      .then((res) => res.json())
+      .then((data) => setMetrics(data));
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Scroll to Top Icon */}
@@ -132,17 +153,23 @@ export default function MainLanding() {
       )}
       {/* Hero Section with Navbar */}
       <div className="relative bg-gradient-to-r from-blue-700 to-indigo-800">
-
         <div className="container mx-auto px-4 py-16 md:py-24 lg:py-32">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
-            <motion.div className="lg:w-1/2 text-white" initial="hidden" animate="visible" variants={fadeInUp}>
+            <motion.div
+              className="lg:w-1/2 text-white"
+              initial="hidden"
+              animate="visible"
+              variants={fadeInUp}
+            >
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
                 The ultimate platform for interns to{" "}
-                <span className="text-yellow-400">connect, grow, and get hired</span>
+                <span className="text-yellow-400">
+                  connect, grow, and get hired
+                </span>
               </h1>
               <p className="mt-6 text-lg text-blue-100 max-w-xl">
-                Build your professional network, showcase your skills, and discover exciting internship
-                opportunities—all in one place.
+                Build your professional network, showcase your skills, and
+                discover exciting internship opportunities—all in one place.
               </p>
 
               <CourseSelector />
@@ -172,7 +199,9 @@ export default function MainLanding() {
                 >
                   <div className="flex items-center gap-2">
                     <CheckCircle className="text-green-500 w-5 h-5" />
-                    <span className="text-gray-800 font-medium">Resume uploaded</span>
+                    <span className="text-gray-800 font-medium">
+                      Resume uploaded
+                    </span>
                   </div>
                 </motion.div>
 
@@ -184,7 +213,9 @@ export default function MainLanding() {
                 >
                   <div className="flex items-center gap-2">
                     <CheckCircle className="text-green-500 w-5 h-5" />
-                    <span className="text-gray-800 font-medium">3 new job matches</span>
+                    <span className="text-gray-800 font-medium">
+                      3 new job matches
+                    </span>
                   </div>
                 </motion.div>
               </div>
@@ -217,7 +248,8 @@ export default function MainLanding() {
               Set up your <span className="text-blue-700">Profile</span>
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Set up your profile to showcase your skills. Connect with opportunities and grow your network.
+              Set up your profile to showcase your skills. Connect with
+              opportunities and grow your network.
             </p>
           </motion.div>
 
@@ -247,11 +279,12 @@ export default function MainLanding() {
               variants={fadeInUp}
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                <span className="text-yellow-500">AI-Powered</span> Job & Candidate Matches
+                <span className="text-yellow-500">AI-Powered</span> Job &
+                Candidate Matches
               </h2>
               <p className="text-gray-600 mb-8">
-                Create clear, engaging job postings with AI assistance. Optimize your listings to attract the right
-                candidates effortlessly.
+                Create clear, engaging job postings with AI assistance. Optimize
+                your listings to attract the right candidates effortlessly.
               </p>
 
               <ul className="space-y-4 mb-8">
@@ -303,39 +336,64 @@ export default function MainLanding() {
                         <Search className="w-5 h-5 text-blue-700" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">AI Job Matching</h3>
-                        <p className="text-sm text-gray-600">Finding your perfect fit</p>
+                        <h3 className="font-semibold text-gray-900">
+                          AI Job Matching
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Finding your perfect fit
+                        </p>
                       </div>
                     </div>
 
                     <div className="space-y-3">
                       <div className="bg-blue-50 p-3 rounded-lg">
                         <div className="flex justify-between">
-                          <span className="text-sm font-medium">Web Developer</span>
-                          <span className="text-sm text-blue-700">98% match</span>
+                          <span className="text-sm font-medium">
+                            Web Developer
+                          </span>
+                          <span className="text-sm text-blue-700">
+                            98% match
+                          </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                          <div className="bg-blue-700 h-1.5 rounded-full" style={{ width: "98%" }}></div>
+                          <div
+                            className="bg-blue-700 h-1.5 rounded-full"
+                            style={{ width: "98%" }}
+                          ></div>
                         </div>
                       </div>
 
                       <div className="bg-blue-50 p-3 rounded-lg">
                         <div className="flex justify-between">
-                          <span className="text-sm font-medium">UX Designer</span>
-                          <span className="text-sm text-blue-700">87% match</span>
+                          <span className="text-sm font-medium">
+                            UX Designer
+                          </span>
+                          <span className="text-sm text-blue-700">
+                            87% match
+                          </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                          <div className="bg-blue-700 h-1.5 rounded-full" style={{ width: "87%" }}></div>
+                          <div
+                            className="bg-blue-700 h-1.5 rounded-full"
+                            style={{ width: "87%" }}
+                          ></div>
                         </div>
                       </div>
 
                       <div className="bg-blue-50 p-3 rounded-lg">
                         <div className="flex justify-between">
-                          <span className="text-sm font-medium">Data Analyst</span>
-                          <span className="text-sm text-blue-700">76% match</span>
+                          <span className="text-sm font-medium">
+                            Data Analyst
+                          </span>
+                          <span className="text-sm text-blue-700">
+                            76% match
+                          </span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                          <div className="bg-blue-700 h-1.5 rounded-full" style={{ width: "76%" }}></div>
+                          <div
+                            className="bg-blue-700 h-1.5 rounded-full"
+                            style={{ width: "76%" }}
+                          ></div>
                         </div>
                       </div>
                     </div>
@@ -370,8 +428,43 @@ export default function MainLanding() {
                 {/* Network visualization overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-blue-900/70 to-transparent flex items-end">
                   <div className="p-6 text-white">
-                    <h3 className="text-xl font-bold mb-2">Your Professional Network</h3>
-                    <p className="text-blue-100">Connect with industry professionals and fellow students</p>
+                    <h3 className="text-xl font-bold mb-2">
+                      Your Professional Network
+                    </h3>
+                    <p className="text-blue-100">
+                      Connect with industry professionals and fellow students
+                    </p>
+                  </div>
+                </div>
+
+                {/* Floating Chat UI - moved up to avoid covering text */}
+                <div
+                  className="absolute left-1/2 z-20 flex justify-center w-full -translate-x-1/2"
+                  style={{ bottom: "13.5rem" }}
+                >
+                  <div className="bg-gradient-to-br from-white via-blue-50 to-blue-100 rounded-2xl shadow-xl p-5 w-80 min-h-[180px] flex flex-col gap-3 border border-blue-100">
+                    {/* Chat bubbles */}
+                    <div className="flex flex-col gap-2 flex-1">
+                      <div className="flex">
+                        <div className="rounded-xl rounded-bl-none bg-blue-600 text-white px-4 py-2 text-sm shadow-sm max-w-[70%]">
+                          Hey! How’s your OJT going so far?
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <div className="rounded-xl rounded-br-none bg-white text-gray-800 px-4 py-2 text-sm shadow-sm border border-blue-100 max-w-[70%]">
+                          Hey! It’s going well.
+                        </div>
+                      </div>
+                      <div className="flex">
+                        <div className="rounded-xl rounded-bl-none bg-blue-600 text-white px-4 py-2 text-sm shadow-sm max-w-[70%]">
+                          Awesome! Good to hear.
+                        </div>
+                      </div>
+                    </div>
+                    {/* Connect button */}
+                    <button className="mt-3 bg-blue-700 hover:bg-blue-800 text-white rounded-full px-6 py-2 font-medium shadow transition">
+                      Connect
+                    </button>
                   </div>
                 </div>
               </div>
@@ -385,11 +478,13 @@ export default function MainLanding() {
               variants={fadeInUp}
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                <span className="text-yellow-500">Connect with people</span> who can help
+                <span className="text-yellow-500">Connect with people</span> who
+                can help
               </h2>
               <p className="text-gray-600 mb-8">
-                Build meaningful connections with people who can support your career journey. Use the in-app messaging
-                system to network, ask questions, and explore new opportunities.
+                Build meaningful connections with people who can support your
+                career journey. Use the in-app messaging system to network, ask
+                questions, and explore new opportunities.
               </p>
 
               <div className="space-y-6 mb-8">
@@ -398,9 +493,12 @@ export default function MainLanding() {
                     <Globe className="w-6 h-6 text-blue-700" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Expand Your Network</h3>
+                    <h3 className="font-semibold text-lg">
+                      Expand Your Network
+                    </h3>
                     <p className="text-gray-600">
-                      Connect with professionals in your field and build relationships that can lead to opportunities.
+                      Connect with professionals in your field and build
+                      relationships that can lead to opportunities.
                     </p>
                   </div>
                 </div>
@@ -412,7 +510,8 @@ export default function MainLanding() {
                   <div>
                     <h3 className="font-semibold text-lg">Join Communities</h3>
                     <p className="text-gray-600">
-                      Participate in industry-specific groups to share knowledge and stay updated on trends.
+                      Participate in industry-specific groups to share knowledge
+                      and stay updated on trends.
                     </p>
                   </div>
                 </div>
@@ -444,11 +543,13 @@ export default function MainLanding() {
               variants={fadeInUp}
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                <span className="text-white">Smart</span> <span className="text-yellow-400">Practice Interviews</span>
+                <span className="text-white">Smart</span>{" "}
+                <span className="text-yellow-400">Practice Interviews</span>
               </h2>
               <p className="text-blue-100 mb-8">
-                Prepare for real job interviews with AI-generated questions and feedback. Practice makes perfect, and
-                our smart interview system helps you improve with each session.
+                Prepare for real job interviews with AI-generated questions and
+                feedback. Practice makes perfect, and our smart interview system
+                helps you improve with each session.
               </p>
 
               <Link href="/sign-in">
@@ -490,11 +591,13 @@ export default function MainLanding() {
               variants={fadeInUp}
             >
               <h2 className="text-5xl md:text-6xl font-bold mb-6">
-                <span className="text-yellow-500">STI</span> <span className="text-blue-700">is now Hiring</span>
+                <span className="text-yellow-500">STI</span>{" "}
+                <span className="text-blue-700">is now Hiring</span>
               </h2>
               <p className="text-gray-600 mb-8">
-                Join our team at STI College! We&apos;re looking for passionate individuals who are ready to make an impact
-                in education and help shape future professionals.
+                Join our team at STI College! We&apos;re looking for passionate
+                individuals who are ready to make an impact in education and
+                help shape future professionals.
               </p>
 
               <Link href="/sti-hiring">
@@ -511,7 +614,8 @@ export default function MainLanding() {
                 <p className="font-medium">
                   <strong>Education for Real Life</strong>
                   <br />
-                  Kick-start your career with STI College—where real-life education meets real opportunities.
+                  Kick-start your career with STI College—where real-life
+                  education meets real opportunities.
                 </p>
               </div>
             </motion.div>
@@ -524,7 +628,14 @@ export default function MainLanding() {
               transition={{ duration: 0.6 }}
             >
               <div className="relative rounded-xl overflow-hidden shadow-2xl h-[500px]">
-                <Image src={stiHiringImageUrl || "/placeholder.svg?height=500&width=600"} alt="STI Hiring" fill className="object-cover" />
+                <Image
+                  src={
+                    stiHiringImageUrl || "/placeholder.svg?height=500&width=600"
+                  }
+                  alt="STI Hiring"
+                  fill
+                  className="object-cover"
+                />
               </div>
             </motion.div>
           </div>
@@ -586,8 +697,10 @@ export default function MainLanding() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              Connect with top employers, showcase your skills, and land the opportunity that takes your career to the
-              next level. Whether you&apos;re searching for internships or full-time jobs, we&apos;ve got you covered.
+              Connect with top employers, showcase your skills, and land the
+              opportunity that takes your career to the next level. Whether
+              you&apos;re searching for internships or full-time jobs,
+              we&apos;ve got you covered.
             </motion.p>
 
             <motion.div
@@ -629,35 +742,74 @@ export default function MainLanding() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
             >
-              {[
-                { number: "500+", label: "Partner Companies" },
-                { number: "10,000+", label: "Students Placed" },
-                { number: "95%", label: "Placement Rate" },
-              ].map((stat, index) => (
+              <motion.div
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-6"
+                whileHover={{
+                  y: -5,
+                  backgroundColor: "rgba(255, 255, 255, 0.15)",
+                }}
+              >
                 <motion.div
-                  key={index}
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6"
-                  whileHover={{ y: -5, backgroundColor: "rgba(255, 255, 255, 0.15)" }}
+                  className="text-4xl font-bold text-white"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1 * 0 }}
                 >
-                  <motion.div
-                    className="text-4xl font-bold text-white"
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.1 * index }}
-                  >
-                    {stat.number}
-                  </motion.div>
-                  <div className="text-blue-100">{stat.label}</div>
+                  {metrics.companyVerifyStatus
+                    ? Object.values(metrics.companyVerifyStatus).reduce(
+                        (a, b) => a + b,
+                        0
+                      )
+                    : "--"}
+                  +
                 </motion.div>
-              ))}
+                <div className="text-blue-100">Partner Companies</div>
+              </motion.div>
+              <motion.div
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-6"
+                whileHover={{
+                  y: -5,
+                  backgroundColor: "rgba(255, 255, 255, 0.15)",
+                }}
+              >
+                <motion.div
+                  className="text-4xl font-bold text-white"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1 * 1 }}
+                >
+                  {metrics.registeredStudents !== undefined
+                    ? metrics.registeredStudents.toLocaleString()
+                    : "--"}
+                  +
+                </motion.div>
+                <div className="text-blue-100">Students Placed</div>
+              </motion.div>
+              <motion.div
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-6"
+                whileHover={{
+                  y: -5,
+                  backgroundColor: "rgba(255, 255, 255, 0.15)",
+                }}
+              >
+                <motion.div
+                  className="text-4xl font-bold text-white"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1 * 2 }}
+                >
+                  94%
+                </motion.div>
+                <div className="text-blue-100">Placement Rate</div>
+              </motion.div>
             </motion.div>
           </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      
-      <LandingFooter/>
+
+      <LandingFooter />
     </div>
-  )
+  );
 }

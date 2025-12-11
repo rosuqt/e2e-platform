@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../lib/authOptions";
 import supabase from "../../../../src/lib/supabase";
-import { extractSkillsFromJob, buildJobText } from "../../../../src/lib/ai";
+import { extractSkillsFromJob, buildJobText, getSkillDetails } from "../../../../src/lib/ai";
 
 interface ApplicationQuestion {
     question: string;
@@ -79,7 +79,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Session expired" }, { status: 401 });
         }
 
-        const { action, formData }: { action: string; formData: FormData } = await request.json();
+        // Fix request body destructuring and usage
+        const body = await request.json();
+        const action = body.action;
+        const data: FormData = body.data;
+
+        if (!data) {
+            console.error("No form data provided in request body.");
+            return NextResponse.json({ error: "No form data provided." }, { status: 400 });
+        }
 
         console.log("API triggered with action:", action);
 
@@ -98,34 +106,34 @@ export async function POST(request: Request) {
         if (action === "saveDraft") {
             console.log("Saving draft...");
 
-            if (isFormDataEmpty(formData)) {
+            if (isFormDataEmpty(data)) {
                 console.error("Form data is empty or contains only default values. Draft not saved.");
                 return NextResponse.json({ error: "Form data is empty or invalid." }, { status: 400 });
             }
 
-            const { data, error } = await supabase
+            const { data: draftData, error } = await supabase
                 .from("job_drafts")
                 .upsert({
                     employer_id: employerId,
-                    job_title: formData.jobTitle,
-                    location: formData.location,
-                    remote_options: formData.remoteOptions,
-                    work_type: formData.workType,
-                    pay_type: formData.payType,
-                    pay_amount: formData.payAmount,
-                    recommended_course: formData.recommendedCourse,
-                    job_description: formData.jobDescription,
-                    job_summary: formData.jobSummary,
-                    must_have_qualifications: formData.mustHaveQualifications,
-                    nice_to_have_qualifications: formData.niceToHaveQualifications,
-                    application_deadline: formData.applicationDeadline?.date
-                        ? `${formData.applicationDeadline.date} ${formData.applicationDeadline.time || ""}`
+                    job_title: data.jobTitle,
+                    location: data.location,
+                    remote_options: data.remoteOptions,
+                    work_type: data.workType,
+                    pay_type: data.payType,
+                    pay_amount: data.payAmount,
+                    recommended_course: data.recommendedCourse,
+                    job_description: data.jobDescription,
+                    job_summary: data.jobSummary,
+                    must_have_qualifications: data.mustHaveQualifications,
+                    nice_to_have_qualifications: data.niceToHaveQualifications,
+                    application_deadline: data.applicationDeadline?.date
+                        ? `${data.applicationDeadline.date} ${data.applicationDeadline.time || ""}`
                         : null,
-                    max_applicants: formData.maxApplicants,
-                    application_questions: JSON.stringify(formData.applicationQuestions),
-                    perks_and_benefits: formData.perksAndBenefits,
-                    responsibilities: formData.responsibilities,
-                    verification_tier: formData.verificationTier,
+                    max_applicants: data.maxApplicants,
+                    application_questions: JSON.stringify(data.applicationQuestions),
+                    perks_and_benefits: data.perksAndBenefits,
+                    responsibilities: data.responsibilities,
+                    verification_tier: data.verificationTier,
                 })
                 .select()
                 .single();
@@ -136,44 +144,69 @@ export async function POST(request: Request) {
             }
 
             console.log("Draft saved successfully");
-            return NextResponse.json({ message: "Draft saved successfully", data });
+            return NextResponse.json({ message: "Draft saved successfully", data: draftData });
         } else if (action === "publishJob") {
             console.log("Publishing job...");
-            console.log("formData:", formData);
+            console.log("data:", data);
 
             let maxApplicantsToInsert: number | null = null;
             if (
-                formData.maxApplicants !== undefined &&
-                formData.maxApplicants !== null &&
-                !(typeof formData.maxApplicants === "string" && formData.maxApplicants === "")
+                data.maxApplicants !== undefined &&
+                data.maxApplicants !== null &&
+                !(typeof data.maxApplicants === "string" && data.maxApplicants === "")
             ) {
-                if (typeof formData.maxApplicants === "string") {
-                    const parsed = Number(formData.maxApplicants);
+                if (typeof data.maxApplicants === "string") {
+                    const parsed = Number(data.maxApplicants);
                     maxApplicantsToInsert = isNaN(parsed) ? null : parsed;
                 } else {
-                    maxApplicantsToInsert = formData.maxApplicants;
+                    maxApplicantsToInsert = data.maxApplicants;
                 }
             }
 
             let skillsToInsert: string[] = [];
-            if (formData.skills && Array.isArray(formData.skills) && formData.skills.length > 0) {
-                skillsToInsert = formData.skills.filter(s => typeof s === "string" && s.trim() !== "");
+            if (data.skills && Array.isArray(data.skills) && data.skills.length > 0) {
+                skillsToInsert = data.skills.filter(s => typeof s === "string" && s.trim() !== "");
             } else {
                 const jobText = buildJobText({
-                    job_title: formData.jobTitle,
-                    job_summary: formData.jobSummary,
-                    job_description: formData.jobDescription,
-                    must_have_qualifications: formData.mustHaveQualifications,
-                    nice_to_have_qualifications: formData.niceToHaveQualifications,
-                    responsibilities: Array.isArray(formData.responsibilities)
-                        ? formData.responsibilities.join(", ")
-                        : formData.responsibilities
+                    job_title: data.jobTitle,
+                    job_summary: data.jobSummary,
+                    job_description: data.jobDescription,
+                    must_have_qualifications: data.mustHaveQualifications,
+                    nice_to_have_qualifications: data.niceToHaveQualifications,
+                    responsibilities: Array.isArray(data.responsibilities)
+                        ? data.responsibilities.join(", ")
+                        : data.responsibilities
                 });
                 try {
                     skillsToInsert = await extractSkillsFromJob(jobText);
-                    console.log("AI-extracted skills:", skillsToInsert);
                 } catch (aiErr) {
                     console.error("AI skill extraction failed:", aiErr);
+                }
+            }
+
+            for (const skill of skillsToInsert) {
+                try {
+                    const { data: existingSkill } = await supabase
+                        .from("skills_match_booster")
+                        .select("id")
+                        .eq("name", skill)
+                        .limit(1)
+                        .single();
+                    if (!existingSkill) {
+                        const details = await getSkillDetails(skill);
+                        await supabase
+                            .from("skills_match_booster")
+                            .insert({
+                                name: skill,
+                                description: details.description,
+                                course: details.course,
+                                resource_titles: details.resource_titles,
+                                resource_urls: details.resource_urls,
+                                resource_levels: details.resource_levels
+                            });
+                    }
+                } catch {
+                    // Swallow error, do nothing
                 }
             }
 
@@ -182,40 +215,38 @@ export async function POST(request: Request) {
                 .insert({
                     employer_id: employerId,
                     company_id: companyId,
-                    job_title: formData.jobTitle,
-                    location: formData.location,
-                    remote_options: formData.remoteOptions,
-                    work_type: formData.workType,
-                    pay_type: formData.payType,
-                    pay_amount: formData.payAmount,
-                    recommended_course: formData.recommendedCourse,
-                    job_description: formData.jobDescription,
-                    job_summary: formData.jobSummary,
-                    must_have_qualifications: formData.mustHaveQualifications,
-                    nice_to_have_qualifications: formData.niceToHaveQualifications,
-                    application_deadline: formData.applicationDeadline?.date
-                        ? `${formData.applicationDeadline.date} ${formData.applicationDeadline.time || ""}`
+                    job_title: data.jobTitle,
+                    location: data.location,
+                    remote_options: data.remoteOptions,
+                    work_type: data.workType,
+                    recommended_course: data.recommendedCourse,
+                    job_description: data.jobDescription,
+                    job_summary: data.jobSummary,
+                    must_have_qualifications: data.mustHaveQualifications,
+                    nice_to_have_qualifications: data.niceToHaveQualifications,
+                    application_deadline: data.applicationDeadline?.date
+                        ? `${data.applicationDeadline.date} ${data.applicationDeadline.time || ""}`
                         : null,
                     max_applicants: maxApplicantsToInsert,
-                    perks_and_benefits: formData.perksAndBenefits,
-                    responsibilities: formData.responsibilities,
-                    verification_tier: formData.verificationTier,
+                    perks_and_benefits: data.perksAndBenefits,
+                    responsibilities: data.responsibilities,
+                    verification_tier: data.verificationTier,
                     ai_skills: skillsToInsert.length > 0 ? skillsToInsert : null,
                 })
                 .select()
                 .single();
 
-            let { data } = jobInsertResult;
+            let { data: jobData } = jobInsertResult;
             const { error } = jobInsertResult;
-            console.log("Inserted job_postings data:", data, "error:", error);
+            console.log("Inserted job_postings data:", jobData, "error:", error);
 
-            if (!error && (!data || !data.id)) {
+            if (!error && (!jobData || !jobData.id)) {
                 console.log("Inserted job_postings did not return id, fetching manually...");
                 const { data: fetchedJob, error: fetchError } = await supabase
                     .from("job_postings")
                     .select("id")
                     .eq("employer_id", employerId)
-                    .eq("job_title", formData.jobTitle)
+                    .eq("job_title", data.jobTitle)
                     .order("created_at", { ascending: false })
                     .limit(1)
                     .single();
@@ -223,7 +254,7 @@ export async function POST(request: Request) {
                     console.error("Failed to fetch job_posting after insert:", fetchError);
                     return NextResponse.json({ error: "Failed to fetch job after insert" }, { status: 500 });
                 }
-                data = { ...data, ...fetchedJob };
+                jobData = { ...jobData, ...fetchedJob };
             }
 
             if (error) {
@@ -231,11 +262,11 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: "Database error", details: error.message }, { status: 500 });
             }
 
-            if (data?.id) {
+            if (jobData?.id) {
                 const { error: metricsError } = await supabase
                     .from("job_metrics")
                     .insert({
-                        job_id: data.id,
+                        job_id: jobData.id,
                         views: 0,
                         total_applicants: 0,
                         qualified_applicants: 0,
@@ -247,8 +278,23 @@ export async function POST(request: Request) {
                 }
             }
 
-            if (formData.applicationQuestions && formData.applicationQuestions.length > 0 && data?.id) {
-                for (const q of formData.applicationQuestions) {
+            let applicationQuestionsArr: ApplicationQuestion[] = []
+            if (Array.isArray(data.applicationQuestions)) {
+                applicationQuestionsArr = data.applicationQuestions
+            } else if (typeof data.applicationQuestions === "string") {
+                try {
+                    const parsed = JSON.parse(data.applicationQuestions)
+                    if (Array.isArray(parsed)) applicationQuestionsArr = parsed
+                } catch {
+                    applicationQuestionsArr = []
+                }
+            } else if (data.applicationQuestions) {
+                applicationQuestionsArr = [data.applicationQuestions]
+            }
+
+            if (applicationQuestionsArr.length > 0 && jobData?.id) {
+                const filteredQuestions = applicationQuestionsArr.filter(q => typeof q.question === "string" && q.question.trim() !== "");
+                for (const q of filteredQuestions) {
                     let dbType = q.type;
                     if (dbType === "yesno") dbType = "single";
 
@@ -264,7 +310,7 @@ export async function POST(request: Request) {
                     const { data: insertedQ, error: questionError } = await supabase
                         .from("application_questions")
                         .insert({
-                            job_id: data.id,
+                            job_id: jobData.id,
                             question: q.question,
                             type: dbType,
                             auto_reject: q.autoReject,
@@ -298,8 +344,8 @@ export async function POST(request: Request) {
             }
 
             console.log("Job posted successfully");
-            console.log("Returning response to frontend:", { message: "Job posted successfully", data });
-            return NextResponse.json({ message: "Job posted successfully", data });
+            console.log("Returning response to frontend:", { message: "Job posted successfully", data: jobData });
+            return NextResponse.json({ message: "Job posted successfully", data: jobData, job_id: jobData?.id });
         } else if (action === "fetchVerificationStatus") {
             console.log("Fetching verification status...");
             const { data, error } = await supabase
@@ -320,8 +366,7 @@ export async function POST(request: Request) {
         console.log("Invalid action received");
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     } catch (error) {
-        const err = error as Error;
-        console.error("Error in API:", err.message);
-        return NextResponse.json({ error: "Internal Server Error", details: err.message }, { status: 500 });
+        console.error("Error in API:", (error as Error).message);
+        return NextResponse.json({ error: "Internal Server Error", details: (error as Error).message }, { status: 500 });
     }
 }

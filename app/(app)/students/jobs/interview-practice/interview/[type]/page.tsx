@@ -98,27 +98,34 @@ export default function InterviewPage() {
     setCurrentQuestionIndex(0)
     setLoadingQuestions(true)
     if (params.type === "generic") {
-      let min: number, max: number, set: string[]
+      let set: string[]
       if (difficulty === "easy") {
-        min = 3
-        max = 7
         set = genericInterviewQuestions.easy
+        const count = Math.min(7, set.length, Math.floor(Math.random() * (7 - 3 + 1)) + 3)
+        const shuffled = [...set].sort(() => Math.random() - 0.5)
+        const qs = shuffled.slice(0, count).map((q: string, i: number) => ({ id: i + 1, text: q }))
+        setQuestions(qs)
+        saveQuestionsToSession(qs)
+        setLoadingQuestions(false)
+        return
       } else if (difficulty === "medium") {
-        min = 8
-        max = 12
         set = genericInterviewQuestions.medium
+        const count = Math.min(12, set.length, Math.floor(Math.random() * (12 - 8 + 1)) + 8)
+        const shuffled = [...set].sort(() => Math.random() - 0.5)
+        const qs = shuffled.slice(0, count).map((q: string, i: number) => ({ id: i + 1, text: q }))
+        setQuestions(qs)
+        saveQuestionsToSession(qs)
+        setLoadingQuestions(false)
+        return
       } else {
-        min = 12
-        max = 15
+        // Hard mode: show all hard questions, no random count
         set = genericInterviewQuestions.hard
+        const qs = set.map((q: string, i: number) => ({ id: i + 1, text: q }))
+        setQuestions(qs)
+        saveQuestionsToSession(qs)
+        setLoadingQuestions(false)
+        return
       }
-      const count = Math.min(max, set.length, Math.floor(Math.random() * (max - min + 1)) + min)
-      const shuffled = [...set].sort(() => Math.random() - 0.5)
-      const qs = shuffled.slice(0, count).map((q: string, i: number) => ({ id: i + 1, text: q }))
-      setQuestions(qs)
-      saveQuestionsToSession(qs)
-      setLoadingQuestions(false)
-      return
     }
     const stored = loadQuestionsFromSession()
     if (stored) {
@@ -586,21 +593,7 @@ export default function InterviewPage() {
           <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-1"></div>
             <div className="p-6 md:p-8 relative">
-              {(difficulty === "hard" && answerMode === null) && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                  <div className="z-40 relative flex flex-col items-center justify-center bg-white rounded-2xl shadow-2xl border border-blue-300 px-8 py-8 max-w-sm w-full mx-auto pointer-events-auto">
-                    <div className="mb-4 flex items-center justify-center">
-                      <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                        <span className="text-blue-600 text-2xl">🎤</span>
-                      </div>
-                    </div>
-                    <div className="text-xl font-semibold text-blue-900 mb-2">Start Your Interview</div>
-                    <div className="text-blue-700 text-sm mb-4 text-center">
-                      Questions will be presented one at a time in Hard mode, simulating the pace and pressure of a real interview environment.
-                    </div>
-                  </div>
-                </div>
-              )}
+              
               <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">
                   {params.type === "job-specific" && jobTitle
@@ -625,8 +618,8 @@ export default function InterviewPage() {
                         disabled={answerMode !== null}
                       >
                         <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
+                        <option value="medium">Hard</option>
+                     
                       </select>
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
                         <svg
@@ -670,26 +663,32 @@ export default function InterviewPage() {
                       className="text-gray-600 hover:text-blue-700 hover:border-blue-300 group ml-4"
                       onClick={() => {
                         if (params.type === "generic") {
-                          let min: number, max: number, set: string[]
+                          let set: string[]
                           if (difficulty === "easy") {
-                            min = 3
-                            max = 7
                             set = genericInterviewQuestions.easy
+                            const count = Math.min(7, set.length, Math.floor(Math.random() * (7 - 3 + 1)) + 3)
+                            const shuffled = [...set].sort(() => Math.random() - 0.5)
+                            const qs = shuffled.slice(0, count).map((q: string, i: number) => ({ id: i + 1, text: q }))
+                            setQuestions(qs)
+                            saveQuestionsToSession(qs)
+                            setCurrentQuestionIndex(0)
                           } else if (difficulty === "medium") {
-                            min = 8
-                            max = 12
                             set = genericInterviewQuestions.medium
+                            const count = Math.min(12, set.length, Math.floor(Math.random() * (12 - 8 + 1)) + 8)
+                            const shuffled = [...set].sort(() => Math.random() - 0.5)
+                            const qs = shuffled.slice(0, count).map((q: string, i: number) => ({ id: i + 1, text: q }))
+                            setQuestions(qs)
+                            saveQuestionsToSession(qs)
+                            setCurrentQuestionIndex(0)
                           } else {
-                            min = 12
-                            max = 15
+                            // Hard mode: show all hard questions, shuffled
                             set = genericInterviewQuestions.hard
+                            const shuffled = [...set].sort(() => Math.random() - 0.5)
+                            const qs = shuffled.map((q: string, i: number) => ({ id: i + 1, text: q }))
+                            setQuestions(qs)
+                            saveQuestionsToSession(qs)
+                            setCurrentQuestionIndex(0)
                           }
-                          const count = Math.min(max, set.length, Math.floor(Math.random() * (max - min + 1)) + min)
-                          const shuffled = [...set].sort(() => Math.random() - 0.5)
-                          const qs = shuffled.slice(0, count).map((q: string, i: number) => ({ id: i + 1, text: q }))
-                          setQuestions(qs)
-                          saveQuestionsToSession(qs)
-                          setCurrentQuestionIndex(0)
                         } else if (params.type === "job-specific" && jobTitle) {
                           setLoadingQuestions(true)
                           fetch("/api/interview-questions", {

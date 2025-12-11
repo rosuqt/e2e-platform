@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search } from "lucide-react"
+import { Search, X } from "lucide-react"
 import React, { useState } from "react"
 
 interface SearchSectionProps {
@@ -111,6 +111,18 @@ export default function SearchSection({
             onKeyDown={handleKeyDown}
             className="border-0 rounded-none rounded-r-full text-black focus-visible:ring-0 focus-visible:ring-offset-0 flex-1 bg-transparent"
           />
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-gray-600 p-2 rounded-full"
+            aria-label="Clear search"
+            onClick={() => {
+              setFirstName("")
+              setLastName("")
+            }}
+            style={{ display: firstName || lastName ? "inline-flex" : "none" }}
+          >
+            <X className="h-4 w-4" />
+          </button>
           <Button
             className="bg-blue-600 hover:bg-blue-700 rounded-full ml-2 flex items-center justify-center px-6"
             onClick={handleSearch}

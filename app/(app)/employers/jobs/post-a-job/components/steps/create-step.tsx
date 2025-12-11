@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import { useState, useEffect } from "react"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "../ui/card"
-import { Briefcase, MapPin, Globe, Clock, DollarSign, GraduationCap, Lightbulb } from "lucide-react"
+import { Briefcase, MapPin, Globe, Clock, GraduationCap, Lightbulb } from "lucide-react"
 import type { JobPostingData } from "../../lib/types"
 import MUIDropdown from "../../../../../components/MUIDropdown"
 import Autocomplete from "@mui/material/Autocomplete";
@@ -30,38 +31,42 @@ const jobTitleOptions = Object.entries(jobTitleSections).flatMap(([category, tit
 );
 
 export function CreateStep({ formData, handleFieldChange, errors }: CreateStepProps) {
-  const [showPayAmount, setShowPayAmount] = useState<boolean>(
-    formData.payType !== "" && formData.payType !== "No Pay"
-  )
   const [locationOptions, setLocationOptions] = useState<{ address: string; label: string }[]>([])
+  const [employerId, setEmployerId] = useState<string | null>(null)
 
   const { data: session } = useSession()
 
   useEffect(() => {
-    const employerId = (session?.user as { employerId?: string })?.employerId
-    if (employerId) {
-      fetch("/api/employers/post-a-job/fetchAddress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employer_id: employerId }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.addresses && Array.isArray(data.addresses)) {
-            setLocationOptions(data.addresses)
-            if (!formData.location && data.addresses.length > 0) {
-              handleFieldChange("location", data.addresses[0].address)
-            }
-          }
-        })
-        .catch(() => {})
+    const id = (session?.user as { employerId?: string })?.employerId
+    if (id) {
+      setEmployerId(id)
     }
-  }, [session?.user, handleFieldChange, formData.location])
+  }, [session?.user])
+
+  useEffect(() => {
+    if (!employerId) return
+    fetch("/api/employers/post-a-job/fetchAddress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employer_id: employerId }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.addresses && Array.isArray(data.addresses)) {
+          setLocationOptions(data.addresses)
+          if (!formData.location && data.addresses.length > 0) {
+            handleFieldChange("location", data.addresses[0].address)
+          }
+        }
+      })
+      .catch(() => {})
+  }, [employerId])
 
   useEffect(() => {
     if (!Array.isArray(formData.skills)) {
       handleFieldChange("skills", []);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.skills, handleFieldChange]);
 
   useEffect(() => {
@@ -71,7 +76,13 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
       (!Array.isArray(formData.skills) || formData.skills.length === 0)
     ) {
       const newSkills = getRandomSkillsForCourse(formData.recommendedCourse, 5);
-      handleFieldChange("skills", newSkills);
+      if (
+        !Array.isArray(formData.skills) ||
+        formData.skills.length !== newSkills.length ||
+        formData.skills.some((skill, idx) => skill !== newSkills[idx])
+      ) {
+        handleFieldChange("skills", newSkills);
+      }
     }
     else if (!formData.recommendedCourse && Array.isArray(formData.skills) && formData.skills.length > 0) {
       handleFieldChange("skills", []);
@@ -99,48 +110,6 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
     )
   }
 
-  const handlePayTypeChange = (value: string) => {
-    handleFieldChange("payType", value)
-    setShowPayAmount(value !== "" && value !== "No Pay")
-    if (value === "No Pay") {
-      handleFieldChange("payAmount", "") 
-    }
-  }
-
-  const validatePayAmount = () => {
-    if (showPayAmount && !formData.payAmount) {
-      return "Pay amount is required"
-    }
-    return ""
-  }
-
-  const payAmountError = validatePayAmount()
-
-  const workTypes = [
-    { value: "OJT/Internship", label: "OJT/Internship" },
-    { value: "Part-time", label: "Part-time" },
-    { value: "Full-time", label: "Full-time" },
-    { value: "Contract", label: "Contract" },
-  ]
-
-  const payTypes = [
-    ...(formData.workType === "OJT/Internship"
-      ? [{ value: "No Pay", label: "No Pay" }]
-      : []),
-    { value: "Weekly", label: "Weekly" },
-    { value: "Monthly", label: "Monthly" },
-    { value: "Yearly", label: "Yearly" },
-  ];
-
-  function getPayPerHour(payType: string, payAmount: string) {
-    const amount = Number(payAmount);
-    if (!payAmount || isNaN(amount)) return "";
-    if (payType === "Weekly") return `Pay per hour: ₱${(amount / 40).toFixed(2)} / hr (est.)`;
-    if (payType === "Monthly") return `Pay per hour: ₱${(amount / 160).toFixed(2)} / hr (est.)`;
-    if (payType === "Yearly") return `Pay per hour: ₱${(amount / 2080).toFixed(2)} / hr (est.)`;
-    return "";
-  }
-
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3 pb-2 border-b border-blue-100">
@@ -165,6 +134,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               <Label htmlFor="jobTitle" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Briefcase className="h-4 w-4 text-blue-500" />
                 Job Title
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4">
@@ -244,6 +214,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-blue-500" />
                 Location
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4" style={{ position: "relative" }}>
@@ -268,6 +239,7 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               <Label htmlFor="remoteOptions" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Globe className="h-4 w-4 text-blue-500" />
                 Remote Options
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4">
@@ -294,14 +266,23 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
               <Label htmlFor="workType" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Clock className="h-4 w-4 text-blue-500" />
                 Work Type
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4">
               <MUIDropdown
                 label="Select a Work Type"
-                options={workTypes}
+                options={[
+                  { value: "OJT/Internship", label: "OJT/Internship" },
+                  { value: "Part-time", label: "Part-time" },
+                  { value: "Full-time", label: "Full-time" },
+                  { value: "Contract", label: "Contract" },
+                ]}
                 value={formData.workType}
-                onChange={(value) => handleFieldChange("workType", value)}
+                onChange={(value) => {
+                  console.log("Work Type selected:", value)
+                  handleFieldChange("workType", value)
+                }}
                 error={errors.workType}
               />
               {errors.workType && <p className="text-red-500 text-sm mt-1">Work type is required</p>}
@@ -313,54 +294,10 @@ export function CreateStep({ formData, handleFieldChange, errors }: CreateStepPr
         <Card className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
           <CardContent className="p-0">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
-              <Label htmlFor="payType" className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-blue-500" />
-                Compensation
-              </Label>
-            </div>
-            <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <MUIDropdown
-                  label="Pay Type"
-                  options={payTypes}
-                  value={formData.payType}
-                  onChange={handlePayTypeChange}
-                  error={errors.payType}
-                  errorMessage="Pay type is required"
-                />
-
-                {showPayAmount && (
-                  <>
-                    <TextField
-                      id="payAmount"
-                      label="Pay Amount"
-                      value={formData.payAmount.startsWith("₱") ? formData.payAmount : formData.payAmount ? `₱${formData.payAmount.replace(/^₱/, "")}` : ""}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9.]/g, "");
-                        handleFieldChange("payAmount", val ? `₱${val}` : "");
-                      }}
-                      fullWidth
-                      error={!!payAmountError}
-                      helperText={payAmountError}
-                      variant="outlined"
-                    />
-                    <div className="flex items-center text-xs text-blue-700 font-medium pl-2">
-                      {getPayPerHour(formData.payType, formData.payAmount.replace(/^₱/, ""))}
-                    </div>
-                  </>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-3">Specify the compensation details for this position</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-hidden border-gray-200 shadow-sm hover:shadow-md transition-shadow md:col-span-2">
-          <CardContent className="p-0">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 border-b border-gray-100">
               <Label htmlFor="recommendedCourse" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <GraduationCap className="h-4 w-4 text-blue-500" />
                 Recommended Course
+                <span className="text-red-500 ml-1">*</span>
               </Label>
             </div>
             <div className="p-4">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Calendar, Clock, MapPin, ChevronLeft, ChevronRight, Cloud, Plus, Edit, Trash2, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -16,24 +16,75 @@ import {
 
 type CalendarEvent = {
   id: number
-  title: string
-  date: Date
-  location: string
-  timeStart: string
-  timeEnd: string
+  event_title: string
+  event_location: string
+  event_date: Date
+  event_start: string
+  event_end: string
 }
 
-function EventModal({ open, onClose, onSave, initialEvent, date }: {
+function EventModal({ open, onClose, initialEvent }: {
   open: boolean
   onClose: () => void
-  onSave: (event: Omit<CalendarEvent, "id"> | CalendarEvent) => void
   initialEvent?: CalendarEvent
-  date: Date
 }) {
-  const [title, setTitle] = useState(initialEvent?.title || "")
-  const [location, setLocation] = useState(initialEvent?.location || "")
-  const [timeStart, setTimeStart] = useState(initialEvent?.timeStart || "")
-  const [timeEnd, setTimeEnd] = useState(initialEvent?.timeEnd || "")
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventStart, setEventStart] = useState("");
+  const [eventEnd, setEventEnd] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    if(eventStart <= eventEnd){
+      try {
+        const isEditing = Boolean(initialEvent?.id); 
+        const method = isEditing ? "PUT" : "POST";
+        const url = "/api/employers/calendar-set-event";
+
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: initialEvent?.id, 
+            eventTitle,
+            eventLocation,
+            eventDate,
+            eventStart,
+            eventEnd,
+          }),
+        });
+        const data: { error?: string } = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to save event");
+        }
+        setMessage(
+          isEditing
+            ? "✏️ Event updated successfully!"
+            : "✅ Event created successfully!"
+        );
+
+        if (!isEditing) {
+          setEventTitle("");
+          setEventLocation("");
+          setEventStart("");
+          setEventEnd("");
+        }
+      } catch (err) {
+        const error = err as Error;
+        setMessage(`❌ Error saving event: ${error.message}`);
+      } finally {
+        setLoading(false);
+      }
+    } else{
+      setMessage(`❌ Start time must be before end time`)
+      setLoading(false);
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -54,40 +105,72 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
               <X />
             </button>
             <h2 className="text-xl font-semibold mb-4">{initialEvent ? "Edit Event" : "Add Event"}</h2>
-            <form
-              onSubmit={e => {
-                e.preventDefault()
-                onSave({
-                  ...initialEvent,
-                  title,
-                  location,
-                  timeStart,
-                  timeEnd,
-                  date,
-                })
-                onClose()
-              }}
-              className="space-y-4"
-            >
+
+            <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg shadow-md max-w-md">
               <div>
-                <label className="block text-sm font-medium mb-1">Title</label>
-                <input className="w-full border rounded px-3 py-2" value={title} onChange={e => setTitle(e.target.value)} required />
+                <label className="block text-sm font-medium">Event Title</label>
+                <input
+                  type="text"
+                  value={eventTitle}
+                  onChange={(e) => setEventTitle(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded-md"
+                />
               </div>
+
               <div>
-                <label className="block text-sm font-medium mb-1">Location</label>
-                <input className="w-full border rounded px-3 py-2" value={location} onChange={e => setLocation(e.target.value)} required />
+                <label className="block text-sm font-medium">Location</label>
+                <input
+                  type="text"
+                  value={eventLocation}
+                  onChange={(e) => setEventLocation(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                />
               </div>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-1">Start Time</label>
-                  <input className="w-full border rounded px-3 py-2" value={timeStart} onChange={e => setTimeStart(e.target.value)} required placeholder="10:00 AM" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-1">End Time</label>
-                  <input className="w-full border rounded px-3 py-2" value={timeEnd} onChange={e => setTimeEnd(e.target.value)} required placeholder="11:00 AM" />
-                </div>
+
+              <div>
+                <label className="block text-sm font-medium">Date</label>
+                <input
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded-md"
+                />
               </div>
-              <button type="submit" className="w-full bg-blue-600 text-white rounded py-2 font-semibold hover:bg-blue-700 transition">Save</button>
+
+
+              <div>
+                <label className="block text-sm font-medium">Start</label>
+                <input
+                  type="time"
+                  value={eventStart}
+                  onChange={(e) => setEventStart(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">End</label>
+                <input
+                  type="time"
+                  value={eventEnd}
+                  onChange={(e) => setEventEnd(e.target.value)}
+                  required
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md disabled:opacity-50"
+              >
+                {loading ? "Saving..." : "Save Event"}
+              </button>
+
+              {message && <p className="mt-2 text-sm">{message}</p>}
             </form>
           </motion.div>
         </motion.div>
@@ -97,78 +180,75 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
 }
 
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [events, setEvents] = useState<CalendarEvent[]>(() => {
-    const sampleTitles = [
-      "Team Meeting",
-      "Project Deadline",
-      "Client Presentation",
-      "Code Review",
-      "Lunch with Team",
-    ];
-    const sampleLocations = [
-      "Office",
-      "Zoom",
-      "Google Meet",
-      "Client's Office",
-      "Cafeteria",
-    ];
-    const monthStart = startOfMonth(new Date());
-    const monthEnd = endOfMonth(new Date());
-    const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-    const arr: CalendarEvent[] = [];
-    daysInMonth.forEach((day, index) => {
-      if (index % 3 === 0) {
-        arr.push({
-          id: index + 1,
-          title: sampleTitles[index % sampleTitles.length],
-          date: day,
-          location: sampleLocations[index % sampleLocations.length],
-          timeStart: "10:00 AM",
-          timeEnd: "11:00 AM",
-        });
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  // Fetch events from API
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setInterval(async () => {
+        try {
+          const res = await fetch("/api/employers/calendar-set-event");
+          if (!res.ok) throw new Error("Failed to fetch events");
+          const { events } = await res.json();
+          setEvents(events);
+        } catch (err) {
+          console.error("Error fetching events:", err);
+        }
+      }, 5000);
+    }; 
+    fetchEvents();
+  }, []);
+
+  async function handleDeleteEvent(id: number) {
+    try {
+      const res = await fetch("/api/employers/calendar-set-event", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: id }),
+      });
+
+      const data: { error?: string } = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete event");
       }
-    });
+      setEvents(events => events.filter(e => e.id !== id))
+      alert("🗑️ Event deleted successfully!");
+    } catch (err) {
+      const error = err as Error;
+      alert(`❌ Error deleting event: ${error.message}`);
+    }
+  }
+
+  const [events, setEvents] = useState<CalendarEvent[]>(() => {
+    // const monthStart = startOfMonth(new Date());
+    // const monthEnd = endOfMonth(new Date());
+    const arr: CalendarEvent[] = [];
     return arr;
   })
+  console.log(events);
+  
   const [modalOpen, setModalOpen] = useState(false)
-  const [modalDate, setModalDate] = useState<Date | null>(null)
   const [editEvent, setEditEvent] = useState<CalendarEvent | undefined>(undefined)
 
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1))
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1))
 
-  const handleAddEvent = (date: Date) => {
+  const handleAddEvent = () => {
     setEditEvent(undefined)
-    setModalDate(date)
     setModalOpen(true)
   }
   const handleEditEvent = (event: CalendarEvent) => {
     setEditEvent(event)
-    setModalDate(event.date)
     setModalOpen(true)
-  }
-  const handleDeleteEvent = (id: number) => {
-    setEvents(events => events.filter(e => e.id !== id))
-  }
-  const handleSaveEvent = (event: Omit<CalendarEvent, "id"> | CalendarEvent) => {
-    if ("id" in event && event.id) {
-      setEvents(events => events.map(e => e.id === event.id ? { ...event, id: event.id } : e))
-    } else {
-      setEvents(events => [
-        ...events,
-        { ...event, id: Math.max(0, ...events.map(e => e.id)) + 1 }
-      ])
-    }
   }
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
-  const eventsInMonth = events.filter(e => isSameMonth(e.date, currentDate))
-  const selectedDateEvents = events.filter((event) => isSameDay(event.date, selectedDate))
+  const eventsInMonth = events.filter(e => isSameMonth(e.event_date, currentDate))
+  const selectedDateEvents = events.filter((event) => isSameDay(event.event_date, selectedDate))
 
   const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
 
@@ -177,12 +257,10 @@ export default function CalendarPage() {
       <EventModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSave={handleSaveEvent}
         initialEvent={editEvent}
-        date={modalDate || selectedDate}
       />
       <div className="max-w-6xl w-full mx-auto p-4 md:p-8">
-        <div className="rounded-3xl shadow-lg bg-gradient-to-br from-blue-50 to-sky-100">
+        <div className="rounded-3xl bg-gradient-to-br from-blue-50 to-sky-100">
           <div className="bg-gradient-to-br from-blue-50 to-sky-100">
             <motion.h1
               className="text-3xl font-bold text-blue-600 mb-6 bg-gradient-to-br from-blue-50 to-sky-100"
@@ -206,7 +284,7 @@ export default function CalendarPage() {
                 <h2 className="text-lg font-semibold text-blue-700">{format(currentDate, "MMMM yyyy")} Events</h2>
                 <button
                   className="ml-auto flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                  onClick={() => handleAddEvent(selectedDate)}
+                  onClick={handleAddEvent}
                 >
                   <Plus className="w-4 h-4" /> Add Event
                 </button>
@@ -234,20 +312,20 @@ export default function CalendarPage() {
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    <h3 className="font-semibold text-blue-800">{event.title}</h3>
+                    <h3 className="font-semibold text-blue-800">{event.event_title}</h3>
                     <div className="mt-2 space-y-2 text-sm text-gray-600">
                       <div className="flex items-center">
                         <Calendar className="w-4 h-4 mr-2 text-blue-400" />
-                        <span>{format(event.date, "MMMM d, yyyy")}</span>
+                        <span>{format(event.event_date, "MMMM d, yyyy")}</span>
                       </div>
                       <div className="flex items-center">
                         <MapPin className="w-4 h-4 mr-2 text-blue-400" />
-                        <span>{event.location}</span>
+                        <span>{event.event_location}</span>
                       </div>
                       <div className="flex items-center">
                         <Clock className="w-4 h-4 mr-2 text-blue-400" />
                         <span>
-                          {event.timeStart} - {event.timeEnd}
+                          {event.event_start} - {event.event_end}
                         </span>
                       </div>
                     </div>
@@ -298,7 +376,7 @@ export default function CalendarPage() {
 
                 <div className="grid grid-cols-7 gap-2">
                   {daysInMonth.map((day) => {
-                    const hasEvents = events.some((event) => isSameDay(event.date, day))
+                    const hasEvents = events.some((event) => isSameDay(event.event_date, day))
                     const isSelected = isSameDay(day, selectedDate)
                     const isToday = isSameDay(day, new Date())
                     return (
@@ -316,7 +394,7 @@ export default function CalendarPage() {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setSelectedDate(day)}
-                        onDoubleClick={() => handleAddEvent(day)}
+                        onDoubleClick={() => handleAddEvent()}
                       >
                         {format(day, "d")}
                       </motion.button>
@@ -330,7 +408,7 @@ export default function CalendarPage() {
                   <span className="font-semibold text-blue-700 mr-2">{format(selectedDate, "MMMM d, yyyy")}</span>
                   <button
                     className="ml-auto flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs"
-                    onClick={() => handleAddEvent(selectedDate)}
+                    onClick={handleAddEvent}
                   >
                     <Plus className="w-3 h-3" /> Add Event
                   </button>
@@ -360,17 +438,17 @@ export default function CalendarPage() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <h3 className="font-semibold text-blue-800">{event.title}</h3>
+                      <h3 className="font-semibold text-blue-800">{event.event_title}</h3>
                       <div className="mt-2 text-sm text-gray-600">
                         <div className="flex items-center mb-1">
                           <Clock className="w-4 h-4 mr-2 text-blue-400" />
                           <span>
-                            {event.timeStart} - {event.timeEnd}
+                            {event.event_start} - {event.event_end}
                           </span>
                         </div>
                         <div className="flex items-center">
                           <MapPin className="w-4 h-4 mr-2 text-blue-400" />
-                          <span>{event.location}</span>
+                          <span>{event.event_location}</span>
                         </div>
                       </div>
                     </div>
@@ -383,4 +461,5 @@ export default function CalendarPage() {
       </div>
     </div>
   )
+  
 }

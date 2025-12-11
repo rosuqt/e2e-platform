@@ -32,8 +32,22 @@ export async function GET(
       .limit(limit)
 
     if (error) {
-      console.error('Error fetching recent applicants:', error)
       return NextResponse.json({ error: 'Failed to fetch applicants' }, { status: 500 })
+    }
+
+    const studentIds = applicants?.map(a => a.student_id).filter(Boolean) || []
+    const matchScores: Record<string, number> = {}
+    if (studentIds.length) {
+      const { data: matches } = await supabase
+        .from('job_matches')
+        .select('student_id, gpt_score')
+        .eq('job_id', jobId)
+        .in('student_id', studentIds)
+      if (Array.isArray(matches)) {
+        matches.forEach(m => {
+          if (m.student_id) matchScores[m.student_id] = Number(m.gpt_score) || 0
+        })
+      }
     }
 
     const transformedApplicants = applicants?.map(applicant => ({
@@ -41,7 +55,7 @@ export async function GET(
       first_name: applicant.first_name,
       last_name: applicant.last_name,
       applied_at: applicant.applied_at,
-      match_score: Math.floor(Math.random() * 30) + 70,
+      match_score: matchScores[applicant.student_id] ?? null,
       profile_picture: null,
       status: applicant.status,
       student_id: applicant.student_id
@@ -49,8 +63,8 @@ export async function GET(
 
     return NextResponse.json(transformedApplicants)
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
-    console.error('Error in recent applicants API:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

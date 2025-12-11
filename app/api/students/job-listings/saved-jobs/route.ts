@@ -101,7 +101,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ jobs: [] })
     }
 
-    const jobs = (Array.isArray(data) ? data : [])
+    const jobsRaw = (Array.isArray(data) ? data : [])
       .map((row: Record<string, unknown>) => {
         const job = row && typeof row === "object" && row.job && typeof (row.job) === "object" && !Array.isArray(row.job)
           ? row.job as { [key: string]: unknown }
@@ -124,7 +124,27 @@ export async function GET(request: Request) {
           Boolean(job && typeof job.id === "string")
       )
 
-    return NextResponse.json({ jobs })
+    // Fetch applicant counts for all jobs
+    const jobIds = jobsRaw.map(job => job.id)
+    const applicantCounts: Record<string, number> = {}
+    if (jobIds.length > 0) {
+      const supabase = getAdminSupabase()
+      const { data: appRows } = await supabase
+        .from('applications')
+        .select('job_id', { count: 'exact', head: false })
+        .in('job_id', jobIds)
+      if (Array.isArray(appRows)) {
+        for (const jobId of jobIds) {
+          applicantCounts[jobId] = appRows.filter(row => row.job_id === jobId).length
+        }
+      }
+    }
+
+    // Remove this filter:
+    // const jobs = jobsRaw.filter((job) => { ... })
+    // Instead, just return jobsRaw:
+
+    return NextResponse.json({ jobs: jobsRaw })
   } catch {
     return NextResponse.json({ jobs: [] })
   }

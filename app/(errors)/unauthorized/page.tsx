@@ -1,5 +1,5 @@
-"use client"
-import { motion } from "framer-motion"
+  "use client"
+import { motion, easeOut, easeInOut } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
 import { Lock, LogIn, Home } from "lucide-react"
@@ -9,7 +9,7 @@ const fadeInUp = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut" },
+    transition: { duration: 0.6, ease: easeOut },
   },
 }
 
@@ -18,7 +18,7 @@ const bounceAnimation = {
   transition: {
     duration: 2,
     repeat: Number.POSITIVE_INFINITY,
-    ease: "easeInOut",
+    ease: easeInOut,
   },
 }
 

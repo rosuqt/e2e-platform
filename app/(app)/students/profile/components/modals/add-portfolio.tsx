@@ -9,7 +9,8 @@ import {
   TextField,
   Typography,
   MenuItem,
-  FormHelperText
+  FormHelperText,
+  CircularProgress
 } from "@mui/material";
 import type { SlideProps } from "@mui/material";
 import { useSession } from "next-auth/react";
@@ -166,6 +167,16 @@ export default function AddPortfolioModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ student_id: studentId }),
         });
+        await fetch("/api/ai-matches/match/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        });
+        await fetch("/api/ai-matches/rescore", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        });
       } else {
         await fetch("/api/students/student-profile/postHandlers", {
           method: "POST",
@@ -177,6 +188,16 @@ export default function AddPortfolioModal({
           })
         });
         await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        });
+        await fetch("/api/ai-matches/match/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        });
+        await fetch("/api/ai-matches/rescore", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ student_id: studentId }),
@@ -424,7 +445,7 @@ export default function AddPortfolioModal({
                 "&:hover": { background: "#1e40af" }
               }}
             >
-              {editMode ? "Update" : "Save"}
+              {saving ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : (editMode ? "Update" : "Save")}
             </Button>
           </Box>
         </Box>

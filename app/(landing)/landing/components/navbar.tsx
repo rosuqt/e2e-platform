@@ -46,7 +46,7 @@ export default function Navbar() {
       left: "0",
       borderRadius: "0",
       boxShadow: "none",
-      transition: { type: "spring", stiffness: 120, damping: 20 },
+      transition: { stiffness: 120, damping: 20 },
     },
     compact: {
       width: "80%",
@@ -57,7 +57,7 @@ export default function Navbar() {
       left: "10%",
       borderRadius: "12px",
       boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-      transition: { type: "spring", stiffness: 120, damping: 20 },
+      transition: { stiffness: 120, damping: 20 },
     },
   }
 

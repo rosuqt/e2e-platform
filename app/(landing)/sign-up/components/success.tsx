@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { CheckCircle, Loader2 } from "lucide-react"
-import { ConfettiSideCannons } from "@/components/magicui/side-cannons"
 
 export default function SuccessPage() {
   const router = useRouter()
@@ -61,7 +60,6 @@ export default function SuccessPage() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <ConfettiSideCannons />
           <CheckCircle className="w-16 h-16 text-blue-500" />
           <motion.h1
             className="mt-3 text-2xl font-bold text-blue-600 text-center"

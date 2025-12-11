@@ -8,10 +8,6 @@ import {
   TextField,
   Typography,
   MenuItem,
-  Avatar,
-  Select,
-  Checkbox,
-  ListItemText,
   CircularProgress
 } from "@mui/material"
 import type { SlideProps } from "@mui/material"
@@ -34,16 +30,6 @@ const platforms = [
   { label: "Skype", value: "Skype" },
   { label: "Other", value: "Other" }
 ]
-
-type Colleague = {
-  id?: string
-  first_name: string
-  last_name: string
-  email?: string
-  company_admin?: boolean
-  profile_img?: string
-  avatarUrl?: string
-}
 
 type InterviewScheduleModalProps = {
   open: boolean
@@ -77,11 +63,6 @@ function InterviewScheduleModal({
   const [mode, setMode] = useState(initial?.mode || "Online")
   const [platform, setPlatform] = useState(initial?.platform || "")
   const [address, setAddress] = useState(initial?.address || "")
-  const [teamInput] = useState("")
-  const [team, setTeam] = useState<string[]>(initial?.team || [])
-  const [allColleagues, setAllColleagues] = useState<Colleague[]>([])
-  const [, setFilteredColleagues] = useState<Colleague[]>([])
-  const [, setTeamLoading] = useState(false)
   const [date, setDate] = useState(initial?.date || "")
   const [time, setTime] = useState(initial?.time || "")
   const [notes, setNotes] = useState(initial?.notes || "")
@@ -102,60 +83,7 @@ function InterviewScheduleModal({
           if (data.company_name) setCompanyName(data.company_name)
         })
     }
-  }, [initial?.company_name, initial?.employer_id])
-
-  useEffect(() => {
-    if (!open) return
-    setTeamLoading(true)
-    if (!companyName) {
-      setAllColleagues([])
-      setFilteredColleagues([])
-      setTeamLoading(false)
-      return
-    }
-    fetch(`/api/employers/colleagues/fetchByCompany?company_name=${encodeURIComponent(companyName)}&_=${Date.now()}`)
-      .then(res => res.json())
-      .then(async json => {
-        const colleagues: Colleague[] = Array.isArray(json.data) ? json.data : json.data ? [json.data] : []
-        let currentUserEmail = undefined
-        try {
-          const sessionRes = await fetch("/api/auth/session")
-          const sessionData = await sessionRes.json()
-          currentUserEmail = sessionData?.user?.email
-        } catch {}
-        const filteredColleagues = colleagues.filter(u => u.email && u.email !== currentUserEmail)
-        const withAvatars = await Promise.all(
-          filteredColleagues.map(async (u) => {
-            let profile_img = u.profile_img
-            if (!profile_img && u.id) {
-              try {
-                const res = await fetch(`/api/employers/colleagues/fetchByCompany?employer_id=${u.id}`)
-                const json = await res.json()
-                profile_img = json.profile_img
-              } catch {}
-            }
-            if (profile_img) {
-              try {
-                const urlRes = await fetch(`/api/employers/get-signed-url?bucket=user.avatars&path=${encodeURIComponent(profile_img)}`)
-                const urlJson = await urlRes.json()
-                return { ...u, avatarUrl: urlJson.signedUrl || undefined }
-              } catch {
-                return { ...u, avatarUrl: undefined }
-              }
-            }
-            return { ...u, avatarUrl: undefined }
-          })
-        )
-        setAllColleagues(withAvatars)
-        setFilteredColleagues(withAvatars)
-        setTeamLoading(false)
-      })
-      .catch(() => {
-        setAllColleagues([])
-        setFilteredColleagues([])
-        setTeamLoading(false)
-      })
-  }, [companyName, open])
+  }, [initial?.company_name, initial?.employer_id, companyName])
 
   useEffect(() => {
     if (mode === "Onsite" && initial?.employer_id) {
@@ -178,31 +106,24 @@ function InterviewScheduleModal({
   }, [mode, initial?.employer_id, address])
 
   useEffect(() => {
-    if (!teamInput) {
-      setFilteredColleagues(allColleagues)
-      return
-    }
-    setFilteredColleagues(
-      allColleagues.filter(
-        c =>
-          (c.first_name + " " + c.last_name)
-            .toLowerCase()
-            .includes(teamInput.toLowerCase())
-      )
-    )
-  }, [teamInput, allColleagues])
-
-  useEffect(() => {
     if (!open) return
     setMode(initial?.mode || "Online")
     setPlatform(initial?.platform || "")
     setAddress(initial?.address || "")
-    setTeam(initial?.team || [])
     setDate(initial?.date || "")
     setTime(initial?.time || "")
     setNotes(initial?.notes || "")
     setSummary(initial?.summary || "")
-  }, [open])
+  }, [
+    open,
+    initial?.mode,
+    initial?.platform,
+    initial?.address,
+    initial?.date,
+    initial?.time,
+    initial?.notes,
+    initial?.summary
+  ])
 
   const validateDateTime = (d: string, t: string) => {
     if (!d) {
@@ -233,7 +154,6 @@ function InterviewScheduleModal({
       mode,
       platform,
       address,
-      team,
       date,
       time,
       notes,
@@ -479,87 +399,6 @@ function InterviewScheduleModal({
                 InputLabelProps={{ shrink: true }}
               />
             </Box>
-          </Box>
-          <Box sx={{ mb: 3 }}>
-            <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#a855f7", display: "flex", alignItems: "center" }}>
-              Invite Team Members
-            </Typography>
-            <Select
-              multiple
-              fullWidth
-              displayEmpty
-              value={team}
-              onChange={e => setTeam(typeof e.target.value === "string" ? e.target.value.split(",") : e.target.value as string[])}
-              renderValue={selected => {
-                if ((selected as string[]).length === 0) {
-                  return <span style={{ color: "#888" }}>Select team members</span>
-                }
-                return (
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-                    {(selected as string[]).map(email => (
-                      <span key={email}>{email}</span>
-                    ))}
-                  </Box>
-                )
-              }}
-              sx={{
-                background: "#fff",
-                borderRadius: 2,
-                mb: 1,
-                fontSize: 15,
-                "& .MuiOutlinedInput-root": { fontSize: 15 }
-              }}
-            >
-              {allColleagues.map(option => (
-                <MenuItem key={option.email} value={option.email}>
-                  <Checkbox checked={team.indexOf(option.email ?? "") > -1} />
-                  <Avatar src={option.avatarUrl || undefined} sx={{ width: 28, height: 28, mr: 1.5 }}>
-                    {option.first_name?.[0]}
-                  </Avatar>
-                  <ListItemText primary={`${option.first_name} ${option.last_name}`} secondary={option.email} />
-                </MenuItem>
-              ))}
-            </Select>
-
-            {team.length > 0 && (
-              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 1 }}>
-                {team.map(email => {
-                  const member = allColleagues.find(c => c.email === email)
-                  return (
-                    <Box
-                      key={email}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        px: 2,
-                        py: 1,
-                        borderRadius: 2,
-                        background: "#f3f4f6",
-                        border: "1px solid #e5e7eb",
-                        minWidth: 0,
-                        maxWidth: 220,
-                      }}
-                    >
-                      <Avatar
-                        src={member?.avatarUrl || undefined}
-                        sx={{ width: 28, height: 28, mr: 1 }}
-                      >
-                        {member?.first_name?.[0]}
-                      </Avatar>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography sx={{ fontSize: 14, fontWeight: 500, color: "#222", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {member ? `${member.first_name} ${member.last_name}` : email}
-                        </Typography>
-                        <Typography sx={{ fontSize: 12, color: "#666", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {email}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  )
-                })}
-              </Box>
-            )}
           </Box>
           <Box sx={{ mb: 3 }}>
             <Typography sx={{ fontWeight: 500, fontSize: 14, mb: 1, color: "#a855f7" }}>

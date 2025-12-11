@@ -31,6 +31,7 @@ export function EmailVerificationModal({ open, onOpenChange }: EmailVerification
   const [cooldown, setCooldown] = useState(0)
   const [loading, setLoading] = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState("")
   const confettiRef = useRef(null)
 
   useEffect(() => {
@@ -50,15 +51,27 @@ export function EmailVerificationModal({ open, onOpenChange }: EmailVerification
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMsg("")
     if (!email) return
     if (cooldown > 0) return
     setLoading(true)
     if (editing && email !== sessionEmail) {
-      await fetch("/api/employers/update-email", {
+      const res = await fetch("/api/employers/update-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employer_id: (session?.user as { employerId?: string })?.employerId, email }),
+        body: JSON.stringify({ newEmail: email }),
       })
+      if (!res.ok) {
+        const data = await res.json()
+        if (data.error === "Email already exists") {
+          setErrorMsg("This email is already registered. Please use a different email.")
+          setLoading(false)
+          return
+        }
+        setErrorMsg("Failed to update email. Please try again.")
+        setLoading(false)
+        return
+      }
       await fetch("/api/employers/update-registered-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -119,6 +132,9 @@ export function EmailVerificationModal({ open, onOpenChange }: EmailVerification
                   className="text-base py-5 bg-blue-50 text-gray-700 border-blue-300 focus:ring-blue-400"
                   readOnly={!editing}
                 />
+                {errorMsg && (
+                  <div className="text-red-600 text-xs mt-2">{errorMsg}</div>
+                )}
                 {!editing && (
                   <div className="flex justify-end">
                     <button
@@ -127,6 +143,7 @@ export function EmailVerificationModal({ open, onOpenChange }: EmailVerification
                       onClick={() => {
                         setEditing(true)
                         setEmail("")
+                        setErrorMsg("")
                       }}
                       tabIndex={0}
                     >
@@ -201,9 +218,22 @@ export function EmailVerificationModal({ open, onOpenChange }: EmailVerification
                 </Button>
               </p>
             </div>
-            <Button onClick={handleClose} className="w-full mt-2">
-              Close
-            </Button>
+            <div className="w-full flex flex-row gap-2 mt-2">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setSubmitted(false)
+                  setEditing(true)
+                  setEmail("")
+                }}
+              >
+                Back
+              </Button>
+              <Button onClick={handleClose} className="w-full">
+                Close
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>

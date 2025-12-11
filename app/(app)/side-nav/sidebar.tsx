@@ -4,25 +4,32 @@ import { HiBadgeCheck } from "react-icons/hi";
 import { LuBadgeCheck } from "react-icons/lu";
 import { PiWarningFill } from "react-icons/pi";
 import Tooltip from "@mui/material/Tooltip";
+import Badge from "@mui/material/Badge";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, JSX } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../../src/lib/utils";
-import { StatusDropdown } from "./status-dropdown";
-import { StatusIcon } from "./status-icon";
+
 import Skeleton from "@mui/material/Skeleton";
 
-type Status = "active" | "idle" | "unavailable";
 
 interface SidebarProps {
   onToggle?: (expanded: boolean) => void;
-  menuItems: { icon: React.ComponentType<{ className?: string }>; text: string; href: string; isActive?: boolean }[];
+  menuItems: {
+    icon: React.ComponentType<{ className?: string }>;
+    text: string;
+    href: string;
+    isActive?: boolean;
+    render?: () => JSX.Element;
+    disabled?: boolean;
+    style?: React.CSSProperties;
+  }[];
+  friendRequestCount?: number;
 }
 
-export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
+export default function Sidebar({ onToggle, menuItems, friendRequestCount }: SidebarProps) {
   const [expanded, setExpanded] = useState(true);
-  const [status, setStatus] = useState<Status>("active");
   const [hoveredItem, setHoveredItem] = useState<number | null>(null);
   const [studentName, setStudentName] = useState<string | null>(null);
   const [profileImg, setProfileImg] = useState<string | null>(null);
@@ -81,7 +88,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
       u.searchParams.set("t", Date.now().toString());
       return u.toString();
     } catch {
-      // fallback for relative URLs or invalid URLs
+
       const [base, query = ""] = url.split("?");
       const params = new URLSearchParams(query);
       params.set("t", Date.now().toString());
@@ -97,7 +104,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
       setStudentName(data.studentName);
       setEmail(data.email);
       setJobTitle(data.jobTitle);
-      // Use cached profileImg as-is, do not append/update timestamp here
+  
       setProfileImg(data.profileImg);
       setCourse(data.course);
       setLoading(false);
@@ -110,10 +117,10 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
         detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include", cache: "reload" });
         if (detailsRes.ok) {
           setRole("employer");
-          const { first_name, last_name, email, job_title, profile_img, verify_status } = await detailsRes.json();
+          const { first_name, last_name, suffix, email, job_title, profile_img, verify_status } = await detailsRes.json();
           const studentName =
             first_name && last_name
-              ? `${first_name} ${last_name}`
+              ? `${first_name} ${last_name}${suffix ? " " + suffix : ""}`
               : first_name || last_name || null;
           setStudentName(studentName);
           setEmail(email || null);
@@ -132,30 +139,34 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
               });
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json();
-                imgUrl = appendOrUpdateTimestamp(signedUrl); // Only here
+                imgUrl = appendOrUpdateTimestamp(signedUrl);
                 setProfileImg(imgUrl);
+                sessionStorage.setItem(
+                  "sidebarUserData",
+                  JSON.stringify({
+                    role: "employer",
+                    studentName,
+                    email: email || null,
+                    jobTitle: job_title || null,
+                    profileImg: imgUrl,
+                    course: null,
+                    verify_status
+                  })
+                );
               } else {
                 setProfileImg(null);
+                sessionStorage.removeItem("sidebarUserData");
               }
             } catch {
               setProfileImg(null);
+              sessionStorage.removeItem("sidebarUserData");
             }
           } else {
-            setProfileImg(null);
+            imgUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`;
+            setProfileImg(imgUrl);
+            sessionStorage.removeItem("sidebarUserData");
           }
 
-          sessionStorage.setItem(
-            "sidebarUserData",
-            JSON.stringify({
-              role: "employer",
-              studentName,
-              email: email || null,
-              jobTitle: job_title || null,
-              profileImg: imgUrl,
-              course: null,
-              verify_status
-            })
-          );
           setLoading(false);
           return;
         }
@@ -166,8 +177,10 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
           setRole("student");
           const { first_name, last_name, course, profile_img } = await detailsRes.json();
           const studentName =
-            first_name && last_name
-              ? `${first_name} ${last_name}`
+            first_name
+              ? last_name
+                ? `${first_name} ${last_name}`
+                : first_name
               : null;
           setStudentName(studentName);
           setCourse(course || null);
@@ -186,28 +199,32 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
               });
               if (signedRes.ok) {
                 const { signedUrl } = await signedRes.json();
-                imgUrl = appendOrUpdateTimestamp(signedUrl); // Only here
+                imgUrl = appendOrUpdateTimestamp(signedUrl); 
                 setProfileImg(imgUrl);
+                sessionStorage.setItem(
+                  "sidebarUserData",
+                  JSON.stringify({
+                    role: "student",
+                    studentName,
+                    email: null,
+                    jobTitle: null,
+                    profileImg: imgUrl,
+                    course: course || null,
+                  })
+                );
               } else {
                 setProfileImg(null);
+                sessionStorage.removeItem("sidebarUserData");
               }
             } catch {
               setProfileImg(null);
+              sessionStorage.removeItem("sidebarUserData");
             }
           } else {
-            setProfileImg(null);
+            imgUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`;
+            setProfileImg(imgUrl);
+            sessionStorage.removeItem("sidebarUserData");
           }
-          sessionStorage.setItem(
-            "sidebarUserData",
-            JSON.stringify({
-              role: "student",
-              studentName,
-              email: null,
-              jobTitle: null,
-              profileImg: imgUrl,
-              course: course || null,
-            })
-          );
           setLoading(false);
           return;
         }
@@ -331,9 +348,6 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                     : "?")
                 )}
               </div>
-              <motion.div className="absolute -top-1 -right-1" layout>
-                <StatusIcon status={status} size="sm" />
-              </motion.div>
             </motion.div>
 
             <AnimatePresence>
@@ -368,9 +382,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                                 whileHover={{ scale: 1.18 }}
                                 transition={{ type: "spring", stiffness: 340, damping: 16 }}
                               >
-                             
                                   <HiBadgeCheck className="w-4 h-4 text-blue-50" />
-                              
                               </motion.span>
                             </Tooltip>
                           )
@@ -383,9 +395,7 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                                 whileHover={{ scale: 1.18 }}
                                 transition={{ type: "spring", stiffness: 340, damping: 16 }}
                               >
-
                                   <LuBadgeCheck className="w-4 h-4 text-purple-100"  />
-
                               </motion.span>
                             </Tooltip>
                           )
@@ -397,7 +407,6 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                               whileHover={{ scale: 1.18 }}
                               transition={{ type: "spring", stiffness: 340, damping: 16 }}
                             >
-
                               <PiWarningFill className="w-4 h-4 text-orange-100" />
                             </motion.span>
                           </Tooltip>
@@ -418,25 +427,21 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
           </Link>
         </div>
 
-        <div className={cn("h-[42px] flex items-center relative z-30", expanded ? "px-4" : "px-0 justify-center")}>
-          {expanded ? (
-            <StatusDropdown status={status} onStatusChange={setStatus} expanded={expanded} />
-          ) : (
-            <motion.div
-              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              {expanded && <StatusIcon status={status} size="sm" />}
-            </motion.div>
-          )}
-        </div>
-
         <div className="mt-12 flex-1 overflow-y-auto relative z-10 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-transparent px-2">
           <ul className="space-y-4">
             {menuItems.map((item, index) => (
               <li key={index} className="relative overflow-hidden">
-                <Link href={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={e => {
+                    if (item.disabled) {
+                      e.preventDefault();
+                    }
+                  }}
+                  tabIndex={item.disabled ? -1 : 0}
+                  aria-disabled={item.disabled}
+                  style={item.style}
+                >
                   <motion.div
                     onMouseEnter={() => setHoveredItem(index)}
                     onMouseLeave={() => setHoveredItem(null)}
@@ -444,18 +449,23 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                       "flex items-center h-[46px] transition-all relative z-10 rounded-2xl",
                       expanded ? "pl-6 pr-4" : "px-0 justify-center",
                       hoveredItem === index && !item.isActive ? "scale-105" : "",
-                      item.isActive ? "bg-white/20 text-white" : "text-white/70"
+                      item.isActive ? "bg-white/20 text-white" : "text-white/70",
+                      item.disabled ? "pointer-events-none" : ""
                     )}
                   >
-                    <motion.div whileHover={{ rotate: [0, -10, 10, -5, 0] }} transition={{ duration: 0.5 }} layout>
-                      <item.icon
-                        className={cn(
-                          "w-6 h-6 min-w-6 transition-transform",
-                          hoveredItem === index ? "scale-105" : "",
-                          item.isActive ? "text-white" : "text-white/70",
-                        )}
-                      />
-                    </motion.div>
+                    {item.render ? (
+                      item.render()
+                    ) : (
+                      <motion.div whileHover={{ rotate: [0, -10, 10, -5, 0] }} transition={{ duration: 0.5 }} layout>
+                        <item.icon
+                          className={cn(
+                            "w-6 h-6 min-w-6 transition-transform",
+                            hoveredItem === index ? "scale-105" : "",
+                            item.isActive ? "text-white" : "text-white/70",
+                          )}
+                        />
+                      </motion.div>
+                    )}
                     {expanded && (
                       <motion.span
                         initial={{ opacity: 0, x: -10 }}
@@ -469,6 +479,26 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
                         )}
                       >
                         {item.text}
+                        {item.text === "Connections" && !!friendRequestCount && friendRequestCount > 0 && (
+                          <span className="ml-4">
+                            <Badge
+                              badgeContent={friendRequestCount}
+                              sx={{
+                                "& .MuiBadge-badge": {
+                                  background: "rgba(170, 194, 230, 0.7)",
+                                  color: "#eef2ffff",
+                                  fontWeight: 700,
+                                  minWidth: 16,
+                                  height: 16,
+                                  fontSize: "0.7rem",
+                                  marginLeft: "0px",
+                                  boxShadow: "0 2px 8px rgba(37,99,235,0.10)",
+                                  backdropFilter: "blur(6px)",
+                                },
+                              }}
+                            />
+                          </span>
+                        )}
                       </motion.span>
                     )}
                   </motion.div>
@@ -481,4 +511,3 @@ export default function Sidebar({ onToggle, menuItems }: SidebarProps) {
     </div>
   );
 }
-   

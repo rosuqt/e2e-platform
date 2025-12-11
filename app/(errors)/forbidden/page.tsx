@@ -1,5 +1,5 @@
 "use client"
-import { motion } from "framer-motion"
+import { motion, easeOut } from "framer-motion"
 import Link from "next/link"
 import dynamic from "next/dynamic"
 import {  Home, AlertTriangle } from "lucide-react"
@@ -13,7 +13,7 @@ const fadeInUp = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut" },
+    transition: { duration: 0.6, ease: easeOut },
   },
 }
 
@@ -170,5 +170,5 @@ export default function ForbiddenPage() {
     </div>
   )
 }
-  
+
 

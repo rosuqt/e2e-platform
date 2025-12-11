@@ -14,13 +14,14 @@ import { Tooltip } from "@mui/material"
 import { LiaUsersSolid } from "react-icons/lia"
 import { skillSuggestions } from "../../../../../students/profile/components/data/skill-suggestions"
 import { expertiseSuggestions } from "../../../../../students/profile/components/data/expertise-suggestions"
+import { useSession } from "next-auth/react"
 
 interface Applicant {
   id: string
   first_name: string
   last_name: string
   applied_at: string
-  match_score: number
+  match_score: number | null
   profile_picture: string | null
   status: string
   student_id?: string
@@ -38,6 +39,8 @@ export default function ApplicantsTab({ jobId, isArchived }: { jobId?: string; i
   const [loadingApplicants, setLoadingApplicants] = useState(false)
   const [profileImages, setProfileImages] = useState<Record<string, string>>({})
   const [loadingView, setLoadingView] = useState<string | null>(null)
+  const { data: session } = useSession();
+  const verifyStatus = session?.user?.verifyStatus;
 
   useEffect(() => {
     if (!jobId) return
@@ -91,7 +94,6 @@ export default function ApplicantsTab({ jobId, isArchived }: { jobId?: string; i
       .then(async (data) => {
         const applicants: Applicant[] = data || []
         setRecentApplicants(applicants)
-        
         const applicantsWithProfileImg = await Promise.all(
           applicants.map(async (applicant) => {
             if (!applicant.student_id) return { ...applicant, profile_image_url: "" }
@@ -101,7 +103,6 @@ export default function ApplicantsTab({ jobId, isArchived }: { jobId?: string; i
                 headers: { "Content-Type": "application/json" }
               })
               const details = await res.json()
-
               let profile_image_url = ""
               if (details && details.profile_img) {
                 const imgPath = details.profile_img
@@ -124,7 +125,6 @@ export default function ApplicantsTab({ jobId, isArchived }: { jobId?: string; i
             }
           })
         )
-
         const imageMap: Record<string, string> = {}
         applicantsWithProfileImg.forEach(applicant => {
           if (applicant.profile_image_url) {
@@ -663,7 +663,16 @@ export default function ApplicantsTab({ jobId, isArchived }: { jobId?: string; i
                       </div>
                       <div className="flex items-center space-x-2">
                         <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
-                          {applicant.match_score}% match
+                          {verifyStatus !== "full" ? (
+                            <div className="flex flex-col items-center">
+                              <Tooltip title="Verify to view match score" arrow>
+                                <span className="text-blue-600 text-xs mb-1">Verify to view match score</span>
+                              </Tooltip>
+                              <span className="blur-sm select-none">{applicant.match_score !== null ? `${applicant.match_score}% match` : "No score"}</span>
+                            </div>
+                          ) : (
+                            applicant.match_score !== null ? `${applicant.match_score}% match` : "No score"
+                          )}
                         </Badge>
                         <Button 
                           variant="outline" 
@@ -714,21 +723,6 @@ export default function ApplicantsTab({ jobId, isArchived }: { jobId?: string; i
                   View all applications
                 </Button>
               )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Skill Match Analysis */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Skill Match Analysis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center py-8">
-            <FaRankingStar className="w-10 h-10 text-gray-300 mb-2" />
-            <div className="text-gray-400 text-center text-sm max-w-xs mb-4">
-              No skill match data yet
             </div>
           </div>
         </CardContent>

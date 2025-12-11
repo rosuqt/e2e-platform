@@ -1,57 +1,43 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
+import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { StarIcon, Search, ChevronDown } from "lucide-react"
 import Image from "next/image"
 
 export default function RatingsTab() {
-  const reviews = [
-    {
-      id: 1,
-      candidate: "Ariza Rosu",
-      position: "UI/UX Designer",
-      rating: 4,
-      date: "03-27-2023",
-      review:
-        "Great hiring process! John was professional and communicated clearly throughout the entire experience. The interview questions were relevant and challenging, giving me a good sense of the role requirements. Received timely feedback after each stage.",
-      metrics: {
-        professionalism: 4.5,
-        communication: 4.5,
-        environment: 4.0,
-      },
-      avatar: "/placeholder.svg?height=60&width=60",
-    },
-    {
-      id: 2,
-      candidate: "Reri Wu",
-      position: "Frontend Developer",
-      rating: 5,
-      date: "02-15-2023",
-      review:
-        "Exceptional experience with John during the hiring process. The entire journey from initial contact to offer stage was seamless. I appreciated the transparent communication about company culture and expectations. One of the best recruitment experiences I've had.",
-      metrics: {
-        professionalism: 5.0,
-        communication: 5.0,
-        environment: 4.5,
-      },
-      avatar: "/placeholder.svg?height=60&width=60",
-    },
-    {
-      id: 3,
-      candidate: "Shiri Yosa",
-      position: "Product Manager",
-      rating: 3,
-      date: "01-30-2023",
-      review:
-        "The interview process was well-structured, but there were some delays in communication between rounds. John was knowledgeable about the role but could improve on setting clear expectations about next steps. Overall a decent experience with room for improvement.",
-      metrics: {
-        professionalism: 3.5,
-        communication: 2.5,
-        environment: 4.0,
-      },
-      avatar: "/placeholder.svg?height=60&width=60",
-    },
-  ]
+  const [reviews, setReviews] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch("/api/employers/fetchRatings")
+      .then(res => res.json())
+      .then(data => {
+        setReviews(Array.isArray(data) ? data : [])
+        setLoading(false)
+      })
+      .catch(() => {
+        setReviews([])
+        setLoading(false)
+      })
+  }, [])
+
+  const avgRating = useMemo(() => {
+    if (!reviews.length) return 0
+    return Math.round(
+      (reviews.reduce((sum, r) => sum + (r.overall_rating || 0), 0) / reviews.length) * 10
+    ) / 10
+  }, [reviews])
+
+  const ratingCounts = useMemo(() => {
+    const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } as const
+    reviews.forEach(r => {
+      const val = Math.round(r.overall_rating || 0)
+      if (val >= 1 && val <= 5) (counts as Record<number, number>)[val]++
+    })
+    return counts
+  }, [reviews])
 
   return (
     <div>
@@ -59,19 +45,19 @@ export default function RatingsTab() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
             <h3 className="text-lg font-medium mb-2">Total Reviews</h3>
-            <div className="text-4xl font-bold">56</div>
+            <div className="text-4xl font-bold">{reviews.length}</div>
             <p className="text-sm text-gray-500 mt-1">All candidate feedback from your hiring processes</p>
           </div>
 
           <div>
             <h3 className="text-lg font-medium mb-2">Average Rating</h3>
             <div className="flex items-center gap-2">
-              <span className="text-4xl font-bold">4.2</span>
+              <span className="text-4xl font-bold">{avgRating}</span>
               <div className="flex">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <StarIcon
                     key={star}
-                    className={`w-5 h-5 ${star <= 4 ? "text-yellow-400 fill-yellow-400" : star <= 5 ? "text-gray-300" : "text-gray-300"}`}
+                    className={`w-5 h-5 ${avgRating >= star ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
                   />
                 ))}
               </div>
@@ -98,22 +84,14 @@ export default function RatingsTab() {
                                 : "bg-red-500"
                       }`}
                       style={{
-                        width: `${
-                          rating === 5
-                            ? "35%"
-                            : rating === 4
-                              ? "42%"
-                              : rating === 3
-                                ? "15%"
-                                : rating === 2
-                                  ? "6%"
-                                  : "2%"
-                        }`,
+                        width: reviews.length
+                          ? `${((ratingCounts as Record<number, number>)[rating] / reviews.length) * 100}%`
+                          : "0%",
                       }}
                     ></div>
                   </div>
                   <span className="text-sm w-6 text-right">
-                    {rating === 5 ? "19" : rating === 4 ? "24" : rating === 3 ? "8" : rating === 2 ? "3" : "2"}
+                    {(ratingCounts as Record<number, number>)[rating]}
                   </span>
                 </div>
               ))}
@@ -147,56 +125,74 @@ export default function RatingsTab() {
         </div>
 
         <div className="space-y-6">
-          {reviews.map((review, index) => (
-            <div key={review.id} className={`${index !== reviews.length - 1 ? "border-b pb-6" : ""}`}>
-              <div className="flex gap-4">
-                <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
-                  <Image
-                    src={review.avatar || "/placeholder.svg"}
-                    alt={review.candidate}
-                    width={48}
-                    height={48}
-                    className="object-cover"
-                  />
-                </div>
+          {loading ? (
+            <div className="text-center text-gray-500">Loading...</div>
+          ) : reviews.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">No ratings yet.</div>
+          ) : (
+            reviews.map((review, index) => (
+              <div key={review.id || index} className={`${index !== reviews.length - 1 ? "border-b pb-6" : ""}`}>
+                <div className="flex gap-4">
+                  <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                    <Image
+                      src={review.registered_students?.profile_img || "/placeholder.svg"}
+                      alt={review.registered_students?.first_name || "Candidate"}
+                      width={48}
+                      height={48}
+                      className="object-cover"
+                    />
+                  </div>
 
-                <div className="flex-1">
-                  <div className="flex justify-between">
-                    <h3 className="font-medium">{review.candidate}</h3>
-                    <div className="flex items-center gap-2">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <StarIcon
-                            key={star}
-                            className={`w-4 h-4 ${star <= review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
-                          />
-                        ))}
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <h3 className="font-medium">
+                        {review.registered_students?.first_name
+                          ? `${review.registered_students.first_name} ${review.registered_students.last_name || ""}`
+                          : "Candidate"}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <StarIcon
+                              key={star}
+                              className={`w-4 h-4 ${review.overall_rating >= star ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {review.created_at ? new Date(review.created_at).toLocaleDateString() : ""}
+                        </span>
                       </div>
-                      <span className="text-sm text-gray-500">{review.date}</span>
                     </div>
-                  </div>
 
-                  <div className="text-sm text-gray-600 mt-1">
-                    Applied for <span className="font-medium">{review.position}</span>
-                  </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      {review.job_postings?.job_title
+                        ? <>Applied for <span className="font-medium">{review.job_postings.job_title}</span></>
+                        : null}
+                    </div>
 
-                  <p className="text-sm text-gray-600 mt-3">{review.review}</p>
+                    <p className="text-sm text-gray-600 mt-3">
+                      {review.overall_comment && review.overall_comment.trim().length > 0
+                        ? review.overall_comment
+                        : "No comment provided."}
+                    </p>
 
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <Badge variant="outline" className="text-xs bg-gray-50">
-                      Professionalism: {review.metrics.professionalism}/5
-                    </Badge>
-                    <Badge variant="outline" className="text-xs bg-gray-50">
-                      Communication: {review.metrics.communication}/5
-                    </Badge>
-                    <Badge variant="outline" className="text-xs bg-gray-50">
-                      Work Environment: {review.metrics.environment}/5
-                    </Badge>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <Badge variant="outline" className="text-xs bg-gray-50">
+                        Professionalism: {review.recruiter_rating || "—"}/5
+                      </Badge>
+                      <Badge variant="outline" className="text-xs bg-gray-50">
+                        Communication: {review.company_rating || "—"}/5
+                      </Badge>
+                      <Badge variant="outline" className="text-xs bg-gray-50">
+                        Work Environment: {review.overall_rating || "—"}/5
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

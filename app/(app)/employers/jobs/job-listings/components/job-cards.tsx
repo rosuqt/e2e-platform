@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import { motion } from "framer-motion";
 import {  Clock, Briefcase, Calendar, RotateCcw, Archive, Info } from "lucide-react";
 import { RiListView } from "react-icons/ri";
@@ -43,6 +44,7 @@ export type EmployerJobCardJob = {
   interviews?: number;
   companyName?: string;
   is_archived?: boolean;
+  tags?: { name: string; color: string }[];
 };
 
 export default function EmployerJobCard({
@@ -253,7 +255,37 @@ export default function EmployerJobCard({
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-lg text-gray-800">{job.title}</h3>
+              <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
+                {job.title}
+                {Array.isArray(job.tags) && job.tags.length > 0 && (
+                  <span className="flex gap-1 flex-wrap">
+                    {job.tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                        style={{
+                          backgroundColor:
+                            tag.color === "blue" ? "#eff6ff"
+                            : tag.color === "green" ? "#dcfce7"
+                            : tag.color === "yellow" ? "#fef9c3"
+                            : tag.color === "red" ? "#fee2e2"
+                            : tag.color === "purple" ? "#f3e8ff"
+                            : "#f3f4f6",
+                          color:
+                            tag.color === "blue" ? "#2563eb"
+                            : tag.color === "green" ? "#059669"
+                            : tag.color === "yellow" ? "#ca8a04"
+                            : tag.color === "red" ? "#dc2626"
+                            : tag.color === "purple" ? "#7c3aed"
+                            : "#374151"
+                        }}
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </h3>
               {job.closing === "Closed" ? (
                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-600">
                   Closed
@@ -730,7 +762,7 @@ export default function EmployerJobCard({
                       <DialogTitle className="text-red-600 font-bold">Delete Job Listing</DialogTitle>
                       <DialogContent>
                         <DialogContentText>
-                          This action cannot be undone. This will permanently delete the job listing and all associated data including messages, and analytics.
+                          This action cannot be undone. This will permanently delete the job listing and all associated data including messages, analytics, and all related job invitations. Deleting this job will also remove all related job invitations. Please confirm to proceed.
                         </DialogContentText>
                         <div className="py-4">
                           <div className="flex items-start gap-4 p-3 rounded-lg bg-red-50 border border-red-200">
@@ -739,9 +771,10 @@ export default function EmployerJobCard({
                               <p className="font-bold text-base mb-2">Warning:</p>
                               <ul className="list-disc pl-5 mt-2 space-y-1 font-medium">
                                 <li>All job data will be permanently deleted</li>
-                                  <li>All messages and communication history will be lost</li>
-                                  <li>All analytics and reporting data will be removed</li>
-                                  <li>This action CANNOT be reversed</li>
+                                <li>All messages and communication history will be lost</li>
+                                <li>All analytics and reporting data will be removed</li>
+                                <li>All related job invitations will be deleted</li>
+                                <li>This action CANNOT be reversed</li>
                               </ul>
                             </div>
                           </div>

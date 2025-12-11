@@ -1,16 +1,25 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo, useLayoutEffect } from "react"
 import {
   Search,
   ChevronLeft,
   ChevronRight,
   Filter,
+  X,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 import Drawer from "@mui/material/Drawer"
 import { createPortal } from "react-dom"
 import FilterModal from "./components/filter-modal"
@@ -22,17 +31,20 @@ import SavedJobs from "./components/saved-jobs"
 import listLoadAnimation from "../../../../../public/animations/list-load.json";
 import notFoundAnimation from "../../../../../public/animations/not-found.json";
 import Lottie from "lottie-react";
-import type { Job } from "./components/job-details";
+import type { Job } from "./components/job-details.tsx";
 
+type JobFilters = Partial<Pick<Job, "work_type" | "location">> & { salary?: string; match_score_min?: number; match_score_max?: number };
 
 export default function JobListingPage() {
-  useEffect(() => {
-    document.documentElement.classList.add("overflow-hidden");
-
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    document.body.classList.add("overflow-hidden")
     return () => {
-      document.documentElement.classList.remove("overflow-hidden");
-    };
-  }, []);
+      document.body.classList.remove("overflow-hidden")
+    }
+  }, [])
 
   const searchParams = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search)
@@ -143,7 +155,11 @@ export default function JobListingPage() {
           `}
         >
 
-          <JobListings selectedJob={selectedJob} onSelectJob={setSelectedJob} />
+          <JobListings
+            selectedJob={selectedJob}
+            onSelectJob={setSelectedJob}
+            initialJobId={initialJobId}
+          />
         </div>
         {/* Right Column - Job Details - Only visible when a job is selected */}
         {selectedJob !== null && (
@@ -154,16 +170,7 @@ export default function JobListingPage() {
               w-[35%] max-w-[600px]
             `}
           >
-            {/* Debug: log selected job's responsibilities */}
-            {/* 
-            {(() => {
-              const job = jobs.find(j => j.id === selectedJob);
-              if (job) {
-                console.log("DEBUG responsibilities:", job.responsibilities);
-              }
-              return null;
-            })()}
-            */}
+
             <JobDetails onClose={() => setSelectedJob(null)} jobId={selectedJob} />
           </div>
         )}
@@ -289,8 +296,7 @@ function Pagination({
 }
 
 // Job Listings Component
-function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | null) => void; selectedJob: string | null }) {
-  const [showQuickApply, setShowQuickApply] = useState(false);
+function JobListings({ onSelectJob, selectedJob, initialJobId }: { onSelectJob: (id: string | null) => void; selectedJob: string | null; initialJobId?: string | null }) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -299,13 +305,17 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
   const [limit] = useState(10);
   const [search, setSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState(""); 
-  const [filters, setFilters] = useState<Record<string, string | boolean>>({});
+  const [filters, setFilters] = useState<JobFilters>({});
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [totalJobs, setTotalJobs] = useState<number>(0);
+  const [totalPagesState, setTotalPagesState] = useState<number>(1);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
- 
-  const [sortBy, setSortBy] = useState("recent");
+  const [sortBy, setSortBy] = useState("relevant");
+  const [preferredTypes, setPreferredTypes] = useState<string[]>([]);
+  const [preferredLocations, setPreferredLocations] = useState<string[]>([]);
+  const [, setAllowUnrelatedJobsState] = useState<boolean | null>(null);
+  const [highlightJobId, setHighlightJobId] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -313,16 +323,26 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
     params.set("page", String(page));
     params.set("limit", String(limit));
     if (searchQuery) params.set("search", searchQuery);
-    if (filters.work_type && typeof filters.work_type === "string" && filters.work_type.length > 0) params.set("type", filters.type as string);
-    if (filters.location && typeof filters.location === "string" && filters.location.length > 0) params.set("location", filters.location as string);
-    if (filters.salary && typeof filters.salary === "string" && filters.salary.length > 0) params.set("salary", filters.salary as string);
+    if (filters.work_type) params.set("work_type", String(filters.work_type));
+    if (filters.location) params.set("location", String(filters.location));
+    if (filters.salary) params.set("salary", String(filters.salary));
+    if (typeof filters.match_score_min === "number") params.set("match_score_min", String(filters.match_score_min));
+    if (typeof filters.match_score_max === "number") params.set("match_score_max", String(filters.match_score_max));
     if (sortBy) params.set("sortBy", sortBy);
 
     fetch(`/api/students/job-listings?${params.toString()}`)
       .then(res => res.json())
-      .then(data => {
-        setJobs(Array.isArray(data.jobs) ? data.jobs : []);
-        setTotalJobs(typeof data.total === "number" ? data.total : (Array.isArray(data.jobs) ? data.jobs.length : 0));
+      .then((data) => {
+        const fetched = Array.isArray(data.jobs) ? data.jobs : [];
+        setJobs(fetched);
+        setTotalJobs(typeof data.total === "number" ? data.total : fetched.length);
+        const computedTotalPages = typeof data.totalPages === "number"
+          ? data.totalPages
+          : Math.max(1, Math.ceil((typeof data.total === "number" ? data.total : fetched.length) / limit));
+        setTotalPagesState(computedTotalPages);
+        setPreferredTypes(Array.isArray(data.preferredTypes) ? data.preferredTypes : []);
+        setPreferredLocations(Array.isArray(data.preferredLocations) ? data.preferredLocations : []);
+        setAllowUnrelatedJobsState(typeof data.allowUnrelatedJobs === "boolean" ? data.allowUnrelatedJobs : null);
         setLoading(false);
       })
       .catch(() => {
@@ -331,18 +351,14 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
   }, [page, limit, searchQuery, filters, sortBy]);
 
   useEffect(() => {
-    onSelectJob(null);
-  }, [jobs, onSelectJob]);
-
-  useEffect(() => {
     fetch("/api/students/job-listings/saved-jobs")
       .then(res => res.json())
       .then(data => setSavedJobIds(data.jobIds?.map(String) ?? []));
   }, []);
 
   useEffect(() => {
-    setJobs(jobs =>
-      jobs.map(job => ({
+    setJobs(j =>
+      j.map(job => ({
         ...job,
         isSaved: savedJobIds.includes(String(job.id)),
       }))
@@ -358,19 +374,15 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
       }
 
       scrollTimeoutRef.current = setTimeout(() => {
-        if (scrollContainerRef.current!.scrollTop > 50) {
-          setIsHeaderCollapsed(true);
-        } else {
-          setIsHeaderCollapsed(false);
-        }
+        setIsHeaderCollapsed(scrollContainerRef.current!.scrollTop > 50);
       }, 100);
     };
 
-    const scrollContainer = scrollContainerRef.current;
-    if (scrollContainer) {
-      scrollContainer.addEventListener("scroll", handleScroll);
+    const el = scrollContainerRef.current;
+    if (el) {
+      el.addEventListener("scroll", handleScroll);
       return () => {
-        scrollContainer.removeEventListener("scroll", handleScroll);
+        el.removeEventListener("scroll", handleScroll);
         if (scrollTimeoutRef.current) {
           clearTimeout(scrollTimeoutRef.current);
         }
@@ -406,7 +418,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
     }
   }, [page]);
 
-  function handleFilterModalApply(newFilters: Record<string, string | boolean>) {
+  function handleFilterModalApply(newFilters: Partial<Pick<Job, "work_type" | "location">> & { salary?: string; match_score?: number }) {
     setFilters(newFilters);
   }
 
@@ -418,7 +430,143 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
     );
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalJobs / limit));
+  const filterCount = Object.values(filters).reduce<number>((acc, val) => {
+    if (typeof val === "boolean") return acc + (val ? 1 : 0);
+    if (typeof val === "string") return acc + (val.trim().length > 0 ? 1 : 0);
+    if (typeof val === "number") return acc + 1;
+    return acc;
+  }, 0);
+
+  const getJobSalaryNumber = (job: Job): number | null => {
+    const hasPayAmountField = Object.prototype.hasOwnProperty.call(job, "pay_amount");
+    const rawPay = hasPayAmountField ? (job as any).pay_amount : ((job as any).payAmount ?? (job as any).salary ?? "");
+
+    if (rawPay === null || rawPay === undefined) return null;
+    if (typeof rawPay === "number") return rawPay;
+
+    if (typeof rawPay === "string") {
+      if (/unpaid|no pay/i.test(rawPay)) return null;
+      const digits = rawPay.replace(/[^0-9]/g, "");
+      return digits ? Number(digits) : null;
+    }
+
+    return null;
+  };
+
+  const matchesFilter = (job: Job) => {
+    if (filters.work_type && typeof filters.work_type === "string" && filters.work_type.trim() !== "") {
+      const wanted = filters.work_type.split(",").map(s => s.trim()).filter(Boolean);
+      const jobTypes = Array.isArray((job as any).work_type)
+        ? (job as any).work_type
+        : String((job as any).work_type || "").split(",").map((s: string) => s.trim());
+      if (!wanted.some(w => jobTypes.includes(w))) return false;
+    }
+
+    if (filters.location && typeof filters.location === "string" && filters.location.trim() !== "") {
+      const wantedLoc = filters.location.split(",").map(s => s.trim()).filter(Boolean);
+      const jobLocs = Array.isArray((job as any).location)
+        ? (job as any).location
+        : String((job as any).location || "").split(",").map((s: string) => s.trim());
+      if (!wantedLoc.some(w => jobLocs.includes(w))) return false;
+    }
+
+    if (filters.salary && typeof filters.salary === "string" && filters.salary.trim() !== "") {
+      const f = filters.salary;
+
+      const jobSalaryNum = getJobSalaryNumber(job);
+
+      const isUnpaid = jobSalaryNum === null && typeof ((job as any).salary || (job as any).pay_amount || (job as any).payAmount) === "string"
+        ? /unpaid|no pay/i.test(String((job as any).salary ?? (job as any).pay_amount ?? (job as any).payAmount))
+        : jobSalaryNum === null;
+
+      if (f === "unpaid") {
+        if (!isUnpaid) return false;
+      } else if (f.startsWith(">=")) {
+        const val = Number(f.replace(">=", "").replace(/[^0-9]/g, ""));
+        if (isNaN(val)) return false;
+        if (jobSalaryNum === null) return false;
+        if (jobSalaryNum < val) return false;
+      } else {
+        const val = Number(f.replace(/[^0-9]/g, ""));
+        if (!isNaN(val)) {
+          if (jobSalaryNum === null) return false;
+          if (jobSalaryNum < val) return false;
+        }
+      }
+    }
+
+    const min = typeof filters.match_score_min === "number" ? filters.match_score_min : null;
+    const max = typeof filters.match_score_max === "number" ? filters.match_score_max : null;
+    if (min !== null || max !== null) {
+      const jobScore = (job as any).match_score;
+      if (typeof jobScore !== "number") return false;
+      if (min !== null && jobScore < min) return false;
+      if (max !== null && jobScore > max) return false;
+    }
+
+    return true;
+  };
+
+  const filteredJobs = useMemo(() => {
+    if (!filters || Object.keys(filters).length === 0) {
+      // Only show jobs with "full" or "standard" verify_status
+      return jobs.filter(
+        job =>
+          job.registered_employers?.verify_status === "full" ||
+          job.registered_employers?.verify_status === "standard"
+      );
+    }
+
+    const filtered = jobs.filter(matchesFilter);
+
+    // Only show jobs with "full" or "standard" verify_status
+    const filteredWithPoster = filtered.filter(
+      job =>
+        job.registered_employers?.verify_status === "full" ||
+        job.registered_employers?.verify_status === "standard"
+    );
+
+    if (typeof filters.salary === "string" && /^\s*>=\s*\d+/.test(filters.salary)) {
+      return filteredWithPoster.slice().sort((a, b) => {
+        const na = getJobSalaryNumber(a);
+        const nb = getJobSalaryNumber(b);
+        if (na === null && nb === null) return 0;
+        if (na === null) return 1;
+        if (nb === null) return -1;
+        return na - nb;
+      });
+    }
+
+    return filteredWithPoster;
+  }, [jobs, filters]);
+
+  const orderedJobs = useMemo(() => {
+    let jobsList = filteredJobs;
+    if (initialJobId) {
+      const idx = jobsList.findIndex(j => String(j.id) === String(initialJobId));
+      if (idx > -1) {
+        const [firstJob] = jobsList.splice(idx, 1);
+        jobsList = [firstJob, ...jobsList];
+      }
+    }
+    const fullJobs = jobsList.filter(
+      job => job.registered_employers?.verify_status === "full"
+    );
+    const standardJobs = jobsList.filter(
+      job => job.registered_employers?.verify_status === "standard"
+    );
+    return [...fullJobs, ...standardJobs];
+  }, [filteredJobs, initialJobId]);
+
+  useEffect(() => {
+    if (selectedJob && initialJobId) {
+      setHighlightJobId(selectedJob);
+      const t = setTimeout(() => setHighlightJobId(null), 2000);
+      return () => clearTimeout(t);
+    } else {
+      setHighlightJobId(null);
+    }
+  }, [selectedJob, initialJobId]);
 
   return (
     <div className="flex flex-col h-full">
@@ -471,13 +619,28 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
               whileHover={{ boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
               onSubmit={handleSearchSubmit}
             >
-              <Input
-                type="text"
-                placeholder="Search jobs"
-                className="border-0 text-black focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 sm:mb-0 flex-1"
-                value={search}
-                onChange={handleSearchChange}
-              />
+              <div className="relative flex-1 w-full">
+                <Input
+                  type="text"
+                  placeholder="Search jobs"
+                  className="border-0 text-black focus-visible:ring-0 focus-visible:ring-offset-0 mb-1 sm:mb-0 pr-10"
+                  value={search}
+                  onChange={handleSearchChange}
+                />
+                {search && (
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
+                    onClick={() => {
+                      setSearch("");
+                      setSearchQuery("");
+                    }}
+                    tabIndex={0}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
               <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto" type="submit">
                 <Search className="mr-2 h-4 w-4" />
                 Search
@@ -485,30 +648,36 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
             </motion.form>
           </motion.div>
 
-          {/* Controls */}
+          {/* Controls (shadcn) */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-4">
               <span className="text-sm font-medium text-blue-600">{totalJobs} job listings</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-blue-600">Sort by</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50"
-                >
-                  <option value="relevant">Relevance</option>
-                  <option value="reco">Recommended</option>
-                  <option value="newest">Newest First</option>
-                </select>
+                <Label className="text-sm font-medium text-blue-600">Sort by</Label>
+                <Select value={sortBy} onValueChange={(val: string) => setSortBy(val)}>
+                  <SelectTrigger className="w-[180px] h-8 bg-white text-blue-600 border font-medium text-center border-blue-200 rounded-full px-3 flex items-center">
+                    <SelectValue placeholder="Select sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relevant">Relevance</SelectItem>
+                    <SelectItem value="reco">Recommended</SelectItem>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <Button
               variant="outline"
-              className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              className="bg-white px-3 py-1 rounded-full text-sm font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 hover:text-blue-700 flex items-center"
               onClick={() => setIsFilterOpen(!isFilterOpen)}
             >
               <Filter className="w-4 h-4 mr-1" />
-              Filters
+              <span>Filters</span>
+              {filterCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-2 rounded-full bg-blue-600 text-white text-xs font-medium">
+                  {filterCount}
+                </span>
+              )}
             </Button>
           </div>
         </div>
@@ -523,7 +692,7 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
                 Fetching job listings, please wait...
               </span>
             </div>
-          ) : jobs.length === 0 ? (
+          ) : orderedJobs.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[300px]">
               <div className="bg-white rounded-full shadow-lg flex items-center justify-center mt-10 w-64 h-64">
                 <Lottie animationData={notFoundAnimation} loop={true} />
@@ -534,27 +703,33 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
             </div>
           ) : (
             <>
-              {jobs
-                .map((job) => (
-                  <JobCard
-                    key={job.id}
-                    id={job.id}
-                    isSelected={selectedJob === String(job.id)}
-                    onSelect={() => onSelectJob(selectedJob === String(job.id) ? null : String(job.id))}
-                    onQuickApply={() => {
-                      setShowQuickApply(true);
-                    }}
-                    job={job}
-                    onSaveToggle={handleJobSaveToggle}
-                  />
-                ))}
+              {orderedJobs.map((job, i) => (
+                <JobCard
+                  key={job.id}
+                  id={job.id}
+                  isSelected={selectedJob === String(job.id)}
+                  onSelect={() => onSelectJob(selectedJob === String(job.id) ? null : String(job.id))}
+                  onQuickApply={() => {}}
+                  job={job}
+                  studentPreferredTypes={preferredTypes}
+                  studentPreferredLocations={preferredLocations}
+                  onSaveToggle={handleJobSaveToggle}
+                  shouldHighlight={
+                    Boolean(
+                      initialJobId &&
+                      highlightJobId === String(job.id) &&
+                      i === 0
+                    )
+                  }
+                />
+              ))}
               <div style={{ minHeight: 20 }} />
             </>
           )}
 
-          {!loading && jobs.length > 0 && totalPages > 1 && (
+          {!loading && orderedJobs.length > 0 && totalPagesState > 1 && (
             <Pagination
-              totalPages={totalPages}
+              totalPages={totalPagesState}
               currentPage={page}
               onPageChange={setPage}
             />
@@ -571,193 +746,6 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
           />,
           document.body
         )}
-
-      {showQuickApply &&
-        createPortal(
-          <QuickApplyModal onClose={() => setShowQuickApply(false)} />,
-          document.body
-        )}
     </div>
   );
-}
-
-// Quick Apply Modal
-function QuickApplyModal({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState(1)
-  const totalSteps = 3
-
-  return (
-    <motion.div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
-      <motion.div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 text-white">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-xl">Quick Apply</h3>
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={onClose}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-x"
-              >
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-              <span className="sr-only">Close</span>
-            </Button>
-          </div>
-       
-
-          {/* Progress bar */}
-          <div className="mt-4 h-1.5 bg-white/30 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-white rounded-full transition-all duration-300"
-              style={{ width: `${(step / totalSteps) * 100}%` }}
-            ></div>
-          </div>
-          <div className="flex justify-between text-xs mt-1 text-blue-100">
-            <span>
-              Step {step} of {totalSteps}
-            </span>
-            <span>{Math.round((step / totalSteps) * 100)}% Complete</span>
-          </div>
-        </div>
-
-        <div className="p-6">
-          {step === 1 && (
-            <div className="space-y-4">
-              <h4 className="font-medium text-lg text-blue-700">Personal Information</h4>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <Input defaultValue="Kemly Rose" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <Input defaultValue="kemly.rose@example.com" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <Input placeholder="Enter your phone number" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4">
-              <h4 className="font-medium text-lg text-blue-700">Resume & Cover Letter</h4>
-              <div className="space-y-3">
-                <div className="border-2 border-dashed border-blue-200 rounded-lg p-4 text-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-blue-500 mb-2"
-                    >
-                      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <path d="M16 13H8" />
-                      <path d="M16 17H8" />
-                      <path d="M10 9H8" />
-                    </svg>
-                    <p className="text-sm text-blue-700 font-medium">Upload your resume</p>
-                    <p className="text-xs text-gray-500 mt-1">PDF, DOCX or TXT (Max 5MB)</p>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      Browse Files
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cover Letter (Optional)</label>
-                  <textarea
-                    className="w-full min-h-[100px] rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Tell us why you're a good fit for this position..."
-                  ></textarea>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
-              <h4 className="font-medium text-lg text-blue-700">Additional Questions</h4>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    How many years of experience do you have in this field?
-                  </label>
-                  <select className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option>Less than 1 year</option>
-                    <option>1-2 years</option>
-                    <option>3-5 years</option>
-                    <option>5+ years</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">When can you start?</label>
-                  <select className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option>Immediately</option>
-                    <option>In 2 weeks</option>
-                    <option>In 1 month</option>
-                    <option>More than 1 month</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">What is your expected salary?</label>
-                  <Input placeholder="Enter amount in PHP" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between mt-6">
-            {step > 1 ? (
-              <Button variant="outline" onClick={() => setStep(step - 1)}>
-                Back
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-            )}
-
-            {step < totalSteps ? (
-              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => setStep(step + 1)}>
-                Continue
-              </Button>
-            ) : (
-              <Button className="bg-green-600 hover:bg-green-700" onClick={onClose}>
-                Submit Application
-              </Button>
-            )}
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  )
 }

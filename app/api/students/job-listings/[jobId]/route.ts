@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 import supabase from '@/lib/supabase'
+import { getServerSession } from "next-auth/next"
+import { authOptions } from '../../../../../lib/authOptions'
 
 export async function GET(request: Request, { params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params
+
+  const session = await getServerSession(authOptions)
+  const studentId = session?.user?.studentId
+  console.log("API studentId:", studentId);
 
   const { data, error } = await supabase
     .from('job_postings')
@@ -15,7 +21,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
         company_name
       ),
       registered_employers:employer_id (
-        company_name
+        company_name,
+        verify_status
       )
     `)
     .eq('id', jobId)
@@ -26,13 +33,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
   }
 
   let registered_companies = null
+  let company_verify_status = null
   if (data?.registered_employers?.company_name) {
     const { data: company } = await supabase
       .from('registered_companies')
-      .select('company_name, company_logo_image_path, company_industry,  address')
+      .select('company_name, company_logo_image_path, company_industry, address, verify_status')
       .eq('company_name', data.registered_employers.company_name)
       .single()
-    if (company) registered_companies = company
+    if (company) {
+      registered_companies = company
+      company_verify_status = company.verify_status ?? null
+    }
   }
 
   let employer_profile_img = null
@@ -72,15 +83,31 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
     return [];
   }
 
+  let gpt_score: number | null = null;
+  if (studentId) {
+    const { data: matchData, error: matchError } = await supabase
+      .from('job_matches')
+      .select('gpt_score')
+      .eq('job_id', jobId)
+      .eq('student_id', studentId)
+      .single();
+    console.log("job_matches query result:", matchData, "error:", matchError);
+    if (matchData && typeof matchData.gpt_score === 'number') {
+      gpt_score = matchData.gpt_score;
+    }
+  }
+
   const job = data
     ? {
         ...data,
         registered_companies,
-        employer_profile_img, // add to response
+        employer_profile_img,
         responsibilities: normalizeArray(data.responsibilities),
         must_haves: normalizeArray(data.must_have_qualifications),
         nice_to_haves: normalizeArray(data.nice_to_have_qualifications),
         perks: normalizeArray(data.perks_and_benefits),
+        gpt_score,
+        verify_status: data.registered_employers?.verify_status ?? company_verify_status ?? null
       }
     : null
 

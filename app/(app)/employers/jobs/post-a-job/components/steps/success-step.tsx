@@ -2,7 +2,6 @@
 import { CheckCircle, ExternalLink, Share2, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { ConfettiCustomShapes } from "@/components/magicui/shapes";
 import { useEffect, useState } from "react";
 import { ShareModal } from "../share-modal";
 
@@ -25,7 +24,7 @@ export default function JobPostingLive({ onPostAnotherJob, jobId }: { onPostAnot
     <div className="flex justify-center items-center min-h-screen">
       <ShareModal open={showShare} onClose={() => setShowShare(false)} shareUrl={shareUrl} />
       <div className="bg-white rounded-3xl p-12 md:p-16 max-w-[70rem] w-full mx-auto mt-[-50px]">
-        <ConfettiCustomShapes />
+        {/* <ConfettiCustomShapes /> */}
 
         <div className="flex flex-col items-center text-center">
           {/* Success Icon */}

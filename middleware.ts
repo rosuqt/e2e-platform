@@ -7,20 +7,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   type AppToken = {
-  name?: string
-  email?: string
-  sub?: string
-  role?: string
-  [key: string]: unknown
-}
-
-
-  if (
-    pathname.startsWith("/sign-in") ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/auth/callback")
-  ) {
-    return NextResponse.next()
+    name?: string
+    email?: string
+    sub?: string
+    role?: string
+    [key: string]: unknown
   }
 
   let token = await getToken({
@@ -51,10 +42,17 @@ export async function middleware(request: NextRequest) {
   console.log("middleware: cookies", request.cookies.getAll().map(c => c.name))
   console.log("middleware: NEXTAUTH_SESSION_TOKEN_MODE", process.env.NEXTAUTH_SESSION_TOKEN_MODE)
 
-  if (!token) {
-    return NextResponse.redirect(new URL("/sign-in", request.url))
-  }
+  const protectedRoutes = [
+    "/students",
+    "/employers",
+    "/admin"
+  ]
+  const isProtected = protectedRoutes.some(route => pathname.startsWith(route))
 
+  if (!isProtected) {
+    return NextResponse.next()
+  }
+                
   if (pathname.startsWith("/employers") && role !== "employer") {
     return NextResponse.redirect(new URL("/forbidden", request.url))
   }
@@ -67,5 +65,10 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/employers/:path*", "/students/:path*"],
+  matcher: [
+    // Only match protected routes
+    '/students/:path*',
+    '/employers/:path*',
+    '/admin/:path*',
+  ],
 }

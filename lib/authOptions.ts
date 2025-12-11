@@ -44,7 +44,6 @@ export const authOptions: NextAuthOptions = {
         if (error) {
           console.error("CredentialsProvider authorize: error from db:", error)
         }
-        console.log("CredentialsProvider authorize: user from db:", user)
 
         if (user && bcrypt.compareSync(password, user.password)) {
 
@@ -56,7 +55,6 @@ export const authOptions: NextAuthOptions = {
             lastName: user.last_name,
             verifyStatus: user.verify_status
           }
-          console.log("CredentialsProvider authorize: returning userWithRole:", userWithRole)
           return userWithRole
         }
 
@@ -109,27 +107,23 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "azure-ad") {
         const u = user as UserWithNewStudent;
         if (u.email) {
-          console.log("AzureAD signIn: original email received:", u.email);
           const normalizedEmail = u.email.trim().toLowerCase();
-          console.log("AzureAD signIn: normalized email received:", normalizedEmail);
           if (
             !normalizedEmail.endsWith("@alabang.sti.edu.ph") &&
-            normalizedEmail !== "alro8612140@gmail.com" &&
-            normalizedEmail !== "seekr.assist@gmail.com"
+            normalizedEmail !== "alro8612140@gmail.com" && normalizedEmail !== "seekr.assist@gmail.com"
           ) {
-            console.log("AzureAD signIn: invalid domain, redirecting to /sign-in?error=invalid_domain");
             return "/sign-in?error=invalid_domain"
           }
           let firstName = ""
           let lastName = ""
           if (u.name) {
             const nameNoParen = u.name.replace(/\(.*?\)/g, "").trim()
-            const parts = nameNoParen.split(",")
-            if (parts.length === 2) {
-              lastName = parts[0].trim()
-              firstName = parts[1].trim()
+            if (nameNoParen.includes(",")) {
+              const [last, ...firstParts] = nameNoParen.split(",")
+              firstName = firstParts.join(",").trim()
+              lastName = last.trim()
             } else {
-              firstName = nameNoParen.trim()
+              firstName = nameNoParen
               lastName = ""
             }
           }
@@ -139,7 +133,6 @@ export const authOptions: NextAuthOptions = {
             .eq("email", normalizedEmail)
             .single()
           if (!existingStudent) {
-            console.log("AzureAD signIn: inserting new student:", normalizedEmail, firstName, lastName);
             await supabase
               .from("registered_students")
               .insert({ email: normalizedEmail, first_name: firstName, last_name: lastName })
@@ -148,7 +141,6 @@ export const authOptions: NextAuthOptions = {
             u.newStudent = false
           }
         }
-        console.log("AzureAD signIn: returning true for successful sign-in");
         return true
       }
       return true
@@ -280,7 +272,6 @@ export const authOptions: NextAuthOptions = {
         (session.user as { newStudent?: boolean }).newStudent = token.newStudent as boolean
       }
 
-      console.log("SESSION OBJECT:", session)
       return session
     },
   },
