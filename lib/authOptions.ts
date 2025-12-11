@@ -74,14 +74,16 @@ export const authOptions: NextAuthOptions = {
 
         const { data: admin, error } = await supabase
           .from("registered_admins")
-          .select("id, username, password, first_name, last_name, department, superadmin")
+          .select("id, username, password, first_name, last_name, department, superadmin, is_archived")
           .eq("username", username)
           .maybeSingle()
 
         if (error) {
           console.error("Admin CredentialsProvider authorize: error from db:", error)
         }
-
+        if (admin && admin.is_archived) {
+          throw new Error("Account is archived and cannot be logged in")
+        }
         if (admin && bcrypt.compareSync(password, admin.password)) {
           return {
             id: admin.id,
