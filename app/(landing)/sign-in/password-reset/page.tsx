@@ -25,6 +25,12 @@ export default function PasswordResetPage() {
     "At least one special character",
   ];
 
+  const passwordChecklist = [
+    { label: "Minimum 8 characters", valid: password.length >= 8 },
+    { label: "At least one uppercase letter", valid: /[A-Z]/.test(password) },
+    { label: "At least one special character", valid: /[^A-Za-z0-9]/.test(password) },
+  ];
+
   function validatePassword(pw: string) {
     const minLength = pw.length >= 8;
     const hasUpper = /[A-Z]/.test(pw);
@@ -120,6 +126,16 @@ export default function PasswordResetPage() {
               InputLabelProps={{ shrink: true }}
             />
           </Tooltip>
+          <div className="mt-2 space-y-1">
+            {passwordChecklist.map((item, idx) => (
+              <div key={idx} className="flex items-center text-sm">
+                <span className={`mr-2 ${item.valid ? "text-green-600" : "text-gray-400"}`}>
+                  {item.valid ? "✔" : "✗"}
+                </span>
+                <span className={item.valid ? "text-green-600" : "text-gray-500"}>{item.label}</span>
+              </div>
+            ))}
+          </div>
           <TextField
             label="Confirm New Password"
             variant="outlined"

@@ -3,7 +3,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect, useState, useRef, useMemo } from "react"
+import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import {
   Search,
   Calendar,
@@ -31,6 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ApplicationDetailsModal } from "./application-details"
 import { FollowUpChatModal } from "./follow-up-chat-modal"
 import { JobRatingModal } from "./job-rating-modal"
+import { ViewOfferModal } from "./view-offer"
 import { toast } from "react-toastify"
 import Menu from "@mui/material/Menu"
 import MenuItem from "@mui/material/MenuItem"
@@ -370,36 +371,40 @@ export default function ApplicationTrackerNoSidebar() {
         )
         setApplicationsData(applicationsWithResume)
 
-        const recent: StudentRecentActivity[] = (applicationsWithResume || [])
-          .map(app => {
-            const status = (app.status || "").toLowerCase()
-            let updateText = "Application updated"
-            if (status === "new") updateText = "Application submitted"
-            else if (status === "shortlisted") updateText = "Application shortlisted"
-            else if (status === "interview scheduled") updateText = "Interview scheduled"
-            else if (status === "offer_sent") updateText = "Offer sent"
-            else if (status === "waitlisted") updateText = "Application waitlisted"
-            else if (status === "rejected") updateText = "Application rejected"
-            else if (status === "hired") updateText = "You were hired"
-            else if (status === "withdrawn") updateText = "Application withdrawn"
-            return {
-              company: app.job_postings?.job_title || "Position",
-              position: app.company_name || app.job_postings?.registered_employers?.company_name || "Company",
-              update: updateText,
-              time: app.applied_at || "",
-              status: status,
-            }
-          })
-          .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-          .slice(0, 6)
-
-        setRecentUpdates(recent)
+        if (studentId) {
+          const activityRes = await fetch(`/api/employers/applications/activity?student_id=${studentId}`)
+          const activityData = await activityRes.json()
+          const recent: StudentRecentActivity[] = (activityData || [])
+            .map((act: any) => ({
+              company: act.name || "Company",
+              position: act.position || "Position",
+              update:
+                act.type === "hired"
+                  ? "Congratulations! You've been hired!"
+                  : act.type === "waitlisted"
+                    ? "Your interview has been completed, awaiting further review!"
+                  : act.type === "interview_scheduled"
+                    ? "You have been scheduled for an interview"
+                  : act.type === "shortlisted"
+                    ? "Your application has been shortlisted!"
+                  : act.message || act.update,
+              time: act.created_at || act.time || "",
+              status: act.type || "",
+            }))
+            .sort((a: StudentRecentActivity, b: StudentRecentActivity) => {
+              const ta = new Date(a.time).getTime()
+              const tb = new Date(b.time).getTime()
+              return tb - ta
+            })
+            .slice(0, 6)
+          setRecentUpdates(recent)
+        }
         setLoading(false)
       })
       .catch(() => {
         setLoading(false)
       })
-  }, [])
+  }, [studentId])
 
   useEffect(() => {
     const param = searchParams?.get("application")
@@ -680,6 +685,44 @@ export default function ApplicationTrackerNoSidebar() {
     })
     setIsJobRatingModalOpen(true)
   }
+
+  const [acceptOfferOpen, setAcceptOfferOpen] = useState(false)
+  const [acceptOfferId, setAcceptOfferId] = useState<string | null>(null)
+  const [viewOfferOpen, setViewOfferOpen] = useState(false)
+  const [viewOfferId, setViewOfferId] = useState<string | null>(null)
+  const acceptOfferTitle = useMemo(() => {
+    if (!acceptOfferId) return ""
+    const app = applicationsData?.find(a =>
+      String(a.application_id ?? a.id ?? a.job_postings?.id ?? "") === acceptOfferId
+    )
+    return app?.job_postings?.job_title || "this offer"
+  }, [acceptOfferId, applicationsData])
+
+  const acceptOffer = useCallback(async (logicalId: string) => {
+    try {
+      const res = await fetch("/api/employers/applications/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: logicalId, action: "accept_offer" }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        toast.error(json?.error || "Failed to accept offer")
+        return
+      }
+      setApplicationsData(prev =>
+        (prev || []).map(a => {
+          const id = String(a.application_id ?? a.id ?? a.job_postings?.id ?? "")
+          return id === logicalId ? { ...a, status: "hired" } : a
+        })
+      )
+      toast.success("Offer accepted! Congratulations!")
+      setViewOfferId(logicalId)
+      setViewOfferOpen(true)
+    } catch {
+      toast.error("Failed to accept offer")
+    }
+  }, [])
 
   const allAppsRaw = applicationsData || []
   const pendingAppsRaw = allAppsRaw.filter(a => (a.status || "").toLowerCase() === "new")
@@ -1248,7 +1291,9 @@ export default function ApplicationTrackerNoSidebar() {
                                 handleOpenJobRatingModal,
                                 highlightLogicalId,
                                 setConfirmWithdrawId,
-                                setConfirmWithdrawOpen
+                                setConfirmWithdrawOpen,
+                                setAcceptOfferId,
+                                setAcceptOfferOpen
                               )}
                               {totalPages > 1 && (
                                 <div className="flex flex-col items-center gap-2 mt-4">
@@ -1303,7 +1348,9 @@ export default function ApplicationTrackerNoSidebar() {
                                 handleOpenJobRatingModal,
                                 highlightLogicalId,
                                 setConfirmWithdrawId,
-                                setConfirmWithdrawOpen
+                                setConfirmWithdrawOpen,
+                                setAcceptOfferId,
+                                setAcceptOfferOpen
                               )}
                               {totalPages > 1 && (
                                 <div className="flex flex-col items-center gap-2 mt-4">
@@ -1357,7 +1404,9 @@ export default function ApplicationTrackerNoSidebar() {
                                 handleOpenJobRatingModal,
                                 highlightLogicalId,
                                 setConfirmWithdrawId,
-                                setConfirmWithdrawOpen
+                                setConfirmWithdrawOpen,
+                                setAcceptOfferId,
+                                setAcceptOfferOpen
                               )}
                               {totalPages > 1 && (
                                 <div className="flex flex-col items-center gap-2 mt-4">
@@ -1418,7 +1467,9 @@ export default function ApplicationTrackerNoSidebar() {
                                     handleOpenJobRatingModal,
                                     highlightLogicalId,
                                     setConfirmWithdrawId,
-                                    setConfirmWithdrawOpen
+                                    setConfirmWithdrawOpen,
+                                    setAcceptOfferId,
+                                    setAcceptOfferOpen
                                   )
                                 ) : (
                                   <div className="flex flex-col items-center justify-center min-h-[120px]">
@@ -1442,7 +1493,9 @@ export default function ApplicationTrackerNoSidebar() {
                                     handleOpenJobRatingModal,
                                     highlightLogicalId,
                                     setConfirmWithdrawId,
-                                    setConfirmWithdrawOpen
+                                    setConfirmWithdrawOpen,
+                                    setAcceptOfferId,
+                                    setAcceptOfferOpen
                                   )
                                 ) : (
                                   <div className="flex flex-col items-center justify-center min-h-[120px]">
@@ -1496,7 +1549,9 @@ export default function ApplicationTrackerNoSidebar() {
                                 handleOpenJobRatingModal,
                                 highlightLogicalId,
                                 setConfirmWithdrawId,
-                                setConfirmWithdrawOpen
+                                setConfirmWithdrawOpen,
+                                setAcceptOfferId,
+                                setAcceptOfferOpen
                               )}
                               {totalPages > 1 && (
                                 <div className="flex flex-col items-center gap-2 mt-4">
@@ -1754,10 +1809,6 @@ export default function ApplicationTrackerNoSidebar() {
             Edit
           </MenuItem>
         )}
-        <MenuItem onClick={handleViewCompany}>
-          <Mail className="h-4 w-4 mr-2" />
-          Contact Recruiter
-        </MenuItem>
         <MenuItem
           onClick={() => {
             if (!menuCardId || !applicationsData) { handleMenuClose(); return }
@@ -1765,7 +1816,8 @@ export default function ApplicationTrackerNoSidebar() {
             const jobId = app?.job_postings?.id
             if (jobId) {
               router.push(`/students/jobs/job-listings?jobId=${encodeURIComponent(String(jobId))}`)
-            }
+                                          
+                   }
             handleMenuClose()
           }}
         >
@@ -1776,6 +1828,7 @@ export default function ApplicationTrackerNoSidebar() {
 
       <FollowUpChatModal
         isOpen={isFollowUpModalOpen}
+       
         onClose={() => setIsFollowUpModalOpen(false)}
         employerName={followUpDetails?.employerName || ""}
         jobTitle={followUpDetails?.jobTitle || ""}
@@ -1786,6 +1839,7 @@ export default function ApplicationTrackerNoSidebar() {
         isOpen={isJobRatingModalOpen}
         onClose={() => setIsJobRatingModalOpen(false)}
         jobId={jobRatingJobId}
+
         jobTitle={jobRatingData?.jobTitle || ""}
         companyName={jobRatingData?.companyName || ""}
         recruiterProfileImg={jobRatingRecruiterImg}
@@ -1818,6 +1872,16 @@ export default function ApplicationTrackerNoSidebar() {
           setConfirmWithdrawOpen(false)
           setConfirmWithdrawId(null)
         }}
+      />
+
+      <ViewOfferModal
+        open={viewOfferOpen || acceptOfferOpen}
+        onClose={() => {
+          setViewOfferOpen(false)
+          setAcceptOfferOpen(false)
+          setAcceptOfferId(null)
+        }}
+        applicationId={viewOfferId || acceptOfferId}
       />
     </>
   )
@@ -1858,7 +1922,9 @@ function generateApplicationCards(
   handleOpenJobRatingModal?: (app: ApplicationData) => void,
   highlightLogicalId?: string | null,
   setConfirmWithdrawId?: (id: string) => void,
-  setConfirmWithdrawOpen?: (open: boolean) => void
+  setConfirmWithdrawOpen?: (open: boolean) => void,
+  setAcceptOfferId?: (id: string) => void,
+  setAcceptOfferOpen?: (open: boolean) => void
 ) {
   const statusConfig = {
     all: { title: "Mixed", badge: "", hover: "hover:border-l-yellow-400" },
@@ -1888,8 +1954,6 @@ function generateApplicationCards(
         const hoverBorder = (statusConfig as any)[cardStatus]?.hover || "hover:border-l-blue-100"
 
         const workType = app.job_postings?.work_type || ""
-        const payAmount = app.job_postings?.pay_amount ? String(app.job_postings.pay_amount) : ""
-        const payType = app.job_postings?.pay_type || ""
         const appliedAt = app.applied_at
           ? new Date(app.applied_at).toLocaleDateString("en-US", {
               month: "short",
@@ -2014,32 +2078,18 @@ function generateApplicationCards(
                       }
                     </p>
                   </div>
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Briefcase className="h-3 w-3" />
-                        <span>{titleCase(workType)}</span>
-                                           </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <PiMoneyDuotone className="h-3 w-3" />
-                        <span>
-                          {payAmount && payAmount.toLowerCase() !== "no pay"
-                            ? <>{payAmount}{payType ? `/${titleCase(payType)}` : ""}</>
-                            : "No Pay"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2">
+                  <div className="mt-4 flex flex-row gap-6 items-center">
+                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <Briefcase className="h-3 w-3" />
+                      <span>{titleCase(workType)}</span>
                       {remoteOptions && (
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <Globe className="h-3 w-3" />
+                        <>
+                          <Globe className="h-3 w-3 ml-4" />
                           <span>{titleCase(remoteOptions)}</span>
-                        </div>
+                        </>
                       )}
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Calendar className="h-3 w-3" />
-                        <span>Applied {appliedAt}</span>
-                      </div>
+                      <Calendar className="h-3 w-3 ml-4" />
+                      <span>Applied {appliedAt}</span>
                     </div>
                   </div>
                 </div>
@@ -2142,6 +2192,23 @@ function generateApplicationCards(
                     <MdOutlineExitToApp className="w-4 h-4" />
                     Withdraw Application
                   </Button>
+                )}
+                {cardStatus === "offers" && (
+                  <>
+                    <Button
+                      size="sm"
+                      className="bg-lime-600 hover:bg-lime-700 text-xs"
+                      onClick={e => {
+                        e.stopPropagation()
+                        if (setAcceptOfferId) setAcceptOfferId(logicalIdForCard)
+                        if (setAcceptOfferOpen) setAcceptOfferOpen(true)
+                        if (typeof setAcceptOfferId === "function") setAcceptOfferId(logicalIdForCard)
+                        if (typeof setAcceptOfferOpen === "function") setAcceptOfferOpen(true)
+                      }}
+                    >
+                      Accept Offer
+                    </Button>
+                  </>
                 )}
               </div>
               <div className="flex items-center gap-1">

@@ -562,12 +562,13 @@ function JobListings({ onSelectJob, selectedJob }: { onSelectJob: (id: string | 
               ({
                 id,
                 gpt_score,
+                company_id,
                 ...rest
               }) => (
                 <JobCard
                   key={id}
                   id={id}
-                  job={{ ...rest, id, gpt_score }}
+                  job={{ ...rest, id, gpt_score, company_id: typeof company_id === "string" ? company_id : "preview" }}
                   isSelected={selectedJob === String(id)}
                   onSelect={() => onSelectJob(selectedJob === String(id) ? null : String(id))}
                   onQuickApply={() => {

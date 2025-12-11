@@ -17,10 +17,25 @@ type JobMatch = {
   company_name: string
   company_logo_image_path: string
   location: string
-  pay_amount: string
-  pay_type: string
   similarity: number
   gpt_score?: number | null
+  remote_options?: string
+  work_type?: string
+  recommended_course?: string
+  job_description?: string
+  job_summary?: string
+  must_have_qualifications?: string[]
+  nice_to_have_qualifications?: string[]
+  application_deadline?: string
+  max_applicants?: number
+  perks_and_benefits?: string[]
+  verification_tier?: string
+  created_at?: string
+  responsibilities?: string
+  paused?: boolean
+  tags?: Record<string, any>
+  ai_skills?: string[]
+  is_archived?: boolean
 }
 
 export default function JobMatchesSection() {
@@ -66,6 +81,19 @@ export default function JobMatchesSection() {
         }))
 
         setMatches(matchesArr)
+
+        const jobIds = matchesArr.map((m: JobMatch) => m.job_id)
+        if (jobIds.length > 0) {
+          const params = new URLSearchParams()
+          jobIds.forEach((id: string) => params.append("jobIds", id))
+          const savedRes = await fetch(`/api/students/job-listings/saved-jobs?jobIds=${jobIds.join(",")}`)
+          const savedData = await savedRes.json()
+          if (Array.isArray(savedData.jobs)) {
+            const savedSet = new Set(savedData.jobs.map((j: any) => j.id))
+            const indices = matchesArr.map((m: JobMatch, idx: number) => savedSet.has(m.job_id) ? idx : -1).filter((idx: number) => idx !== -1)
+            setSavedJobs(indices)
+          }
+        }
       } catch {
         setMatches([])
       }
@@ -98,7 +126,10 @@ export default function JobMatchesSection() {
           <div className="text-gray-400 text-sm">Getting some job matches for you!</div>
         </div>
       ) : highMatches.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+          style={{ alignItems: "stretch" }}
+        >
           {highMatches.map((m, i) => (
             <JobMatchCard
               key={m.job_id || i}
@@ -162,6 +193,7 @@ export default function JobMatchesSection() {
         open={openQuickView}
         onClose={() => setOpenQuickView(false)}
         job={quickViewJob || {
+          job_id: "",
           title: "",
           company: "",
           location: "",
@@ -211,109 +243,136 @@ function JobMatchCard({
     : ""
   console.log("company_image link:", companyImageUrl)
   return (
-    <div className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow min-h-[260px] flex flex-col">
-      <div className="flex justify-center pt-6">
-        <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
-          {match.company_logo_image_path && !imgError ? (
-            <img
-              src={companyImageUrl}
-              alt={match.company_name}
-              className="w-16 h-16 rounded-full object-cover"
-              onError={() => setImgError(true)}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <span className="w-12 h-12 flex items-center justify-center ">
-              <BsSuitcaseLgFill className="text-blue-900 w-7 h-7" />
-            </span>
-          )}
+    <div
+      className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+      style={{
+        minHeight: 220,
+        height: "100%",
+        minWidth: 240,
+        maxWidth: 340,
+        width: "100%",
+        display: "flex"
+      }}
+    >
+      <div>
+        <div className="flex justify-center pt-4">
+          <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
+            {match.company_logo_image_path && !imgError ? (
+              <img
+                src={companyImageUrl}
+                alt={match.company_name}
+                className="w-16 h-16 rounded-full object-cover"
+                onError={() => setImgError(true)}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              <span className="w-12 h-12 flex items-center justify-center ">
+                <BsSuitcaseLgFill className="text-blue-900 w-7 h-7" />
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="px-4 pt-2 pb-1">
+          <div className="text-center mb-1">
+            <h3 className="font-medium  text-gray-900">{match.job_title || "Job Title"}</h3>
+            <p className="text-sm text-gray-500">
+              {match.company_name || ""}
+              {match.location ? ` | ${getCity(match.location)}` : ""}
+            </p>
+          </div>
+          <div
+            className={`text-sm font-medium mb-2 text-center ${
+              typeof match.gpt_score === "number"
+                ? match.gpt_score <= 20
+                  ? "text-red-500"
+                  : match.gpt_score <= 59
+                  ? "text-yellow-500"
+                  : "text-green-600"
+                : "text-gray-400"
+            }`}
+          >
+            {typeof match.gpt_score === "number"
+              ? `${match.gpt_score}% match to this job`
+              : "No AI score available"}
+          </div>
         </div>
       </div>
-      <div className="px-4 pt-4 pb-4 relative flex-1">
-        <div className="text-center mb-2">
-          <h3 className="font-medium  text-gray-900">{match.job_title || "Job Title"}</h3>
-          <p className="text-sm text-gray-500">
-            {match.company_name || ""}
-            {match.location ? ` | ${getCity(match.location)}` : ""}
-          </p>
-          <p className="text-sm text-gray-400">
-            {match.pay_amount
-              ? `${match.pay_amount} / ${match.pay_type}`
-              : "No Pay"}
-          </p>
-        </div>
-
-        <div
-          className={`text-sm font-medium mb-4 text-center ${
-            typeof match.gpt_score === "number"
-              ? match.gpt_score <= 20
-                ? "text-red-500"
-                : match.gpt_score <= 59
-                ? "text-yellow-500"
-                : "text-green-600"
-              : "text-gray-400"
-          }`}
+      <div className="px-4 pb-3 mt-auto flex gap-2">
+        <Button
+          size="sm"
+          className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+          onClick={() => {
+            setQuickViewJob({
+              ...match,
+              job_id: match.job_id,
+              title: match.job_title || "",
+              company: match.company_name || "",
+              location: match.location || "",
+              salary: "",
+              logoUrl: match.company_logo_image_path || "",
+              matchScore: typeof match.gpt_score === "number"
+                ? Math.round(match.gpt_score)
+                : Math.round(match.similarity * 100),
+              job_description: match.job_description || "",
+              job_summary: match.job_summary || "",
+              remote_options: match.remote_options || "",
+              work_type: match.work_type || "",
+              recommended_course: match.recommended_course || "",
+              must_have_qualifications: match.must_have_qualifications || [],
+              nice_to_have_qualifications: match.nice_to_have_qualifications || [],
+              application_deadline: match.application_deadline || "",
+              max_applicants: match.max_applicants ?? null,
+              perks_and_benefits: match.perks_and_benefits || [],
+              verification_tier: match.verification_tier || "",
+              created_at: match.created_at || "",
+              responsibilities: match.responsibilities || "",
+              paused: match.paused ?? false,
+              tags: match.tags || {},
+              ai_skills: match.ai_skills || [],
+              is_archived: match.is_archived ?? false
+            })
+            setOpenQuickView(true)
+          }}
         >
-          {typeof match.gpt_score === "number"
-            ? `${match.gpt_score}% match to this job`
-            : "No AI score available"}
-        </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
-            onClick={() => {
-              setQuickViewJob({
-                title: match.job_title || "",
-                company: match.company_name || "",
-                location: match.location || "",
-                salary: match.pay_amount ? `${match.pay_amount} / ${match.pay_type}` : "",
-                logoUrl: match.company_logo_image_path || "",
-                matchScore: Math.round(match.similarity * 100)
+          <MdWorkOutline className="mr-1" size={16} /> Quick View
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 border-blue-300 text-blue-600 hover:bg-blue-100 hover:text-blue-800"
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const student_id = (session?.user as { studentId?: string })?.studentId || "student_001"
+            if (savedJobs.includes(index)) {
+              await fetch("/api/students/job-listings/saved-jobs", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jobId: match.job_id })
               })
-              setOpenQuickView(true)
-            }}
-          >
-            <MdWorkOutline className="mr-1" size={16} /> Quick View
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1 border-blue-300 text-blue-600 hover:bg-blue-100 hover:text-blue-800"
-            disabled={saving}
-            onClick={async () => {
-              setSaving(true)
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              const student_id = (session?.user as { studentId?: string })?.studentId || "student_001"
-              if (savedJobs.includes(index)) {
-                await fetch("/api/students/job-listings/saved-jobs", {
-                  method: "DELETE",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ jobId: match.job_id })
-                })
-                setSavedJobs(prev => prev.filter(id => id !== index))
-              } else {
-                await fetch("/api/students/job-listings/saved-jobs", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ jobId: match.job_id })
-                })
-                setSavedJobs(prev => [...prev, index])
-              }
-              setSaving(false)
-            }}
-          >
-            {savedJobs.includes(index) ? (
-              <>
-                <FaBookmark className="mr-1" size={16} /> Saved
-              </>
-            ) : (
-              <>
-                <FaRegBookmark className="mr-1" size={16} /> Save Job
-              </>
-            )}
-          </Button>
-        </div>
+              setSavedJobs(prev => prev.filter(id => id !== index))
+            } else {
+              await fetch("/api/students/job-listings/saved-jobs", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jobId: match.job_id })
+              })
+              setSavedJobs(prev => [...prev, index])
+            }
+            setSaving(false)
+          }}
+        >
+          {savedJobs.includes(index) ? (
+            <>
+              <FaBookmark className="mr-1" size={16} /> Saved
+            </>
+          ) : (
+            <>
+              <FaRegBookmark className="mr-1" size={16} /> Save Job
+            </>
+          )}
+        </Button>
       </div>
     </div>
   )

@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { Avatar, Menu, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { X, MoreHorizontal, Star, Trash2, Eye, MapPin, Loader2 } from "lucide-react"
+import { X, MoreHorizontal, Star, Trash2, MapPin, Loader2 } from "lucide-react"
 import { BsPersonAdd } from "react-icons/bs"
 import { TbUserX } from "react-icons/tb"
 
@@ -231,12 +231,18 @@ function CompanyCard({
           </Button>
         ) : isFollowed ? (
           <Button
-            variant="default"
+            variant="outline"
             size="sm"
-            className="w-full rounded-full bg-blue-500 text-white hover:bg-blue-600 border-0"
+            className="w-full rounded-full border-blue-600 text-blue-600 bg-white hover:text-blue-700 flex items-center justify-center"
+            onClick={handleConnectClick}
+            disabled={connectBtnLoading}
           >
-            <Eye className="mr-1" />
-            View Profile
+            {connectBtnLoading ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <TbUserX className="mr-1" />
+            )}
+            Unfollow
           </Button>
         ) : (
           <Button

@@ -541,14 +541,22 @@ function JobListings({ onSelectJob, selectedJob, initialJobId }: { onSelectJob: 
   }, [jobs, filters]);
 
   const orderedJobs = useMemo(() => {
-    const fullJobs = filteredJobs.filter(
+    let jobsList = filteredJobs;
+    if (initialJobId) {
+      const idx = jobsList.findIndex(j => String(j.id) === String(initialJobId));
+      if (idx > -1) {
+        const [firstJob] = jobsList.splice(idx, 1);
+        jobsList = [firstJob, ...jobsList];
+      }
+    }
+    const fullJobs = jobsList.filter(
       job => job.registered_employers?.verify_status === "full"
     );
-    const standardJobs = filteredJobs.filter(
+    const standardJobs = jobsList.filter(
       job => job.registered_employers?.verify_status === "standard"
     );
     return [...fullJobs, ...standardJobs];
-  }, [filteredJobs]);
+  }, [filteredJobs, initialJobId]);
 
   useEffect(() => {
     if (selectedJob && initialJobId) {

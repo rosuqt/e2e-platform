@@ -27,6 +27,7 @@ type Employer = {
   id: string
   first_name: string
   last_name: string
+  suffix?: string
   email: string
   job_title: string
   company_name: string
@@ -291,7 +292,7 @@ export default function EmployerProfilePage() {
                       <div className="w-full h-full flex items-center justify-center bg-blue-100 rounded-full">
                         <span className="text-4xl font-bold text-blue-600 select-none">
                           {getInitials(
-                            [employer?.first_name, employer?.last_name]
+                            [employer?.first_name, employer?.last_name, employer?.suffix]
                               .filter(Boolean)
                               .join(" ")
                           )}
@@ -315,7 +316,7 @@ export default function EmployerProfilePage() {
                   <div className="flex items-center gap-2">
                     <h1 className="text-2xl font-bold">
                       {employer
-                        ? `${employer.first_name ?? ""} ${employer.last_name ?? ""}`
+                        ? `${employer.first_name ?? ""} ${employer.last_name ?? ""}${employer.suffix ? " " + employer.suffix : ""}`
                         : "Employer Name"}
                     </h1>
                     <div className="relative flex items-center">

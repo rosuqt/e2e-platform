@@ -46,14 +46,14 @@ export async function GET(req: Request) {
     .eq("student_id", studentId)
     .single();
 
-  console.log("[GET student-profile] studentId:", studentId, "error:", error, "profile:", profile);
+  //console.log("[GET student-profile] studentId:", studentId, "error:", error, "profile:", profile);
 
   let effectiveProfile = profile;
   if (error || !profile) {
     const { error: upsertError } = await supabase
       .from("student_profile")
       .upsert({ student_id: studentId }, { onConflict: "student_id" });
-    console.log("[GET student-profile] upsert error:", upsertError);
+    //console.log("[GET student-profile] upsert error:", upsertError);
     if (upsertError) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
       .select("student_id, skills, expertise, educations, certs, portfolio, introduction, career_goals, contact_info, short_bio, uploaded_resume_url, experiences")
       .eq("student_id", studentId)
       .single();
-    console.log("[GET student-profile] newProfile after upsert:", newProfile);
+    //console.log("[GET student-profile] newProfile after upsert:", newProfile);
     effectiveProfile = newProfile;
   }
 

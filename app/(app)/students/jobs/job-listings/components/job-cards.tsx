@@ -17,6 +17,7 @@ import { HiBadgeCheck } from "react-icons/hi";
 import { BadgeCheck as LuBadgeCheck } from "lucide-react";
 import { styled } from "@mui/material/styles";
 import { tooltipClasses } from "@mui/material";
+import JobDetails from "./job-details"; // Ensure this import exists
 
 type Employer = {
   first_name?: string;
@@ -25,6 +26,7 @@ type Employer = {
 };
 
 type Job = {
+  company_id: string | undefined;
   work_type?: string; 
   id: number | string;
   title?: string;
@@ -43,9 +45,13 @@ type Job = {
   registered_employers?: { 
     company_name?: string;
     verify_status?: string;
+    company_id?: string; // <-- add this
     [key: string]: any;
   };
-  registered_companies?: { company_logo_image_path?: string };
+  registered_companies?: { 
+    company_logo_image_path?: string;
+    company_id?: string; // <-- add this
+  };
   company_logo_image_path?: string; 
   pay_type?: string;
   pay_amount?: string | number;
@@ -107,6 +113,7 @@ function JobCard({
   studentPreferredTypes,
   studentPreferredLocations,
   shouldHighlight,
+  onShowDetails,
 }: {
   id: number | string;
   isSelected: boolean;
@@ -118,6 +125,7 @@ function JobCard({
   studentPreferredTypes?: string[];
   studentPreferredLocations?: string[];
   shouldHighlight?: boolean;
+  onShowDetails?: (job: Job, ratings: { companyRating: any, posterRating: any }) => void;
 }) {
   function getDaysLeft(deadline?: string): string {
     if (!deadline) return "No application deadline";
@@ -163,6 +171,8 @@ function JobCard({
   const [hasApplied, setHasApplied] = useState(false);
   const [loadingApply, setLoadingApply] = useState(false);
   const [quickApplyProcessing, setQuickApplyProcessing] = useState(false);
+  const [companyRating, setCompanyRating] = useState<{ rating: number, count: number } | null>(null);
+  const [posterRating, setPosterRating] = useState<{ rating: number, count: number } | null>(null);
 
   const logoPath =
     companyLogoImagePath ||
@@ -289,6 +299,55 @@ function JobCard({
       .catch(() => setHasApplied(false))
       .finally(() => setLoadingApply(false));
   }, [session?.user?.studentId, job.id]);
+
+  useEffect(() => {
+    if (!job) return;
+    const companyId =
+      job.registered_companies?.company_id ||
+      job.registered_employers?.company_id ||
+      job.company_id;
+    const posterId = (job.employers as any)?.id;
+
+    async function fetchRatings() {
+      try {
+        const res = await fetch("/api/employers/fetchRatings/fetchRatingsView", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            company_id: companyId,
+            poster_id: posterId,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.company) {
+            setCompanyRating({
+              rating: typeof data.company.rating === "number" ? data.company.rating : 0,
+              count: typeof data.company.count === "number" ? data.company.count : 0,
+            });
+          } else {
+            setCompanyRating(null);
+          }
+          if (data.poster) {
+            setPosterRating({
+              rating: typeof data.poster.rating === "number" ? data.poster.rating : 0,
+              count: typeof data.poster.count === "number" ? data.poster.count : 0,
+            });
+          } else {
+            setPosterRating(null);
+          }
+        } else {
+          setCompanyRating(null);
+          setPosterRating(null);
+        }
+      } catch {
+        setCompanyRating(null);
+        setPosterRating(null);
+      }
+    }
+
+    fetchRatings();
+  }, [job]);
 
   async function toggleSave(e: React.MouseEvent) {
     e.stopPropagation();
@@ -677,6 +736,16 @@ function JobCard({
         <ApplicationModalQuickVersion
           onClose={() => setShowApplicationModalQuickVersion(false)}
           jobId={String(job.id)} 
+        />
+      )}
+      {/* Example usage: pass ratings to JobDetails when showing details */}
+      {onShowDetails && (
+        <JobDetails
+          jobId={String(job.id)}
+          companyRating={companyRating}
+          posterRating={posterRating}
+          onClose={onSelect} // <-- add this line
+          // ...other props...
         />
       )}
     </>

@@ -62,6 +62,7 @@ export default function JobPreviewModal({
       company_name: companyName,
     },
     created_at: new Date().toISOString(),
+    company_id: "preview", 
   };
 
   const [mounted, setMounted] = useState(false);

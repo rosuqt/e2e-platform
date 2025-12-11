@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, ChevronLeft, ChevronRight, Plus, Edit, Trash2, X, Clock, MapPin, Loader2 } from "lucide-react"
+import { Calendar, ChevronLeft, ChevronRight,  X, Clock, MapPin, } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   format,
@@ -18,10 +19,17 @@ import { TimePicker, DatePicker } from '@mui/x-date-pickers'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import { RiSave3Line } from "react-icons/ri"
 import Lottie from "lottie-react"
 import dayNightAnimation from "../../../../public/animations/day_night.json"
 import Tooltip from '@mui/material/Tooltip'
+import { useSession } from "next-auth/react"
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
+const PH_TZ = 'Asia/Manila'
 
 type CalendarEvent = {
   id: number
@@ -53,12 +61,18 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
     setLocation(initialEvent?.location || "")
     setStartTime(initialEvent?.timeStart ? parseTime(initialEvent.timeStart) : null)
     setEndTime(initialEvent?.timeEnd ? parseTime(initialEvent.timeEnd) : null)
-    setEventDate(initialEvent?.date || date || new Date())
+    setEventDate(
+      initialEvent?.date
+        ? dayjs(initialEvent.date).tz(PH_TZ).toDate()
+        : date
+          ? dayjs(date).tz(PH_TZ).toDate()
+          : dayjs().tz(PH_TZ).toDate()
+    )
     setDesc(initialEvent?.desc || "")
   }, [initialEvent, date, open])
 
   function parseTime(str: string) {
-        const d = new Date()
+        const d = dayjs().tz(PH_TZ).toDate()
         const [time, period] = str.split(' ')
         if (!time || !period) return null
         const parts = time.split(':')
@@ -235,14 +249,15 @@ function EventModal({ open, onClose, onSave, initialEvent, date }: {
 }
 
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const { data: session } = useSession()
+  const [currentDate, setCurrentDate] = useState(dayjs().tz(PH_TZ).toDate())
+  const [selectedDate, setSelectedDate] = useState(dayjs().tz(PH_TZ).toDate())
   const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [interviewEvents, setInterviewEvents] = useState<CalendarEvent[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [modalDate, setModalDate] = useState<Date | null>(null)
   const [editEvent, setEditEvent] = useState<CalendarEvent | undefined>(undefined)
   const [descExpanded, setDescExpanded] = useState<{ [key: number]: boolean }>({})
-  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [leftPage, setLeftPage] = useState(0)
   const [rightPage, setRightPage] = useState(0)
 
@@ -268,7 +283,7 @@ export default function CalendarPage() {
         }) => ({
           id: e.id,
           title: e.title,
-          date: new Date(e.event_date),
+          date: dayjs(e.event_date).tz(PH_TZ).toDate(),
           location: e.location,
           timeStart: e.time_start,
           timeEnd: e.time_end,
@@ -278,29 +293,48 @@ export default function CalendarPage() {
     }
   }
 
+  async function fetchInterviewSchedules(studentId: string) {
+    const res = await fetch(`/api/students/calendar/fetchSchedules?studentId=${studentId}`)
+    if (res.ok) {
+      const data = await res.json()
+      setInterviewEvents(
+        data.map((e: any) => {
+          let timeStart = ""
+          if (e.time) {
+            // Fix: parse as time only, not as a date in local time
+            const parsed = dayjs.tz(e.date + "T" + e.time, PH_TZ)
+            timeStart = parsed.isValid() ? parsed.format("h:mm A") : ""
+          }
+          return {
+            id: e.id,
+            title: e.job_title ? `Interview for ${e.job_title} position` : (e.summary || "Interview"),
+            date: dayjs(e.date).tz(PH_TZ).toDate(),
+            location: e.mode === "Onsite" ? (e.address || "Onsite") : (e.platform || "Online"),
+            timeStart,
+            timeEnd: "",
+            desc: "",
+          }
+        })
+      )
+    }
+  }
+
   useEffect(() => {
     fetchEvents()
   }, [])
+
+  useEffect(() => {
+    if (session && session.user && session.user.studentId) {
+      fetchInterviewSchedules(session.user.studentId)
+    }
+    // Do not add session.user.studentId to the dependency array
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session])
 
   const handleAddEvent = (date: Date) => {
     setEditEvent(undefined)
     setModalDate(date)
     setModalOpen(true)
-  }
-  const handleEditEvent = (event: CalendarEvent) => {
-    setEditEvent(event)
-    setModalDate(event.date)
-    setModalOpen(true)
-  }
-  const handleDeleteEvent = async (id: number) => {
-    setDeletingId(id)
-    await fetch(`/api/students/calendar`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    })
-    setDeletingId(null)
-    fetchEvents()
   }
   const handleSaveEvent = async (event: Omit<CalendarEvent, "id"> | CalendarEvent) => {
     const formattedDate = format(event.date, "yyyy-MM-dd")
@@ -342,11 +376,12 @@ export default function CalendarPage() {
   const monthEnd = endOfMonth(currentDate)
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
-  const selectedDateEvents = events.filter((event) => isSameDay(event.date, selectedDate))
+  const allEvents = [...events, ...interviewEvents]
+  const selectedDateEvents = allEvents.filter((event) => isSameDay(event.date, selectedDate))
   const leftTotalPages = Math.ceil(selectedDateEvents.length / leftEventsPerPage)
   const leftEventsToShow = selectedDateEvents.slice(leftPage * leftEventsPerPage, (leftPage + 1) * leftEventsPerPage)
 
-  const eventsInMonth = events.filter(e => isSameMonth(e.date, currentDate))
+  const eventsInMonth = allEvents.filter(e => isSameMonth(e.date, currentDate))
   const rightTotalPages = Math.ceil(eventsInMonth.length / rightEventsPerPage)
   const rightEventsToShow = eventsInMonth.slice(rightPage * rightEventsPerPage, (rightPage + 1) * rightEventsPerPage)
 
@@ -398,9 +433,10 @@ export default function CalendarPage() {
               </div>
               <div className="grid grid-cols-7 gap-2">
                 {daysInMonth.map((day) => {
-                  const hasEvents = events.some((event) => isSameDay(event.date, day))
+                  // Use allEvents for hasEvents so both normal and interview events are considered
+                  const hasEvents = allEvents.some((event) => isSameDay(event.date, day))
                   const isSelected = isSameDay(day, selectedDate)
-                  const isToday = isSameDay(day, new Date())
+                  const isToday = isSameDay(day, dayjs().tz(PH_TZ).toDate())
                   return (
                     <motion.button
                       key={day.toString()}
@@ -422,7 +458,7 @@ export default function CalendarPage() {
                     >
                       {format(day, "d")}
                       {hasEvents && (
-                        <span className="absolute top-2 right-2 w-2 h-2 bg-blue-400 rounded-full"></span>
+                        <span className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-blue-400 rounded-full"></span>
                       )}
                     </motion.button>
                   )
@@ -432,85 +468,74 @@ export default function CalendarPage() {
             <div className="bg-white p-8 flex flex-col space-y-5 rounded-b-3xl md:rounded-bl-none md:rounded-b-3xl">
               <div className="flex items-center mb-2">
                 <span className="font-bold text-blue-700 text-lg mr-2">{format(selectedDate, "MMMM d, yyyy")}</span>
-                <button
-                  className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm shadow"
-                  onClick={() => handleAddEvent(selectedDate)}
-                >
-                  <Plus className="w-4 h-4" /> Add Event
-                </button>
+                {/* Removed Add Event button */}
               </div>
               {selectedDateEvents.length === 0 ? (
                 <div className="text-center">
                   <Lottie animationData={dayNightAnimation} className="w-36 h-36 mx-auto" loop={true} />
-                  <p className="text-gray-500 mb-5 text-sm">Looks like your day’s wide open — perfect time to relax or add something new to your calendar</p>
+                  <p className="text-gray-500 mb-5 text-sm">Your day looks wide open — perfect time to relax or check what&apos;s already on your calendar.</p>
                   
                 </div>
               ) : (
                 <>
                   {leftEventsToShow.map((event) => (
                     <div key={event.id} className="bg-blue-50 rounded-xl p-5 shadow-md border border-blue-100 relative flex flex-col">
-                      <div className="absolute top-4 right-4 flex gap-2">
-                        <button
-                          className="text-blue-500 hover:text-blue-700 bg-blue-100 rounded-full p-1 transition"
-                          onClick={() => handleEditEvent(event)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="text-red-400 hover:text-red-600 bg-red-100 rounded-full p-1 transition flex items-center justify-center"
-                          onClick={() => handleDeleteEvent(event.id)}
-                          disabled={deletingId === event.id}
-                        >
-                          {deletingId === event.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                      {/* Removed Edit and Delete buttons */}
+                      <Tooltip title={event.title} arrow>
+                        <h3 className="font-semibold text-blue-800 text-lg max-w-[90%] break-words">
+                          {event.title.length > 22
+                            ? (
+                                <>
+                                  {event.title.slice(0, 22)}
+                                  <wbr />
+                                  <br />
+                                  {event.title.slice(22, 40) + (event.title.length > 40 ? "..." : "")}
+                                </>
+                              )
+                            : event.title}
+                        </h3>
+                      </Tooltip>
+                      {/* Do not render event.desc for interview events */}
+                      {event.desc && event.desc.trim() !== "" && (
+                        <div className="text-sm text-gray-500 mb-2 flex flex-wrap items-center">
+                          {event.desc.length > 78 && !descExpanded[event.id] ? (
+                            <>
+                              {(() => {
+                                const truncated = event.desc.slice(0, 78)
+                                const lastSpace = truncated.lastIndexOf(' ')
+                                const shown = lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated
+                                const lastWord = lastSpace > 0 ? truncated.slice(lastSpace) : ''
+                                return (
+                                  <>
+                                    {shown}
+                                    <span>
+                                      {lastWord}
+                                      <button
+                                        className="text-xs text-blue-600 underline ml-1"
+                                        onClick={() => toggleDesc(event.id)}
+                                      >
+                                        View more
+                                      </button>
+                                    </span>
+                                    ...
+                                  </>
+                                )
+                              })()}
+                            </>
                           ) : (
-                            <Trash2 className="w-4 h-4" />
+                            <>
+                              {event.desc}
+                              {event.desc.length > 78 && (
+                                <button
+                                  className="text-xs text-blue-600 underline ml-1"
+                                  onClick={() => toggleDesc(event.id)}
+                                >
+                                  View less
+                                </button>
+                              )}
+                            </>
                           )}
-                        </button>
-                      </div>
-                      <h3 className="font-semibold text-blue-800 text-lg">{event.title}</h3>
-                      {event.desc && (
-                        <>
-                          <div className="text-sm text-gray-500 mb-2 flex flex-wrap items-center">
-                            {event.desc.length > 78 && !descExpanded[event.id] ? (
-                              <>
-                                {(() => {
-                                  const truncated = event.desc.slice(0, 78)
-                                  const lastSpace = truncated.lastIndexOf(' ')
-                                  const shown = lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated
-                                  const lastWord = lastSpace > 0 ? truncated.slice(lastSpace) : ''
-                                  return (
-                                    <>
-                                      {shown}
-                                      <span>
-                                        {lastWord}
-                                        <button
-                                          className="text-xs text-blue-600 underline ml-1"
-                                          onClick={() => toggleDesc(event.id)}
-                                        >
-                                          View more
-                                        </button>
-                                      </span>
-                                      ...
-                                    </>
-                                  )
-                                })()}
-                              </>
-                            ) : (
-                              <>
-                                {event.desc}
-                                {event.desc.length > 78 && (
-                                  <button
-                                    className="text-xs text-blue-600 underline ml-1"
-                                    onClick={() => toggleDesc(event.id)}
-                                  >
-                                    View less
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </>
+                        </div>
                       )}
                       <div className="mt-2 text-sm text-gray-600">
                         <div className="flex items-center mb-1">
@@ -567,68 +592,62 @@ export default function CalendarPage() {
               <>
                 {rightEventsToShow.map((event) => (
                   <motion.div key={event.id} className="bg-white rounded-2xl shadow-lg p-5 border border-blue-100 hover:shadow-xl transition-shadow relative mx-8 md:mx-0" whileHover={{ y: -3, scale: 1.02 }} transition={{ duration: 0.2 }}>
-                    <div className="absolute top-4 right-4 flex gap-2">
-                      <button
-                        className="text-blue-500 hover:text-blue-700 bg-blue-50 rounded-full p-1 transition"
-                        onClick={() => handleEditEvent(event)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        className="text-red-400 hover:text-red-600 bg-red-50 rounded-full p-1 transition flex items-center justify-center"
-                        onClick={() => handleDeleteEvent(event.id)}
-                        disabled={deletingId === event.id}
-                      >
-                        {deletingId === event.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                    {/* Removed Edit and Delete buttons */}
+                    <Tooltip title={event.title} arrow>
+                      <h3 className="font-semibold text-blue-800 text-lg max-w-[90%] break-words">
+                        {event.title.length > 22
+                          ? (
+                              <>
+                                {event.title.slice(0, 22)}
+                                <wbr />
+                                <br />
+                                {event.title.slice(22, 40) + (event.title.length > 40 ? "..." : "")}
+                              </>
+                            )
+                          : event.title}
+                      </h3>
+                    </Tooltip>
+                    {/* Do not render event.desc for interview events */}
+                    {event.desc && event.desc.trim() !== "" && (
+                      <div className="text-sm text-gray-500 mb-2 flex flex-wrap items-center">
+                        {event.desc.length > 78 && !descExpanded[event.id] ? (
+                          <>
+                            {(() => {
+                              const truncated = event.desc.slice(0, 78)
+                              const lastSpace = truncated.lastIndexOf(' ')
+                              const shown = lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated
+                              const lastWord = lastSpace > 0 ? truncated.slice(lastSpace) : ''
+                              return (
+                                <>
+                                  {shown}
+                                  <span>
+                                    {lastWord}
+                                    <button
+                                      className="text-xs text-blue-600 underline ml-1"
+                                      onClick={() => toggleDesc(event.id)}
+                                    >
+                                      View more
+                                    </button>
+                                  </span>
+                                  ...
+                                </>
+                              )
+                            })()}
+                          </>
                         ) : (
-                          <Trash2 className="w-4 h-4" />
+                          <>
+                            {event.desc}
+                            {event.desc.length > 78 && (
+                              <button
+                                className="text-xs text-blue-600 underline ml-1"
+                                onClick={() => toggleDesc(event.id)}
+                              >
+                                View less
+                              </button>
+                            )}
+                          </>
                         )}
-                      </button>
-                    </div>
-                    <h3 className="font-semibold text-blue-800 text-lg">{event.title}</h3>
-                    {event.desc && (
-                      <>
-                        <div className="text-sm text-gray-500 mb-2 flex flex-wrap items-center">
-                          {event.desc.length > 78 && !descExpanded[event.id] ? (
-                            <>
-                              {(() => {
-                                const truncated = event.desc.slice(0, 78)
-                                const lastSpace = truncated.lastIndexOf(' ')
-                                const shown = lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated
-                                const lastWord = lastSpace > 0 ? truncated.slice(lastSpace) : ''
-                                return (
-                                  <>
-                                    {shown}
-                                    <span>
-                                      {lastWord}
-                                      <button
-                                        className="text-xs text-blue-600 underline ml-1"
-                                        onClick={() => toggleDesc(event.id)}
-                                      >
-                                        View more
-                                      </button>
-                                    </span>
-                                    ...
-                                  </>
-                                )
-                              })()}
-                            </>
-                          ) : (
-                            <>
-                              {event.desc}
-                              {event.desc.length > 78 && (
-                                <button
-                                  className="text-xs text-blue-600 underline ml-1"
-                                  onClick={() => toggleDesc(event.id)}
-                                >
-                                  View less
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </>
+                      </div>
                     )}
                     <div className="mt-2 space-y-2 text-sm text-gray-600">
                       <div className="flex items-center">

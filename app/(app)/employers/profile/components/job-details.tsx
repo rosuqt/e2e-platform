@@ -1,9 +1,7 @@
 import React, { useState } from "react";
-import { ArrowRight, CheckCircle, MapPin, Users, Briefcase, Clock, DollarSign, Calendar } from "lucide-react"; 
+import { ArrowRight, CheckCircle, Users, Briefcase, Clock, DollarSign, Calendar } from "lucide-react"; 
 import { Divider as Separator } from "@mui/material";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import Image from "next/image";
 import { ApplicationModal } from "../../../students/jobs/job-listings/components/application-modal";
 import { LuFileSearch,LuFilePen } from "react-icons/lu";
 import QuickEditModal from "../../jobs/job-listings/components/quick-edit-modal";
@@ -25,30 +23,27 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
           <ArrowRight className="w-5 h-5 text-blue-600 rotate-180" />
         </button>
         <div className="mt-12 flex items-start gap-4">
-          <div className="bg-black rounded-full w-14 h-14 flex items-center justify-center text-white">
+          {/* Removed logo */}
+          {/* <div className="bg-black rounded-full w-14 h-14 flex items-center justify-center text-white">
             <span className="font-bold text-sm">Mark-It</span>
-          </div>
+          </div> */}
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold">UI/UX Designer</h1>
               <CheckCircle className="w-5 h-5 text-primary" />
             </div>
-            <div className="text-muted-foreground">Fb Mark-It Place</div>
-            <div className="text-sm text-muted-foreground flex items-center gap-1">
+            {/* Removed Fb Mark-It Place */}
+            {/* <div className="text-muted-foreground">Fb Mark-It Place</div> */}
+            {/* Removed address */}
+            {/* <div className="text-sm text-muted-foreground flex items-center gap-1">
               <MapPin className="w-4 h-4" />
               <span>9/686 Jumper Road, Fernway Drive, San Jose Del Monte Malancat, Pampanga, NCR</span>
-            </div>
+            </div> */}
           </div>
         </div>
 
         <div className="mt-4 flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm bg-green-200 px-4   py-1 rounded-full">
-            <span className="text-green-600 font-medium">Active</span>
-          </div>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <Users className="w-4 h-4 text-muted-foreground" />
-            <span>23 applicants</span>
-          </div>
+          {/* Removed Active badge and applicants count */}
         </div>
 
         <div className="mt-4 flex gap-3">
@@ -111,8 +106,6 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
 
       <Separator />
 
-   
-
       {/* About the Job */}
       <div className="p-6">
         <h2 className="text-lg font-semibold mb-4">About the Job</h2>
@@ -165,71 +158,6 @@ const JobDetails = ({ onClose }: { onClose: () => void }) => {
       </div>
 
       <Separator />
-
-      <Card className="border-blue-200 m-6">
-        <div className="  100 border-b border-blue-100 rounded-t-lg px-6 py-4">
-          <h2 className="text-xl font-bold text-blue-700 flex items-center gap-2">
-            <svg className="text-blue-600" width="20" height="20" fill="none" viewBox="0 0 24 24"><rect width="24" height="24" fill="none"/><path d="M3 21V7a2 2 0 0 1 2-2h3V3h4v2h3a2 2 0 0 1 2 2v14" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 21V12h6v9" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            About the Company
-          </h2>
-        </div>
-        <div className="p-6">
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="w-60 h-60 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-gray-200">
-                  <Image src={"/images/logo-test2.png"} alt="Job-All Tech Solutions" width={150} height={150} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-xl text-gray-900 mb-2">Job-All Tech Solutions</h3>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <span className="inline-flex items-center gap-1 bg-gray-200 rounded-full px-3 py-1 text-xs text-gray-700">
-                      <MapPin className="w-3 h-3" />
-                      San Francisco, USA | Berlin, Germany
-                    </span>
-                    <span className="inline-flex items-center gap-1 border border-gray-300 rounded-full px-3 py-1 text-xs text-gray-700">
-                      Software Development
-                    </span>
-                    <span className="inline-flex items-center gap-1 border border-gray-300 rounded-full px-3 py-1 text-xs text-gray-700">
-                      Medium (200-500 employees)
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 leading-relaxed mb-4">
-                    Job-All Tech Solutions is a leading software development company specializing in AI-driven solutions and
-                    enterprise applications. With a global presence in San Francisco and Berlin, we are committed to innovation,
-                    efficiency, and excellence...
-                  </p>
-                  <Button variant="outline" size="sm" className="border-blue-300 text-blue-600 hover:bg-blue-50"
-                  onClick={() => router.push("/employers/profile/company")}>
-                    View Company Profile
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-600" />
-                Team Members
-              </h4>
-              <div className="grid grid-cols-2 gap-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-blue-50 rounded-lg p-3 text-center">
-                    <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden mb-2 mx-auto">
-                      <Image src="/placeholder.svg?height=64&width=64" alt="Employee" width={48} height={48} />
-                    </div>
-                    <div className="text-sm font-medium text-gray-800 truncate">Antonio Bayagbag</div>
-                    <div className="text-xs text-gray-500 truncate">HR Manager for Job-All</div>
-                  </div>
-                ))}
-              </div>
-              <Button variant="link" size="sm" className="text-blue-600 hover:text-blue-800 mt-3 w-full"
-              onClick={() => router.push("/employers/profile/company")}>
-                View All Team Members
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Card>
 
       {/* Render ApplicationModal */}
       {isModalOpen && (

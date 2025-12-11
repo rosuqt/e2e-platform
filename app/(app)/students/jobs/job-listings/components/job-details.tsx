@@ -71,6 +71,7 @@ export type Job = {
   max_applicants?: number;
   paused?: boolean;
   created_at?: string;
+  company_id: string; // <-- make required
 };
 
 type CompanyEmployee = {
@@ -138,7 +139,17 @@ function formatPostedDate(postedDate?: string) {
   return posted.toLocaleString("default", { month: "short", day: "numeric" });
 }
 
-const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string }) => {
+const JobDetails = ({
+  onClose,
+  jobId,
+  companyRating,
+  posterRating,
+}: {
+  onClose: () => void;
+  jobId?: string;
+  companyRating?: { rating: number; count: number } | null;
+  posterRating?: { rating: number; count: number } | null;
+}) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
@@ -158,8 +169,6 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
   const router = useRouter();
   const [applicantsCount, setApplicantsCount] = useState<number | undefined>(undefined);
   const [matchedSkillsCount] = useState<number>(0);
-  const [companyRating] = useState<{ rating: number, count: number } | null>(null)
-  const [posterRating] = useState<{ rating: number, count: number } | null>(null)
 
   const trackJobView = async (jobId: string) => {
     if (viewTracked) return
@@ -740,7 +749,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                     cy="50"
                     r="40"
                     stroke={
-                      skillsMatchPercent >= 70
+                      skillsMatchPercent >= 60
                         ? "#22c55e"
                         : skillsMatchPercent >= 40
                         ? "#f97316"
@@ -764,7 +773,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                 <h3
                   style={{
                     color:
-                      skillsMatchPercent >= 70
+                      skillsMatchPercent >= 60
                         ? "#22c55e"
                         : skillsMatchPercent >= 40
                         ? "#f59e42"
@@ -774,14 +783,14 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                   }}
                   className={`font-semibold ${showText ? "opacity-100 transition-opacity duration-500" : "opacity-0"}`}
                 >
-                  {skillsMatchPercent >= 70
+                  {skillsMatchPercent >= 60
                     ? "This Job Is a Strong Match for You"
                     : skillsMatchPercent >= 40
                     ? "This Job Is a Partial Match for You"
                     : "This Job Isn’t a Strong Match for You"}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {skillsMatchPercent >= 70
+                  {skillsMatchPercent >= 60
                     ? "Your background and skills closely match what this role is looking for — it could be a great fit!"
                     : skillsMatchPercent >= 40
                     ? "You match some key aspects of this role. With a bit of alignment, it could be a solid opportunity."
@@ -956,7 +965,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
                   </CustomTooltip>
                 ) : null}
               </div>
-              {posterRating ? (
+              {posterRating && posterRating.count > 0 ? (
                 <div className="flex items-center gap-1 mt-1">
                   {Array.from({ length: 5 }, (_, i) => (
                     <Star
@@ -978,12 +987,9 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
               </span>
             </div>
           </div>
-          {/* Removed Follow button here */}
         </div>
       </div>
-
       <Separator />
-
       <div className="p-6">
         <h2 className="text-xl font-bold mb-6">About the Company</h2>
         <div className="flex items-start gap-4">
@@ -1022,7 +1028,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
           </div>
           <div className="flex-1">
             <h3 className="font-bold">{company}</h3>
-            {companyRating ? (
+            {companyRating && companyRating.count > 0 ? (
               <span className="flex items-center mt-1">
                 {Array.from({ length: 5 }, (_, i) => (
                   <Star
@@ -1052,13 +1058,7 @@ const JobDetails = ({ onClose, jobId }: { onClose: () => void; jobId?: string })
         <p className="text-sm text-muted-foreground mt-4">
           See company profile for more information.
         </p>
-        <div className="mt-2 text-right">
-          <Button variant="link" className="p-0 h-auto text-primary">
-            View company
-          </Button>
-        </div>
       </div>
-
       <div className="p-6">
         <h2 className="text-lg font-semibold mb-4">Employees linked to this company</h2>
         <div className="grid grid-cols-3 gap-4">

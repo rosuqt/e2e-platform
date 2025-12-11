@@ -200,6 +200,21 @@ export default function AddEducationalModal({
         setSaving(false);
         return;
       }
+      await fetch("/api/ai-matches/embeddings/student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
+      await fetch("/api/ai-matches/match/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
+      await fetch("/api/ai-matches/rescore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
     }
     onSave?.({ school, acronym: acronymValue, degree, years: yearsValue, level, iconColor });
     handleClose();

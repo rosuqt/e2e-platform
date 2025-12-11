@@ -33,7 +33,7 @@ export function TabList({ items, defaultTab, onTabChange }: TabListProps) {
       <div className="p-6 border-b border-gray-100">
         <h2 className="text-xl font-semibold text-gray-800">Settings</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Manage your account, preferences, and notifications all in one place.
+          Manage your account all in one place.
         </p>
       </div>
       <div className="py-2">

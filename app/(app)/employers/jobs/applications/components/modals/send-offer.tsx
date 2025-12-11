@@ -1,5 +1,5 @@
 "use client"
-import { useState, forwardRef, useEffect } from "react"
+import { useState, forwardRef, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -315,8 +315,14 @@ function SendOfferModal({
     }
   }
 
+  const prevOpen = useRef<boolean>(false)
+  const prevInitialId = useRef<string | undefined>(undefined)
+
   useEffect(() => {
-    if (open) {
+    const shouldReset =
+      (!prevOpen.current && open) ||
+      (open && initial?.id && prevInitialId.current !== initial.id)
+    if (shouldReset) {
       setSalary(initial?.salary ?? "")
       setEmploymentType(initial?.employment_type ?? "Full-time")
       setWorkSetup(initial?.work_setup ?? "Onsite")
@@ -366,6 +372,8 @@ function SendOfferModal({
         setEndTime("")
       }
     }
+    prevOpen.current = open
+    prevInitialId.current = initial?.id
   }, [open, initial])
 
   useEffect(() => {

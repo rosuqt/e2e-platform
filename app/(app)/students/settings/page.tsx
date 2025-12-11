@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { User, Book, Sun, Bell, Shield,   Save, Moon } from "lucide-react"
+import { User, Book, Shield, Save } from "lucide-react"
 import { FormControl, InputLabel, Chip } from "@mui/material"
 import TextField from "@mui/material/TextField"
 import Autocomplete from "@mui/material/Autocomplete"
@@ -96,10 +96,6 @@ const courses = [
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile")
-  const [darkMode, setDarkMode] = useState(false)
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [pushNotifications, setPushNotifications] = useState(true)
-  const [jobAlerts, setJobAlerts] = useState(true)
   const [student, setStudent] = useState<Student | null>(null)
   const [editJobType, setEditJobType] = useState<string[]>([])
   const [editRemoteOptions, setEditRemoteOptions] = useState<string | undefined>(undefined)
@@ -337,8 +333,6 @@ export default function SettingsPage() {
   const tabs = [
     { id: "profile", icon: User, label: "Profile", description: "Manage your personal information" },
     { id: "academic", icon: Book, label: "Academic", description: "View and edit academic details" },
-    { id: "appearance", icon: Sun, label: "Appearance", description: "Customize the application look" },
-    { id: "notifications", icon: Bell, label: "Notifications", description: "Manage notification settings" },
     { id: "account", icon: Shield, label: "Account", description: "Account preferences and password" },
   ]
 
@@ -743,117 +737,6 @@ export default function SettingsPage() {
                         </Box>
                         <p className="text-sm text-blue-500/70">Your current section</p>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            {activeTab === "appearance" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      {darkMode ? <Moon className="h-5 w-5 mr-2" /> : <Sun className="h-5 w-5 mr-2" />}
-                      Appearance
-                    </CardTitle>
-                    <CardDescription>Customize how the application looks</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Dark Mode</Label>
-                        <p className="text-sm text-blue-500/70">Toggle between light and dark theme</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Sun className="h-4 w-4 text-blue-600" />
-                        <Switch
-                          checked={darkMode}
-                          onCheckedChange={setDarkMode}
-                          className="data-[state=checked]:bg-blue-600"
-                        />
-                        <Moon className="h-4 w-4 text-blue-600" />
-                      </div>
-                    </div>
-                    <Separator className="my-4 bg-blue-100" />
-                    <div className="space-y-2">
-                      <Label className="text-blue-700">Color Theme</Label>
-                      <div className="grid grid-cols-5 gap-2">
-                        {["blue", "purple", "green", "orange", "red"].map((color) => (
-                          <div
-                            key={color}
-                            className={`h-10 rounded-md cursor-pointer transition-all hover:scale-105 ${
-                              color === "blue"
-                                ? "ring-2 ring-blue-500 ring-offset-2 bg-gradient-to-r from-blue-500 to-sky-400"
-                                : color === "purple"
-                                ? "bg-gradient-to-r from-purple-500 to-pink-400"
-                                : color === "green"
-                                ? "bg-gradient-to-r from-green-500 to-emerald-400"
-                                : color === "orange"
-                                ? "bg-gradient-to-r from-orange-500 to-amber-400"
-                                : "bg-gradient-to-r from-red-500 to-rose-400"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-sm text-blue-500/70">Select your preferred color theme</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-
-            {activeTab === "notifications" && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-              >
-                <Card className="bg-white/80 backdrop-blur-sm border-blue-200 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="text-blue-600 flex items-center">
-                      <Bell className="h-5 w-5 mr-2" />
-                      Notifications
-                    </CardTitle>
-                    <CardDescription>Manage how you receive notifications</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Email Notifications</Label>
-                        <p className="text-sm text-blue-500/70">Receive notifications via email</p>
-                      </div>
-                      <Switch
-                        checked={emailNotifications}
-                        onCheckedChange={setEmailNotifications}
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Push Notifications</Label>
-                        <p className="text-sm text-blue-500/70">Receive notifications on your device</p>
-                      </div>
-                      <Switch
-                        checked={pushNotifications}
-                        onCheckedChange={setPushNotifications}
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label className="text-blue-700">Job Alerts</Label>
-                        <p className="text-sm text-blue-500/70">Get notified about new job opportunities</p>
-                      </div>
-                      <Switch
-                        checked={jobAlerts}
-                        onCheckedChange={setJobAlerts}
-                        className="data-[state=checked]:bg-blue-600"
-                      />
                     </div>
                   </CardContent>
                 </Card>

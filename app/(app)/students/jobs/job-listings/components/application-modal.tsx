@@ -722,7 +722,7 @@ export function ApplicationModal({
                   className="bg-blue-600 hover:bg-blue-700"
                   onClick={() => {
                     onClose()
-                    router.push("/students/applications")
+                    router.push("/students/jobs/applications")
                   }}
                 >
                   View Applications

@@ -88,10 +88,10 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
       try {
         detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" })
         if (detailsRes.ok) {
-          const { first_name, last_name, email, profile_img } = await detailsRes.json()
+          const { first_name, last_name, suffix, email, profile_img } = await detailsRes.json()
           const name =
             first_name && last_name
-              ? `${first_name} ${last_name}`
+              ? `${first_name} ${last_name}${suffix ? " " + suffix : ""}`
               : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
@@ -185,10 +185,10 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
       try {
         detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" })
         if (detailsRes.ok) {
-          const { first_name, last_name, email, profile_img } = await detailsRes.json()
+          const { first_name, last_name, suffix, email, profile_img } = await detailsRes.json()
           const name =
             first_name && last_name
-              ? `${first_name} ${last_name}`
+              ? `${first_name} ${last_name}${suffix ? " " + suffix : ""}`
               : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
@@ -277,15 +277,19 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   const handleProfileClick = async () => {
     const profilePath =
       userType === "employer"
-        ? "#"
+        ? "/employers/profile"
         : "/students/profile"
     await router.prefetch(profilePath)
     router.push(profilePath)
     onClose()
   }
   const handleSettingsClick = async () => {
-    await router.prefetch("/students/settings")
-    router.push("/students/settings")
+    const settingsPath =
+      userType === "employer"
+        ? "/employers/settings"
+        : "/students/settings"
+    await router.prefetch(settingsPath)
+    router.push(settingsPath)
     onClose()
   }
   const handleActivityLogClick = async () => {

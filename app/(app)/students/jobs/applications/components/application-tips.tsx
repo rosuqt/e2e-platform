@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Badge } from "./ui/badge"
-import { FileText, Search, MessageSquare, Wrench } from "lucide-react"
+import { FileText, Search, MessageSquare, Wrench, ChevronLeft, ChevronRight } from "lucide-react"
 import Lottie from "lottie-react"
 import { motion, AnimatePresence } from "framer-motion"
 import catTyping from "../../../../../../public/animations/application-tips/Cat typing.json"
@@ -24,7 +23,7 @@ export function ApplicationTips() {
   const [index, setIndex] = useState(0)
   useEffect(() => {
     const id = setInterval(() => {
-      setIndex(i => (i + 1) % list.length)
+      setIndex(prev => (prev + 1) % list.length)
     }, 60000)
     return () => clearInterval(id)
   }, [list.length])
@@ -34,7 +33,6 @@ export function ApplicationTips() {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center">
           Application Tips
-          <Badge className="ml-2 bg-red-500 text-white text-xs">{list.length}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -62,6 +60,30 @@ export function ApplicationTips() {
                 {tip.icon}
               </div>
               <p className="text-sm text-gray-700 leading-relaxed max-w-[300px] text-left">{tip.text}</p>
+            </div>
+            <div className="flex items-center gap-1 mt-4">
+              <button
+                aria-label="Previous tip"
+                className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition"
+                onClick={() => setIndex(prev => (prev === 0 ? list.length - 1 : prev - 1))}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              {list.map((_, i) => (
+                <button
+                  key={i}
+                  aria-label={`Go to tip ${i + 1}`}
+                  className={`w-2 h-2 rounded-full mx-0.5 transition ${i === index ? "bg-blue-600" : "bg-blue-200"}`}
+                  onClick={() => setIndex(i)}
+                />
+              ))}
+              <button
+                aria-label="Next tip"
+                className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition"
+                onClick={() => setIndex(prev => (prev === list.length - 1 ? 0 : prev + 1))}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </motion.div>
         </AnimatePresence>

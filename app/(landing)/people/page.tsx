@@ -62,7 +62,7 @@ export default async function PeopleLandingPage() {
               title="Connections"
               description="Manage your network of classmates, friends, and professional contacts."
               color="blue"
-              link="/people/connections"
+              link="/sign-in"
               avatars={3}
             />
 
@@ -72,7 +72,7 @@ export default async function PeopleLandingPage() {
               title="Following"
               description="Keep track of employers and companies you're interested in."
               color="amber"
-              link="/people/following"
+              link="/sign-in"
               avatars={2}
             />
 
@@ -82,13 +82,12 @@ export default async function PeopleLandingPage() {
               title="Suggestions"
               description="Discover students, employers, and companies to expand your network."
               color="emerald"
-              link="/people/suggestions"
+              link="/sign-in"
               avatars={3}
             />
           </div>
         </div>
       </section>
-
       {/* Compact Features Section */}
       <section className="container mx-auto px-4 py-12 md:py-16">
         <div className="bg-white rounded-xl shadow-lg border border-blue-100 overflow-hidden">
@@ -121,7 +120,7 @@ export default async function PeopleLandingPage() {
                   <FeatureItem>Search your connections</FeatureItem>
                 </ul>
                 <Link
-                  href="/people/connections"
+                  href="/sign-in"
                   className="text-blue-600 font-medium flex items-center hover:underline"
                 >
                   Explore Connections <ChevronRight className="h-4 w-4 ml-1" />
@@ -153,7 +152,7 @@ export default async function PeopleLandingPage() {
                   </FeatureItem>
                 </ul>
                 <Link
-                  href="/people/following"
+                  href="/sign-in"
                   className="text-amber-600 font-medium flex items-center hover:underline"
                 >
                   Explore Following <ChevronRight className="h-4 w-4 ml-1" />
@@ -186,7 +185,7 @@ export default async function PeopleLandingPage() {
                   </FeatureItem>
                 </ul>
                 <Link
-                  href="/people/suggestions"
+                  href="/sign-in"
                   className="text-emerald-600 font-medium flex items-center hover:underline"
                 >
                   Explore Suggestions <ChevronRight className="h-4 w-4 ml-1" />

@@ -618,7 +618,7 @@ export default function InterviewPage() {
                         disabled={answerMode !== null}
                       >
                         <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
+                        <option value="medium">Hard</option>
                      
                       </select>
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">

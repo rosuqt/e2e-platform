@@ -164,6 +164,11 @@ const triggerStudentEmbedding = async () => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ student_id: currentStudentId }),
   });
+  await fetch("/api/ai-matches/match/jobs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ student_id: currentStudentId }),
+  });
   await fetch("/api/ai-matches/rescore", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1117,10 +1122,38 @@ try {
         </div>
         <AddExpModal
           open={openAddExp}
-          onClose={() => setOpenAddExp(false)}
-          onSave={data => {
-            setExperiences([data, ...experiences]);
-            saveProfileField("experiences", [data, ...experiences]);
+          onClose={() => {
+            setOpenAddExp(false);
+            setEditingExpIdx(null);
+          }}
+          onSave={async data => {
+            if (editingExpIdx !== null) {
+              const newExperiences = experiences.map((exp, idx) =>
+                idx === editingExpIdx ? data : exp
+              );
+              setExperiences(newExperiences);
+              await fetch("/api/students/student-profile/postHandlers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "experience_update",
+                  student_id: (session?.user as { studentId?: string })?.studentId,
+                  data: newExperiences
+                }),
+              });
+              setEditingExpIdx(null);
+            } else {
+              setExperiences([data, ...experiences]);
+              await fetch("/api/students/student-profile/postHandlers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "experience",
+                  student_id: (session?.user as { studentId?: string })?.studentId,
+                  data
+                }),
+              });
+            }
             setOpenAddExp(false);
           }}
           editMode={editingExpIdx !== null}

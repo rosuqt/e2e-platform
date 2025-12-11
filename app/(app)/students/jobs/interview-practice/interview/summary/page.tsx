@@ -436,7 +436,7 @@ export default function InterviewSummaryPage() {
                 <VscDebugRestart className="w-5 h-5" />
                 Practice a New Interview
               </Button>
-            </div>I
+            </div>
           </div>
 
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 flex flex-col h-full overflow-hidden relative">

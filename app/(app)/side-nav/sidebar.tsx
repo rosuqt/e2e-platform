@@ -117,10 +117,10 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
         detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include", cache: "reload" });
         if (detailsRes.ok) {
           setRole("employer");
-          const { first_name, last_name, email, job_title, profile_img, verify_status } = await detailsRes.json();
+          const { first_name, last_name, suffix, email, job_title, profile_img, verify_status } = await detailsRes.json();
           const studentName =
             first_name && last_name
-              ? `${first_name} ${last_name}`
+              ? `${first_name} ${last_name}${suffix ? " " + suffix : ""}`
               : first_name || last_name || null;
           setStudentName(studentName);
           setEmail(email || null);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import { forwardRef } from "react";
 import {
@@ -10,7 +11,7 @@ import {
   Avatar,
 } from "@mui/material";
 import type { SlideProps } from "@mui/material";
-import { Briefcase,DollarSign, Calendar, Users, Clock, CheckCircle } from "lucide-react";
+import { Briefcase, Calendar, Users, Clock, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const SlideUp = forwardRef(function Transition(
@@ -24,11 +25,12 @@ type QuickViewModalProps = {
   open: boolean;
   onClose: () => void;
   job: {
+    job_id?: string;
     title: string;
     company: string;
     location: string;
-    salary: string;
-    posted: string;
+    salary?: string;
+    posted?: string;
     logoUrl?: string;
     type?: string;
     vacancies?: number;
@@ -36,6 +38,23 @@ type QuickViewModalProps = {
     description?: string;
     closingDate?: string;
     applicants?: number;
+    remote_options?: string;
+    work_type?: string;
+    recommended_course?: string;
+    job_description?: string;
+    job_summary?: string;
+    must_have_qualifications?: string[];
+    nice_to_have_qualifications?: string[];
+    application_deadline?: string;
+    max_applicants?: number;
+    perks_and_benefits?: string[];
+    verification_tier?: string;
+    created_at?: string;
+    responsibilities?: string;
+    paused?: boolean;
+    tags?: Record<string, any>;
+    ai_skills?: string[];
+    is_archived?: boolean;
     remote?: boolean;
     matchScore?: number;
   };
@@ -51,7 +70,11 @@ export default function QuickViewModal({
   const router = useRouter();
 
   const handleViewFull = () => {
-    router.push("/students/jobs/job-listings");
+    if (job && job.job_id) {
+      router.push(`/students/jobs/job-listings?jobId=${job.job_id}`);
+    } else {
+      router.push("/students/jobs/job-listings");
+    }
     onClose();
   };
 
@@ -113,7 +136,7 @@ export default function QuickViewModal({
                 mr: 2
               }}
             >
-              {job.company[0]}
+              {job.company?.[0] || ""}
             </Avatar>
             <Box>
               <Typography sx={{ fontWeight: 600, fontSize: 22, color: "#fff" }}>
@@ -146,7 +169,7 @@ export default function QuickViewModal({
                     cx="32"
                     cy="32"
                     r="28"
-                    stroke={job.matchScore < 40 ? "#dc2626" : job.matchScore < 70 ? "#facc15" : "#22c55e"}
+                    stroke={job.matchScore < 40 ? "#dc2626" : job.matchScore < 60 ? "#facc15" : "#22c55e"}
                     strokeWidth="8"
                     fill="none"
                     strokeDasharray={2 * Math.PI * 28}
@@ -167,7 +190,7 @@ export default function QuickViewModal({
                     justifyContent: "center",
                     fontWeight: 700,
                     fontSize: 20,
-                    color: job.matchScore < 40 ? "#dc2626" : job.matchScore < 70 ? "#f59e42" : "#22c55e"
+                    color: job.matchScore < 40 ? "#dc2626" : job.matchScore < 60 ? "#f59e42" : "#22c55e"
                   }}
                 >
                   {job.matchScore}%
@@ -177,20 +200,20 @@ export default function QuickViewModal({
                 <Typography
                   sx={{
                     fontWeight: 600,
-                    color: job.matchScore < 40 ? "#dc2626" : job.matchScore < 70 ? "#f59e42" : "#22c55e",
+                    color: job.matchScore < 40 ? "#dc2626" : job.matchScore < 60 ? "#f59e42" : "#22c55e",
                     fontSize: 16
                   }}
                 >
                   {job.matchScore < 40
                     ? "This Job Isn't a Strong Match"
-                    : job.matchScore < 70
+                    : job.matchScore < 60
                     ? "This Job is a Moderate Match"
                     : "This Job is a Strong Match"}
                 </Typography>
                 <Typography sx={{ fontSize: 13, color: "#64748b", mt: 0.5 }}>
                   {job.matchScore < 40
                     ? "We've checked your resume and selected skills, and unfortunately, this job isn't the best match for your profile. You can still apply, but the job may be seeking candidates with different qualifications."
-                    : job.matchScore < 70
+                    : job.matchScore < 60
                     ? "You meet some of the requirements for this job. Consider applying if you're interested and highlight your relevant skills."
                     : "You are a great fit for this job based on your profile and skills!"}
                 </Typography>
@@ -209,42 +232,63 @@ export default function QuickViewModal({
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Briefcase size={18} color="#2563eb" />
               <Typography fontSize={15} color="#334155">
-                {job.type || "Job Type"}
+                {job.work_type || job.type || "Job Type"}
               </Typography>
             </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <DollarSign size={18} color="#2563eb" />
-              <Typography fontSize={15} color="#334155">
-                {job.salary}
-              </Typography>
-            </Box>
+            {/* Removed pay/salary UI */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Calendar size={18} color="#2563eb" />
               <Typography fontSize={15} color="#334155">
-                Posted {job.posted}
+                {job.created_at
+                  ? `Posted ${new Date(job.created_at).toLocaleString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}`
+                  : job.posted
+                  ? `Posted ${new Date(job.posted).toLocaleString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}`
+                  : ""}
               </Typography>
             </Box>
-            {job.closingDate && (
+            {job.application_deadline && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Clock size={18} color="#2563eb" />
                 <Typography fontSize={15} color="#334155">
-                  Closes at {job.closingDate}
+                  Closes at {new Date(job.application_deadline).toLocaleString(undefined, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  })}
                 </Typography>
               </Box>
             )}
-            {typeof job.vacancies === "number" && (
+            {typeof job.max_applicants === "number" && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Users size={18} color="#2563eb" />
                 <Typography fontSize={15} color="#334155">
-                  {job.vacancies} vacancies
+                  {job.max_applicants} vacancies
                 </Typography>
               </Box>
             )}
-            {typeof job.remote === "boolean" && (
+            {(job.remote_options || typeof job.remote === "boolean") && (
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <CheckCircle size={18} color="#2563eb" />
                 <Typography fontSize={15} color="#334155">
-                  {job.remote ? "Remote Option Available" : "On-site"}
+                  {job.remote_options
+                    ? job.remote_options
+                    : job.remote
+                    ? "Remote Option Available"
+                    : "On-site"}
                 </Typography>
               </Box>
             )}
@@ -254,10 +298,48 @@ export default function QuickViewModal({
               Job Description
             </Typography>
             <Typography fontSize={15} color="#64748b">
-              {job.description ||
-                "Seeking a creative UI/UX Designer to craft intuitive and visually engaging user experiences. You will design user-friendly interfaces that enhance functionality and aesthetics."}
+              {job.job_description ||
+                job.description ||
+                job.job_summary ||
+                "No job description provided."}
             </Typography>
           </Box>
+          {Array.isArray(job.must_have_qualifications) && job.must_have_qualifications.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography fontWeight={600} fontSize={15} color="#2563eb" mb={0.5}>
+                Must-have Qualifications
+              </Typography>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {job.must_have_qualifications.map((q, i) => (
+                  <li key={i} style={{ color: "#64748b", fontSize: 14 }}>{q}</li>
+                ))}
+              </ul>
+            </Box>
+          )}
+          {Array.isArray(job.nice_to_have_qualifications) && job.nice_to_have_qualifications.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography fontWeight={600} fontSize={15} color="#2563eb" mb={0.5}>
+                Nice-to-have Qualifications
+              </Typography>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {job.nice_to_have_qualifications.map((q, i) => (
+                  <li key={i} style={{ color: "#64748b", fontSize: 14 }}>{q}</li>
+                ))}
+              </ul>
+            </Box>
+          )}
+          {Array.isArray(job.perks_and_benefits) && job.perks_and_benefits.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography fontWeight={600} fontSize={15} color="#2563eb" mb={0.5}>
+                Perks & Benefits
+              </Typography>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {job.perks_and_benefits.map((p, i) => (
+                  <li key={i} style={{ color: "#64748b", fontSize: 14 }}>{p}</li>
+                ))}
+              </ul>
+            </Box>
+          )}
           <Button
             variant="contained"
             fullWidth

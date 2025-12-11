@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import Image from "next/image"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -24,9 +24,7 @@ import {
   UserCheck,
   Trash2,
 } from "lucide-react"
-import { PiMoneyDuotone } from "react-icons/pi"
 import { Mail, Phone } from "lucide-react"
-import { LuMessageCircleMore } from "react-icons/lu"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { HiBadgeCheck } from "react-icons/hi"
 import { RiErrorWarningLine } from "react-icons/ri"
@@ -36,6 +34,7 @@ import { styled } from "@mui/material/styles"
 import { motion } from "framer-motion"
 import TimelineTab from "./tabs/timeline-tab"
 import ResumeTab from "./tabs/resume-tab"
+import { ViewOfferModal } from "./view-offer"
 
 type ApplicationAnswers = Record<string, string> | string | null
 
@@ -105,6 +104,7 @@ function getStatusBadgeProps(status: string) {
   if (s === "new" || s === "pending") return { className: "bg-yellow-100 text-yellow-700", label: "Pending" }
   if (s === "shortlisted" || s === "review") return { className: "bg-cyan-100 text-cyan-700", label: "Under Review" }
   if (s === "interview scheduled" || s === "interview") return { className: "bg-purple-100 text-purple-700", label: "To be Interviewed" }
+  if (s === "offer_sent") return { className: "bg-lime-100 text-lime-700", label: "Offer Received" }
   if (s === "hired") return { className: "bg-green-100 text-green-700", label: "Hired" }
   if (s === "rejected") return { className: "bg-red-100 text-red-700", label: "Rejected" }
   if (s === "waitlisted") return { className: "bg-blue-100 text-blue-700", label: "Waitlisted" }
@@ -166,12 +166,75 @@ function buildTimeline(applicationData?: ApplicationData) {
   return timeline
 }
 
+function WarningModalLocal({
+  open,
+  title,
+  message,
+  confirmText,
+  cancelText,
+  loading,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean
+  title: string
+  message: string
+  confirmText: string
+  cancelText: string
+  loading?: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onCancel()}>
+      <DialogContent className="max-w-sm w-full p-6">
+        <DialogTitle className="mb-2">{title}</DialogTitle>
+        <div className="mb-4 text-gray-700">{message}</div>
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" onClick={onCancel} disabled={loading}>{cancelText}</Button>
+          <Button onClick={onConfirm} disabled={loading}>{confirmText}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModalOpen, applicationData }: ApplicationDetailsProps) {
   const [isClient, setIsClient] = useState(false)
+  const [acceptOfferOpen, setAcceptOfferOpen] = useState(false)
+  const [acceptOfferLoading, setAcceptOfferLoading] = useState(false)
+  const [localStatus, setLocalStatus] = useState(applicationData?.status || "")
+  const [viewOfferOpen, setViewOfferOpen] = useState(false)
 
   useEffect(() => {
     setIsClient(true)
   }, [])
+
+  useEffect(() => {
+    setLocalStatus(applicationData?.status || "")
+  }, [applicationData?.status])
+
+  const acceptOffer = useCallback(async () => {
+    if (!applicationId) return
+    setAcceptOfferLoading(true)
+    try {
+      const res = await fetch("/api/employers/applications/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_id: applicationId, action: "accept_offer" }),
+      })
+      if (!res.ok) {
+        setAcceptOfferLoading(false)
+        return
+      }
+      setLocalStatus("hired")
+      if (applicationData) applicationData.status = "hired"
+      setViewOfferOpen(true)
+    } catch {
+    }
+    setAcceptOfferLoading(false)
+    setAcceptOfferOpen(false)
+  }, [applicationId, applicationData])
 
   if (!isClient) return null
 
@@ -421,7 +484,7 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
     return null
   }
 
-  const badgeProps = getStatusBadgeProps(application.status)
+  const badgeProps = getStatusBadgeProps(localStatus || application.status)
 
   let verificationTier = "basic"
   if (
@@ -481,8 +544,34 @@ export function ApplicationDetailsModal({ applicationId, isModalOpen, setIsModal
           </div>
         </div>
         <div className="p-6 overflow-y-auto">
-          <ApplicationDetailsContent application={application} />
+          <ApplicationDetailsContent application={{ ...application, status: localStatus || application.status }} />
         </div>
+        {((localStatus || application.status) === "offer_sent") && (
+          <div className="flex justify-end p-6 pt-0">
+            <Button
+              className="bg-lime-600 hover:bg-lime-700 text-white"
+              onClick={() => setAcceptOfferOpen(true)}
+              disabled={acceptOfferLoading}
+            >
+              Accept Offer
+            </Button>
+          </div>
+        )}
+        <WarningModalLocal
+          open={acceptOfferOpen}
+          title="Accept Offer"
+          message={`Are you sure you want to accept this offer?`}
+          confirmText="Accept Offer"
+          cancelText="Cancel"
+          loading={acceptOfferLoading}
+          onConfirm={acceptOffer}
+          onCancel={() => setAcceptOfferOpen(false)}
+        />
+        <ViewOfferModal
+          open={viewOfferOpen}
+          onClose={() => setViewOfferOpen(false)}
+          applicationId={applicationId}
+        />
       </DialogContent>
     </Dialog>
   )
@@ -878,16 +967,6 @@ function ApplicationDetailsContent({ application }: { application: Application }
                 <span className="text-sm font-medium text-blue-900">{application.work_type || "N/A"}</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="bg-green-100 rounded-full p-2 flex items-center justify-center">
-                  <PiMoneyDuotone className="h-4 w-4 text-green-700" />
-                </div>
-                <span className="text-sm font-medium text-green-900">
-                  {application.pay_amount
-                    ? `${application.pay_amount}${application.pay_type ? `/${application.pay_type}` : ""}`
-                    : application.salary || "N/A"}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
                 <div className="bg-purple-100 rounded-full p-2 flex items-center justify-center">
                   <Globe className="h-4 w-4 text-purple-700" />
                 </div>
@@ -909,7 +988,13 @@ function ApplicationDetailsContent({ application }: { application: Application }
                 <div className="bg-blue-100 rounded-full p-2 flex items-center justify-center">
                   <FileText className="h-4 w-4 text-blue-700" />
                 </div>
-                <span className="text-sm font-medium text-blue-900">{application.status || "N/A"}</span>
+                <span className="text-sm font-medium text-blue-900">
+                  {
+                    application.status?.toLowerCase() === "offer_sent"
+                      ? "Offer Received"
+                      : application.status || "N/A"
+                  }
+                </span>
               </div>
             </div>
             <div className="flex justify-center mt-2">
@@ -1198,15 +1283,6 @@ function ApplicationDetailsContent({ application }: { application: Application }
                     )}
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  className="border-blue-500 text-blue-600 hover:bg-blue-100 hover:text-blue-700 ml-2 flex items-center"
-                  style={{ borderWidth: 1, background: "transparent" }}
-                  size="sm"
-                >
-                  <LuMessageCircleMore    className="h-4 w-4 mr-1" />
-                  Message Recruiter
-                </Button>
               </div>
             ))}
           </div>

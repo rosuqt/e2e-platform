@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "../../side-nav/sidebar";
 import BaseLayout from "../../base-layout";
-import { TbSettings, TbBug } from "react-icons/tb";
+import { TbSettings } from "react-icons/tb";
 import { FiCalendar } from "react-icons/fi";
 import { FaUser, FaStar } from "react-icons/fa";
 import { Camera, Pencil } from "lucide-react";
@@ -23,6 +23,8 @@ import { HiRocketLaunch } from "react-icons/hi2";
 import { RiProgress6Fill } from "react-icons/ri";
 import { FaMagnifyingGlass } from "react-icons/fa6";
 import { IoTelescope } from "react-icons/io5";
+import { useSession } from "next-auth/react";
+import { MdVerified, MdOutlineVerified, MdErrorOutline } from "react-icons/md";
 
 export default function ProfileLayout() {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
@@ -50,6 +52,8 @@ export default function ProfileLayout() {
   const [editingBio, setEditingBio] = useState(false);
   const [savingBio, setSavingBio] = useState(false);
   const [applicationStatus, setApplicationStatus] = useState<string>("");
+  const { data: session } = useSession();
+  const verifyStatus = session?.user?.verifyStatus || "basic";
 
   function getStatusColor(status: string) {
     switch (status) {
@@ -81,12 +85,24 @@ export default function ProfileLayout() {
     }
   }
 
+  function getVerificationLabel(status: string) {
+    if (status === "full") return "Fully Verified";
+    if (status === "standard") return "Partially Verified";
+    return "Unverified";
+  }
+
+  function getVerificationIcon(status: string) {
+    if (status === "full") return <MdVerified className="text-green-500 mr-1" size={16} />;
+    if (status === "standard") return <MdOutlineVerified className="text-yellow-500 mr-1" size={16} />;
+    return <MdErrorOutline className="text-red-500 mr-1" size={16} />;
+  }
+
   const menuItems = useMemo(
     () => [
       { icon: FaUser, text: "Me", href: "/students/profile" },
       { icon: FiCalendar, text: "Calendar", href: "/students/calendar" },
-      { icon: TbBug, text: "Report a bug", href: "#" }, 
       { icon: TbSettings, text: "Settings", href: "/students/settings" },
+      { icon: MdVerified, text: "Verification", href: "/students/profile?tab=verification-tab" },
     ],
     []
   );
@@ -146,6 +162,7 @@ export default function ProfileLayout() {
     if (tabParam === "skills-tab") setActiveTab(1);
     else if (tabParam === "ratings-tab") setActiveTab(2);
     else if (tabParam === "activity-tab") setActiveTab(3);
+    else if (tabParam === "verification-tab") setActiveTab(4);
     else setActiveTab(0);
   }, [tabParam]);
 
@@ -269,6 +286,13 @@ export default function ProfileLayout() {
         return <RatingsPage />;
       case 3:
         return <ActivityLogPage />;
+      case 4:
+        return (
+          <div className="bg-white rounded-lg shadow p-6 flex items-center gap-4">
+            {getVerificationIcon(verifyStatus)}
+            <span className="font-semibold text-lg">{getVerificationLabel(verifyStatus)}</span>
+          </div>
+        );
       default:
         return <AboutPage />;
     }
@@ -312,7 +336,7 @@ export default function ProfileLayout() {
           onToggle={(expanded: boolean) => setIsSidebarMinimized(!expanded)}
           menuItems={menuItems.map((item) => ({
             ...item,
-            isActive: pathname === item.href,
+            isActive: pathname === item.href || (item.text === "Verification" && activeTab === 4),
           }))}
         />
       }
@@ -560,6 +584,15 @@ export default function ProfileLayout() {
                     />
                     <Tab
                       label="Activity Log"
+                      sx={{
+                        textTransform: "capitalize",
+                        fontWeight: 500,
+                        fontSize: 14,
+                        "&:hover": { color: "#2563eb" },
+                      }}
+                    />
+                    <Tab
+                      label="Verification"
                       sx={{
                         textTransform: "capitalize",
                         fontWeight: 500,

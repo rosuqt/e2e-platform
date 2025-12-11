@@ -230,6 +230,11 @@ export default function AddExpertiseModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ student_id: studentId }),
       });
+      await fetch("/api/ai-matches/match/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
       await fetch("/api/ai-matches/rescore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

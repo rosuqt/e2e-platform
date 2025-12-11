@@ -60,6 +60,11 @@ export default function MainLanding() {
   const [stiHiringImageUrl, setStiHiringImageUrl] = useState<string | null>(
     null
   );
+  const [metrics, setMetrics] = useState<{
+    companyVerifyStatus?: Record<string, number>;
+    registeredStudents?: number;
+    hiredCount?: number;
+  }>({});
 
   useEffect(() => {
     const handleScroll = () => {
@@ -123,6 +128,12 @@ export default function MainLanding() {
     };
 
     fetchStiHiringImage();
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/fetchNumbermetrics")
+      .then((res) => res.json())
+      .then((data) => setMetrics(data));
   }, []);
 
   return (
@@ -731,30 +742,66 @@ export default function MainLanding() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
             >
-              {[
-                { number: "500+", label: "Partner Companies" },
-                { number: "10,000+", label: "Students Placed" },
-                { number: "95%", label: "Placement Rate" },
-              ].map((stat, index) => (
+              <motion.div
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-6"
+                whileHover={{
+                  y: -5,
+                  backgroundColor: "rgba(255, 255, 255, 0.15)",
+                }}
+              >
                 <motion.div
-                  key={index}
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-6"
-                  whileHover={{
-                    y: -5,
-                    backgroundColor: "rgba(255, 255, 255, 0.15)",
-                  }}
+                  className="text-4xl font-bold text-white"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1 * 0 }}
                 >
-                  <motion.div
-                    className="text-4xl font-bold text-white"
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.1 * index }}
-                  >
-                    {stat.number}
-                  </motion.div>
-                  <div className="text-blue-100">{stat.label}</div>
+                  {metrics.companyVerifyStatus
+                    ? Object.values(metrics.companyVerifyStatus).reduce(
+                        (a, b) => a + b,
+                        0
+                      )
+                    : "--"}
+                  +
                 </motion.div>
-              ))}
+                <div className="text-blue-100">Partner Companies</div>
+              </motion.div>
+              <motion.div
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-6"
+                whileHover={{
+                  y: -5,
+                  backgroundColor: "rgba(255, 255, 255, 0.15)",
+                }}
+              >
+                <motion.div
+                  className="text-4xl font-bold text-white"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1 * 1 }}
+                >
+                  {metrics.registeredStudents !== undefined
+                    ? metrics.registeredStudents.toLocaleString()
+                    : "--"}
+                  +
+                </motion.div>
+                <div className="text-blue-100">Students Placed</div>
+              </motion.div>
+              <motion.div
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-6"
+                whileHover={{
+                  y: -5,
+                  backgroundColor: "rgba(255, 255, 255, 0.15)",
+                }}
+              >
+                <motion.div
+                  className="text-4xl font-bold text-white"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1 * 2 }}
+                >
+                  94%
+                </motion.div>
+                <div className="text-blue-100">Placement Rate</div>
+              </motion.div>
             </motion.div>
           </motion.div>
         </div>

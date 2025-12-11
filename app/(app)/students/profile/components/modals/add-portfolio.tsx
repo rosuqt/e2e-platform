@@ -167,6 +167,11 @@ export default function AddPortfolioModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ student_id: studentId }),
         });
+        await fetch("/api/ai-matches/match/jobs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        });
         await fetch("/api/ai-matches/rescore", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -183,6 +188,11 @@ export default function AddPortfolioModal({
           })
         });
         await fetch("/api/ai-matches/embeddings/student", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ student_id: studentId }),
+        });
+        await fetch("/api/ai-matches/match/jobs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ student_id: studentId }),
