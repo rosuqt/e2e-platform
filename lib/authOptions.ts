@@ -37,13 +37,17 @@ export const authOptions: NextAuthOptions = {
 
         const { data: user, error } = await supabase
           .from("registered_employers")
-          .select("id, email, password, first_name, last_name, verify_status")
+          .select("id, email, password, first_name, last_name, verify_status, is_archived")
           .eq("email", email)
           .maybeSingle() 
 
         if (error) {
           console.error("CredentialsProvider authorize: error from db:", error)
         }
+
+        if (user && user.is_archived) {
+          throw new Error("Account is archived and cannot be logged in")
+        }
 
         if (user && bcrypt.compareSync(password, user.password)) {
 

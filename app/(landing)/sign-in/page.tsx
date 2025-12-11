@@ -13,104 +13,125 @@ import LegalModal from "../../../components/legal";
 import { IoEnterOutline } from "react-icons/io5";
 
 export default function SignInPage() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [adminMode] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [adminRedirecting, setAdminRedirecting] = useState(false);
-  const { data: session, status } = useSession();
+  const [isVisible, setIsVisible] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [adminMode] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [adminRedirecting, setAdminRedirecting] = useState(false);
+  const { data: session, status } = useSession();
 
-  const handleMicrosoftLogin = async () => {
-    await signIn(adminMode ? "azure-ad-admin" : "azure-ad", {
-      callbackUrl: adminMode ? "/admin/dashboard" : "/students/after-login"
-    });
-  };
+  const handleMicrosoftLogin = async () => {
+    await signIn(adminMode ? "azure-ad-admin" : "azure-ad", {
+      callbackUrl: adminMode ? "/admin/dashboard" : "/students/after-login"
+    });
+  };
 
-  useEffect(() => {
-    if (status === "loading") return;
-    if (session?.user?.role === "employer") {
-      router.replace("/employers/dashboard");
-      return;
-    }
-    if (session?.user?.role === "student") {
-      router.replace("/students/after-login");
-      return;
-    }
-    if (session?.user?.role === "admin" || session?.user?.role === "superadmin") {
-      router.replace("/admin/dashboard");
-      return;
-    }
+  useEffect(() => {
+    if (status === "loading") return;
+    if (session?.user?.role === "employer") {
+      router.replace("/employers/dashboard");
+      return;
+    }
+    if (session?.user?.role === "student") {
+      router.replace("/students/after-login");
+      return;
+    }
+    if (session?.user?.role === "admin" || session?.user?.role === "superadmin") {
+      router.replace("/admin/dashboard");
+      return;
+    }
 
-    setIsVisible(true);
+    setIsVisible(true);
 
-    if (searchParams?.get("error")) {
-      if (searchParams.get("error") === "invalid_domain") {
-        setError("Sorry! We’re only accepting sign-ins from STI College students. Please use your STI email.");
-      } else if (searchParams.get("error") === "archived_account") { // <-- NEW CHECK ADDED
-        setError("Account is archived and cannot be logged in.");
-      }
-      else {
-        setError("Invalid email or password");
-      }
-    }
+    if (searchParams?.get("error")) {
+        const authError = searchParams.get("error");
+        
+        // This block handles errors coming from the URL (Azure AD / Student Login failures)
+        if (authError === "invalid_domain") {
+            setError("Sorry! We’re only accepting sign-ins from STI College students. Please use your STI email.");
+        } 
+        // Handles Student Archived Account (Custom error from Azure AD callback)
+        else if (authError === "archived_account") {
+            setError("Your student account is archived and cannot be used for login. Please contact your department.");
+        }
+        // Handles generic NextAuth errors that might appear in the URL
+        else if (authError) { 
+            // This is the fallback for Azure AD failures that aren't specifically handled, 
+            // e.g., OAuthCallback, SessionRequired, etc.
+            setError("Sign-in failed. Please check your network connection or try again.");
+        }
+    }
 
-    if (searchParams?.get("success") === "verified") {
-      setShowSuccess(true);
-      const employerId = searchParams.get("employerId")
-      if (employerId) {
-        fetch("/api/employers/update-verify-status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ employerId }),
-        })
-      }
-    } else {
-      setShowSuccess(false);
-    }
+    if (searchParams?.get("success") === "verified") {
+      setShowSuccess(true);
+      const employerId = searchParams.get("employerId")
+      if (employerId) {
+        fetch("/api/employers/update-verify-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ employerId }),
+        })
+      }
+    } else {
+      setShowSuccess(false);
+    }
 
-    const handleDoubleClick = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-    document.addEventListener("dblclick", handleDoubleClick);
-    return () => {
-      document.removeEventListener("dblclick", handleDoubleClick);
-    };
-  }, [searchParams, session, status]);
+    const handleDoubleClick = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener("dblclick", handleDoubleClick);
+    return () => {
+      document.removeEventListener("dblclick", handleDoubleClick);
+    };
+  }, [searchParams, session, status]);
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl: "/employers/dashboard",
-    });
+    const res = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+      callbackUrl: "/employers/dashboard",
+    });
 
-    setLoading(false);
+    setLoading(false);
+    
+    // This block handles errors from the Employer/Admin Credentials login
+    if (res?.error) {
+        // The CredentialsProvider error message that is thrown is passed here.
+        // We check if the error is the generic NextAuth one or the specific one 
+        // created when throwing the Error object for an archived user.
+        
+        if (res.error === "Account is archived and cannot be logged in") {
+            // Specific message for a logged-in error
+            setError("Your employer account is archived and cannot be logged in. Please contact support.");
+        } else {
+            // This handles the standard CredentialsSignin failure (invalid email/password)
+            // Note: res.error will be "CredentialsSignin" if the backend *throws* a generic error 
+            // OR if the provided credentials fail the database check.
+            setError("Invalid email or password");
+        }
+      return;
+    }
 
-    if (res?.error) {
-      setError("Invalid email or password");
-      return;
-    }
+    if (res?.ok && res.url) {
+      router.push(res.url);
+    }
+  };
 
-    if (res?.ok && res.url) {
-      router.push(res.url);
-    }
-  };
-
-  const handleOpenModal = () => {
-    setIsModalOpen(true);
-  };
+  const handleOpenModal = () => {
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="pt-20 mt-2 flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 relative overflow-y-hidden pb-10">
