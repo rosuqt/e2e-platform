@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { motion, easeOut } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Heart, Lightbulb, Shield, Globe } from "lucide-react";
@@ -11,7 +11,7 @@ const fadeInUp = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: easeOut },
+    transition: { duration: 0.6, ease: "easeOut" },
   },
 };
 
@@ -20,7 +20,7 @@ const teamMembers = [
     name: "Allyza Rose Cayer",
     role: "Team Lead & Full-Stack Developer",
     bio: "I just want to make everything better. I have a passion for building intuitive user experiences and scalable systems.",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/about-us/ally.png",
     expertise: "Strategy & Leadership",
   },
   {
@@ -34,7 +34,7 @@ const teamMembers = [
     name: "Adrian Sevilla",
     role: "Database Administrator & Full-Stack Developer",
     bio: "As the co-developer I make sure to prioritize optimization and simplicity within the technical aspects of the system as to avoid technical debt whilst creating a streamlined and convinient user interface.",
-    image: "/placeholder.svg?height=300&width=300",
+    image: "/images/about-us/ian.png",
     expertise: "Support & Development",
   },
   {
