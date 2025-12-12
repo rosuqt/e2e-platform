@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, ChevronLeft, ChevronRight, Loader } from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, Loader, } from "lucide-react"
 import Swal from "sweetalert2"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
@@ -105,13 +105,54 @@ export default function SignUpForm() {
       confirmPassword: "",
     }
   )
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [fetchedCompanies, setFetchedCompanies] = useState<
+    { name: string; emailDomain?: string | null; branches?: { branch_name: string; email_domain?: string | null }[] }[]
+  >([]);
 
-  const [fetchedCompanies, setFetchedCompanies] = useState<{ name: string, emailDomain?: string | null, branches?: { branch_name: string, email_domain?: string | null }[] }[]>([]);
+  // Password checklist for UI feedback
+  const passwordChecklist = [
+    {
+      label: "Minimum 8 characters",
+      valid: formData.personalDetails.password.length >= 8,
+    },
+    {
+      label: "At least one uppercase letter",
+      valid: /[A-Z]/.test(formData.personalDetails.password),
+    },
+    {
+      label: "At least one lowercase letter",
+      valid: /[a-z]/.test(formData.personalDetails.password),
+    },
+    {
+      label: "At least one digit",
+      valid: /[0-9]/.test(formData.personalDetails.password),
+    },
+    {
+      label: "At least one special character",
+      valid: /[!@#$%^&*(),.?":{}|<>_\-\\[\];'/`~+=]/.test(formData.personalDetails.password),
+    },
+  ];
 
   useEffect(() => {
     const savedData = sessionStorage.getItem("signUpFormData");
     if (savedData) {
-      setFormData(JSON.parse(savedData));
+      const parsed = JSON.parse(savedData);
+      // Ensure countryCode is set to "63" if missing
+      if (!parsed.personalDetails?.countryCode) {
+        parsed.personalDetails.countryCode = "63";
+      }
+      setFormData(parsed);
+    } else {
+      // If no saved data, ensure default countryCode is "63"
+      setFormData((prev) => ({
+        ...prev,
+        personalDetails: {
+          ...prev.personalDetails,
+          countryCode: prev.personalDetails.countryCode || "63",
+        },
+      }));
     }
 
     const fetchInitialData = async () => {
@@ -161,7 +202,7 @@ export default function SignUpForm() {
 
     if (!details.firstName.trim()) {
       errors.firstName = "First Name is required.";
-    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.firstName)) {
+    } else if (!/^[A-Za-zÑñ]+([ '-][A-Za-zÑñ]+)*$/.test(details.firstName)) {
       errors.firstName = "Only letters, single space or dash between names allowed.";
     } else if (details.firstName.length < 1 || details.firstName.length > 36) {
       errors.firstName = "Must be between 1 and 36 characters.";
@@ -175,7 +216,7 @@ export default function SignUpForm() {
 
     if (!details.lastName.trim()) {
       errors.lastName = "Last Name is required.";
-    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.lastName)) {
+    } else if (!/^[A-Za-zÑñ]+([ '-][A-Za-zÑñ]+)*$/.test(details.lastName)) {
       errors.lastName = "Only letters, single space or dash between names allowed.";
     } else if (details.lastName.length < 1 || details.lastName.length > 35) {
       errors.lastName = "Last Name must be between 1 and 35 characters.";
@@ -219,7 +260,7 @@ export default function SignUpForm() {
     if (!details.email.trim()) {
       errors.email = "Email is required.";
     } else {
-      const emailRegex = /^[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
+      const emailRegex = /^(?!.*\.\.)[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
       const domainPart = details.email.split('@')[1];
       if (!emailRegex.test(details.email)) {
         errors.email = "Invalid email format.";
@@ -245,6 +286,14 @@ export default function SignUpForm() {
       errors.password = "Password is required.";
     } else if (details.password.length < 8 || details.password.length > 40) {
       errors.password = "Password must be between 8 and 40 characters.";
+    } else if (!/[A-Z]/.test(details.password)) {
+      errors.password = "Password must contain an uppercase letter.";
+    } else if (!/[a-z]/.test(details.password)) {
+      errors.password = "Password must contain a lowercase letter.";
+    } else if (!/[0-9]/.test(details.password)) {
+      errors.password = "Password must contain a digit.";
+    } else if (!/[!@#$%^&*(),.?":{}|<>_\-\\[\];'/`~+=]/.test(details.password)) {
+      errors.password = "Password must contain a special character.";
     }
 
     if (!details.confirmPassword.trim()) {
@@ -262,12 +311,43 @@ export default function SignUpForm() {
 
   const validateCompanyFields = () => {
     const errors: { [key: string]: string } = {}
-    if (!formData.companyAssociation.companyName.trim()) {
-      errors.companyName = "Company Name is required."
+
+    const companyName = formData.companyAssociation.companyName.trim();
+    if (!companyName) {
+      errors.companyName = "Company Name is required.";
+    } else {
+      // Check allowed characters
+      const allowedPattern = /^[A-Za-z0-9 .&'-]+$/;
+      if (!allowedPattern.test(companyName)) {
+        errors.companyName =
+          "Company Name can only contain letters, numbers, spaces, period, hyphen, ampersand (&), and apostrophe (').";
+      }
+
+      // Check for repeated symbols
+      const repeatedSymbolsPattern = /([ .&'-])\1/;
+      if (repeatedSymbolsPattern.test(companyName)) {
+        errors.companyName =
+          "Company Name cannot have repeated symbols like '..' or '&&'.";
+      }
     }
-    if (!formData.companyAssociation.companyBranch.trim()) {
-      errors.companyBranch = "Company Branch is required."
+
+    const companyBranch = formData.companyAssociation.companyBranch.trim();
+    if (!companyBranch) {
+      errors.companyBranch = "Company Branch is required.";
+    } else {
+      // Check for @ symbol
+      if (/@/.test(companyBranch)) {
+        errors.companyBranch = "Company Branch must not contain the '@' symbol.";
+      }
+
+      // Check for repeated symbols (space, period, hyphen, ampersand, apostrophe)
+      const repeatedSymbolsPattern = /([ .&'-])\1/;
+      if (repeatedSymbolsPattern.test(companyBranch)) {
+        errors.companyBranch =
+          "Company Branch cannot have repeated symbols like '..' or '&&'.";
+      }
     }
+
     if (!formData.companyAssociation.companyRole.trim()) {
       errors.companyRole = "Company Role is required."
     }
@@ -423,12 +503,20 @@ export default function SignUpForm() {
           <SuccessPage />
         ) : currentStep === 1 ? (
           <PersonalDetailsForm
-            data={formData.personalDetails}
+            data={{
+              ...formData.personalDetails,
+              countryCode: formData.personalDetails.countryCode || "63",
+            }}
             onChange={(data) => {
               saveToSessionStorage({ personalDetails: data })
               setPersonalDetailsErrors({})
             }}
             errors={personalDetailsErrors}
+            showPassword={showPassword}
+            setShowPassword={setShowPassword}
+            showConfirmPassword={showConfirmPassword}
+            setShowConfirmPassword={setShowConfirmPassword}
+            passwordChecklist={personalDetailsErrors.password ? passwordChecklist : undefined}
           />
         ) : currentStep === 2 ? (
           <CompanyAssociationForm

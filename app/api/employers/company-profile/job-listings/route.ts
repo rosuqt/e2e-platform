@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "../../../../../lib/authOptions"
@@ -26,8 +27,6 @@ export async function GET() {
       job_title,
       work_type,
       location,
-      pay_type,
-      pay_amount,
       application_deadline,
       created_at,
       registered_employers (
@@ -39,7 +38,11 @@ export async function GET() {
     .eq("company_id", employer.company_id)
     .order("created_at", { ascending: false })
   if (jobsError) {
-    return NextResponse.json({ error: "Error fetching jobs" }, { status: 500 })
+    console.error("Supabase jobsError:", jobsError)
+    return NextResponse.json(
+      { error: "Error fetching jobs", hint: jobsError.message || jobsError.details || jobsError },
+      { status: 500 }
+    )
   }
   const jobsWithEmployer = (jobs ?? []).map((job) => {
     type Employer = { first_name?: string | null; last_name?: string | null }
@@ -49,6 +52,7 @@ export async function GET() {
     } else if (job.registered_employers) {
       employerObj = job.registered_employers as Employer
     }
+    // No destructuring of pay_type/pay_amount since they are not present
     return {
       ...job,
       employer_name: employerObj

@@ -10,25 +10,31 @@ import Popper from "@mui/material/Popper";
 import { countries } from "../data/countries";
 import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
 
 export default function PersonalDetailsForm({
   data = { firstName: "", middleName: "", lastName: "", suffix: "", countryCode: "", phone: "", email: "", password: "", confirmPassword: "" },
   onChange,
   errors = {},
+  showPassword,
+  setShowPassword,
+  showConfirmPassword,
+  setShowConfirmPassword,
+  passwordChecklist,
 }: {
   data: PersonalDetails & { suffix?: string };
   onChange: (data: PersonalDetails & { suffix?: string }) => void;
   errors: { [key: string]: string };
+  showPassword?: boolean;
+  setShowPassword?: (v: boolean) => void;
+  showConfirmPassword?: boolean;
+  setShowConfirmPassword?: (v: boolean) => void;
+  passwordChecklist?: { label: string; valid: boolean }[]; // optional
 }) {
   const errorAnimation = {
     initial: { x: 0 },
     animate: { x: [0, -10, 10, -10, 10, 0] },
     transition: { duration: 0.4 },
   }
-
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   return (
     <motion.div
@@ -148,11 +154,17 @@ export default function PersonalDetailsForm({
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-3 px-6 mb-6">
         <motion.div className="col-span-1" {...(errors.countryCode ? errorAnimation : {})}>
-          <Autocomplete
+           <Autocomplete
             id="countryCode"
             options={countries}
             autoHighlight
             disablePortal
+            disabled
+            value={
+              countries.find((c) => c.phone === (data.countryCode || "63")) ||
+              countries.find((c) => c.code === "PH") || 
+              null
+            }
             PopperComponent={(props) => <Popper {...props} placement="bottom-start" />}
             getOptionLabel={(option) => `${option.code} (+${option.phone})`}
             renderOption={(props, option) => {
@@ -174,10 +186,6 @@ export default function PersonalDetailsForm({
                   {option.code} (+{option.phone})
                 </Box>
               );
-            }}
-            value={countries.find((c) => c.phone === data.countryCode) || null}
-            onChange={(event, newValue) => {
-              onChange({ ...data, countryCode: newValue?.phone || "" });
             }}
             renderInput={(params) => (
               <TextField
@@ -284,30 +292,30 @@ export default function PersonalDetailsForm({
             value={data.password}
             onChange={(e) => {
               const value = e.target.value;
-              let passwordError = "";
-              if (value.length < 8) {
-                passwordError = "Password must be at least 8 characters";
-              } else if (!/[A-Z]/.test(value)) {
-                passwordError = "Password must contain an uppercase letter";
-              } else if (!/[a-z]/.test(value)) {
-                passwordError = "Password must contain a lowercase letter";
-              } else if (!/[0-9]/.test(value)) {
-                passwordError = "Password must contain a digit";
-              } else if (!/[!@#$%^&*(),.?":{}|<>_\-\\[\];'/`~+=]/.test(value)) {
-                passwordError = "Password must contain a special character";
-              }
               onChange({ ...data, password: value });
-              errors.password = passwordError;
             }}
             error={!!errors.password}
-            helperText={errors.password}
+            helperText={
+              errors.password && passwordChecklist ? (
+                <span>
+                  {passwordChecklist.map((item, idx) => (
+                    <div key={idx} className="flex items-center text-xs">
+                      <span className={`mr-2 ${item.valid ? "text-green-600" : "text-gray-400"}`}>
+                        {item.valid ? "✔" : "✗"}
+                      </span>
+                      <span className={item.valid ? "text-green-600" : "text-gray-500"}>{item.label}</span>
+                    </div>
+                  ))}
+                </span>
+              ) : errors.password
+            }
             inputProps={{ maxLength: 128, minLength: 8 }}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
                   <IconButton
                     tabIndex={-1}
-                    onClick={() => setShowPassword((v) => !v)}
+                    onClick={() => setShowPassword && setShowPassword(!showPassword)}
                     edge="end"
                   >
                     {showPassword ? (
@@ -339,9 +347,7 @@ export default function PersonalDetailsForm({
             value={data.confirmPassword}
             onChange={(e) => {
               const value = e.target.value;
-              const confirmPasswordError = value !== data.password ? "Passwords do not match" : "";
               onChange({ ...data, confirmPassword: value });
-              errors.confirmPassword = confirmPasswordError;
             }}
             error={!!errors.confirmPassword}
             helperText={errors.confirmPassword}
@@ -351,7 +357,7 @@ export default function PersonalDetailsForm({
                 <InputAdornment position="end">
                   <IconButton
                     tabIndex={-1}
-                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    onClick={() => setShowConfirmPassword && setShowConfirmPassword(!showConfirmPassword)}
                     edge="end"
                   >
                     {showConfirmPassword ? (
@@ -376,6 +382,3 @@ export default function PersonalDetailsForm({
     </motion.div>
   )
 }
-
-
-

@@ -4,21 +4,32 @@ import Sidebar from "../../side-nav/sidebar";
 import BaseLayout from "../../base-layout";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { TbCards,TbUserStar} from "react-icons/tb";
-import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
+import { TbSettings } from "react-icons/tb";
+import { LuBadgeCheck } from "react-icons/lu";
 import { FiCalendar } from "react-icons/fi";
-import { RiAddCircleLine } from "react-icons/ri";
+import { LogOut } from "lucide-react";
+import { FaUser } from "react-icons/fa";
+import { useSession, signOut } from "next-auth/react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus;
+
+  const verificationHref =
+    verifyStatus === "full"
+      ? "/employers/verification/fully-verified"
+      : verifyStatus === "standard"
+      ? "/employers/verification/partially-verified"
+      : "/employers/verification/unverified";
 
   const menuItems = [
-    { icon: RiAddCircleLine, text: "Post a Job", href: "/employers/jobs/post-a-job" },
-    { icon: TbCards, text: "Job Listings", href: "/employers/jobs/job-listings" },
-    { icon: TbUserStar, text: "Candidate Matches", href: "/employers/people/candidate-matches" },
-    { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/employers/jobs/applications" },
+    { icon: FaUser, text: "Me", href: "/employers/profile" },
+    { icon: TbSettings, text: "Settings", href: "/employers/settings" },
     { icon: FiCalendar, text: "Calendar", href: "/employers/calendar" },
+    { icon: LuBadgeCheck, text: "Verification", href: verificationHref },
+    { icon: LogOut, text: "Logout", href: "/landing" },
   ];
 
   useEffect(() => {
@@ -45,6 +56,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           menuItems={menuItems.map((item) => ({
             ...item,
             isActive: pathname === item.href,
+            ...(item.text === "Logout"
+              ? {
+                  onClick: (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    signOut({ callbackUrl: "/landing" });
+                  },
+                }
+              : {}),
           }))}
         />
       }

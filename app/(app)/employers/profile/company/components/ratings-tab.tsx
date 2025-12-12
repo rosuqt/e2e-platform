@@ -197,9 +197,11 @@ export default function RatingsTab() {
         </div>
 
         <div className="text-center mt-6">
-          <Button variant="outline" className="gap-2">
-            Load More Reviews
-          </Button>
+          {reviews.length > 0 && (
+            <Button variant="outline" className="gap-2">
+              Load More Reviews
+            </Button>
+          )}
         </div>
       </div>
     </div>

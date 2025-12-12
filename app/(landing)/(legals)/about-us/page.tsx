@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, easeOut } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Heart, Lightbulb, Shield, Globe } from "lucide-react";
@@ -11,7 +11,7 @@ const fadeInUp = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: "easeOut" },
+    transition: { duration: 0.6, ease: easeOut },
   },
 };
 
@@ -39,7 +39,7 @@ const teamMembers = [
   },
   {
     name: "Mark Toniel Seva",
-    role: "Documentation & Full-Stack Developer",
+    role: "Support Developer",
     bio: "At Seekr, I juggle code and documentation, writing the features that make things work and the words that make them make sense. Basically, if it runs smoothly and reads clearly, there’s a good chance I had something to do with it.",
     image: "/images/about-us/mark.png",
     expertise: "Documentation & Support",
@@ -49,8 +49,8 @@ const teamMembers = [
 const advisor = {
   name: "Jerryfel Laraga",
   role: "Capstone Advisor",
-  bio: "Bio here",
-  image: "/placeholder.svg?height=300&width=300",
+  bio: "As the Capstone Adviser of Seekr, I guide students throughout the development process, ensuring their project aligns with academic standards while helping them refine their ideas into practical, well-structured solutions.",
+  image: "/images/about-us/advisor.png",
   expertise: "Education, Full-Stack Developer & Leadership",
 };
 
@@ -81,15 +81,48 @@ const values = [
   },
 ];
 
-const stats = [
-  { number: "2025", label: "Founded" },
-  { number: "10,000+", label: "Students Helped" },
-  { number: "500+", label: "Partner Companies" },
-  { number: "95%", label: "Success Rate" },
-];
-
 export default function AboutUsPage() {
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [metrics, setMetrics] = useState<{
+    registeredStudents?: number;
+    companyVerifyStatus?: Record<string, number>;
+    hiredCount?: number;
+  }>({});
+
+  useEffect(() => {
+    fetch("/api/fetchNumbermetrics")
+      .then((res) => res.json())
+      .then((data) => setMetrics(data))
+      .catch(() => {});
+  }, []);
+
+  // Calculate verified companies (treat 0 as valid)
+  const verifiedCompanies =
+    metrics.companyVerifyStatus
+      ? Object.values(metrics.companyVerifyStatus).reduce((a, b) => a + b, 0)
+      : undefined;
+
+  const stats = [
+    { number: "2025", label: "Founded" },
+    {
+      number:
+        typeof metrics.registeredStudents === "number"
+          ? metrics.registeredStudents.toLocaleString()
+          : "10,000+",
+      label: "Students Helped",
+    },
+    {
+      number:
+        typeof verifiedCompanies === "number"
+          ? verifiedCompanies.toLocaleString()
+          : "500+",
+      label: "Partner Companies",
+    },
+    {
+      number: "94%",
+      label: "Success Rate",
+    },
+  ];
 
   const openContact = () => setIsContactOpen(true);
   const closeContact = () => setIsContactOpen(false);
@@ -177,23 +210,29 @@ export default function AboutUsPage() {
             >
               <div className="relative rounded-2xl overflow-hidden shadow-2xl">
                 <Image
-                  src="/placeholder.svg?height=500&width=600"
+                  src="/images/our-story.jpg"
                   alt="Our story"
                   width={600}
                   height={500}
-                  className="w-full h-auto"
+                  className="w-full h-auto object-cover"
                 />
 
                 {/* Floating stats */}
                 <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-sm p-4 rounded-xl">
                   <div className="text-2xl font-bold text-blue-700">
-                    10,000+
+                    {typeof metrics.registeredStudents === "number"
+                      ? metrics.registeredStudents.toLocaleString()
+                      : "10,000+"}
                   </div>
                   <div className="text-sm text-gray-600">Students Helped</div>
                 </div>
 
                 <div className="absolute bottom-6 left-6 bg-white/90 backdrop-blur-sm p-4 rounded-xl">
-                  <div className="text-2xl font-bold text-blue-700">500+</div>
+                  <div className="text-2xl font-bold text-blue-700">
+                    {typeof verifiedCompanies === "number"
+                      ? verifiedCompanies.toLocaleString()
+                      : "500+"}
+                  </div>
                   <div className="text-sm text-gray-600">Partner Companies</div>
                 </div>
               </div>

@@ -5,38 +5,50 @@ import { Bell,  } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import NotificationItem from "./notification-item"
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious, PaginationEllipsis, PaginationLink } from "@/components/ui/pagination"
 
 type Notif = {
+  id: string;
   content: string;
-  created_at: Date;
-  external_id: string;
-  source: string;
   title: string;
-  updated_at: Date;
+  created_at: string;
+  updated_at?: string;
   user_id: string;
+  type?: string;
+  student?: {
+    first_name?: string;
+    last_name?: string;
+    course?: string;
+    year?: string;
+    section?: string;
+  };
+  job_title?: string;
+  applicant_name?: string;
 }
 
+const PAGE_SIZE = 8
 
 export default function NotificationsPage() {
   const [selectedNotification, setSelectedNotification] = useState<string | null>(null)
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [notif, setnotif] = useState<Notif[]>();
+  const [page, setPage] = useState(1);
 
   const fetchNotifications = async() => {
-  const res = await fetch("/api/employers/notifications", {
-    method: "GET",
-  });
+    const res = await fetch("/api/employers/notifications", {
+      method: "GET",
+    });
 
  
 
-  if (!res.ok) {
-    throw new Error("Failed to load notifications");
-  }
+    if (!res.ok) {
+      throw new Error("Failed to load notifications");
+    }
 
-  const data = await res.json();
-  setnotif(data.notifications);
-  console.log(data);
+    const data = await res.json();
+    setnotif(data.notifications);
+    console.log(data);
   
   }
   useEffect(() => { fetchNotifications() }, []);
@@ -58,6 +70,15 @@ export default function NotificationsPage() {
     setAnchorEl(null)
   }
 
+  const total = notif?.length || 0;
+  const pageCount = Math.ceil(total / PAGE_SIZE);
+  const pagedNotifs = notif?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) || [];
+
+  // Add for applications tab
+  const applicationsNotifs = notif?.filter((notification) => notification.type) || [];
+  const applicationsTotal = applicationsNotifs.length;
+  const applicationsPageCount = Math.ceil(applicationsTotal / PAGE_SIZE);
+  const pagedApplicationsNotifs = applicationsNotifs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50">
@@ -68,9 +89,7 @@ export default function NotificationsPage() {
             <div className="pb-2">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-blue-700">Notifications</h1>
-                <Button variant="outline" size="icon" className="rounded-full bg-blue-50 text-blue-700">
-                  <Bell className="h-5 w-5" />
-                </Button>
+
               </div>
             </div>
             <div>
@@ -98,37 +117,93 @@ export default function NotificationsPage() {
                     Account
                   </TabsTrigger>
                 </TabsList>
-
-             
-                
-                {/* NOTIF STARTS HERE */}
                 <TabsContent value="all" className="mt-0 min-h-[400px]">
                   <h3 className="text-lg font-semibold mb-4 text-blue-800">Latest Notifications</h3>
                   <div className="space-y-3">
-                    {notif?.map((notification) => (
+                    {pagedNotifs.map((notification) => (
                       <NotificationItem 
-                        key={notification.external_id}
+                        key={notification.id}
                         notification={notification}
-                        onClick={() => handleNotificationClick(notification.external_id)}
+                        onClick={() => handleNotificationClick(notification.id)}
                       />
                     ))}
                   </div>
-                  <div className="mt-6 text-center">
+                  <div className="mt-6 flex justify-center">
+                    {pageCount > 1 && (
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setPage((p) => Math.max(1, p - 1))}
+                              aria-disabled={page === 1}
+                              className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                            />
+                          </PaginationItem>
+                          {Array.from({ length: pageCount }).map((_, idx) => (
+                            <PaginationItem key={idx}>
+                              <PaginationLink
+                                isActive={page === idx + 1}
+                                onClick={() => setPage(idx + 1)}
+                              >
+                                {idx + 1}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                              aria-disabled={page === pageCount}
+                              className={page === pageCount ? "pointer-events-none opacity-50" : ""}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
                   </div>
                 </TabsContent>
 
                 <TabsContent value="applications" className="mt-0 min-h-[400px]">
-                  <div className="text-lg font-semibold mb-4 text-blue-800">
+                  <div className="text-lg mb-4 text-blue-800">
                     <div className="space-y-3">
-                      {notif
-                        ?.filter((notification) => notification.source === "applications") 
-                        .map((notification) => (
-                          <NotificationItem
-                            key={notification.external_id}
-                            notification={notification}
-                            onClick={() => handleNotificationClick(notification.external_id)}
-                          />
-                        ))}
+                      {pagedApplicationsNotifs.map((notification) => (
+                        <NotificationItem
+                          key={notification.id}
+                          notification={notification}
+                          onClick={() => handleNotificationClick(notification.id)}
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-6 flex justify-center">
+                      {applicationsPageCount > 1 && (
+                        <Pagination>
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                aria-disabled={page === 1}
+                                className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                              />
+                            </PaginationItem>
+                            {Array.from({ length: applicationsPageCount }).map((_, idx) => (
+                              <PaginationItem key={idx}>
+                                <PaginationLink
+                                  isActive={page === idx + 1}
+                                  onClick={() => setPage(idx + 1)}
+                                >
+                                  {idx + 1}
+                                </PaginationLink>
+                              </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                              <PaginationNext
+                                onClick={() => setPage((p) => Math.min(applicationsPageCount, p + 1))}
+                                aria-disabled={page === applicationsPageCount}
+                                className={page === applicationsPageCount ? "pointer-events-none opacity-50" : ""}
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      )}
                     </div>
                   </div>
                 </TabsContent>
@@ -137,12 +212,12 @@ export default function NotificationsPage() {
                   <div className="text-lg font-semibold mb-4 text-blue-800">
                     <div className="space-y-3">
                       {notif
-                        ?.filter((notification) => notification.source === "job_offers") 
+                        ?.filter((notification) => notification.type === "job_offers") // update as per your activity_log schema
                         .map((notification) => (
                           <NotificationItem
-                            key={notification.external_id}
+                            key={notification.id}
                             notification={notification}
-                            onClick={() => handleNotificationClick(notification.external_id)}
+                            onClick={() => handleNotificationClick(notification.id)}
                           />
                         ))}
                     </div>
@@ -153,12 +228,12 @@ export default function NotificationsPage() {
                   <div className="text-lg font-semibold mb-4 text-blue-800">
                     <div className="space-y-3">
                       {notif
-                        ?.filter((notification) => notification.source === "job_team_access") 
+                        ?.filter((notification) => notification.type === "job_team_access") // update as per your activity_log schema
                         .map((notification) => (
                           <NotificationItem
-                            key={notification.external_id}
+                            key={notification.id}
                             notification={notification}
-                            onClick={() => handleNotificationClick(notification.external_id)}
+                            onClick={() => handleNotificationClick(notification.id)}
                           />
                         ))}
                     </div>

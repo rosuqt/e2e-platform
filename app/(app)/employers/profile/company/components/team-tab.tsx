@@ -1,12 +1,10 @@
 "use client"
 import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Search, Mail, User, Users } from "lucide-react"
+import { Search, User, Users } from "lucide-react"
 import Image from "next/image"
-import { CgProfile } from "react-icons/cg"
 import { MdAdminPanelSettings } from "react-icons/md"
 import { useSession } from "next-auth/react"
 import { motion } from "framer-motion"
@@ -354,14 +352,7 @@ export default function TeamTab() {
                           </div>
                         </div>
                         <div className="flex gap-2 mt-4">
-                          <Button size="sm" className="flex-1 gap-1">
-                            <Mail className="w-3 h-3" />
-                            Message
-                          </Button>
-                          <Button size="sm" variant="outline" className="flex-1 gap-1">
-                            <CgProfile  className="w-3 h-3" />
-                            Profile
-                          </Button>
+                          {/* Removed Message and Profile buttons */}
                         </div>
                       </div>
                     </CardContent>

@@ -6,27 +6,28 @@ import { TbSettings } from "react-icons/tb";
 import Sidebar from "../../side-nav/sidebar";
 import BaseLayout from "../base-layout";
 import { LuBadgeCheck } from "react-icons/lu";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../../../../lib/authOptions";
-import { LogOut } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import { Building2, LogOut } from "lucide-react";
+import { FiCalendar } from "react-icons/fi";
+import { FaUser } from "react-icons/fa";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const [verifyStatus, setVerifyStatus] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    async function fetchSession() {
-      const session = await getServerSession(authOptions);
-      setVerifyStatus((session?.user as { verifyStatus?: string } | undefined)?.verifyStatus);
-    }
-    fetchSession();
-  }, []);
+  const { data: session } = useSession();
+  const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus;
 
   const menuItems = useMemo(
     () => [
+      { icon: FaUser, text: "Me", href: "/employers/profile" },
+         {
+        icon: Building2, 
+        text: "My Company",
+        href: "/employers/profile/company",
+      },
       { icon: TbSettings, text: "Settings", href: "/employers/settings" },
+      { icon: FiCalendar, text: "Calendar", href: "/employers/calendar" },
       {
         icon: LuBadgeCheck,
         text: "Verification",
@@ -37,6 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ? "/employers/verification/partially-verified"
             : "/employers/verification/unverified",
       },
+   
       { icon: LogOut, text: "Logout", href: "/landing" }
     ],
     [verifyStatus]
@@ -57,6 +59,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           menuItems={menuItems.map((item) => ({
             ...item,
             isActive: pathname === item.href,
+            ...(item.text === "Logout"
+              ? {
+                  onClick: (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    signOut({ callbackUrl: "/landing" });
+                  },
+                }
+              : {}),
           }))}
         />
       }

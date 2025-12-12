@@ -60,28 +60,6 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   }, [handleClose])
 
   useEffect(() => {
-    const sessionKey = "profileModalUserDetails"
-    const sessionRoleKey = "profileModalUserRole"
-    const sessionAvatarKey = "profileModalUserAvatar"
-
-    const cachedDetails = sessionStorage.getItem(sessionKey)
-    const cachedRole = sessionStorage.getItem(sessionRoleKey)
-    const cachedAvatar = sessionStorage.getItem(sessionAvatarKey)
-
-    if (cachedDetails && cachedRole) {
-      const { name, email } = JSON.parse(cachedDetails)
-      setDbName(name)
-      setDbEmail(email)
-      setUserType(cachedRole as "student" | "employer")
-      if (cachedAvatar) {
-        setDbAvatar(cachedAvatar + (cachedAvatar.includes("?") ? "&" : "?") + `t=${Date.now()}`)
-      } else {
-        setDbAvatar(undefined)
-      }
-      setLoading(false)
-      return
-    }
-
     (async () => {
       setLoading(true)
       let detailsRes: Response | null = null
@@ -96,8 +74,6 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           setDbName(name)
           setDbEmail(email || "")
           setUserType("employer")
-          sessionStorage.setItem(sessionKey, JSON.stringify({ name, email }))
-          sessionStorage.setItem(sessionRoleKey, "employer")
           if (profile_img) {
             try {
               const signedRes = await fetch("/api/employers/get-signed-url", {
@@ -110,19 +86,15 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                 const { signedUrl } = await signedRes.json()
                 const avatarWithTs = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`
                 setDbAvatar(avatarWithTs)
-                sessionStorage.setItem(sessionAvatarKey, avatarWithTs)
               } else {
                 setDbAvatar(undefined)
-                sessionStorage.removeItem(sessionAvatarKey)
               }
             } catch {
               setDbAvatar(undefined)
-              sessionStorage.removeItem(sessionAvatarKey)
             }
           } else {
             const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
             setDbAvatar(defaultUrl)
-            sessionStorage.removeItem(sessionAvatarKey)
           }
           setLoading(false)
           return
@@ -139,8 +111,6 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           setDbName(name)
           setDbEmail(email || "")
           setUserType("student")
-          sessionStorage.setItem(sessionKey, JSON.stringify({ name, email }))
-          sessionStorage.setItem(sessionRoleKey, "student")
           if (profile_img) {
             try {
               const signedRes = await fetch("/api/students/get-signed-url", {
@@ -153,19 +123,15 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                 const { signedUrl } = await signedRes.json()
                 const avatarWithTs = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`
                 setDbAvatar(avatarWithTs)
-                sessionStorage.setItem(sessionAvatarKey, avatarWithTs)
               } else {
                 setDbAvatar(undefined)
-                sessionStorage.removeItem(sessionAvatarKey)
               }
             } catch {
               setDbAvatar(undefined)
-              sessionStorage.removeItem(sessionAvatarKey)
             }
           } else {
             const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
             setDbAvatar(defaultUrl)
-            sessionStorage.removeItem(sessionAvatarKey)
           }
           setLoading(false)
           return
@@ -178,9 +144,6 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
   useEffect(() => {
     const handleProfilePicUpdate = async () => {
       setLoading(true)
-      sessionStorage.removeItem("profileModalUserDetails")
-      sessionStorage.removeItem("profileModalUserRole")
-      sessionStorage.removeItem("profileModalUserAvatar")
       let detailsRes: Response | null = null
       try {
         detailsRes = await fetch("/api/employers/get-employer-details", { credentials: "include" })
@@ -193,8 +156,6 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           setDbName(name)
           setDbEmail(email || "")
           setUserType("employer")
-          sessionStorage.setItem("profileModalUserDetails", JSON.stringify({ name, email }))
-          sessionStorage.setItem("profileModalUserRole", "employer")
           if (profile_img) {
             try {
               const signedRes = await fetch("/api/employers/get-signed-url", {
@@ -207,19 +168,15 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                 const { signedUrl } = await signedRes.json()
                 const avatarWithTs = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`
                 setDbAvatar(avatarWithTs)
-                sessionStorage.setItem("profileModalUserAvatar", avatarWithTs)
               } else {
                 setDbAvatar(undefined)
-                sessionStorage.removeItem("profileModalUserAvatar")
               }
             } catch {
               setDbAvatar(undefined)
-              sessionStorage.removeItem("profileModalUserAvatar")
             }
           } else {
             const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
             setDbAvatar(defaultUrl)
-            sessionStorage.removeItem("profileModalUserAvatar")
           }
           setLoading(false)
           return
@@ -236,8 +193,6 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           setDbName(name)
           setDbEmail(email || "")
           setUserType("student")
-          sessionStorage.setItem("profileModalUserDetails", JSON.stringify({ name, email }))
-          sessionStorage.setItem("profileModalUserRole", "student")
           if (profile_img) {
             try {
               const signedRes = await fetch("/api/students/get-signed-url", {
@@ -250,19 +205,15 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                 const { signedUrl } = await signedRes.json()
                 const avatarWithTs = signedUrl + (signedUrl.includes("?") ? "&" : "?") + `t=${Date.now()}`
                 setDbAvatar(avatarWithTs)
-                sessionStorage.setItem("profileModalUserAvatar", avatarWithTs)
               } else {
                 setDbAvatar(undefined)
-                sessionStorage.removeItem("profileModalUserAvatar")
               }
             } catch {
               setDbAvatar(undefined)
-              sessionStorage.removeItem("profileModalUserAvatar")
             }
           } else {
             const defaultUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`
             setDbAvatar(defaultUrl)
-            sessionStorage.removeItem("profileModalUserAvatar")
           }
           setLoading(false)
           return
@@ -357,6 +308,11 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
     })
   }
 
+  const handleAvatarError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.onerror = null
+    e.currentTarget.src = "https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png"
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -398,6 +354,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
                     src={dbAvatar || (userType === "student" ? user.avatarUrl : undefined) || "/placeholder.svg"}
                     alt={dbName}
                     sx={{ width: 48, height: 48, border: "2px solid #bbdefb" }}
+                    imgProps={{ onError: handleAvatarError }}
                   >
                     {!dbAvatar &&
                       dbName

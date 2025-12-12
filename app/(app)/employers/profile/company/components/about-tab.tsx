@@ -11,7 +11,6 @@ import AddEditContactModal from "./modals/add-edit-contact"
 import AvailabilityModal from "./modals/availability-modal"
 import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
-import { LuMailPlus } from "react-icons/lu"
 
 type CoreValue = {
   value: string
@@ -1257,34 +1256,13 @@ export default function AboutTab() {
               <div className="col-span-full flex flex-col items-center justify-center py-10 h-full min-h-[200px]">
                 <div className="mb-4 text-gray-500">No team members yet.</div>
                 <div className="flex flex-1 items-center justify-center h-full">
-                  <button
-                    type="button"
-                    onClick={() => setInviteModalOpen(true)}
-                    className="flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-full w-40 h-40 bg-blue-50 transition-colors hover:bg-blue-100 focus:outline-none"
-                    style={{ minHeight: 120, minWidth: 120 }}
-                  >
-                    <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mb-2">
-                      <LuMailPlus className="w-6 h-6" />
-                    </div>
-                    <span className="font-medium text-blue-700 text-xs">Invite colleagues</span>
-                  </button>
+                  {/* Invite colleagues button removed */}
                 </div>
               </div>
             )}
             {members.length < 4 && !membersLoading && members.length > 0 && (
-              <div className="flex flex-1 flex-col items-center justify-center h-full">
-                <button
-                  type="button"
-                  onClick={() => setInviteModalOpen(true)}
-                  className="flex flex-col items-center justify-center border-2 border-dashed border-blue-200 rounded-full w-40 h-40 bg-blue-50 transition-colors hover:bg-blue-100 focus:outline-none"
-                  style={{ minHeight: 160, minWidth: 160 }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mb-2">
-                    <LuMailPlus className="w-6 h-6" />
-                  </div>
-                  <span className="font-medium text-blue-700 text-xs">Invite colleagues</span>
-                </button>
-              </div>
+              // Invite colleagues button removed
+              <></>
             )}
           </div>
         </div>

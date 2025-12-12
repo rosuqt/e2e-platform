@@ -866,7 +866,7 @@ export default function STIHiringPage() {
           <p className="text-sm text-blue-100 flex items-center gap-2">
             <IoGlobeOutline className="w-5 h-5 text-yellow-400" />
             Got any questions? Message us at{" "}
-            <span className="font-bold">seekr.support@gmail.com</span>
+            <span className="font-bold">seekr.assist@gmail.com</span>
           </p>
           <p className="text-sm text-blue-100 flex items-center gap-2 mt-2">
             <MapPin className="w-5 h-5 text-yellow-400" />

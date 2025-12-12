@@ -2,35 +2,17 @@
 import { useState, useEffect } from "react"
 import {
   Search,
-  Plus,
   Send,
-  MoreVertical,
-  Trash2,
-  Archive,
-  Moon,
-  Settings,
   ChevronDown,
   ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
 interface Message {
-  id: string
-  sender: string
-  content: string
-  time: string
-  avatar: string
+  time: Date;
+  content: string;
+  sender_id: string;
 }
 
 type Contacts = {
@@ -49,17 +31,15 @@ interface Conversation {
     content: string
     time: string
   }
-  userID: string
+  userId: string
 }
 
 export default function MessageInterface() {
   const [active, setActive] = useState<"contacts" | "messages">("messages");
-  const [students, setStudents] = useState<Contacts[]>([]);
+  const [ setStudents] = useState<Contacts[]>([]);
   const [employers, setEmployers] = useState<Contacts[]>([]);
-  const [admins, setAdmins] = useState<Contacts[]>([]);
-  const [isOpenS, setIsOpenS] = useState(false);
+  const [ setAdmins] = useState<Contacts[]>([]);
   const [isOpenE, setIsOpenE] = useState(false);
-  const [isOpenA, setIsOpenA] = useState(false);
 
   //FETCHING CONTACTS 4 EMPLOYERS
   useEffect(() => {
@@ -119,7 +99,15 @@ export default function MessageInterface() {
     fetchConversations();
   };
 
-  useEffect(() => { getConversations() }, []);
+  useEffect(() => {
+    getConversations(); // run immediately
+
+    const interval = setInterval(() => {
+      getConversations();
+    }, 5000); // every 5 seconds
+
+    return () => clearInterval(interval); // cleanup on unmount
+  }, []);
 
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const activeConvo = conversations.find((c) => c.id === activeConversation);
@@ -238,50 +226,6 @@ export default function MessageInterface() {
         {/* CONTACTS MODE */}   
         {active === "contacts" &&(
         <div className="overflow-y-auto flex-1">
-          {/* STUDENTS */}
-          <div className="w-full text-sm">
-            {/* Header / Toggle */}
-            <div
-              onClick={() => setIsOpenS(!isOpenS)}
-              className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-blue-100 rounded-md transition-colors"
-            >
-              <h2 className="font-semibold text-gray-800">Students</h2>
-              {isOpenS ? (
-                <ChevronDown className="w-4 h-4 text-gray-600" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-gray-600" />
-              )}
-            </div>
-            {/* Collapsible Content */}
-            {isOpenS && (
-              <div className="mt-1 space-y-1">
-              {students.filter(adacc => adacc.first_name.toLowerCase().includes(search.toLowerCase())).map((s) => (
-            <div
-              key={s.id}
-              className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}
-              onClick={() => handleClick(s.id)}
-            >
-              <Avatar className="h-10 w-10 border border-slate-200">
-                <AvatarImage src={"/placeholder.svg"} alt={s.first_name + " " + s.last_name} />
-                <AvatarFallback className="bg-blue-100 text-blue-700">
-                  {s.last_name.substring(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center">
-                  <p className="font-medium truncate">{s.first_name}</p>
-                </div>
-                <div className="flex justify-between items-center">
-                  <p className="font-medium truncate text-xs">Student</p>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          </div>
-            )}
-          </div>
- 
           {/* EMPLOYERS */}
           <div className="w-full text-sm">
             {/* Header / Toggle */}
@@ -322,50 +266,6 @@ export default function MessageInterface() {
               </div>
             </div>
           ))}
-
-          </div>
-            )}
-          </div>
-
-          {/* ADMINS */}
-          <div className="w-full text-sm">
-            {/* Header / Toggle */}
-            <div
-              onClick={() => setIsOpenA(!isOpenA)}
-              className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-blue-100 rounded-md transition-colors"
-            >
-              <h2 className="font-semibold text-gray-800">OJT Coordinator</h2>
-              {isOpenA ? (
-                <ChevronDown className="w-4 h-4 text-gray-600" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-gray-600" />
-              )}
-            </div>
-            {/* Collapsible Content */}
-            {isOpenA && (
-              <div className="mt-1 space-y-1">
-              {admins.filter(adacc => adacc.first_name.toLowerCase().includes(search)).map((a) => (
-            <div
-              key={a.id}
-              className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}
-              onClick={() => handleClick(a.id)}
-            >
-              <Avatar className="h-10 w-10 border border-slate-200">
-                <AvatarImage src={"/placeholder.svg"} alt={a.first_name + " " + a.last_name} />
-                <AvatarFallback className="bg-blue-100 text-blue-700">
-                  {a.last_name.substring(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center">
-                  <p className="font-medium truncate">{a.first_name}</p>
-                </div>
-                <div className="flex justify-between items-center">
-                  <p className="font-medium truncate text-xs">Admin</p>
-                </div>
-              </div>
-            </div>
-          ))}
           </div>
             )}
           </div>
@@ -392,8 +292,8 @@ export default function MessageInterface() {
             {/* Messages area - only this should scroll */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 ">
               {activeConvo.messages?.map((message) => (
-                <div key={message.id} className={`flex ${message.sender === activeConvo.userID ? "justify-end" : "justify-start"}`}>
-                  {message.sender !== activeConvo.userID && (
+                <div key={activeConvo.id} className={`flex ${message.sender_id === activeConvo.userId ? "justify-end" : "justify-start"}`}>
+                  {message.sender_id !== activeConvo.userId && (
                     <Avatar className="h-8 w-8 mr-2 mt-1 border border-slate-200">
                       <AvatarImage src={activeConvo.avatar || "/placeholder.svg"} alt={activeConvo.name} />
                       <AvatarFallback className="bg-blue-100 text-blue-700">
@@ -402,12 +302,12 @@ export default function MessageInterface() {
                     </Avatar>
                   )}
                   <div className="space-y-1 max-w-[70%]">
-                    {message.sender !== activeConvo.userID && (
+                    {message.sender_id !== activeConvo.userId && (
                       <p className="text-sm font-medium text-slate-700">{activeConvo.name}</p>
                     )}
                     <div
                       className={`p-3 rounded-lg whitespace-pre-wrap ${
-                        message.sender === activeConvo.userID
+                        message.sender_id === activeConvo.userId
                           ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md"
                           : "bg-white border border-slate-200 text-slate-800 shadow-sm"
                       }`}

@@ -25,7 +25,7 @@ const legalSections = [
           <li>Data collected: name, email, profile, usage data</li>
           <li>Purpose: service delivery, matching, communication</li>
           <li>Security: encryption, access controls</li>
-          <li>Contact: privacy@e2e-platform.com</li>
+          <li>Contact: seekr.assist@gmail.com</li>
         </ul>
       </>
     ),

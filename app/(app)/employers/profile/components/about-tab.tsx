@@ -33,7 +33,7 @@ type SessionUser = {
 
 
 
-export default function AboutTab() {
+export default function AboutTab({ setActiveTab }: { setActiveTab?: (tabIdx: number) => void }) {
   const { data: session } = useSession()
   const employerID = (session?.user as SessionUser)?.employerId
   const router = useRouter()
@@ -198,7 +198,7 @@ export default function AboutTab() {
           </div>
           <button
             type="button"
-            onClick={() => router.push("/employers/profile/company#ratings")}
+            onClick={() => setActiveTab?.(2)}
             className="text-blue-600 hover:text-blue-800 font-medium text-sm px-4 py-2 border border-blue-200 rounded-md transition-colors"
           >
             View All Ratings

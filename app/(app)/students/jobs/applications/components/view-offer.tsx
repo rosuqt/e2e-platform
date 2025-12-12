@@ -38,6 +38,7 @@ export function ViewOfferModal({
     fetch(`/api/employers/applications/postJobOffer/getJobOffer?application_id=${applicationId}`)
       .then(res => res.json())
       .then(data => {
+        console.log("Offer API response:", data) // DEBUG: log the raw API response
         setOffer(data.offer || null)
         setLoading(false)
       })
@@ -218,7 +219,7 @@ export function ViewOfferModal({
         >
           {loading ? (
             <CircularProgress sx={{ color: "#22c55e", mt: 4 }} />
-          ) : offer ? (
+          ) : offer && (offer.start_date || offer.work_setup || offer.work_schedule || offer.custom_message || offer.contract_file_url) ? (
             <>
               <Box sx={{
                 border: "1.5px solid #bbf7d0", background: "#fff", boxShadow: 1, borderRadius: 3, mb: 2.5,
@@ -232,10 +233,10 @@ export function ViewOfferModal({
                 </Box>
                 <Box>
                   <Typography fontWeight={700} fontSize={22} color="#166534" sx={{ lineHeight: 1.2 }}>
-                    {offer.applicant_name || offer.company_name}
+                    {offer.applicant_name || offer.company_name || "Job Offer"}
                   </Typography>
                   <Typography variant="body2" color="#38bc87ff" sx={{ fontSize: 15, fontWeight: 500 }}>
-                    {offer.job_title}
+                    {offer.job_title || ""}
                   </Typography>
                 </Box>
               </Box>
@@ -244,28 +245,16 @@ export function ViewOfferModal({
               }}>
                 <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
                   <Box>
-                    <Typography sx={{ fontWeight: 600, fontSize: 16, color: "#22c55e", mb: 1 }}>Salary</Typography>
-                    <Typography sx={{ fontSize: 15, color: "#166534", mb: 1 }}>{offer.salary} {offer.salary_type ? `/${offer.salary_type}` : ""}</Typography>
-                  </Box>
-                  <Box>
                     <Typography sx={{ fontWeight: 600, fontSize: 16, color: "#22c55e", mb: 1 }}>Start Date</Typography>
-                    <Typography sx={{ fontSize: 15, color: "#166534", mb: 1 }}>{offer.start_date}</Typography>
+                    <Typography sx={{ fontSize: 15, color: "#166534", mb: 1 }}>{offer.start_date || "-"}</Typography>
                   </Box>
                   <Box>
                     <Typography sx={{ fontWeight: 600, fontSize: 16, color: "#22c55e", mb: 1 }}>Work Setup</Typography>
-                    <Typography sx={{ fontSize: 15, color: "#166534", mb: 1 }}>{offer.work_setup}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography sx={{ fontWeight: 600, fontSize: 16, color: "#22c55e", mb: 1 }}>Employment Type</Typography>
-                    <Typography sx={{ fontSize: 15, color: "#166534", mb: 1 }}>{offer.employment_type}</Typography>
+                    <Typography sx={{ fontSize: 15, color: "#166534", mb: 1 }}>{offer.work_setup || "-"}</Typography>
                   </Box>
                   <Box>
                     <Typography sx={{ fontWeight: 600, fontSize: 16, color: "#22c55e", mb: 1 }}>Work Schedule</Typography>
-                    <Typography sx={{ fontSize: 15, color: "#166534", mb: 1 }}>{offer.work_schedule}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography sx={{ fontWeight: 600, fontSize: 16, color: "#22c55e", mb: 1 }}>Offer Expiry</Typography>
-                    <Typography sx={{ fontSize: 15, color: "#166534", mb: 1 }}>{offer.offer_expiry}</Typography>
+                    <Typography sx={{ fontSize: 15, color: "#166534", mb: 1 }}>{offer.work_schedule || "-"}</Typography>
                   </Box>
                 </Box>
                 {offer.custom_message && (
@@ -365,7 +354,11 @@ export function ViewOfferModal({
               </Box>
             </>
           ) : (
-            <Typography sx={{ color: "#ef4444", fontWeight: 600, fontSize: 18, mt: 4 }}>No offer found.</Typography>
+            <Typography sx={{ color: "#ef4444", fontWeight: 600, fontSize: 18, mt: 4 }}>
+              {loading
+                ? "Loading offer..."
+                : "No offer found. If you believe this is an error, please contact your employer or refresh the page."}
+            </Typography>
           )}
         </DialogContent>
       </DialogContent>

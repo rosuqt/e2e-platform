@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { MapPin, Calendar, Star, Award, Users2, Camera, Pencil } from "lucide-react"
-import AboutTab from "./components/about-tab"
+import { Calendar, Star, Award, Users2, Camera, Pencil } from "lucide-react"
+// import AboutTab from "./components/about-tab"
 import JobListingsTab from "./components/job-listings-tab"
 import TeamTab from "./components/team-tab"
 import RatingsTab from "./components/ratings-tab"
@@ -32,6 +32,7 @@ type Company = {
 }
 
 export default function CompanyProfilePage() {
+  // Set initial tab to 0 (Job Listings)
   const [activeTab, setActiveTab] = useState(0)
   const [company, setCompany] = useState<Company | null>(null)
   const [branchCount, setBranchCount] = useState<number | null>(null)
@@ -39,16 +40,16 @@ export default function CompanyProfilePage() {
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
   const [editingFounded, setEditingFounded] = useState(false)
   const [editingSize, setEditingSize] = useState(false)
-  const [editingSlogan, setEditingSlogan] = useState(false)
   const [founded, setFounded] = useState<string>("YYYY")
   const [companySize, setCompanySize] = useState<string>("")
-  const [companySlogan, setCompanySlogan] = useState<string>("")
+
   const [foundedError, setFoundedError] = useState<string>("")
   const [savingCompanySize, setSavingCompanySize] = useState(false)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [jobCount, setJobCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [isCompanyAdmin, setIsCompanyAdmin] = useState(false)
+  const [avgRating, setAvgRating] = useState<number | null>(null)
 
   const [canEdit, setCanEdit] = useState(false)
   const [canView, setCanView] = useState(false)
@@ -95,7 +96,7 @@ export default function CompanyProfilePage() {
             })
         }
         if (data?.company_size) setCompanySize(data.company_size)
-        if (data?.slogan) setCompanySlogan(data.slogan)
+    
       })
       .finally(() => setLoading(false))
 
@@ -114,7 +115,7 @@ export default function CompanyProfilePage() {
       })
 
     const handler = (e: Event) => {
-      if ((e as CustomEvent).detail?.tab === "team") setActiveTab(2)
+      if ((e as CustomEvent).detail?.tab === "team") setActiveTab(1) // Team is now tab 1
     }
     window.addEventListener("company-profile-switch-tab", handler)
     return () => window.removeEventListener("company-profile-switch-tab", handler)
@@ -127,7 +128,7 @@ export default function CompanyProfilePage() {
       if (custom.detail?.tab !== undefined) setActiveTab(custom.detail.tab)
     }
     window.addEventListener("company-profile-set-tab", handler)
-    if (window.location.hash === "#team") setActiveTab(2)
+    if (window.location.hash === "#team") setActiveTab(1) // Team is now tab 1
     return () => window.removeEventListener("company-profile-set-tab", handler)
   }, [])
 
@@ -233,20 +234,6 @@ export default function CompanyProfilePage() {
     }
   }
 
-  const saveSlogan = async () => {
-    setEditingSlogan(false)
-    if (company?.id) {
-      await fetch("/api/employers/company-profile/postHandlers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          company_id: company.id,
-          slogan: companySlogan,
-          action: "update_slogan"
-        }),
-      })
-    }
-  }
 
   async function handleCompanySizeChange(value: string) {
     setCompanySize(value)
@@ -264,6 +251,20 @@ export default function CompanyProfilePage() {
     setSavingCompanySize(false)
     setEditingSize(false)
   }
+
+  useEffect(() => {
+    // Add fetch for company ratings
+    fetch("/api/employers/fetchRatings")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          const avg =
+            data.reduce((sum, r) => sum + (r.company_rating || 0), 0) / data.length
+          setAvgRating(Math.round(avg * 10) / 10)
+        }
+      })
+      .catch(() => setAvgRating(null))
+  }, [])
 
   if (!canView && !isCompanyAdmin) {
     return (
@@ -466,61 +467,19 @@ export default function CompanyProfilePage() {
                         : `${branchCount} Branches`
                       : ""}
                   </p>
-                  <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
-                    <MapPin className="w-4 h-4" />
-                    <span>
-                      {(() => {
-                        const raw =
-                          company?.address ||
-                          company?.exact_address ||
-                          company?.country_code ||
-                          ""
-                        if (!raw) return "Location"
-                        const cityMatch = raw.match(/([A-Za-z\s]+City)/)
-                        const metroMatch = raw.match(/Metro Manila/i)
-                        const city = cityMatch ? cityMatch[1].trim() : ""
-                        const metro = metroMatch ? "Metro Manila" : ""
-                        if (city && metro) return `${city}, ${metro}`
-                        if (city) return city
-                        if (metro) return metro
-                        return raw
-                      })()}
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center text-gray-400 text-sm px-1">
-                    {editingSlogan && canEdit ? (
-                      <input
-                        className="bg-transparent border-b border-gray-300 focus:outline-none focus:border-blue-400 text-gray-700 px-1 py-0.5"
-                        value={companySlogan}
-                        autoFocus
-                        maxLength={50}
-                        onChange={e => setCompanySlogan(e.target.value)}
-                        onBlur={saveSlogan}
-                        onKeyDown={e => {
-                          if (e.key === "Enter") saveSlogan()
-                          if (e.key === "Escape") setEditingSlogan(false)
-                        }}
-                        style={{ minWidth: "120px" }}
-                        placeholder="Add company slogan"
-                      />
-                    ) : (
-                      <>
-                        <span className={companySlogan ? "text-gray-700" : "text-gray-400"}>
-                          {companySlogan || "Add company slogan"}
-                        </span>
-                        {canEdit && (
-                          <button
-                            type="button"
-                            className="ml-2 p-1"
-                            onClick={() => setEditingSlogan(true)}
-                            aria-label="Edit company slogan"
-                          >
-                            <Pencil className="w-4 h-4 text-gray-400" />
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
+                  {/* Company rating stars */}
+                  {avgRating !== null && (
+                    <div className="flex items-center gap-1 mt-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-4 h-4 ${avgRating >= star ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                        />
+                      ))}
+                      <span className="ml-2 text-sm text-gray-700">{avgRating}/5 Ratings</span>
+                    </div>
+                  )}
+                  {/* Remove bio and slogan from here */}
                 </div>
                 {isCompanyAdmin ? null : (!canEdit && canView) ? (
                   <div className="flex flex-col items-start gap-2">
@@ -552,15 +511,7 @@ export default function CompanyProfilePage() {
                     variant="scrollable"
                     scrollButtons="auto"
                   >
-                    <Tab
-                      label="About"
-                      sx={{
-                        textTransform: "capitalize",
-                        fontWeight: 500,
-                        fontSize: 14,
-                        "&:hover": { color: "#2563eb" },
-                      }}
-                    />
+                    {/* Remove About Tab, so Job Listings is first */}
                     <Tab
                       label="Job Listings"
                       sx={{
@@ -714,10 +665,14 @@ export default function CompanyProfilePage() {
 
           {/* Tab Content */}
           <div className="mb-8">
-            {activeTab === 0 && <AboutTab /* canEdit={canEdit} */ />}
-            {activeTab === 1 && <JobListingsTab /* canEdit={canEdit} */ />}
-            {activeTab === 2 && <TeamTab /* canEdit={canEdit} */ />}
-            {activeTab === 3 && <RatingsTab /* canEdit={canEdit} */ />}
+            {/* Remove AboutTab, shift indices */}
+            {/* 
+              Ensure JobListingsTab displays a fallback like "No deadline set" if application_deadline is missing.
+              This should be handled inside JobListingsTab when rendering each job.
+            */}
+            {activeTab === 0 && <JobListingsTab /* canEdit={canEdit} */ />}
+            {activeTab === 1 && <TeamTab /* canEdit={canEdit} */ />}
+            {activeTab === 2 && <RatingsTab /* canEdit={canEdit} */ />}
           </div>
         </>
       )}
