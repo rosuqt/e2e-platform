@@ -1,3 +1,4 @@
+@ -1,18 +0,0 @@
 CREATE TABLE dtr_jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID NOT NULL,
