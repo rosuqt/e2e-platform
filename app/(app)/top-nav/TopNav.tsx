@@ -183,7 +183,25 @@ const TopNav: React.FC<TopNavProps> = ({
             <Image src="/images/logo.blue3.png" alt="Seekr Logo" width={100} height={100} />
           </div>
           <div className="flex items-center mr-8" style={{ gap: isSidebarMinimized ? '112px' : '96px' }}>
-            <span className="animate-pulse text-gray-400">Loading...</span>
+            {/* Skeleton loader */}
+            <div className="flex gap-8">
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 rounded-full bg-gray-200 animate-pulse mb-1" />
+                <div className="w-10 h-3 rounded bg-gray-200 animate-pulse" />
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 rounded-full bg-gray-200 animate-pulse mb-1" />
+                <div className="w-12 h-3 rounded bg-gray-200 animate-pulse" />
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 rounded-full bg-gray-200 animate-pulse mb-1" />
+                <div className="w-8 h-3 rounded bg-gray-200 animate-pulse" />
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 rounded-full bg-gray-200 animate-pulse mb-1" />
+                <div className="w-14 h-3 rounded bg-gray-200 animate-pulse" />
+              </div>
+            </div>
           </div>
         </div>
       </header>

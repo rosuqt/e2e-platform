@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 import { useState, useEffect } from "react"
 import {
@@ -39,7 +40,7 @@ interface Conversation {
 export default function MessageInterface() {
   const [active, setActive] = useState<"contacts" | "messages">("messages");
   const [students, setStudents] = useState<Contacts[]>([]);
-  const [ setEmployers] = useState<Contacts[]>([]);
+  const [employers, setEmployers] = useState<Contacts[]>([]);
   const [admins, setAdmins] = useState<Contacts[]>([]);
   const [isOpenS, setIsOpenS] = useState(false);
   const [isOpenA, setIsOpenA] = useState(false);

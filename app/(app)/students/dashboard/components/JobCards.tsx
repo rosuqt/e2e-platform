@@ -92,7 +92,7 @@ const JobCards: React.FC<JobCardsProps> = ({
   const [allowUnrelatedJobs, setAllowUnrelatedJobs] = useState<boolean | null>(null)
   const pageSize = 8
   const firstCardRef = useRef<HTMLDivElement | null>(null)
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const jobsToHideRef = useRef<Set<string>>(new Set())
   const [companyRatings, setCompanyRatings] = useState<Record<string, { rating: number, count: number }>>({})
 
@@ -166,8 +166,8 @@ const JobCards: React.FC<JobCardsProps> = ({
         setError("Could not load jobs.")
         setLoading(false)
       })
-  // Add session as a dependency so the effect always uses the latest session value
-  }, [page, searchTitle, searchLocation, filters.workType, filters.remoteOption, filters.program, filters.listedAnytime, session, status])
+  // Remove session and status from dependencies to prevent infinite loop
+  }, [page, searchTitle, searchLocation, filters.workType, filters.remoteOption, filters.program, filters.listedAnytime])
 
   useEffect(() => {
     fetch("/api/students/job-listings/saved-jobs")
