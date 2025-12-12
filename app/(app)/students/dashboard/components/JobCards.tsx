@@ -10,7 +10,7 @@ import { AiFillSmile, AiOutlineMeh } from "react-icons/ai"
 import { TbMoodConfuzed } from "react-icons/tb"
 import { SiStarship } from "react-icons/si"
 import { Tooltip, Badge } from "@mui/material"
-import { useSession, signOut } from "next-auth/react"
+import { useSession } from "next-auth/react"
 import Link from "next/link"
 import Lottie from "lottie-react"
 import blueLoaderAnimation from "../../../../../public/animations/blue_loader.json"
@@ -92,7 +92,7 @@ const JobCards: React.FC<JobCardsProps> = ({
   const [allowUnrelatedJobs, setAllowUnrelatedJobs] = useState<boolean | null>(null)
   const pageSize = 8
   const firstCardRef = useRef<HTMLDivElement | null>(null)
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const jobsToHideRef = useRef<Set<string>>(new Set())
   const [companyRatings, setCompanyRatings] = useState<Record<string, { rating: number, count: number }>>({})
 
@@ -118,8 +118,9 @@ const JobCards: React.FC<JobCardsProps> = ({
               typeof data.message === "string" &&
               data.message.toLowerCase().includes("invalidjwt")
             ) {
-              await signOut({ redirect: false })
-              window.location.reload()
+              // Just set error, do not sign out or reload
+              setError("Session expired. Please sign in again.")
+              setLoading(false)
               return
             }
           } catch {}
@@ -165,7 +166,8 @@ const JobCards: React.FC<JobCardsProps> = ({
         setError("Could not load jobs.")
         setLoading(false)
       })
-  }, [page, searchTitle, searchLocation, filters.workType, filters.remoteOption, filters.program, filters.listedAnytime])
+  // Add session as a dependency so the effect always uses the latest session value
+  }, [page, searchTitle, searchLocation, filters.workType, filters.remoteOption, filters.program, filters.listedAnytime, session, status])
 
   useEffect(() => {
     fetch("/api/students/job-listings/saved-jobs")
