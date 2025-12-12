@@ -5,7 +5,7 @@ import { getAdminSupabase } from "@/lib/supabase"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   const session = await getServerSession(authOptions)
   const user = session?.user as { employerId?: string } | undefined
@@ -16,7 +16,7 @@ export async function GET(
   const { data: job, error } = await supabase
     .from("job_postings")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", context.params.id)
     .single()
   if (error || !job) {
     return NextResponse.json(
