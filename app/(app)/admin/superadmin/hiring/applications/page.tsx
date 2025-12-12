@@ -10,8 +10,6 @@ import {
   Clock,
   Download,
   FileText,
-  MessageSquare,
-  Calendar,
   User,
   Briefcase,
   Building,
@@ -24,7 +22,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -41,7 +38,6 @@ import Paper from "@mui/material/Paper"
 import IconButton from "@mui/material/IconButton"
 import Menu from "@mui/material/Menu"
 import MenuItem from "@mui/material/MenuItem"
-
 
 export default function ApplicationsManagement() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -152,6 +148,7 @@ export default function ApplicationsManagement() {
           <ApplicationsTable applications={filteredApplications} onViewApplication={handleViewApplication} />
         </CardContent>
       </Card>
+      
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
@@ -213,7 +210,7 @@ export default function ApplicationsManagement() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <Clock className="h-4 w-4 text-muted-foreground" />
                   <span>
                     Applied: <strong>{selectedApplication.created_at ? String(selectedApplication.created_at).split("T")[0] : "N/A"}</strong>
                   </span>
@@ -240,28 +237,7 @@ export default function ApplicationsManagement() {
               </div>
             </div>
           )}
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <div className="flex-1 flex flex-col sm:flex-row gap-2">
-              <Button variant="outline" className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Message
-              </Button>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Schedule Interview
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="destructive" className="flex items-center gap-2">
-                <XCircle className="h-4 w-4" />
-                Reject
-              </Button>
-              <Button className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
-                <CheckCircle className="h-4 w-4" />
-                Approve
-              </Button>
-            </div>
-          </DialogFooter>
+          {/* Action buttons removed as requested */}
         </DialogContent>
       </Dialog>
     </div>
@@ -377,10 +353,6 @@ function ApplicationsTable({
                     >
                       <FileText className="mr-2 h-4 w-4" />
                       View Cover Letter
-                    </MenuItem>
-                    <MenuItem onClick={() => handleMenuClose(application.id)}>
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      Message
                     </MenuItem>
                   </Menu>
                 </TableCell>

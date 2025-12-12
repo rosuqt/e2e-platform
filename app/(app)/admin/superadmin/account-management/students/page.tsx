@@ -36,9 +36,11 @@ import MuiIconButton from "@mui/material/IconButton"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { Textarea } from "@heroui/react"
+import { toast } from "react-toastify"
 
 interface Student {
-  id: string 
+  id: string
   studentId: string
   name: string
   email: string
@@ -59,6 +61,7 @@ export default function StudentsManagement() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("active")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
   const [selectedCourse, setSelectedCourse] = useState<string>("all")
@@ -73,13 +76,31 @@ export default function StudentsManagement() {
   const [username, setUsername] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
 
-  useEffect(() => {
-    async function fetchStudents() {
-      setIsLoading(true)
-      const res = await fetch("/api/superadmin/fetchUsers?students=1", { method: "GET" })
-      setIsLoading(false)
-      if (!res.ok) return
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    personalEmail: "",
+    personalPhone: "",
+    year: "",
+    course: "",
+    section: "",
+    address: "",
+  });
+
+  // --- REUSABLE FETCH FUNCTION ---
+  const fetchStudents = async () => {
+    setIsLoading(true)
+    try {
+      // Added timestamp to prevent caching
+      const res = await fetch(`/api/superadmin/fetchUsers?students=1&t=${Date.now()}`, { method: "GET" })
+      
+      if (!res.ok) {
+        setIsLoading(false)
+        return
+      }
+      
       const { students: apiStudents } = await res.json()
+      
       if (Array.isArray(apiStudents)) {
         setStudents(
           apiStudents.map((s: Record<string, unknown>) => {
@@ -111,7 +132,14 @@ export default function StudentsManagement() {
           }) as unknown as Student[]
         )
       }
+    } catch (error) {
+      console.error("Error fetching students:", error)
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchStudents()
   }, [])
 
@@ -120,7 +148,7 @@ export default function StudentsManagement() {
     new Set(
       students
         .map((student) => student.year)
-        .filter((year) => year && year !== "") 
+        .filter((year) => year && year !== "")
     )
   )
   const courses = Array.from(
@@ -159,6 +187,18 @@ export default function StudentsManagement() {
     setPersonalEmail("")
     setPersonalPhone("")
     setUsername("")
+    if (selectedStudent) {
+      setEditForm({
+        name: student.name,
+        email: student.email,
+        personalEmail: personalEmail || "",
+        personalPhone: personalPhone || "",
+        year: student.year,
+        course: student.course,
+        section: student.section,
+        address: student.address,
+      });
+    }
     if (student.id && student.id !== "") {
       try {
         const res = await fetch(`/api/superadmin/fetchUsers?studentId=${encodeURIComponent(student.id)}`)
@@ -180,20 +220,47 @@ export default function StudentsManagement() {
           if (contact_info) {
             let info = contact_info
             if (typeof info === "string") {
-              try { info = JSON.parse(info) } catch {}
+              try { info = JSON.parse(info) } catch { }
             }
             if (info && typeof info === "object") {
               if (info.email) setPersonalEmail(info.email)
               if (info.countryCode && info.phone) setPersonalPhone(`+${info.countryCode} ${info.phone}`)
             }
           }
+
           if (uname) setUsername(uname)
+
         }
       } catch {
         setAvatarLoading(false)
       }
     }
   }
+
+  const saveStudentChanges = async () => {
+    if (!selectedStudent) return;
+
+    const res = await fetch("/api/superadmin/student-management", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: selectedStudent.id,
+        ...editForm,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      toast.success("Student updated successfully!");
+      setIsEditDialogOpen(false);
+      fetchStudents(); // Refresh data
+    } else {
+      toast.error(data.error || "Failed to update student");
+    }
+  };
+
+  // --- UPDATED ARCHIVE LOGIC START ---
 
   const handleArchiveDialog = (student: Student) => {
     setSelectedStudent(student)
@@ -202,16 +269,44 @@ export default function StudentsManagement() {
 
   const confirmArchiveStudent = async () => {
     if (!selectedStudent) return
-    await fetch("/api/superadmin/actions/isArchived", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selectedStudent.id }),
-    })
-    setStudents(students.map(s =>
-      s.id === selectedStudent.id ? { ...s, is_archived: true } : s
-    ))
-    setIsArchiveDialogOpen(false)
+
+    // Calculate new status (Toggle: true -> false, false -> true)
+    const newArchivedStatus = !selectedStudent.is_archived
+    const actionText = newArchivedStatus ? "Archive" : "Unarchive"
+
+    try {
+      const res = await fetch("/api/superadmin/actions/isArchived", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // IMPORTANT: Sending 'is_archived' explicitly helps avoid backend schema confusion
+        body: JSON.stringify({ 
+            id: selectedStudent.id, 
+            target: "student",
+            is_archived: newArchivedStatus 
+        }),
+      })
+
+      if (res.ok) {
+        // 1. Update Local State immediately for speed
+        setStudents(prev => prev.map(s =>
+          s.id === selectedStudent.id ? { ...s, is_archived: newArchivedStatus } : s
+        ))
+        
+        toast.success(`Student ${actionText}d successfully`)
+        setIsArchiveDialogOpen(false)
+
+        // 2. Re-fetch from server to ensure perfect sync
+        await fetchStudents()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || `Failed to ${actionText} student`)
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("An error occurred while communicating with the server.")
+    }
   }
+  // --- UPDATED ARCHIVE LOGIC END ---
 
   const exportStudents = () => {
     const header = "Student ID,Name,Email,Phone,Course,Year,Status\n"
@@ -531,8 +626,179 @@ export default function StudentsManagement() {
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)} className="rounded-xl px-6">
               Close
             </Button>
-            <Button className="rounded-xl px-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+            <Button className="rounded-xl px-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700" onClick={() =>{setIsViewDialogOpen(false),setIsEditDialogOpen(true)}}>
               Edit Student
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDIT */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Student Details</DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Comprehensive information about the student.
+            </DialogDescription>
+          </DialogHeader>
+          {!selectedStudent ? (
+            <div className="grid gap-6 py-4">
+              <div className="flex items-start gap-4">
+                <div className="w-16 h-16 rounded-full bg-gray-200 animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-6 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-5 w-16 bg-gray-200 rounded animate-pulse" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-36 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-36 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
+                </div>
+              </div>
+              <div>
+                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
+                <div className="h-5 w-full bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-6 py-4">
+              <div className="flex items-start gap-4">
+                <MuiAvatar sx={{ width: 64, height: 64 }}>
+                  {avatarLoading ? (
+                    <span className="w-8 h-8 block animate-spin border-4 border-indigo-400 border-t-transparent rounded-full mx-auto" />
+                  ) : profileImgUrl ? (
+                    <Image
+                      src={profileImgUrl}
+                      alt="Avatar"
+                      width={64}
+                      height={64}
+                      className="rounded-full object-cover"
+                      style={{ width: 64, height: 64, borderRadius: "50%" }}
+                      unoptimized
+                      onLoad={() => setAvatarLoading(false)}
+                    />
+                  ) : (
+                    <User className="h-8 w-8" />
+                  )}
+                </MuiAvatar>
+                <div>
+                  <Label>Name:</Label>
+                  <Input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  />
+                  <p className="text-muted-foreground">{selectedStudent.studentId}</p>
+                  {username && (
+                    <div className="text-gray-600 text-sm font-medium">Username: {username}</div>
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    <StatusBadge status={selectedStudent.status} />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      <Label>School Email:</Label>
+                      <Input
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      />
+                    </span>
+                  </div>
+                  {personalEmail && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        <Label>Personal Email</Label>
+                        <Input
+                          value={editForm.personalEmail}
+                          onChange={(e) => setEditForm({ ...editForm, personalEmail: e.target.value })}
+                        />
+                      </span>
+                    </div>
+                  )}
+                  {personalPhone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        <Label>Phone</Label>
+                        <Input
+                          value={editForm.personalPhone}
+                          onChange={(e) => setEditForm({ ...editForm, personalPhone: e.target.value })}
+                        />
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      <Label>Year</Label>
+                      <Input
+                        value={editForm.year}
+                        onChange={(e) => setEditForm({ ...editForm, year: e.target.value })}
+                      />
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      <Label>Course</Label>
+                      <Input
+                        value={editForm.course}
+                        onChange={(e) => setEditForm({ ...editForm, course: e.target.value })}
+                      />
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      <Label>Section</Label>
+                      <Input
+                        value={editForm.section}
+                        onChange={(e) => setEditForm({ ...editForm, section: e.target.value })}
+                      />
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      <strong>Join Date:</strong> {formatJoinDate(selectedStudent.enrollmentDate)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label>Address</Label>
+                <Textarea
+                  value={editForm.address}
+                  onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl px-6">
+              Close
+            </Button>
+            <Button className="rounded-xl px-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700" onClick={()=>saveStudentChanges()}>
+              Save Edit
             </Button>
           </DialogFooter>
         </DialogContent>
