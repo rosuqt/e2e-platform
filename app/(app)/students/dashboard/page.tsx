@@ -595,6 +595,7 @@ export default function Home() {
                       searchTitle={searchTitle}
                       searchLocation={searchLocation}
                       filters={filters}
+                      studentId={session?.user?.studentId}
                     />
                   </motion.div>
 

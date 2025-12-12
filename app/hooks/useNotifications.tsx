@@ -116,7 +116,7 @@ export function useNotifications() {
                 gap: 12
               }}>
                 <button
-                  onClick={() => toast.dismiss(t)}
+                  onClick={() => toast.dismiss(t.id)}
                   style={{
                     background: 'none',
                     border: 'none',

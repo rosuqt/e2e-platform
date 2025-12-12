@@ -10,7 +10,6 @@ import { AiFillSmile, AiOutlineMeh } from "react-icons/ai"
 import { TbMoodConfuzed } from "react-icons/tb"
 import { SiStarship } from "react-icons/si"
 import { Tooltip, Badge } from "@mui/material"
-import { useSession } from "next-auth/react"
 import Link from "next/link"
 import Lottie from "lottie-react"
 import blueLoaderAnimation from "../../../../../public/animations/blue_loader.json"
@@ -54,6 +53,7 @@ type JobCardsProps = {
     program: string
     listedAnytime: string
   }
+  studentId?: string | null
 }
 
 const CustomTooltip = styled(Tooltip)(() => ({
@@ -78,6 +78,7 @@ const JobCards: React.FC<JobCardsProps> = ({
   searchTitle,
   searchLocation,
   filters,
+  studentId,
 }) => {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,7 +93,6 @@ const JobCards: React.FC<JobCardsProps> = ({
   const [allowUnrelatedJobs, setAllowUnrelatedJobs] = useState<boolean | null>(null)
   const pageSize = 8
   const firstCardRef = useRef<HTMLDivElement | null>(null)
-  const { data: session } = useSession()
   const jobsToHideRef = useRef<Set<string>>(new Set())
   const [companyRatings, setCompanyRatings] = useState<Record<string, { rating: number, count: number }>>({})
 
@@ -296,7 +296,6 @@ const JobCards: React.FC<JobCardsProps> = ({
 
   useEffect(() => {
     async function fetchMatchScores() {
-      const studentId = session?.user?.studentId
       if (!studentId) return
       const res = await fetch("/api/ai-matches/fetch-current-matches", {
         method: "POST",
@@ -318,7 +317,7 @@ const JobCards: React.FC<JobCardsProps> = ({
       }
     }
     fetchMatchScores()
-  }, [session])
+  }, [studentId])
 
   function getMatchIcon(percent: number) {
     if (percent >= 70) return <AiFillSmile color="#4CAF50" size={20} />

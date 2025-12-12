@@ -1,6 +1,6 @@
 'use client';
 
-import { useNotifications } from '../../app/hooks/useNotifications'; // .tsx is preferred, but extension can be omitted if only .tsx exists
+import { useNotifications } from '../../app/hooks/useNotifications';
 
 export default function NotificationWrapper({ children }: { children: React.ReactNode }) {
   useNotifications();

@@ -10,7 +10,6 @@ import { MessagesModal } from './messages-modal';
 import { NotificationsModal } from '../students/notifications/components/notifications-modal';
 import { RiRobot2Fill } from "react-icons/ri";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSession } from "next-auth/react";
 import Link from 'next/link';
 import supabase from "@/lib/supabase";
 import { TbCards, TbFileStar, TbUsers, TbUserStar, TbUserCheck, TbUserHeart } from "react-icons/tb";
@@ -29,6 +28,8 @@ interface TopNavProps {
   labelColor?: string;
   isSidebarMinimized?: boolean;
   topNavStyle?: React.CSSProperties;
+  session?: any;
+  status?: string;
 }
 
 type DropdownMenuItem = {
@@ -45,7 +46,9 @@ const TopNav: React.FC<TopNavProps> = ({
   iconColor = 'gray',
   labelColor = 'gray',
   isSidebarMinimized,
-  topNavStyle, 
+  topNavStyle,
+  session,
+  status
 }) => {
   const pathname = usePathname() ?? "";
   const router = useRouter();
@@ -57,7 +60,6 @@ const TopNav: React.FC<TopNavProps> = ({
   const [openJobs, setOpenJobs] = useState(false);
   const messagesRef = useRef<HTMLAnchorElement | null>(null); 
 
-  const { data: session, status } = useSession();
   useEffect(() => {
     const fetchSetting = async () => {
       const { data } = await supabase
@@ -151,21 +153,6 @@ const TopNav: React.FC<TopNavProps> = ({
           { path: '/students/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
           { path: '/students/profile', label: 'Me', icon: User, onClick: handleProfileClick },
         ];
-
-  useEffect(() => {
-    // Only prefetch once for student routes
-    if (session?.user?.role === "student" || session?.user?.role === "students") {
-      [
-        '/students/dashboard',
-        '/students/people/suggestions',
-        '/students/jobs/job-listings',
-        '/students/messages',
-        '/students/notifications',
-        '/students/profile'
-      ].forEach((p) => router.prefetch(p));
-    }
-    // ...existing employer prefetch logic if needed...
-  }, [router, session?.user?.role]);
 
   if (status === "loading") {
     return (
