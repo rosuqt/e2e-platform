@@ -31,11 +31,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface Message {
-  id: string
-  sender: string
-  content: string
-  time: string
-  avatar: string
+  time: Date;
+  content: string;
+  sender_id: string;
 }
 
 type Contacts = {
@@ -54,7 +52,7 @@ interface Conversation {
     content: string
     time: string
   }
-  userID: string
+  userId: string
 }
 
 export default function MessageInterface({conversationId, messages}: any) {
@@ -358,8 +356,8 @@ export default function MessageInterface({conversationId, messages}: any) {
             {/* Messages area - only this should scroll */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 ">
               {activeConvo.messages?.map((message) => (
-                <div key={message.id} className={`flex ${message.sender === activeConvo.userID ? "justify-end" : "justify-start"}`}>
-                  {message.sender !== activeConvo.userID && (
+                <div key={activeConvo.id} className={`flex ${message.sender_id === activeConvo.userId ? "justify-end" : "justify-start"}`}>
+                  {message.sender_id !== activeConvo.userId && (
                     <Avatar className="h-8 w-8 mr-2 mt-1 border border-slate-200">
                       <AvatarImage src={activeConvo.avatar || "/placeholder.svg"} alt={activeConvo.name} />
                       <AvatarFallback className="bg-blue-100 text-blue-700">
@@ -368,12 +366,12 @@ export default function MessageInterface({conversationId, messages}: any) {
                     </Avatar>
                   )}
                   <div className="space-y-1 max-w-[70%]">
-                    {message.sender !== activeConvo.userID && (
+                    {message.sender_id !== activeConvo.userId && (
                       <p className="text-sm font-medium text-slate-700">{activeConvo.name}</p>
                     )}
                     <div
                       className={`p-3 rounded-lg whitespace-pre-wrap ${
-                        message.sender === activeConvo.userID
+                        message.sender_id === activeConvo.userId
                           ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-md"
                           : "bg-white border border-slate-200 text-slate-800 shadow-sm"
                       }`}

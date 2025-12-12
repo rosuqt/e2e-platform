@@ -80,7 +80,7 @@ export async function GET() {
                 time: convo.messages[convo.messages.length - 1].time,
               }
             : { content: "", time: "" },
-          userId,
+          userId: userId,
         });
       }
     }
