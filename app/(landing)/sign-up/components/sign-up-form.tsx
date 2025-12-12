@@ -116,13 +116,25 @@ export default function SignUpForm() {
 
     const fetchInitialData = async () => {
       try {
+        
         const companiesResponse = await fetch("/api/sign-up/companies");
-        const companiesData: { company_name: string, email_domain?: string | null, branches?: { branch_name: string, email_domain?: string | null }[] }[] = await companiesResponse.json();
-        setFetchedCompanies(companiesData.map((company) => ({
-          name: company.company_name,
-          emailDomain: company.email_domain || null,
-          branches: company.branches || [],
-        })));
+        const companiesData: {
+          company_name: string;
+          email_domain?: string | null;
+          is_archived?: boolean;
+          branches?: { branch_name: string; email_domain?: string | null; is_archived?: boolean }[];
+        }[] = await companiesResponse.json();
+        console.log("fetched companies: " + companiesData)
+        setFetchedCompanies(
+          companiesData
+            .filter(company => !company.is_archived)
+            .map((company) => ({
+              name: company.company_name,
+              emailDomain: company.email_domain || null,
+              branches: (company.branches || []).filter(branch => !branch.is_archived),
+            }))
+        );
+
         await Promise.all([
           fetch("/api/sign-up/personal-details-form"),
           fetch("/api/sign-up/company-association-form"),
