@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ? () => (
             <Tooltip title="Verify to access Candidate Matches" arrow>
               <span style={{ display: "flex", alignItems: "center", cursor: "not-allowed", opacity: 0.7 }}>
-                <TbUserStar style={{ marginRight: 4 }} />
+          
                 <span style={{ flex: 1 }} />
                 <Lock fontSize="small" style={{ marginLeft: "auto" }} />
               </span>
