@@ -80,15 +80,12 @@ export default function CompaniesManagement() {
     fetch("/api/superadmin/fetchUsers?allCompanies=true")
       .then(res => res.json())
       .then(res => {
+        console.log("🔍 First company from API:", res.companies[0])
         if (Array.isArray(res.companies)) {
           setCompanies(
             res.companies.map((c: Record<string, unknown>, idx: number) => ({
-              id: typeof c.id === "number" ? c.id : idx + 1,
-              companyId: typeof c.company_id === "string"
-                ? c.company_id
-                : typeof c.id === "number"
-                  ? c.id.toString()
-                  : "",
+              id: idx + 1,
+              companyId: typeof c.id === "string" ? c.id : "",
               name: typeof c.company_name === "string" ? c.company_name : "",
               email: typeof c.contact_email === "string" ? c.contact_email : "",
               phone:
@@ -122,6 +119,7 @@ export default function CompaniesManagement() {
               verified: c.verify_status === "full",
               logoPath: typeof c.company_logo_image_path === "string" ? c.company_logo_image_path : undefined,
             }))
+            
           )
         }
       })
@@ -191,7 +189,7 @@ export default function CompaniesManagement() {
   const confirmArchiveCompany = async () => {
     if (!selectedCompany) return
     const nextStatus = selectedCompany.status === "active" ? "inactive" : "active"
-    const payloadId = selectedCompany.id
+    const payloadId = selectedCompany.companyId
   
     // Call the API to toggle archive status
     const archiveRes = await fetch("/api/superadmin/actions/isArchived", {
@@ -200,6 +198,7 @@ export default function CompaniesManagement() {
       body: JSON.stringify({
         id: payloadId,
         is_archived: nextStatus === "inactive",
+        target: "company",
       }),
     })
   
@@ -227,7 +226,7 @@ export default function CompaniesManagement() {
         setCompanies(
           res.companies.map((c: Record<string, unknown>, idx: number) => ({
             id: typeof c.id === "number" ? c.id : idx + 1,
-            companyId: typeof c.company_id === "string" ? c.company_id : typeof c.id === "number" ? c.id.toString() : "",
+            companyId: typeof c.id === "string" ? c.id : "",            
             name: typeof c.company_name === "string" ? c.company_name : "",
             email: typeof c.contact_email === "string" ? c.contact_email : "",
             phone:
