@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import { TbCards, TbFileStar, TbUsers } from "react-icons/tb";
 import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
 import { FaEarthAmericas } from "react-icons/fa6";
-import { MdAccessTime } from "react-icons/md";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
@@ -19,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/students/jobs/applications" },
     { icon: TbUsers, text: "Connections", href: "/students/people/connections" },
     { icon: FaEarthAmericas , text: "Community Jobs", href: "/students/community-page" },
-    { icon: MdAccessTime, text: "DTR", href: "/students/jobs/dtr" },
+
   ];
 
   useEffect(() => {

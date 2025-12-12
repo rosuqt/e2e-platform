@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../lib/authOptions";
 import supabase from "@/lib/supabase";
+import { getAdminSupabase } from "@/lib/supabase";
 
 type UserType = { employerId?: string }
 
@@ -11,9 +13,8 @@ export async function GET() {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = session.user.studentId as UserType
+    const userId = session.user.studentId as string
 
-    // Fetch only conversations involving the current user
     const { data: conversations, error } = await supabase
       .from("messages")
       .select("*")
@@ -22,14 +23,13 @@ export async function GET() {
     if (error) throw error;
 
     const formatted = [];
+    const adminSupabase = getAdminSupabase();
 
     for (const convo of conversations || []) {
-      // identify the other user in the conversation
       const otherUserId = convo.user1_id === userId ? convo.user2_id : convo.user1_id;
-
-      // Try to get the other user from all 3 tables
       let userData = null;
       let role = "";
+      let avatar = "";
 
       const { data: student } = await supabase
         .from("registered_students")
@@ -40,6 +40,17 @@ export async function GET() {
       if (student) {
         userData = student;
         role = "Student";
+        const { data: profile } = await supabase
+          .from("student_profile")
+          .select("profile_img")
+          .eq("student_id", otherUserId)
+          .single();
+        if (profile?.profile_img) {
+          const { data: signed } = await adminSupabase.storage
+            .from("user.avatars")
+            .createSignedUrl(profile.profile_img, 60 * 60);
+          if (signed?.signedUrl) avatar = signed.signedUrl;
+        }
       } else {
         const { data: employer } = await supabase
           .from("registered_employers")
@@ -64,13 +75,11 @@ export async function GET() {
         }
       }
 
-      // Currnet user conversations
       if (convo.user1_id === userId || convo.user2_id === userId) {
         formatted.push({
           id: convo.id,
           name: userData ? `${userData.first_name} ${userData.last_name}` : "Unknown User",
-          //AVATAR GET NOT HERE
-          avatar:"",
+          avatar,
           role,
           messages: convo.messages || [],
           lastMessage: convo.messages?.length
@@ -87,7 +96,6 @@ export async function GET() {
     return NextResponse.json({ conversations: formatted });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err)
-    console.error("❌ Error fetching conversations:", err);
     return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 }
@@ -99,7 +107,7 @@ export async function POST(req: Request) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const userId = session.user.studentId as UserType
+    const userId = session.user.studentId as string
 
     if (!conversationId || !content) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
@@ -129,14 +137,12 @@ export async function POST(req: Request) {
       .eq("id", conversationId);
 
     if (updateError) {
-      console.error("Supabase update error:", updateError);
       throw new Error(updateError.message || "Database update failed");
     }
 
     return NextResponse.json({ success: true, message: newMessage });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : "Failed to update messages"
-    console.error("API Error:", err);
     return NextResponse.json(
       { error: errorMsg },
       { status: 500 }

@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { FiSend } from "react-icons/fi";
 interface Message {
   time: Date;
   content: string;
@@ -72,13 +73,20 @@ export default function MessageInterface() {
       if (result.error) {
         alert('Error: ' + result.error)
       } else if (result.message === 'Conversation already exists') {
-        alert('You already have a chat with this user.')
-        console.log(result.data)
+        // Immediately open the conversation, no alert
+        if (result.data?.id) {
+          setActive("messages");
+          setActiveConversation(result.data.id);
+        }
       } else {
-        setActive("messages");
-        setActiveConversation(chosenUserId.toString());
-        getConversations();
+        // Immediately open the new conversation, no alert
+        if (result.data?.id) {
+          setActive("messages");
+          setActiveConversation(result.data.id);
+        }
       }
+      // Optionally refresh conversations
+      getConversations();
     }
 
   //FETCH CONVERSATIONS
@@ -143,7 +151,7 @@ export default function MessageInterface() {
 
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-[92vh] bg-slate-50 max-h-[92vh]">
       {/* Left sidebar - conversation list */}
       <div className="w-80 border-r flex flex-col h-full bg-white">
         <div className="p-4 border-b bg-gradient-to-r from-blue-600 to-blue-500 text-white">
@@ -215,7 +223,7 @@ export default function MessageInterface() {
                       : ""}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500">{conversation.role}</p>        
+                <p className="text-xs text-slate-500">{conversation.role === "Admin" ? "Coordinator" : conversation.role}</p>        
                 <p className="text-sm text-slate-600 truncate">
                   {conversation.lastMessage?.content}
                 </p>
@@ -244,30 +252,30 @@ export default function MessageInterface() {
             {/* Collapsible Content */}
             {isOpenE && (
               <div className="mt-1 space-y-1">
-                
               {employers.filter(adacc => adacc.first_name.toLowerCase().includes(search)).map((e) => (
-            <div
-              key={e.id}
-              className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}
-              onClick={() => handleClick(e.id)}
-            >
-              <Avatar className="h-10 w-10 border border-slate-200">
-                <AvatarImage src={"/placeholder.svg"} alt={e.first_name + " " + e.last_name} />
-                <AvatarFallback className="bg-blue-100 text-blue-700">
-                  {e.last_name.substring(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center">
-                  <p className="font-medium truncate">{e.first_name}</p>
+                <div
+                  key={e.id}
+                  className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 border-l-4`}
+                  onClick={() => handleClick(e.id)}
+                >
+                  <Avatar className="h-10 w-10 border border-slate-200">
+                    <AvatarImage src={"/placeholder.svg"} alt={e.first_name + " " + e.last_name} />
+                    <AvatarFallback className="bg-blue-100 text-blue-700">
+                      {e.last_name.substring(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center">
+                      {/* Show full name */}
+                      <p className="font-medium truncate">{e.first_name} {e.last_name}</p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="font-medium truncate text-xs">Employer</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <p className="font-medium truncate text-xs">Employer</p>
-                </div>
+              ))}
               </div>
-            </div>
-          ))}
-          </div>
             )}
           </div>
                     
@@ -276,7 +284,8 @@ export default function MessageInterface() {
 
       {/* Right side - active conversation */}
       <div className="flex-1 flex flex-col h-full relative">
-        {activeConvo&&(
+        {/* Show chat area if there is an active conversation */}
+        {activeConvo ? (
           <>
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b bg-white shadow-sm relative">
@@ -286,10 +295,10 @@ export default function MessageInterface() {
                   {activeConvo.name.substring(0, 2)}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex gap-2">
-              </div>
+              {/* Show name beside avatar */}
+              <span className="font-semibold text-lg text-slate-800">{activeConvo.name}</span>
+              <div className="flex gap-2"></div>
             </div>
-
             {/* Messages area - only this should scroll */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 ">
               {activeConvo.messages?.map((message) => (
@@ -327,37 +336,43 @@ export default function MessageInterface() {
                 </div>
               ))}
             </div>
-
             {/* Input area - fixed at the bottom of the chat area */}
             <div className="bottom-0 relative">
-            <div className="p-3 border-t bg-white shadow-md  bottom-0 right-0 flex-1 ">
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Type your message"
-                  className="flex-1 border-slate-200 focus-visible:ring-blue-500"
-                  type="text"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault()
-                      handleSendMessage(activeConvo.id)
-                    }
-                  }}
-                  
-                />
-                <Button
-                  size="icon"
-                  className="rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-900 shadow-md flex"
-                  onClick={() => handleSendMessage(activeConvo.id)}
-                  disabled={sending}
-                >
-                  <Send className="h-5 w-5" />
-                </Button>
+              <div className="p-3 border-t bg-white shadow-md  bottom-0 right-0 flex-1 ">
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Type your message"
+                    className="flex-1 border-slate-200 focus-visible:ring-blue-500"
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendMessage(activeConvo.id)
+                      }
+                    }}
+                  />
+                  <Button
+                    size="icon"
+                    className="rounded-full bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-900 shadow-md flex"
+                    onClick={() => handleSendMessage(activeConvo.id)}
+                    disabled={sending}
+                  >
+                    <Send className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
             </div>
-            </div>
           </>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-slate-500">
+            <FiSend className="w-16 h-16 mb-6 text-blue-400" />
+            <div className="text-2xl font-semibold mb-2">No conversation selected</div>
+            <div className="text-md text-slate-500 max-w-md text-center">
+              Select a conversation from the left or start a new one from your contacts to begin chatting!
+            </div>
+          </div>
         )}
       </div>
       

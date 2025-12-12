@@ -73,6 +73,7 @@ function getActivityLogContent(payload: any, name: string, jobTitle: string) {
 export function useNotifications() {
   const { data: session } = useSession();
   const employerId = session?.user?.employerId || session?.user?.company_id;
+  const studentIdSession = session?.user?.studentId;
 
   useEffect(() => {
     const channel = supabase
@@ -178,7 +179,10 @@ export function useNotifications() {
           table: 'activity_log'
         },
         async (payload) => {
-          if (payload.new.employer_id && employerId && payload.new.employer_id !== employerId) return;
+          if (
+            (!payload.new.employer_id || !employerId || payload.new.employer_id !== employerId) &&
+            (!payload.new.student_id || !studentIdSession || payload.new.student_id !== studentIdSession)
+          ) return;
 
           let avatarUrl = "/default-avatar.png";
           let name = "";

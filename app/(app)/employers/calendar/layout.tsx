@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { FiCalendar } from "react-icons/fi";
 import { useSession, signOut } from "next-auth/react";
 import { LuBadgeCheck } from "react-icons/lu";
-import { LogOut } from "lucide-react";
+import { Building2, LogOut } from "lucide-react";
 import { FaUser } from "react-icons/fa";
 import { TbSettings } from "react-icons/tb";
 
@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const menuItems = [
     { icon: FaUser, text: "Me", href: "/employers/profile" },
     {
-      icon: TbSettings,
+      icon: Building2,
       text: "My Company",
       href: "/employers/profile/company",
     },

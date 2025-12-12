@@ -10,7 +10,7 @@ import {
   Star,
   Building2,
 } from "lucide-react"
-import {  FaTools, FaBug } from "react-icons/fa"
+import {  FaTools } from "react-icons/fa"
 import Image from "next/image"
 import { RatingsCards } from "./marquee-ratings"
 import { Star as StarIcon } from "lucide-react"
@@ -253,14 +253,7 @@ export default function AboutTab({ setActiveTab }: { setActiveTab?: (tabIdx: num
                     If you think this shouldn’t have happened, let us know so we can chase it down!
                   </span>
                 </div>
-                <Button
-                  variant="ghost"
-                  className="font-bold text-red-700 hover:text-red-900 hover:text-red-900 flex items-center gap-2 px-0 py-0"
-                  onClick={() => window.open('https://github.com/allyzdev/e2e-platform/issues/new', '_blank')}
-                >
-                  <FaBug className="w-5 h-5 mr-1" />
-                  Report Bug
-                </Button>
+            
               </div>
             </div>
           ) : companyProfile ? (

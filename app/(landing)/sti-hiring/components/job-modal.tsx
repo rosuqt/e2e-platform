@@ -3,7 +3,7 @@
 import React from "react"
 import { Fragment } from "react"
 import { Dialog, Transition } from "@headlessui/react"
-import { X, MapPin, Building, Clock, PiggyBank, CheckCircle } from "lucide-react"
+import { X, MapPin, Building, Clock, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { Toaster, toast } from "react-hot-toast"
@@ -228,6 +228,8 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
       const allowed = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
       if (!allowed.includes(data.resume.type)) errors.resume = "Accepted formats: PDF, DOC, DOCX."
       if (data.resume.size > 2 * 1024 * 1024) errors.resume = "File size must be under 2MB."
+    } else {
+      errors.resume = "Resume is required."
     }
     if (data.coverLetter) {
       const allowed = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
@@ -382,7 +384,6 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                     </div>
 
                     <div className="flex items-center text-gray-600">
-                      <PiggyBank className="h-4 w-4 mr-2 text-blue-700" />
                       <span>
                         {(() => {
                           if (job.salary && job.salary.includes(",")) {
@@ -669,7 +670,7 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                             </div>
                             <div>
                               <label htmlFor="resume" className="block text-sm font-medium text-gray-700 mb-1">
-                                Resume/CV
+                                Resume/CV <span className="text-red-600">*</span>
                               </label>
               
                               <div

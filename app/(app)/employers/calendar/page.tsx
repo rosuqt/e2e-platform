@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -23,6 +24,8 @@ type CalendarEvent = {
   event_date: Date
   event_start: string
   event_end: string
+  // Add job_title for interview schedules
+  job_title?: string
 }
 
 function EventModal({ open, onClose, initialEvent }: {
@@ -201,6 +204,7 @@ function EventModal({ open, onClose, initialEvent }: {
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   // Fetch events from API
   useEffect(() => {
     const fetchEvents = async () => {
@@ -216,6 +220,34 @@ export default function CalendarPage() {
       }, 5000);
     }; 
     fetchEvents();
+  }, []);
+
+  // Fetch interview schedules for employer from new API
+  useEffect(() => {
+    async function fetchSchedules() {
+      try {
+        const res = await fetch("/api/students/calendar/fetchSchedsforEmployers");
+        if (!res.ok) throw new Error("Failed to fetch interview schedules");
+        const data = await res.json();
+        // Map API data to CalendarEvent[]
+        const mapped: CalendarEvent[] = (data ?? []).map((sched: any) => ({
+          id: sched.id || sched.schedule_id || Math.random(), // fallback if no id
+          event_title: sched.job_title ? `Interview: ${sched.job_title}` : "Interview",
+          event_location: sched.location || "",
+          event_date: sched.scheduled_date ? new Date(sched.scheduled_date) : new Date(),
+          event_start: sched.start_time || "",
+          event_end: sched.end_time || "",
+          job_title: sched.job_title,
+        }));
+        setEvents(mapped);
+      } catch (err) {
+        console.error("Error fetching interview schedules:", err);
+      }
+    }
+    fetchSchedules();
+    // Optionally, poll every 30s for updates:
+    // const interval = setInterval(fetchSchedules, 30000);
+    // return () => clearInterval(interval);
   }, []);
 
   async function handleDeleteEvent(id: number) {
@@ -239,14 +271,6 @@ export default function CalendarPage() {
     }
   }
 
-  const [events, setEvents] = useState<CalendarEvent[]>(() => {
-    // const monthStart = startOfMonth(new Date());
-    // const monthEnd = endOfMonth(new Date());
-    const arr: CalendarEvent[] = [];
-    return arr;
-  })
-  console.log(events);
-  
   const [modalOpen, setModalOpen] = useState(false)
   const [editEvent, setEditEvent] = useState<CalendarEvent | undefined>(undefined)
   const [leftPage, setLeftPage] = useState(0)

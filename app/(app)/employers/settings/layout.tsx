@@ -9,7 +9,7 @@ import { LuBadgeCheck } from "react-icons/lu";
 import { useSession, signOut } from "next-auth/react";
 import { FaUser } from "react-icons/fa";
 import { FiCalendar } from "react-icons/fi";
-import { LogOut } from "lucide-react";
+import { Building2, LogOut } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     () => [
         { icon: FaUser, text: "Me", href: "/employers/profile" },
         {
-          icon: TbSettings,
+          icon: Building2,
           text: "My Company",
           href: "/employers/profile/company",
         },

@@ -293,7 +293,7 @@ export default function EmployerProfilePage() {
                   <div className="flex items-center gap-2">
                     <h1 className="text-2xl font-bold">
                       {employer
-                        ? `${employer.first_name ?? ""} ${employer.last_name ?? ""}${employer.suffix ? " " + employer.suffix : ""}`
+                        ? `${employer.first_name ?? ""} ${employer.last_name ?? ""}${employer.suffix ? " " + employer.suffix.toUpperCase() : ""}`
                         : "Employer Name"}
                     </h1>
                     <div className="relative flex items-center">

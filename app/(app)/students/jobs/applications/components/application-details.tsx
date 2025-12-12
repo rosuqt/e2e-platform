@@ -1372,11 +1372,16 @@ function ApplicationDetailsContent({ application }: { application: Application }
         </TabsContent>
       </Tabs>
       <div className="flex justify-between pt-4 border-t">
-        <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
-          Withdraw Application
-        </Button>
+        {!(
+          ["hired", "withdrawn", "rejected", "offer_rejected"].includes(
+            (application.status || "").toLowerCase()
+          )
+        ) && (
+          <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+            Withdraw Application
+          </Button>
+        )}
         <div className="flex gap-2">
-          <Button variant="outline">Contact Recruiter</Button>
           <Button className="bg-blue-600 hover:bg-blue-700">Next</Button>
         </div>
       </div>

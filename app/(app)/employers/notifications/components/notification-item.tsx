@@ -162,6 +162,16 @@ function getNotificationContent(notification: Notification) {
         title: `Applicant Rejected: ${name}`,
         description: `${name} has been rejected for ${jobTitle}. You can move to the next candidate.`,
       }
+    case "offer_rejected":
+      return {
+        title: `Offer Rejected: ${name}`,
+        description: `${name} has rejected the job offer for ${jobTitle}.`,
+      }
+    case "withdrawn":
+      return {
+        title: `Application Withdrawn: ${name}`,
+        description: `${name} has withdrawn their application for ${jobTitle}.`,
+      }
     case "event_reminder":
       return {
         title: `Interview Tomorrow: ${name}`,

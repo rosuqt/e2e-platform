@@ -159,7 +159,7 @@ export function CompanyVerificationModal({ open, onOpenChange }: CompanyVerifica
             </div>
           </div>
         ) : (
-          <>
+          <div className="max-h-[70vh] overflow-y-auto">
             <DialogHeader>
               <div className="mx-auto bg-blue-100 p-3 rounded-full mb-4">
                 <Shield className="h-6 w-6 text-blue-600" />
@@ -339,7 +339,7 @@ export function CompanyVerificationModal({ open, onOpenChange }: CompanyVerifica
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>

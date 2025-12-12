@@ -1,10 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-
 import { AiOutlineBell } from "react-icons/ai";
 import { useSession } from "next-auth/react";
 import {
@@ -22,85 +21,159 @@ import {
   FileText,
 } from "lucide-react";
 
-function getNotificationContent(notification: any) {
+function getNotificationContent(notification: any, isEmployer: boolean) {
   const type = notification.type?.toLowerCase() || "default";
-  const name =
-    notification.student
-      ? `${notification.student.first_name ?? ""} ${notification.student.last_name ?? ""}`.trim()
-      : notification.applicant_name || "";
-  const jobTitle = notification.job_title || "";
-
-  switch (type) {
-    case "new":
-    case "applications":
-      return {
-        title: `New Applicant: ${name}`,
-        description: `${name} has applied for ${jobTitle}. Check out their application!`,
-      };
-    case "shortlisted":
-      return {
-        title: `Applicant Shortlisted: ${name}`,
-        description: `${name} has been shortlisted for ${jobTitle}. Consider scheduling an interview!`,
-      };
-    case "interview":
-      return {
-        title: `Interview Scheduled: ${name}`,
-        description: `${name} has been scheduled for an interview for ${jobTitle}. Get ready to meet them!`,
-      };
-    case "waitlisted":
-      return {
-        title: `Interview Completed: ${name}`,
-        description: `${name} has completed their interview for ${jobTitle}. You can send an offer now!`,
-      };
-    case "offer_updated":
-      return {
-        title: `Offer Updated: ${name}`,
-        description: `The offer for ${name} has been updated for ${jobTitle}. Check the latest details!`,
-      };
-    case "offer sent":
-    case "job_offers":
-      return {
-        title: `Offer Sent: ${name}`,
-        description: `An offer has been sent to ${name} for ${jobTitle}. Awaiting their response.`,
-      };
-    case "hired":
-      return {
-        title: `Applicant Hired: ${name}`,
-        description: `${name} has been successfully hired for ${jobTitle}. Congratulations!`,
-      };
-    case "rejected":
-      return {
-        title: `Applicant Rejected: ${name}`,
-        description: `${name} has been rejected for ${jobTitle}. You can move to the next candidate.`,
-      };
-    case "event_reminder":
-      return {
-        title: `Interview Tomorrow: ${name}`,
-        description: notification.content,
-      };
-    case "event_today":
-      return {
-        title: `Interview Today: ${name}`,
-        description: notification.content,
-      };
-    default:
-      return {
-        title: notification.title,
-        description: notification.content,
-      };
+  if (isEmployer) {
+    const name =
+      notification.student
+        ? `${notification.student.first_name ?? ""} ${notification.student.last_name ?? ""}`.trim()
+        : notification.applicant_name || "";
+    const jobTitle = notification.job_title || "";
+    switch (type) {
+      case "new":
+      case "applications":
+        return {
+          title: `Applicant: ${name}`,
+          description: `${name} has applied for ${jobTitle}. Check out their application!`,
+        };
+      case "shortlisted":
+        return {
+          title: `Applicant Shortlisted: ${name}`,
+          description: `${name} has been shortlisted for ${jobTitle}. Consider scheduling an interview!`,
+        };
+      case "interview":
+        return {
+          title: `Interview Scheduled: ${name}`,
+          description: `${name} has been scheduled for an interview for ${jobTitle}. Get ready to meet them!`,
+        };
+      case "waitlisted":
+        return {
+          title: `Interview Completed: ${name}`,
+          description: `${name} has completed their interview for ${jobTitle}. You can send an offer now!`,
+        };
+      case "offer_updated":
+        return {
+          title: `Offer Updated: ${name}`,
+          description: `The offer for ${name} has been updated for ${jobTitle}. Check the latest details!`,
+        };
+      case "offer sent":
+      case "job_offers":
+        return {
+          title: `Offer Sent: ${name}`,
+          description: `An offer has been sent to ${name} for ${jobTitle}. Awaiting their response.`,
+        };
+      case "hired":
+        return {
+          title: `Applicant Hired: ${name}`,
+          description: `${name} has been successfully hired for ${jobTitle}. Congratulations!`,
+        };
+      case "rejected":
+        return {
+          title: `Applicant Rejected: ${name}`,
+          description: `${name} has been rejected for ${jobTitle}. You can move to the next candidate.`,
+        };
+      case "offer_rejected":
+        return {
+          title: `Offer Declined: ${name}`,
+          description: `${name} has declined the offer for ${jobTitle}.`,
+        };
+      case "withdrawn":
+        return {
+          title: `Application Withdrawn: ${name}`,
+          description: `${name} has withdrawn their application for ${jobTitle}.`,
+        };
+      case "event_reminder":
+        return {
+          title: `Interview Tomorrow: ${name}`,
+          description: notification.content,
+        };
+      case "event_today":
+        return {
+          title: `Interview Today: ${name}`,
+          description: notification.content,
+        };
+      default:
+        return {
+          title: notification.title,
+          description: notification.content,
+        };
+    }
+  } else {
+    const jobTitle = notification.job_title || "";
+    switch (type) {
+      case "applications":
+      case "new":
+        return {
+          title: `You applied for ${jobTitle}`,
+          description: `Your application for ${jobTitle} was submitted.`,
+        };
+      case "shortlisted":
+        return {
+          title: `Shortlisted for ${jobTitle}`,
+          description: `You have been shortlisted for ${jobTitle}.`,
+        };
+      case "interview":
+        return {
+          title: `Interview Scheduled for ${jobTitle}`,
+          description: `An interview for ${jobTitle} has been scheduled.`,
+        };
+      case "waitlisted":
+        return {
+          title: `Interview Completed for ${jobTitle}`,
+          description: `You completed your interview for ${jobTitle}.`,
+        };
+      case "offer_updated":
+        return {
+          title: `Offer Updated for ${jobTitle}`,
+          description: `Your offer for ${jobTitle} has been updated.`,
+        };
+      case "job_offers":
+      case "offer sent":
+        return {
+          title: `Job Offer for ${jobTitle}`,
+          description: `You received a job offer for ${jobTitle}.`,
+        };
+      case "hired":
+        return {
+          title: `Hired for ${jobTitle}`,
+          description: `Congratulations! You have been hired for ${jobTitle}.`,
+        };
+      case "rejected":
+        return {
+          title: `Application Rejected for ${jobTitle}`,
+          description: `Your application for ${jobTitle} was not successful.`,
+        };
+      case "offer_rejected":
+        return {
+          title: `You Declined Offer for ${jobTitle}`,
+          description: `You have declined the job offer for ${jobTitle}.`,
+        };
+      case "withdrawn":
+        return {
+          title: `You Withdrew Application for ${jobTitle}`,
+          description: `You have withdrawn your application for ${jobTitle}.`,
+        };
+      case "event_reminder":
+        return {
+          title: `Interview Tomorrow`,
+          description: notification.content,
+        };
+      case "event_today":
+        return {
+          title: `Interview Today`,
+          description: notification.content,
+        };
+      default:
+        return {
+          title: notification.title,
+          description: notification.content,
+        };
+    }
   }
 }
 
 interface NotificationsModalProps {
-  notifications: {
-  company_name: string;
-  content: string;
-  created_at: Date;
-  external_id: string;
-  source: string;
-  title: string;
-  updated_at: Date;
-  user_id: string}[];
+  notifications: any[];
   onClose: () => void;
   positionRef: React.RefObject<HTMLAnchorElement | null>;
 }
@@ -154,6 +227,10 @@ const iconMap: Record<string, { icon: React.ReactNode; bg: string }> = {
     icon: <Frown className="h-5 w-5 text-white" />,
     bg: "bg-gray-500",
   },
+  offer_rejected: {
+    icon: <XCircle className="h-5 w-5 text-white" />,
+    bg: "bg-red-600",
+  },
   event_posted: {
     icon: <Calendar className="h-5 w-5 text-white" />,
     bg: "bg-teal-500",
@@ -183,12 +260,14 @@ export function NotificationsModal({ notifications, onClose, positionRef }: Noti
   const modalRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
-  // --- Begin: Fetch employer notifications if employer ---
+  const [studentNotifs, setStudentNotifs] = useState<any[]>([]);
   const [employerNotifs, setEmployerNotifs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const role = (session?.user as { role?: string })?.role;
+  const isEmployer = role === "employer";
+
   useEffect(() => {
-    const role = (session?.user as { role?: string })?.role;
-    if (role === "employer") {
+    if (isEmployer) {
       setLoading(true);
       fetch("/api/employers/notifications")
         .then(res => res.json())
@@ -196,9 +275,16 @@ export function NotificationsModal({ notifications, onClose, positionRef }: Noti
           if (data?.notifications) setEmployerNotifs(data.notifications);
         })
         .finally(() => setLoading(false));
+    } else {
+      setLoading(true);
+      fetch("/api/students/notifications")
+        .then(res => res.json())
+        .then(data => {
+          if (data?.notifications) setStudentNotifs(data.notifications);
+        })
+        .finally(() => setLoading(false));
     }
-  }, [session]);
-  // --- End: Fetch employer notifications if employer ---
+  }, [isEmployer]);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -206,7 +292,6 @@ export function NotificationsModal({ notifications, onClose, positionRef }: Noti
   }, [onClose]);
 
   useEffect(() => {
-    // Only close on actual outside mouse clicks, not on window blur/alt-tab
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         handleClose();
@@ -233,26 +318,22 @@ export function NotificationsModal({ notifications, onClose, positionRef }: Noti
   useEffect(() => {
     if (positionRef.current) {
       const rect = positionRef.current.getBoundingClientRect();
-      setPosition({ 
-        top: rect.bottom + window.scrollY, 
-        left: rect.left + window.scrollX + 50 
+      setPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX + 50,
       });
     }
   }, [positionRef]);
 
   const handleViewAllClick = () => {
-    const role = (session?.user as { role?: string })?.role;
-    const path =
-      role === "employer"
-        ? "/employers/notifications"
-        : "/students/notifications";
+    const path = isEmployer
+      ? "/employers/notifications"
+      : "/students/notifications";
     router.push(path);
     onClose();
   };
 
-  // Use employerNotifs if employer, otherwise use props.notifications
-  const role = (session?.user as { role?: string })?.role;
-  const notifList = role === "employer" ? employerNotifs : notifications;
+  const notifList = isEmployer ? employerNotifs : studentNotifs;
 
   const topNotifications = [...notifList]
     .sort((a, b) => new Date(b.updated_at ?? b.created_at).getTime() - new Date(a.updated_at ?? a.created_at).getTime())
@@ -281,7 +362,6 @@ export function NotificationsModal({ notifications, onClose, positionRef }: Noti
               <AiOutlineBell className="text-blue-500" />
               <h3 className="text-lg font-medium text-blue-800">Notifications</h3>
             </div>
-
             <div className="p-4 space-y-2 max-h-64 overflow-y-auto">
               {loading ? (
                 <div className="text-center text-gray-400 py-8">
@@ -296,7 +376,7 @@ export function NotificationsModal({ notifications, onClose, positionRef }: Noti
               ) : (
                 <div className="flex flex-col gap-2">
                   {topNotifications.map((notification, idx) => {
-                    const { title } = getNotificationContent(notification);
+                    const { title } = getNotificationContent(notification, isEmployer);
                     const typeKey = notification.type?.toLowerCase() || "default";
                     const { icon, bg } = iconMap[typeKey] || iconMap["default"];
                     const dateStr = notification.updated_at ?? notification.created_at;
@@ -309,7 +389,7 @@ export function NotificationsModal({ notifications, onClose, positionRef }: Noti
                       : "";
                     return (
                       <div
-                        key={notification.id ? `${notification.id}-${idx}` : idx}
+                        key={notification.external_id ?? notification.id ?? idx}
                         className="relative flex flex-row items-start bg-blue-50/40 rounded-lg p-3 border border-blue-100"
                       >
                         <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${bg}`}>

@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   const normalizedAction = typeof action === "string" ? action.toLowerCase() : ""
   if (
     !application_id ||
-    !["shortlist", "reject", "interview_scheduled", "offer_sent", "hired", "offer_updated", "waitlist", "withdraw"].includes(normalizedAction)
+    !["shortlist", "reject", "interview_scheduled", "offer_sent", "hired", "offer_updated", "waitlist", "withdraw", "reject_offer"].includes(normalizedAction)
   ) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 })
   }
@@ -50,6 +50,10 @@ export async function POST(req: Request) {
     status = "withdrawn"
     logType = "withdrawn"
     logMessage = message || "Applicant withdrew the application"
+  } else if (normalizedAction === "reject_offer") {
+    status = "rejected"
+    logType = "offer_rejected"
+    logMessage = "The applicant has rejected the job offer."
   }
   if (status) {
     const { error } = await supabase

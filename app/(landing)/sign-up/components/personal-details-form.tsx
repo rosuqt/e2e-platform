@@ -11,6 +11,29 @@ import { countries } from "../data/countries";
 import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
 
+const suffixes = [
+  "",
+  "Jr.",
+  "Sr.",
+  "MD",
+  "PhD",
+  "Esq.",
+  "II",
+  "III",
+  "IV",
+  "V",
+  "VI",
+  "VII",
+  "VIII",
+  "IX",
+  "X",
+  "XI",
+  "XII",
+  "XIII",
+  "XIV",
+  "XV",
+];
+
 export default function PersonalDetailsForm({
   data = { firstName: "", middleName: "", lastName: "", suffix: "", countryCode: "", phone: "", email: "", password: "", confirmPassword: "" },
   onChange,
@@ -143,12 +166,11 @@ export default function PersonalDetailsForm({
             label="Suffix"
             onChange={(e) => onChange({ ...data, suffix: e.target.value })}
           >
-            <MenuItem value="">None</MenuItem>
-            <MenuItem value="Jr.">Jr.</MenuItem>
-            <MenuItem value="Sr.">Sr.</MenuItem>
-            <MenuItem value="II">II</MenuItem>
-            <MenuItem value="III">III</MenuItem>
-            <MenuItem value="IV">IV</MenuItem>
+            {suffixes.map((suf) => (
+              <MenuItem key={suf} value={suf}>
+                {suf === "" ? "None" : suf}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
       </div>

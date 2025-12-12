@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { TbSettings } from "react-icons/tb";
 import Sidebar from "../../side-nav/sidebar";
 import BaseLayout from "../base-layout";
-import { LogOut } from "lucide-react";
+import { Building2, LogOut } from "lucide-react";
 import { LuBadgeCheck } from "react-icons/lu";
 import { useSession, signOut } from "next-auth/react";
 import { FaUser } from "react-icons/fa";
@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     () => [
       { icon: FaUser, text: "Me", href: "/employers/profile" },
       {
-        icon: TbSettings,
+        icon: Building2,
         text: "My Company",
         href: "/employers/profile/company",
       },

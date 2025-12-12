@@ -120,7 +120,7 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
           const { first_name, last_name, suffix, email, job_title, profile_img, verify_status } = await detailsRes.json();
           const studentName =
             first_name && last_name
-              ? `${first_name} ${last_name}${suffix ? " " + suffix : ""}`
+              ? `${first_name} ${last_name}${suffix ? " " + suffix.toUpperCase() : ""}`
               : first_name || last_name || null;
           setStudentName(studentName);
           setEmail(email || null);

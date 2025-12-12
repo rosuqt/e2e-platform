@@ -20,7 +20,8 @@ import {
   BarChart2,
   CalendarDays,
   Edit,
-  Mail
+  Mail,
+  RotateCw
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -158,7 +159,18 @@ const studentActivityIconMap: Record<string, { icon: React.ReactNode; iconBg: st
   new: { icon: <FileText className="h-4 w-4 text-white" />, iconBg: "bg-yellow-500" },
   shortlisted: { icon: <Search className="h-4 w-4 text-white" />, iconBg: "bg-cyan-500" },
   interview: { icon: <Calendar className="h-4 w-4 text-white" />, iconBg: "bg-purple-500" },
-  offer_sent: { icon: <BsMailbox2Flag className="h-4 w-4 text-white" />, iconBg: "bg-lime-400" },
+  offer_sent: {
+    icon: <PiMoneyDuotone className="h-4 w-4 text-white" />,
+    iconBg: "bg-lime-500"
+  },
+  offer_rejected: {
+    icon: <IoIosCloseCircleOutline className="h-4 w-4 text-white" />,
+    iconBg: "bg-red-400"
+  },
+  student_rating: {
+    icon: <AiFillStar className="h-4 w-4 text-yellow-400" />,
+    iconBg: "bg-yellow-300"
+  },
   waitlisted: { icon: <TbClockQuestion className="h-4 w-4 text-white" />, iconBg: "bg-blue-500" },
   rejected: { icon: <IoIosCloseCircleOutline className="h-4 w-4 text-white" />, iconBg: "bg-red-500" },
   hired: { icon: <FaUserCheck className="h-4 w-4 text-white" />, iconBg: "bg-green-700" },
@@ -308,102 +320,89 @@ export default function ApplicationTrackerNoSidebar() {
     }
   }, [])
 
-  useEffect(() => {
+  const [refreshing, setRefreshing] = useState(false)
+  const fetchApplications = async () => {
     setLoading(true)
-    fetch("/api/students/applications")
-      .then(res => res.json())
-      .then(async data => {
-        const applicationsWithResume = await Promise.all(
-          (data.applications || []).map(async (app: {
-            job_postings?: JobPosting
-            applied_at?: string
-            match_score?: string
-            company_name?: string
-            status?: string
-            remote_options?: string
-            company_logo_image_path?: string
-            profile_img?: string
-            resume?: string
-            resumeUrl?: string
-            achievements?: string[]
-            portfolio?: string[]
-            application_id?: string | number
-            job_id?: string | number
-            application_answers?: any
-            notes?: any
-          }) => {
-            let resumeUrl = app.resumeUrl ?? ""
-            const resume = app.resume ?? ""
-
-            if (resume && !resumeUrl) {
-              let found = false
-              for (const bucket of ["student.documents"]) {
-                try {
-                  const res = await fetch("/api/students/get-signed-url", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      bucket,
-                      path: resume
-                    })
-                  })
-                  const json = await res.json()
-                  if (json && json.signedUrl) {
-                    resumeUrl = json.signedUrl
-                    found = true
-                    break
-                  }
-                } catch {}
-              }
-              if (!found) resumeUrl = ""
+    setRefreshing(true)
+    try {
+      const res = await fetch("/api/students/applications")
+      const data = await res.json()
+      const applicationsWithResume = await Promise.all(
+        (data.applications || []).map(async (app: any) => {
+          let resumeUrl = app.resumeUrl ?? ""
+          const resume = app.resume ?? ""
+          if (resume && !resumeUrl) {
+            let found = false
+            for (const bucket of ["student.documents"]) {
+              try {
+                const res = await fetch("/api/students/get-signed-url", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ bucket, path: resume })
+                })
+                const json = await res.json()
+                if (json && json.signedUrl) {
+                  resumeUrl = json.signedUrl
+                  found = true
+                  break
+                }
+              } catch {}
             }
-            return {
-              ...app,
-              resume,
-              resumeUrl,
-              achievements: app.achievements || [],
-              portfolio: app.portfolio || [],
-              job_id: app.job_id ?? (app as any).job_posting_id ?? app.job_postings?.id ?? undefined,
-              application_answers: app.application_answers,
-              notes: app.notes,
-            }
-          })
-        )
-        setApplicationsData(applicationsWithResume)
-
-        if (studentId) {
-          const activityRes = await fetch(`/api/employers/applications/activity?student_id=${studentId}`)
-          const activityData = await activityRes.json()
-          const recent: StudentRecentActivity[] = (activityData || [])
-            .map((act: any) => ({
-              company: act.name || "Company",
-              position: act.position || "Position",
-              update:
-                act.type === "hired"
-                  ? "Congratulations! You've been hired!"
-                  : act.type === "waitlisted"
-                    ? "Your interview has been completed, awaiting further review!"
-                  : act.type === "interview_scheduled"
-                    ? "You have been scheduled for an interview"
+            if (!found) resumeUrl = ""
+          }
+          return {
+            ...app,
+            resume,
+            resumeUrl,
+            achievements: app.achievements || [],
+            portfolio: app.portfolio || [],
+            job_id: app.job_id ?? (app as any).job_posting_id ?? app.job_postings?.id ?? undefined,
+            application_answers: app.application_answers,
+            notes: app.notes,
+          }
+        })
+      )
+      setApplicationsData(applicationsWithResume)
+      if (studentId) {
+        const activityRes = await fetch(`/api/employers/applications/activity?student_id=${studentId}`)
+        const activityData = await activityRes.json()
+        const recent: StudentRecentActivity[] = (activityData || [])
+          .map((act: any) => ({
+            company: "",
+            position: act.job_title || act.position || "Position",
+            update:
+              act.type === "hired"
+                ? "Congratulations! You've been hired!"
+                : act.type === "waitlisted"
+                  ? "Your interview has been completed, awaiting further review!"
+                : act.type === "interview_scheduled" || act.type === "interview"
+                  ? "You are scheduled for an interview!"
                   : act.type === "shortlisted"
                     ? "Your application has been shortlisted!"
+                  : act.type === "offer_sent" || act.type === "offer sent"
+                    ? "You've received a job offer! 🎉"
+                  : act.type === "offer_rejected"
+                    ? "You have rejected the job offer."
+                  : act.type === "student_rating"
+                    ? "Please rate your job experience!"
                   : act.message || act.update,
-              time: act.created_at || act.time || "",
-              status: act.type || "",
-            }))
-            .sort((a: StudentRecentActivity, b: StudentRecentActivity) => {
-              const ta = new Date(a.time).getTime()
-              const tb = new Date(b.time).getTime()
-              return tb - ta
-            })
-            .slice(0, 6)
-          setRecentUpdates(recent)
-        }
-        setLoading(false)
-      })
-      .catch(() => {
-        setLoading(false)
-      })
+            time: act.created_at || act.time || "",
+            status: act.type || "",
+          }))
+          .sort((a: StudentRecentActivity, b: StudentRecentActivity) => {
+            const ta = new Date(a.time).getTime()
+            const tb = new Date(b.time).getTime()
+            return tb - ta
+          })
+          .slice(0, 6)
+        setRecentUpdates(recent)
+      }
+    } catch {}
+    setLoading(false)
+    setRefreshing(false)
+  }
+  useEffect(() => {
+    fetchApplications()
   }, [studentId])
 
   useEffect(() => {
@@ -825,13 +824,19 @@ export default function ApplicationTrackerNoSidebar() {
   const allApps = allAppsUnfiltered.filter(a => {
     const s = (a.status || "").toLowerCase()
     if (filters.status?.includes("withdrawn")) return true
+    if (s === "offer_rejected" || s === "rejected") return false
     return s !== "withdrawn"
   })
   const pendingApps = applyFilters(filterBySearch(pendingAppsRaw))
   const reviewApps = applyFilters(filterBySearch(reviewAppsRaw))
   const interviewApps = applyFilters(filterBySearch(interviewAppsRaw))
   const hiredApps = applyFilters(filterBySearch(hiredAppsRaw))
-  const rejectedApps = applyFilters(filterBySearch(rejectedAppsRaw))
+  const rejectedApps = applyFilters(filterBySearch(rejectedAppsRaw)).filter(
+    a => {
+      const s = (a.status || "").toLowerCase()
+      return s !== "offer_rejected" && s !== "rejected"
+    }
+  )
   const offerApps = applyFilters(filterBySearch(offerAppsRaw))
 
   const totalCount = allApps.length
@@ -853,6 +858,12 @@ export default function ApplicationTrackerNoSidebar() {
     if (activeTab === "offers") return offerApps
     if (activeTab === "hired") return hiredApps
     if (activeTab === "rejected") return rejectedApps
+    if (withdrawnActive) {
+      return allAppsUnfiltered.filter(a => {
+        const s = (a.status || "").toLowerCase()
+        return s === "withdrawn" || s === "offer_rejected" || s === "rejected"
+      })
+    }
     return allApps
   }
 
@@ -960,7 +971,9 @@ export default function ApplicationTrackerNoSidebar() {
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h2 className="text-2xl font-bold relative z-10 ">Applications Tracking</h2>
+                    <h2 className="text-2xl font-bold relative z-10 flex items-center gap-2">
+                      Applications Tracking
+                    </h2>
                     <p className="text-blue-100 text-sm relative z-10 mt-2">
                       Track and manage all your job applications in one place.
                     </p>
@@ -1020,8 +1033,19 @@ export default function ApplicationTrackerNoSidebar() {
           <div className="flex flex-col lg:flex-row gap-6">
             <div className="w-full lg:w-2/3" ref={scrollContainerRef}>
               <Card className="shadow-sm border-blue-100">
-                <CardHeader className="pb-2">
-                  <CardTitle className="mb-2 text-blue-700 text-xl">My Applications</CardTitle>
+                <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                  <CardTitle className="mb-2 text-blue-700 text-xl flex items-center gap-2">
+                    My Applications
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-auto text-blue-600 hover:bg-blue-100"
+                    onClick={fetchApplications}
+                    disabled={refreshing}
+                  >
+                    <RotateCw className={`w-5 h-5 ${refreshing ? "animate-spin" : ""}`} />
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   {loading ? (
@@ -1724,6 +1748,7 @@ export default function ApplicationTrackerNoSidebar() {
                       recentUpdates.map((update, index) => {
                         let key = (update.status || "").toLowerCase()
                         if (key === "interview scheduled") key = "interview"
+                        if (key === "offer sent") key = "offer_sent"
                         const iconInfo =
                           studentActivityIconMap[key] ||
                           { icon: <FileText className="h-4 w-4 text-white" />, iconBg: "bg-blue-400" }
@@ -1738,8 +1763,7 @@ export default function ApplicationTrackerNoSidebar() {
                               ) : null}
                             </div>
                             <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-800">{update.company}</p>
-                              <p className="text-xs text-gray-500">{update.position}</p>
+                              <p className="text-sm font-medium text-gray-800">{update.position}</p>
                               <p className="text-xs font-medium text-blue-600 mt-1">{update.update}</p>
                               <p className="text-xs text-gray-400 mt-1">
                                 {formatStudentActivityTime(update.time)}
@@ -1897,6 +1921,10 @@ function mapAppStatus(appStatus?: string) {
       return "interview"
     case "offer_sent":
       return "offers"
+    case "offer_rejected":
+      return "offer_rejected"
+    case "student_rating":
+      return "student_rating"
     case "hired":
       return "hired"
     case "rejected":
@@ -1926,12 +1954,21 @@ function generateApplicationCards(
   setAcceptOfferId?: (id: string) => void,
   setAcceptOfferOpen?: (open: boolean) => void
 ) {
+  // Get withdrawnActive from the parent scope if available, otherwise fallback to false
+  const globalAny = globalThis as any
+  const withdrawnActive: boolean =
+    typeof globalAny !== "undefined" && typeof (globalAny.__withdrawnActive) === "boolean"
+      ? globalAny.__withdrawnActive
+      : false
+
   const statusConfig = {
     all: { title: "Mixed", badge: "", hover: "hover:border-l-yellow-400" },
     pending: { title: "Pending", badge: "bg-yellow-100 text-yellow-700", hover: "hover:border-l-yellow-400" },
     review: { title: "Under Review", badge: "bg-cyan-100 text-cyan-700", hover: "hover:border-l-cyan-400" },
     interview: { title: "To be Interviewed", badge: "bg-purple-100 text-purple-700", hover: "hover:border-l-purple-400" },
     offers: { title: "Offer Received", badge: "bg-lime-100 text-lime-700", hover: "hover:border-l-lime-400" },
+    offer_rejected: { title: "Offer Rejected", badge: "bg-red-100 text-red-700", hover: "hover:border-l-red-400" },
+    student_rating: { title: "Awaiting Rating", badge: "bg-yellow-100 text-yellow-700", hover: "hover:border-l-yellow-400" },
     hired: { title: "Hired", badge: "bg-green-100 text-green-700", hover: "hover:border-l-green-400" },
     rejected: { title: "Rejected", badge: "bg-red-100 text-red-700", hover: "hover:border-l-red-400" },
     waitlisted: { title: "Waitlisted", badge: "bg-blue-100 text-blue-700", hover: "hover:border-l-blue-400" },
@@ -1939,6 +1976,9 @@ function generateApplicationCards(
   } as const
 
   const canFollowUp = true; //
+
+  // Add this line to define hoverBorder based on cardStatus
+  const hoverBorder = (statusConfig as any)[status]?.hover || "hover:border-l-yellow-400";
 
   return (
     <>
@@ -1950,8 +1990,13 @@ function generateApplicationCards(
         const appStatus = mapAppStatus(app.status)
         if (status === "all") cardStatus = appStatus
 
-        const badgeClass = (statusConfig as any)[cardStatus]?.badge
-        const hoverBorder = (statusConfig as any)[cardStatus]?.hover || "hover:border-l-blue-100"
+        // For withdrawn jobs tab, show rejected as offer_rejected if status is rejected and withdrawnActive
+        let badgeClass = (statusConfig as any)[cardStatus]?.badge
+        let badgeTitle = titleCase(statusConfig[cardStatus as keyof typeof statusConfig]?.title || "Pending")
+        if (withdrawnActive && (app.status || "").toLowerCase() === "rejected") {
+          badgeClass = statusConfig.offer_rejected.badge
+          badgeTitle = statusConfig.offer_rejected.title
+        }
 
         const workType = app.job_postings?.work_type || ""
         const appliedAt = app.applied_at
@@ -2049,7 +2094,7 @@ function generateApplicationCards(
                     </h3>
                     <motion.div whileHover={{ scale: 1.15 }} className="pointer-events-auto">
                       <Badge className={`${badgeClass} pointer-events-none`}>
-                        {titleCase(statusConfig[cardStatus as keyof typeof statusConfig]?.title || "Pending")}
+                        {badgeTitle}
                       </Badge>
                     </motion.div>
                     {app.is_archived && (
@@ -2134,24 +2179,6 @@ function generateApplicationCards(
                   >
                     Prepare
                   </Button>
-                )}
-                {cardStatus === "pending" && (
-                  <Tooltip
-                    title={app.followed_up ? "You can follow up 5 days after applying." : ""}
-                    arrow
-                    disableHoverListener={app.followed_up}
-                  >
-                    <span className={!canFollowUp ? "cursor-not-allowed" : ""}>
-                      <Button
-                        size="sm"
-                        className="bg-yellow-600 hover:bg-yellow-700 text-xs"
-                        onClick={(e) => handleFollowUp(logicalIdForCard, e)}
-                        disabled={app.followed_up}
-                      >
-                        Follow Up
-                      </Button>
-                    </span>
-                  </Tooltip>
                 )}
                 {cardStatus === "hired" && (
                   <Button

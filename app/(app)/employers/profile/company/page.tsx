@@ -14,7 +14,6 @@ import { LuBadgeCheck } from "react-icons/lu"
 import { PiWarningFill } from "react-icons/pi"
 import { motion } from "framer-motion"
 import { TextField, MenuItem } from "@mui/material"
-import { BsSendPlus } from "react-icons/bs"
 import Image from "next/image"
 
 type Company = {
@@ -483,19 +482,8 @@ export default function CompanyProfilePage() {
                 </div>
                 {isCompanyAdmin ? null : (!canEdit && canView) ? (
                   <div className="flex flex-col items-start gap-2">
-                    <div className="bg-blue-50 border border-blue-200 text-blue-700 rounded-lg px-4 py-2 text-sm font-medium max-w-xs">
-                      You have view-only access. Request edit access if needed.
-                    </div>
-                    <button
-                      className="border border-blue-600 text-blue-600 font-semibold px-4 py-2 rounded-full flex items-center gap-2 hover:bg-blue-50 transition"
-                      type="button"
-                      onClick={() => {
-                        window.location.href = "#"
-                      }}
-                    >
-                      <BsSendPlus className="w-5 h-5" />
-                      Request Edit Access
-                    </button>
+                   
+              
                   </div>
                 ) : null}
               </div>

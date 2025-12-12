@@ -10,7 +10,7 @@ import Autocomplete from "@mui/material/Autocomplete"
 import Checkbox from "@mui/material/Checkbox"
 import Box from "@mui/material/Box"
 import { parsePhoneNumberFromString, CountryCode } from "libphonenumber-js"
-import { toast } from "sonner"
+import { Toaster, toast } from "react-hot-toast"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -324,7 +324,6 @@ export default function SettingsPage() {
         loading: "Saving changes...",
         success: "Changes have been saved!",
         error: "Failed to save changes.",
-        className: "bg-blue-600 border border-blue-200 text-white",
       }
     );
     setSaving(false);
@@ -338,6 +337,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 pb-10">
+      <Toaster position="top-right" />
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Sidebar */}

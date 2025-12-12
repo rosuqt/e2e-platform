@@ -4,7 +4,7 @@ import {  Clock, Users, Bookmark, Briefcase, Calendar, Globe } from "lucide-reac
 import Image from "next/image";
 import { IoIosRocket } from "react-icons/io";
 import { useEffect, useState } from "react";
-import { PiMoneyDuotone, PiBuildingsFill } from "react-icons/pi";
+import {  PiBuildingsFill } from "react-icons/pi";
 import { AiFillSmile, AiOutlineMeh } from "react-icons/ai";
 import { TbMoodConfuzed } from "react-icons/tb";
 import { SiStarship } from "react-icons/si";
@@ -153,8 +153,6 @@ function JobCard({
   const type = job.work_type || job.type || "Full-time";
   const vacancies = job.vacancies;
   const deadline = job.deadline || job.application_deadline || "";
-  const payType = job.pay_type || "N/A";
-  const payAmount = job.pay_amount ? job.pay_amount : "N/A";
   const postedDate = formatPostedDate(job.created_at);
   const jobSummary = job.job_summary;
 
@@ -636,13 +634,6 @@ function JobCard({
           <div className="flex items-center">
             <Briefcase className="h-4 w-4 mr-2 text-gray-400" />
             <span>{type}</span>
-          </div>
-          <div className="flex items-center">
-            <PiMoneyDuotone  className="h-4 w-4 mr-2 text-gray-400" />
-            <span>
-              {payType}
-              {payAmount !== "N/A" && ` / ${payAmount}`}
-            </span>
           </div>
           <div className="flex items-center">
             <Users className="h-4 w-4 mr-2 text-gray-400" />

@@ -82,17 +82,41 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { error: dbError } = await supabase
+    // Ensure employer_profile row exists before updating
+    const { data: profileExists, error: selectError } = await supabase
       .from("employer_profile")
-      .update({ [dbField]: filePath })
+      .select("employer_id")
       .eq("employer_id", employer_id)
-    if (dbError) {
-      console.error("Supabase DB update error:", dbError)
-      return NextResponse.json({ error: dbError.message }, { status: 500 })
+      .single();
+
+    if (selectError && selectError.code !== "PGRST116") { // PGRST116: No rows found
+      console.error("Supabase DB select error:", selectError);
+      return NextResponse.json({ error: selectError.message }, { status: 500 });
+    }
+
+    if (!profileExists) {
+      // Insert a new row if not exists
+      const { error: insertError } = await supabase
+        .from("employer_profile")
+        .insert([{ employer_id, [dbField]: filePath }]);
+      if (insertError) {
+        console.error("Supabase DB insert error:", insertError);
+        return NextResponse.json({ error: insertError.message }, { status: 500 });
+      }
+    } else {
+      // Update existing row
+      const { error: dbError } = await supabase
+        .from("employer_profile")
+        .update({ [dbField]: filePath })
+        .eq("employer_id", employer_id);
+      if (dbError) {
+        console.error("Supabase DB update error:", dbError);
+        return NextResponse.json({ error: dbError.message }, { status: 500 });
+      }
     }
   } catch (err) {
-    console.error("DB update failed:", err)
-    return NextResponse.json({ error: "DB update failed", details: (err as Error).message || err }, { status: 500 })
+    console.error("DB upsert failed:", err)
+    return NextResponse.json({ error: "DB upsert failed", details: (err as Error).message || err }, { status: 500 })
   }
 
   return NextResponse.json({ publicUrl, filePath })

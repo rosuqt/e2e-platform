@@ -69,7 +69,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           const { first_name, last_name, suffix, email, profile_img } = await detailsRes.json()
           const name =
             first_name && last_name
-              ? `${first_name} ${last_name}${suffix ? " " + suffix : ""}`
+              ? `${first_name} ${last_name}${suffix ? " " + suffix.toUpperCase() : ""}`
               : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")
@@ -151,7 +151,7 @@ export function ProfileModal({ user, onClose }: ProfileModalProps) {
           const { first_name, last_name, suffix, email, profile_img } = await detailsRes.json()
           const name =
             first_name && last_name
-              ? `${first_name} ${last_name}${suffix ? " " + suffix : ""}`
+              ? `${first_name} ${last_name}${suffix ? " " + suffix.toUpperCase() : ""}`
               : first_name || last_name || ""
           setDbName(name)
           setDbEmail(email || "")

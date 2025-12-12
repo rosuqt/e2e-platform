@@ -6,7 +6,6 @@ import { Home, Users, Briefcase, MessageCircle, Bell, User } from 'lucide-react'
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { ProfileModal } from '../students/profile/components/profile-modal';
-import { MessagesModal } from './messages-modal';
 import { NotificationsModal } from '../students/notifications/components/notifications-modal';
 import { RiRobot2Fill } from "react-icons/ri";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,6 +20,7 @@ import { TbMailStar } from "react-icons/tb";
 import { Lock } from "@mui/icons-material";
 import { Tooltip } from "@mui/material";
 import { IconType } from "react-icons";
+import { useSession } from "next-auth/react";
 
 interface TopNavProps {
   className?: string;
@@ -47,14 +47,12 @@ const TopNav: React.FC<TopNavProps> = ({
   labelColor = 'gray',
   isSidebarMinimized,
   topNavStyle,
-  session,
-  status
 }) => {
   const pathname = usePathname() ?? "";
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [isProfileModalOpen, setProfileModalOpen] = useState(false);
   const [isNotificationsModalOpen, setNotificationsModalOpen] = useState(false);
-  const [isMessagesModalOpen, setMessagesModalOpen] = useState(false);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [openPeople, setOpenPeople] = useState(false);
   const [openJobs, setOpenJobs] = useState(false);
@@ -132,10 +130,23 @@ const TopNav: React.FC<TopNavProps> = ({
   // Remove useMemo for navItems and just define it inline for students
   const handleProfileClick = () => setProfileModalOpen((prev) => !prev);
   const handleNotificationsClick = () => setNotificationsModalOpen((prev) => !prev);
-  const handleMessagesClick = () => setMessagesModalOpen((prev) => !prev);
+  // Remove modal open for messages, instead navigate directly
+  const handleMessagesClick = () => {
+    if (session?.user?.role === "employer") {
+      router.push("/employers/messages");
+    } else {
+      router.push("/students/messages");
+    }
+  };
 
+  // Always check role in session.user
+  const getRole = () => session?.user?.role;
+  console.log("TOPNAV session:", session);
+  console.log("TOPNAV session.user.role:", getRole());
+
+  // Use getRole() everywhere for clarity and reliability
   const navItems =
-    session?.user?.role === "employer"
+    getRole() === "employer"
       ? [
           { path: '/employers/dashboard', label: 'Home', icon: Home },
           { path: '/employers/jobs/job-listings', label: 'Jobs', icon: Briefcase, dropdown: employerJobsMenu },
@@ -153,6 +164,11 @@ const TopNav: React.FC<TopNavProps> = ({
           { path: '/students/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
           { path: '/students/profile', label: 'Me', icon: User, onClick: handleProfileClick },
         ];
+
+  const getHomePath = () =>
+    getRole() === "employer"
+      ? "/employers/dashboard"
+      : "/students/dashboard";
 
   if (status === "loading") {
     return (
@@ -211,11 +227,7 @@ const TopNav: React.FC<TopNavProps> = ({
         >
           <div className="flex items-center">
              <Link
-               href={
-                 session?.user?.role === "employer"
-                   ? "/employers/dashboard"
-                   : "/students/dashboard"
-               }
+               href={getHomePath()}
                className="text-xl font-bold text-white"
              >
                <Image src="/images/logo.blue3.png" alt="Seekr Logo" width={100} height={100} />
@@ -250,15 +262,20 @@ const TopNav: React.FC<TopNavProps> = ({
             style={{ gap: isSidebarMinimized ? '112px' : '96px' }}
           >
             {navItems.map((item, index) => {
-              const isActive = pathname.startsWith(item.path);
+              let isActive = false;
+              if (item.dropdown) {
+                isActive = item.dropdown.some((menu) => pathname === menu.href);
+              } else {
+                isActive = pathname === item.path;
+              }
               const Icon = item.icon;
 
               if (item.isRobot) {
                 return null;
               }
 
-              // Dropdown for People
-              if (item.label === "People" && item.dropdown) {
+              // Dropdown for People: only for students
+              if (item.label === "People" && getRole() !== "employer" && item.dropdown) {
                 return (
                   <div
                     key={index}
@@ -402,11 +419,21 @@ const TopNav: React.FC<TopNavProps> = ({
               return (
                 <a
                   key={index}
-                  href={item.path}
+                  href={
+                    item.label === 'Home'
+                      ? getHomePath()
+                      : item.path
+                  }
                   ref={item.label === 'Messages' ? messagesRef : undefined}
                   className="flex flex-col items-center"
                   style={{ color: isActive ? '#1551a9' : labelColor }}
-                  onClick={item.onClick ? (e) => { e.preventDefault(); item.onClick(); } : undefined}
+                  // Only override onClick for Messages
+                  onClick={item.label === 'Messages'
+                    ? (e) => { e.preventDefault(); handleMessagesClick(); }
+                    : item.onClick
+                      ? (e) => { e.preventDefault(); item.onClick(); }
+                      : undefined
+                  }
                 >
                   <Icon size={20} color={isActive ? '#1551a9' : iconColor} />
                   <span className="text-xs mt-1">{item.label}</span>
@@ -430,13 +457,6 @@ const TopNav: React.FC<TopNavProps> = ({
         <NotificationsModal
           notifications={[]}
           onClose={() => setNotificationsModalOpen(false)}
-          positionRef={messagesRef}
-        />
-      )}
-      {isMessagesModalOpen && (
-        <MessagesModal
-          messages={[]}
-          onClose={() => setMessagesModalOpen(false)}
           positionRef={messagesRef}
         />
       )}
