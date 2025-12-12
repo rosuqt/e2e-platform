@@ -83,9 +83,9 @@ const JobCards: React.FC<JobCardsProps> = ({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [totalJobs, setTotalJobs] = useState(0)
   const [savedJobIds, setSavedJobIds] = useState<string[]>([])
   const [saving, setSaving] = useState<string | null>(null)
-
   const [viewedJobs, setViewedJobs] = useState<Set<string>>(new Set())
   const [matchScores, setMatchScores] = useState<Record<string, number | null>>({})
   const [studentPrefs, setStudentPrefs] = useState<{ workTypes: string[], remoteOptions: string[] }>({ workTypes: [], remoteOptions: [] });
@@ -97,17 +97,19 @@ const JobCards: React.FC<JobCardsProps> = ({
   const [companyRatings, setCompanyRatings] = useState<Record<string, { rating: number, count: number }>>({})
 
   useEffect(() => {
-    async function fetchAllJobs() {
-      let allJobs: Job[] = []
-      let page = 1
-      let hasMore = true
-      const pageSize = 50 
-      let preferredTypes: string[] = []
-      let preferredLocations: string[] = []
-      let unrelatedJobsFlag: boolean | null = null
-
-      while (hasMore) {
-        const res = await fetch(`/api/students/job-listings?page=${page}&limit=${pageSize}`)
+    setLoading(true)
+    setError(null)
+    const params = new URLSearchParams()
+    params.set("page", String(page))
+    params.set("limit", String(pageSize))
+    if (searchTitle) params.set("searchTitle", searchTitle)
+    if (searchLocation) params.set("searchLocation", searchLocation)
+    if (filters.workType) params.set("workType", filters.workType)
+    if (filters.remoteOption) params.set("remoteOption", filters.remoteOption)
+    if (filters.program) params.set("program", filters.program)
+    if (filters.listedAnytime) params.set("listedAnytime", filters.listedAnytime)
+    fetch(`/api/students/job-listings?${params.toString()}`)
+      .then(async res => {
         if (res.status === 401 || res.status === 400) {
           try {
             const data = await res.json()
@@ -125,57 +127,45 @@ const JobCards: React.FC<JobCardsProps> = ({
           setLoading(false)
           return
         }
-        if (!res.ok) break
+        if (!res.ok) throw new Error()
         const data = await res.json()
-        const jobsArray = Array.isArray(data) ? data : Array.isArray(data.jobs) ? data.jobs : []
-        allJobs = allJobs.concat(
-          jobsArray
-            .filter((job: Job) => job && job.id && job.job_title)
-            .map((job: Job) => ({
-              ...job,
-              match: "98%"
-            }))
-        )
-        if (Array.isArray(data.preferredTypes)) preferredTypes = data.preferredTypes
-        if (Array.isArray(data.preferredLocations)) preferredLocations = data.preferredLocations
-        if (typeof data.allowUnrelatedJobs === "boolean") unrelatedJobsFlag = data.allowUnrelatedJobs
-        if (jobsArray.length < pageSize) {
-          hasMore = false
-        } else {
-          page += 1
-        }
-      }
-      setJobs(allJobs)
-      setLoading(false)
-      setStudentPrefs({
-        workTypes: preferredTypes
-          .map((t: string) =>
-            t
-              .replace(/[\[\]"]/g, "") 
-              .replace(/^internship$/, "ojt/internship")
-              .replace(/^ojt$/, "ojt/internship")
-              .trim()
-              .toLowerCase()
-          )
-          .filter(Boolean),
-        remoteOptions: preferredLocations
-          .map((r: string) =>
-            r
-              .replace(/[\[\]"]/g, "")
-              .replace(/^onsite$/, "on-site") 
-              .replace(/^wfh$/, "work from home")
-              .trim()
-              .toLowerCase()
-          )
-          .filter(Boolean),
-      });
-      setAllowUnrelatedJobs(unrelatedJobsFlag)
-    }
-    fetchAllJobs().catch(() => {
-      setError("Could not load jobs.")
-      setLoading(false)
-    })
-  }, [])
+        const jobsArray = Array.isArray(data.jobs) ? data.jobs : Array.isArray(data) ? data : []
+        setJobs(jobsArray.filter((job: Job) => job && job.id && job.job_title))
+        setTotalJobs(typeof data.total === "number" ? data.total : jobsArray.length)
+        setStudentPrefs({
+          workTypes: Array.isArray(data.preferredTypes)
+            ? data.preferredTypes
+                .map((t: string) =>
+                  t
+                    .replace(/[\[\]"]/g, "")
+                    .replace(/^internship$/, "ojt/internship")
+                    .replace(/^ojt$/, "ojt/internship")
+                    .trim()
+                    .toLowerCase()
+                )
+                .filter(Boolean)
+            : [],
+          remoteOptions: Array.isArray(data.preferredLocations)
+            ? data.preferredLocations
+                .map((r: string) =>
+                  r
+                    .replace(/[\[\]"]/g, "")
+                    .replace(/^onsite$/, "on-site")
+                    .replace(/^wfh$/, "work from home")
+                    .trim()
+                    .toLowerCase()
+                )
+                .filter(Boolean)
+            : [],
+        })
+        setAllowUnrelatedJobs(typeof data.allowUnrelatedJobs === "boolean" ? data.allowUnrelatedJobs : null)
+        setLoading(false)
+      })
+      .catch(() => {
+        setError("Could not load jobs.")
+        setLoading(false)
+      })
+  }, [page, searchTitle, searchLocation, filters.workType, filters.remoteOption, filters.program, filters.listedAnytime])
 
   useEffect(() => {
     fetch("/api/students/job-listings/saved-jobs")
@@ -299,9 +289,8 @@ const JobCards: React.FC<JobCardsProps> = ({
     ...fullJobs,
     ...visibleStandardJobs,
   ]
-  const totalPages = Math.ceil(jobsToDisplay.length / pageSize)
-  const paginatedJobs = jobsToDisplay.slice((page - 1) * pageSize, page * pageSize)
-
+  const totalPages = Math.max(1, Math.ceil((totalJobs || jobsToDisplay.length) / pageSize))
+  const paginatedJobs = jobsToDisplay
 
   useEffect(() => {
     async function fetchMatchScores() {
@@ -953,7 +942,7 @@ const JobCards: React.FC<JobCardsProps> = ({
           </motion.button>
         </div>
         <div className="text-xs text-blue-400 mt-1">
-          Page {page} of {totalPages} &middot; {filteredJobs.length} jobs
+          Page {page} of {totalPages} &middot; {totalJobs || filteredJobs.length} jobs
         </div>
       </div>
     </motion.div>

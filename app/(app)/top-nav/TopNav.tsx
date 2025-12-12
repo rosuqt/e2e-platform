@@ -4,7 +4,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Users, Briefcase, MessageCircle, Bell, User } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ProfileModal } from '../students/profile/components/profile-modal';
 import { MessagesModal } from './messages-modal';
 import { NotificationsModal } from '../students/notifications/components/notifications-modal';
@@ -127,35 +127,45 @@ const TopNav: React.FC<TopNavProps> = ({
     },
   ];
 
-  const navItems = useMemo(() => {
-    const handleProfileClick = () => setProfileModalOpen((prev) => !prev);
-    const handleNotificationsClick = () => setNotificationsModalOpen((prev) => !prev);
-    const handleMessagesClick = () => setMessagesModalOpen((prev) => !prev);
+  // Remove useMemo for navItems and just define it inline for students
+  const handleProfileClick = () => setProfileModalOpen((prev) => !prev);
+  const handleNotificationsClick = () => setNotificationsModalOpen((prev) => !prev);
+  const handleMessagesClick = () => setMessagesModalOpen((prev) => !prev);
 
-    if (session?.user?.role === "employer") {
-      return [
-        { path: '/employers/dashboard', label: 'Home', icon: Home },
-        { path: '/employers/jobs/job-listings', label: 'Jobs', icon: Briefcase, dropdown: employerJobsMenu },
-        { path: '/employers/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
-        ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
-        { path: '/employers/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
-        { path: '/employers/profile', label: 'Me', icon: User, onClick: handleProfileClick },
-      ];
-    }
-    return [
-      { path: '/students/dashboard', label: 'Home', icon: Home },
-      { path: '/students/people/suggestions', label: 'People', icon: Users, dropdown: studentPeopleMenu },
-      { path: '/students/jobs/job-listings', label: 'Jobs', icon: Briefcase, dropdown: studentJobsMenu },
-      { path: '/students/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
-      ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
-      { path: '/students/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
-      { path: '/students/profile', label: 'Me', icon: User, onClick: handleProfileClick },
-    ];
-  }, [session, showFeedback, verifyStatus]);
+  const navItems =
+    session?.user?.role === "employer"
+      ? [
+          { path: '/employers/dashboard', label: 'Home', icon: Home },
+          { path: '/employers/jobs/job-listings', label: 'Jobs', icon: Briefcase, dropdown: employerJobsMenu },
+          { path: '/employers/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
+          ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
+          { path: '/employers/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
+          { path: '/employers/profile', label: 'Me', icon: User, onClick: handleProfileClick },
+        ]
+      : [
+          { path: '/students/dashboard', label: 'Home', icon: Home },
+          { path: '/students/people/suggestions', label: 'People', icon: Users, dropdown: studentPeopleMenu },
+          { path: '/students/jobs/job-listings', label: 'Jobs', icon: Briefcase, dropdown: studentJobsMenu },
+          { path: '/students/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
+          ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
+          { path: '/students/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
+          { path: '/students/profile', label: 'Me', icon: User, onClick: handleProfileClick },
+        ];
 
   useEffect(() => {
-    Promise.all(navItems.map((item) => router.prefetch(item.path)));
-  }, [router, navItems]);
+    // Only prefetch once for student routes
+    if (session?.user?.role === "student" || session?.user?.role === "students") {
+      [
+        '/students/dashboard',
+        '/students/people/suggestions',
+        '/students/jobs/job-listings',
+        '/students/messages',
+        '/students/notifications',
+        '/students/profile'
+      ].forEach((p) => router.prefetch(p));
+    }
+    // ...existing employer prefetch logic if needed...
+  }, [router, session?.user?.role]);
 
   if (status === "loading") {
     return (
