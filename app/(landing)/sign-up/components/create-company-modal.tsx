@@ -113,10 +113,16 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
     if (activeTab === 0) {
       const companyNameError = !formData.companyName
         ? "Company Name is required"
+        : !/^(?!.*([.\-&'])\1)[A-Za-z0-9 .\-&']+$/.test(formData.companyName)
+        ? "Invalid format. Only letters, numbers, spaces, period, hyphen, ampersand (&), apostrophes allowed — no repeated symbols."
         : validateLength("Company Name", formData.companyName, 2, 40);
-      const branchNameError = !formData.companyBranch
-        ? "Company Branch Name is required"
-        : validateLength("Company Branch Name", formData.companyBranch, 2, 40);
+        const branchNameError = !formData.companyBranch
+          ? "Company Branch Name is required"
+          : /@/.test(formData.companyBranch)
+          ? "Company Branch Name cannot contain '@' symbols."
+          : !/^(?!.*([.\-&'])\1)[A-Za-z0-9 .\-&']+$/.test(formData.companyBranch)
+          ? "Invalid format. Only letters, numbers, spaces, period, hyphen, ampersand (&), apostrophes allowed — no repeated symbols."
+          : validateLength("Company Branch Name", formData.companyBranch, 2, 40);
       const emailDomainError = formData.companyEmailDomain
         ? validateLength(
             "Email Domain",
@@ -701,13 +707,42 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                   onChange={handleChange}
                   error={
                     !!formData.companyEmailDomain &&
-                    !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyEmailDomain.slice(1))
+                    (() => {
+                      const domain = formData.companyEmailDomain.startsWith("@")
+                        ? formData.companyEmailDomain.slice(1)
+                        : formData.companyEmailDomain;
+
+                      // Cannot start or end with dot or hyphen
+                      if (/^[.-]|[.-]$/.test(domain)) return true;
+
+                      // No consecutive dots
+                      if (/\.{2,}/.test(domain)) return true;
+
+                      // Domain label hyphens allowed, but not starting
+                      if (domain.split(".")[0].startsWith("-")) return true;
+
+                      // Only allow alpha-numeric, dot, hyphen
+                      if (!/^[a-zA-Z0-9.-]+$/.test(domain)) return true;
+
+                      // Must end with common TLD or .ph
+                      if (!/\.(ph|com|net|org)$/i.test(domain)) return true;
+
+                      return false;
+                    })()
                   }
                   helperText={
-                    formData.companyEmailDomain &&
-                    !/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.companyEmailDomain.slice(1))
-                      ? "Invalid domain format (e.g., company.com)"
-                      : ""
+                    !!formData.companyEmailDomain &&
+                    (() => {
+                      const domain = formData.companyEmailDomain.startsWith("@") ? formData.companyEmailDomain.slice(1) : formData.companyEmailDomain;
+
+                      if (/^[.-]|[.-]$/.test(domain)) return "Domain cannot start/end with '.' or '-'.";
+                      if (/\.{2,}/.test(domain)) return "Domain cannot have consecutive dots.";
+                      if (domain.split(".")[0].startsWith("-")) return "Domain label cannot start with a hyphen.";
+                      if (!/^[a-zA-Z0-9.-]+$/.test(domain)) return "Domain can only contain letters, numbers, dots, and hyphens.";
+                      if (!/\.(ph|com|net|org|co)$/i.test(domain)) return "Domain must end with .ph, .com, .net, .co, or .org.";
+
+                      return "";
+                    })()
                   }
                   InputProps={{
                     style: {
@@ -728,6 +763,8 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                     },
                   }}
                 />
+
+
               </div>
               <label htmlFor="companyEmailDomain" className="text-sm text-gray-600">Provide the email domain used by the company (e.g company.com)</label>
               <div className="flex justify-end">
@@ -860,99 +897,51 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
               <div className="w-full flex flex-col gap-4">
                 <div>
                   <div className="flex gap-2 w-full">
-                    <Autocomplete
-                      id="companyCountryCode"
-                      options={countries}
-                      autoHighlight
-                      disablePortal
-                      PopperComponent={(props) => <Popper {...props} placement="bottom-start" />}
-                      getOptionLabel={(option) => `${option.code} (+${option.phone})`}
-                      renderOption={(props, option) => {
-                        const { key, ...optionProps } = props;
-                        return (
-                          <Box
-                            key={key}
-                            component="li"
-                            sx={{ '& > img': { mr: 2, flexShrink: 0 } }}
-                            {...optionProps}
-                          >
-                            <Image
-                              loading="lazy"
-                              width={20}
-                              height={15}
-                              src={`https://flagcdn.com/w20/${option.code.toLowerCase()}.png`}
-                              alt=""
-                            />
-                            {option.code} (+{option.phone})
-                          </Box>
-                        );
-                      }}
-                      value={countries.find((c) => c.phone === formData.address.countryCode) || null}
-                      onChange={(event, newValue) => {
+                    <TextField
+                      id="companyContactNumber"
+                      label={<span>Contact Number <span style={{ color: "red" }}>*</span></span>}
+                      placeholder="Enter company phone number"
+                      variant="outlined"
+                      value={formData.address.contactNumber}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, ""); // only digits
                         setFormData({
                           ...formData,
-                          address: { ...formData.address, countryCode: newValue?.phone || "" },
+                          address: {
+                            ...formData.address,
+                            contactNumber: digits,
+                          },
                         });
                       }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Country Code *"
-                          placeholder="Select country code"
-                          error={!!addressErrors.countryCode}
-                          helperText={addressErrors.countryCode}
-                          sx={{
-                            minWidth: 120,
-                            "& .MuiOutlinedInput-root": {
-                              "&:hover fieldset": {
-                                borderColor: "#2563eb",
-                            },
+                      error={
+                        !!(addressErrors as Record<string, string>).contactNumber ||
+                        (showAddressErrors &&
+                          !/^(0\d{9,10}|63\d{10})$/.test(formData.address.contactNumber))
+                      }
+                      helperText={
+                        (addressErrors as Record<string, string>).contactNumber ||
+                        ((showAddressErrors &&
+                          !/^(0\d{9,10}|63\d{10})$/.test(formData.address.contactNumber))
+                          ? "Invalid Philippine phone number. Must start with 0 or 63."
+                          : "")
+                      }
+                      inputProps={{ maxLength: 12, minLength: 10 }}
+                      className="flex-1"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          "&:hover fieldset": {
+                            borderColor: "#2563eb",
                           },
-                          "& .MuiInputLabel-root": {
-                            "&:hover": {
-                              color: "#2563eb",
-                            },
+                        },
+                        "& .MuiInputLabel-root": {
+                          "&:hover": {
+                            color: "#2563eb",
                           },
-                        }}
-                      />
-                    )}
-                    sx={{ minWidth: 120, flex: "0 0 180px" }}
-                  />
-                  <TextField
-                    id="companyContactNumber"
-                    label={<span>Contact Number <span style={{ color: "red" }}>*</span></span>}
-                    placeholder="Enter company phone number"
-                    variant="outlined"
-                    value={formData.address.contactNumber}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          contactNumber: e.target.value.replace(/\D/g, ""),
                         },
-                      })
-                    }
-                    error={!!(addressErrors as Record<string, string>).contactNumber || (showAddressErrors && !formData.address.contactNumber)}
-                    helperText={
-                      (addressErrors as Record<string, string>).contactNumber ||
-                      ((showAddressErrors && !formData.address.contactNumber) ? "Contact Number is required" : "")
-                    }
-                    inputProps={{ maxLength: 15, minLength: 7 }}
-                    className="flex-1"
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        "&:hover fieldset": {
-                          borderColor: "#2563eb",
-                        },
-                      },
-                      "& .MuiInputLabel-root": {
-                        "&:hover": {
-                          color: "#2563eb",
-                        },
-                      },
-                    }}
-                  />
+                      }}
+                    />
+
+
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Provide a phone number for contacting the company.</p>
               </div>

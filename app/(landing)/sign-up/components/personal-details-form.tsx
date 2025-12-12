@@ -148,11 +148,17 @@ export default function PersonalDetailsForm({
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-3 px-6 mb-6">
         <motion.div className="col-span-1" {...(errors.countryCode ? errorAnimation : {})}>
-          <Autocomplete
+           <Autocomplete
             id="countryCode"
             options={countries}
             autoHighlight
             disablePortal
+            disabled
+            value={
+              countries.find((c) => c.phone === data.countryCode) ||
+              countries.find((c) => c.code === "PH") || 
+              null
+            }
             PopperComponent={(props) => <Popper {...props} placement="bottom-start" />}
             getOptionLabel={(option) => `${option.code} (+${option.phone})`}
             renderOption={(props, option) => {
@@ -175,8 +181,7 @@ export default function PersonalDetailsForm({
                 </Box>
               );
             }}
-            value={countries.find((c) => c.phone === data.countryCode) || null}
-            onChange={(event, newValue) => {
+            onChange={(event,newValue) => {
               onChange({ ...data, countryCode: newValue?.phone || "" });
             }}
             renderInput={(params) => (

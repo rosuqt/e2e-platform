@@ -618,10 +618,7 @@ export default function StudentManagement() {
                         onChange={(e) => setSearchQuery(e.target.value)}
                       />
                     </div>
-                    <Button variant="outline" className="flex items-center gap-2 rounded-2xl border-gray-200">
-                      <Filter className="h-4 w-4" />
-                      Filter
-                    </Button>
+
                   </div>
                 </div>
                 <Tabs defaultValue="all" onValueChange={setActiveTab} className="space-y-8">
