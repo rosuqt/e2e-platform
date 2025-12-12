@@ -155,16 +155,52 @@ export default function Sidebar({ onToggle, menuItems, friendRequestCount }: Sid
                 );
               } else {
                 setProfileImg(null);
-                sessionStorage.removeItem("sidebarUserData");
+                // Store employer data even if image fetch fails
+                sessionStorage.setItem(
+                  "sidebarUserData",
+                  JSON.stringify({
+                    role: "employer",
+                    studentName,
+                    email: email || null,
+                    jobTitle: job_title || null,
+                    profileImg: null,
+                    course: null,
+                    verify_status
+                  })
+                );
               }
             } catch {
               setProfileImg(null);
-              sessionStorage.removeItem("sidebarUserData");
+              // Store employer data even if image fetch fails
+              sessionStorage.setItem(
+                "sidebarUserData",
+                JSON.stringify({
+                  role: "employer",
+                  studentName,
+                  email: email || null,
+                  jobTitle: job_title || null,
+                  profileImg: null,
+                  course: null,
+                  verify_status
+                })
+              );
             }
           } else {
             imgUrl = `https://dbuyxpovejdakzveiprx.supabase.co/storage/v1/object/public/app.images/default.png?t=${Date.now()}`;
             setProfileImg(imgUrl);
-            sessionStorage.removeItem("sidebarUserData");
+            // Store employer data even if no profile_img
+            sessionStorage.setItem(
+              "sidebarUserData",
+              JSON.stringify({
+                role: "employer",
+                studentName,
+                email: email || null,
+                jobTitle: job_title || null,
+                profileImg: imgUrl,
+                course: null,
+                verify_status
+              })
+            );
           }
 
           setLoading(false);

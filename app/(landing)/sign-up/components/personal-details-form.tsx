@@ -269,22 +269,68 @@ export default function PersonalDetailsForm({
           value={data.email}
           onChange={(e) => {
             const value = e.target.value;
-            const emailRegex = /^[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
-            const domainPart = value.split('@')[1];
             let emailError = "";
-            if (!emailRegex.test(value)) {
-              emailError = "Invalid email format";
-            } else if (
-              domainPart &&
-              domainPart
-                .split('.')
-                .some(
-                  label =>
-                    label.startsWith('-') ||
-                    label.endsWith('-')
-                )
+            const emailRegex =
+              /^[a-zA-Z0-9]+([._%+-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-]?[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
+            const forbiddenPatterns = [
+              /\s/, // spaces
+              /\.\./, // consecutive dots
+              /[()]/, // parentheses
+              /@.*@/, // double @
+              /^\.|^\S+@\./, // leading dot in local or domain
+              /\.$|\.\s*$/, // trailing dot in local or domain
+              /@.*\.\./, // double dot in domain
+              /@.*\.$/, // domain ends with dot
+              /@.*\.-/, // domain label starts with hyphen
+              /@.*-\./, // domain label ends with hyphen
+              /@.*\.(co)$/, // disallow .co TLD
+              /@.*\.$/, // domain ends with dot
+              /@.*\..*-\./, // domain label ends with hyphen before dot
+              /@.*\.-.*\./, // domain label starts with hyphen after dot
+            ];
+            const tldRegex = /\.(com|net|org|ph)$/i;
+            // Disallow local part starting with dot
+            if (
+              !emailRegex.test(value) ||
+              forbiddenPatterns.some((pat) => pat.test(value)) ||
+              value.startsWith(".") ||
+              value.endsWith(".") ||
+              value.includes("..") ||
+              value.includes("(") ||
+              value.includes(")") ||
+              value.includes(" @") ||
+              value.includes("@ ") ||
+              value.split("@").length !== 2 ||
+              value.split("@")[1]?.split(".").some(label => label.startsWith('-') || label.endsWith('-')) ||
+              !tldRegex.test(value) ||
+              value.startsWith(".") // <-- this line ensures emails like ".allyza@gmail.com" are blocked
             ) {
-              emailError = "Invalid email format";
+              emailError = "Invalid email format.";
+            }
+            // Specific disallowed examples
+            const disallowed = [
+              "maegmail.com",
+              "user.domain.com",
+              "Juan de lima @gmail.com",
+              ".juan@mail.com",
+              "juan@mail.com.",
+              "maria..@gmail.com",
+              "ana(mae)@mail.com",
+              "user-@domain.com",
+              "user@domain-.com",
+              "user@gmail.co",
+              "user@@gmail.com",
+              "user@domain",
+              "user@mail..com",
+            ];
+            if (
+              disallowed.some((bad) => value.trim().toLowerCase() === bad.trim().toLowerCase())
+            ) {
+              emailError = "Invalid email format.";
+            }
+            // Block local part starting with dot
+            if (/^\.([a-zA-Z0-9]+)/.test(value.split("@")[0])) {
+              emailError = "Invalid email format.";
             }
             onChange({ ...data, email: value });
             errors.email = emailError;

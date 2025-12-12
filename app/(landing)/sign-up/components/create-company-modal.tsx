@@ -27,13 +27,11 @@ type AddressData = {
   suiteUnitFloor: string;
   businessPark: string;
   buildingName: string;
-  countryCode: string;
 };
 
 type AddressErrors = {
   contactEmail: string;
   contactNumber: string;
-  countryCode: string;
   address: string; 
 };
 
@@ -46,7 +44,6 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
   const [addressErrors, setAddressErrors] = useState<AddressErrors>({
     contactEmail: "",
     contactNumber: "",
-    countryCode: "",
     address: "",
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +64,6 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
       suiteUnitFloor: "",
       businessPark: "",
       buildingName: "",
-      countryCode: "",
     } as AddressData,
   })
 
@@ -183,26 +179,20 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
 
     if (activeTab === 1) {
       const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.address.contactEmail);
-      const countryCode = formData.address.countryCode;
       const phone = formData.address.contactNumber;
-      let numberValid = false;
-      if (countryCode === "63" || countryCode === "+63") {
-        numberValid = /^9\d{9}$/.test(phone);
-      } else {
-        numberValid = /^\d{7,15}$/.test(phone);
-      }
+      // Strict PH mobile validation: must start with 09 and be 11 digits
+      const isPHMobile = /^09\d{9}$/.test(phone);
+      const numberValid = isPHMobile;
 
       const requiredFields = [
         { key: "address", label: "Address" },
         { key: "contactEmail", label: "Contact Email" },
         { key: "contactNumber", label: "Contact Number" },
-        { key: "countryCode", label: "Country Code" },
       ] as const;
       let missing = false;
-      const newAddressErrors: { contactEmail: string; contactNumber: string; countryCode: string; address: string; [key: string]: string } = {
+      const newAddressErrors: { contactEmail: string; contactNumber: string; address: string; [key: string]: string } = {
         contactEmail: addressErrors.contactEmail ?? "",
         contactNumber: addressErrors.contactNumber ?? "",
-        countryCode: addressErrors.countryCode ?? "",
         address: addressErrors.address ?? "",
       };
       requiredFields.forEach(field => {
@@ -214,30 +204,63 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
           newAddressErrors[field.key] = "";
         }
       });
-      newAddressErrors.contactEmail = emailValid ? "" : "Invalid email format";
-      if (!countryCode) {
-        newAddressErrors.countryCode = "Country code required";
-        missing = true;
-      }
-      if (countryCode === "63" || countryCode === "+63") {
-        newAddressErrors.contactNumber = /^9\d{9}$/.test(phone)
-          ? ""
-          : "PH mobile must start with 9 and be 10 digits (e.g. 9123456789)";
-      } else {
-        newAddressErrors.contactNumber = /^\d{7,15}$/.test(phone)
-          ? ""
-          : "Invalid phone number";
-      }
+      // Strict email validation for company contact email
+      const emailValue = formData.address.contactEmail;
+      const emailRegex =
+        /^[a-zA-Z0-9]+([._%+-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-]?[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
+      const forbiddenPatterns = [
+        /\s/, /\.\./, /[()]/, /@.*@/, /^\.|^\S+@\./, /\.$|\.\s*$/, /@.*\.\./, /@.*\.$/, /@.*\.-/, /@.*-\./, /@.*\.(co)$/, /@.*\.$/, /@.*\..*-\./, /@.*\.-.*\./,
+      ];
+      const tldRegex = /\.(com|net|org|ph)$/i;
+      const domainPart = emailValue.split('@')[1];
+      const strictEmailValid =
+        emailRegex.test(emailValue) &&
+        !forbiddenPatterns.some((pat) => pat.test(emailValue)) &&
+        !emailValue.startsWith(".") &&
+        !emailValue.endsWith(".") &&
+        !emailValue.includes("..") &&
+        !emailValue.includes("(") &&
+        !emailValue.includes(")") &&
+        !emailValue.includes(" @") &&
+        !emailValue.includes("@ ") &&
+        emailValue.split("@").length === 2 &&
+        (!domainPart ||
+          !domainPart
+            .split('.')
+            .some(label => label.startsWith('-') || label.endsWith('-'))) &&
+        tldRegex.test(emailValue) &&
+        ![
+          "maegmail.com",
+          "user.domain.com",
+          "Juan de lima @gmail.com",
+          ".juan@mail.com",
+          "juan@mail.com.",
+          "maria..@gmail.com",
+          "ana(mae)@mail.com",
+          "user-@domain.com",
+          "user@domain-.com",
+          "user@gmail.co",
+          "user@@gmail.com",
+          "user@domain",
+          "user@mail..com",
+        ].some(
+          (bad) =>
+            emailValue.trim().toLowerCase() === bad.trim().toLowerCase()
+        ) &&
+        // Block local part starting with dot
+        !/^\.([a-zA-Z0-9]+)/.test(emailValue.split("@")[0]);
+      // Use strictEmailValid as the only boolean for email validity
+      newAddressErrors.contactEmail = strictEmailValid ? "" : "Invalid email format.";
+
       if (!emailValid || !numberValid) missing = true;
 
       setAddressErrors({
         contactEmail: newAddressErrors.contactEmail,
         contactNumber: newAddressErrors.contactNumber,
-        countryCode: newAddressErrors.countryCode,
         address: newAddressErrors.address,
       });
 
-      if (missing || !emailValid || !numberValid) {
+      if (missing) {
         setShowAddressErrors(true);
         setIsLoading(false);
         return;
@@ -901,7 +924,9 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                       variant="outlined"
                       value={formData.address.contactNumber}
                       onChange={(e) => {
-                        const digits = e.target.value.replace(/\D/g, ""); // only digits
+                        // Only allow digits, max 11 for PH mobile
+                        let digits = e.target.value.replace(/\D/g, "");
+                        if (digits.length > 11) digits = digits.slice(0, 11);
                         setFormData({
                           ...formData,
                           address: {
@@ -912,17 +937,15 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                       }}
                       error={
                         !!(addressErrors as Record<string, string>).contactNumber ||
-                        (showAddressErrors &&
-                          !/^(0\d{9,10}|63\d{10})$/.test(formData.address.contactNumber))
+                        (showAddressErrors && !/^09\d{9}$/.test(formData.address.contactNumber))
                       }
                       helperText={
                         (addressErrors as Record<string, string>).contactNumber ||
-                        ((showAddressErrors &&
-                          !/^(0\d{9,10}|63\d{10})$/.test(formData.address.contactNumber))
-                          ? "Invalid Philippine phone number. Must start with 0 or 63."
+                        ((showAddressErrors && !/^09\d{9}$/.test(formData.address.contactNumber))
+                          ? "Invalid PH mobile number. Must start with 09 and be 11 digits."
                           : "")
                       }
-                      inputProps={{ maxLength: 12, minLength: 10 }}
+                      inputProps={{ maxLength: 11, minLength: 11 }}
                       className="flex-1"
                       sx={{
                         "& .MuiOutlinedInput-root": {
@@ -940,7 +963,7 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
 
 
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Provide a phone number for contacting the company.</p>
+                <p className="text-xs text-gray-500 mt-1">Provide a valid Philippine mobile number (e.g. 09123456789).</p>
               </div>
               <div>
                 <TextField
@@ -957,10 +980,116 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                       address: { ...formData.address, contactEmail: e.target.value },
                     })
                   }
-                  error={!!(addressErrors as Record<string, string>).contactEmail || (showAddressErrors && !formData.address.contactEmail)}
+                  error={
+                    !!(addressErrors as Record<string, string>).contactEmail ||
+                    (showAddressErrors && (
+                      (() => {
+                        const value = formData.address.contactEmail;
+                        const emailRegex =
+                          /^[a-zA-Z0-9]+([._%+-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-]?[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
+                        const forbiddenPatterns = [
+                          /\s/, /\.\./, /[()]/, /@.*@/, /^\.|^\S+@\./, /\.$|\.\s*$/, /@.*\.\./, /@.*\.$/, /@.*\.-/, /@.*-\./, /@.*\.(co)$/, /@.*\.$/, /@.*\..*-\./, /@.*\.-.*\./,
+                        ];
+                        const tldRegex = /\.(com|net|org|ph)$/i;
+                        const domainPart = value.split('@')[1];
+                        if (
+                          !emailRegex.test(value) ||
+                          forbiddenPatterns.some((pat) => pat.test(value)) ||
+                          value.startsWith(".") ||
+                          value.endsWith(".") ||
+                          value.includes("..") ||
+                          value.includes("(") ||
+                          value.includes(")") ||
+                          value.includes(" @") ||
+                          value.includes("@ ") ||
+                          value.split("@").length !== 2 ||
+                          (domainPart &&
+                            domainPart
+                              .split('.')
+                              .some(label => label.startsWith('-') || label.endsWith('-'))) ||
+                          !tldRegex.test(value) ||
+                          [
+                            "maegmail.com",
+                            "user.domain.com",
+                            "Juan de lima @gmail.com",
+                            ".juan@mail.com",
+                            "juan@mail.com.",
+                            "maria..@gmail.com",
+                            "ana(mae)@mail.com",
+                            "user-@domain.com",
+                            "user@domain-.com",
+                            "user@gmail.co",
+                            "user@@gmail.com",
+                            "user@domain",
+                            "user@mail..com",
+                          ].some(
+                            (bad) =>
+                              value.trim().toLowerCase() === bad.trim().toLowerCase()
+                          ) ||
+                          // Block local part starting with dot
+                          /^\.([a-zA-Z0-9]+)/.test(value.split("@")[0])
+                        ) {
+                          return true;
+                        }
+                        return false;
+                      })()
+                    ))
+                  }
                   helperText={
                     (addressErrors as Record<string, string>).contactEmail ||
-                    ((showAddressErrors && !formData.address.contactEmail) ? "Contact Email is required" : "")
+                    ((showAddressErrors && !formData.address.contactEmail)
+                      ? "Contact Email is required"
+                      : (showAddressErrors && (() => {
+                        const value = formData.address.contactEmail;
+                        const emailRegex =
+                          /^[a-zA-Z0-9]+([._%+-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-]?[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
+                        const forbiddenPatterns = [
+                          /\s/, /\.\./, /[()]/, /@.*@/, /^\.|^\S+@\./, /\.$|\.\s*$/, /@.*\.\./, /@.*\.$/, /@.*\.-/, /@.*-\./, /@.*\.(co)$/, /@.*\.$/, /@.*\..*-\./, /@.*\.-.*\./,
+                        ];
+                        const tldRegex = /\.(com|net|org|ph)$/i;
+                        const domainPart = value.split('@')[1];
+                        if (
+                          !emailRegex.test(value) ||
+                          forbiddenPatterns.some((pat) => pat.test(value)) ||
+                          value.startsWith(".") ||
+                          value.endsWith(".") ||
+                          value.includes("..") ||
+                          value.includes("(") ||
+                          value.includes(")") ||
+                          value.includes(" @") ||
+                          value.includes("@ ") ||
+                          value.split("@").length !== 2 ||
+                          (domainPart &&
+                            domainPart
+                              .split('.')
+                              .some(label => label.startsWith('-') || label.endsWith('-'))) ||
+                          !tldRegex.test(value) ||
+                          [
+                            "maegmail.com",
+                            "user.domain.com",
+                            "Juan de lima @gmail.com",
+                            ".juan@mail.com",
+                            "juan@mail.com.",
+                            "maria..@gmail.com",
+                            "ana(mae)@mail.com",
+                            "user-@domain.com",
+                            "user@domain-.com",
+                            "user@gmail.co",
+                            "user@@gmail.com",
+                            "user@domain",
+                            "user@mail..com",
+                          ].some(
+                            (bad) =>
+                              value.trim().toLowerCase() === bad.trim().toLowerCase()
+                          ) ||
+                          // Block local part starting with dot
+                          /^\.([a-zA-Z0-9]+)/.test(value.split("@")[0])
+                        ) {
+                          return "Invalid email format.";
+                        }
+                        return "";
+                      })())
+                    )
                   }
                   sx={{
                     mt: 0,
@@ -1125,9 +1254,6 @@ export default function CreateCompanyModal({ onClose }: { onClose: (newCompany?:
                   <div>
                     <span className="font-medium text-gray-700">Contact Number:</span>
                     <span className="ml-2 text-gray-900">
-                      {formData.address.countryCode
-                        ? `+${formData.address.countryCode} `
-                        : ""}
                       {formData.address.contactNumber || <span className="italic text-gray-400">Not Provided</span>}
                     </span>
                   </div>

@@ -202,13 +202,16 @@ export default function SignUpForm() {
 
     if (!details.firstName.trim()) {
       errors.firstName = "First Name is required.";
-    } else if (!/^[A-Za-zÑñ]+([ '-][A-Za-zÑñ]+)*$/.test(details.firstName)) {
-      errors.firstName = "Only letters, single space or dash between names allowed.";
+    // Allow "Ma." as a valid prefix and allow letters, ñ, Ñ, spaces, dashes, and periods
+    } else if (
+      !/^((Ma\.)\s*)?[A-Za-zÑñ.]+([ '-][A-Za-zÑñ.]+)*$/.test(details.firstName)
+    ) {
+      errors.firstName = "Only letters, Ma., single space, period, or dash between names allowed.";
     } else if (details.firstName.length < 1 || details.firstName.length > 36) {
       errors.firstName = "Must be between 1 and 36 characters.";
     }
 
-    if (details.middleName && !/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.middleName)) {
+    if (details.middleName && !/^[A-Za-zÑñ.]+([ -][A-Za-zÑñ.]+)*$/.test(details.middleName)) {
       errors.middleName = "Only letters, single space or dash between names allowed.";
     } else if (details.middleName && details.middleName.length > 35) {
       errors.middleName = "Must not exceed 35 characters.";
@@ -216,8 +219,9 @@ export default function SignUpForm() {
 
     if (!details.lastName.trim()) {
       errors.lastName = "Last Name is required.";
-    } else if (!/^[A-Za-zÑñ]+([ '-][A-Za-zÑñ]+)*$/.test(details.lastName)) {
-      errors.lastName = "Only letters, single space or dash between names allowed.";
+    // Allow letters, ñ, Ñ, spaces, dashes, and periods in last name
+    } else if (!/^[A-Za-zÑñ.]+([ '-][A-Za-zÑñ.]+)*$/.test(details.lastName)) {
+      errors.lastName = "Only letters, single space, period, or dash between names allowed.";
     } else if (details.lastName.length < 1 || details.lastName.length > 35) {
       errors.lastName = "Last Name must be between 1 and 35 characters.";
     }
@@ -260,23 +264,68 @@ export default function SignUpForm() {
     if (!details.email.trim()) {
       errors.email = "Email is required.";
     } else {
-      const emailRegex = /^(?!.*\.\.)[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
+      // Strict email validation
+      const emailRegex =
+        /^[a-zA-Z0-9]+([._%+-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-]?[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
+      const forbiddenPatterns = [
+        /\s/, // spaces
+        /\.\./, // consecutive dots
+        /[()]/, // parentheses
+        /@.*@/, // double @
+        /^\.|^\S+@\./, // leading dot in local or domain
+        /\.$|\.\s*$/, // trailing dot in local or domain
+        /@.*\.\./, // double dot in domain
+        /@.*\.$/, // domain ends with dot
+        /@.*\.-/, // domain label starts with hyphen
+        /@.*-\./, // domain label ends with hyphen
+        /@.*\.(co)$/, // disallow .co TLD
+        /@.*\.$/, // domain ends with dot
+        /@.*\..*-\./, // domain label ends with hyphen before dot
+        /@.*\.-.*\./, // domain label starts with hyphen after dot
+      ];
+      const tldRegex = /\.(com|net|org|ph)$/i;
       const domainPart = details.email.split('@')[1];
-      if (!emailRegex.test(details.email)) {
-        errors.email = "Invalid email format.";
-      } else if (
-        domainPart &&
-        domainPart
-          .split('.')
-          .some(
-            label =>
-              label.startsWith('-') ||
-              label.endsWith('-')
-          )
+      if (
+        !emailRegex.test(details.email) ||
+        forbiddenPatterns.some((pat) => pat.test(details.email)) ||
+        details.email.startsWith(".") ||
+        details.email.endsWith(".") ||
+        details.email.includes("..") ||
+        details.email.includes("(") ||
+        details.email.includes(")") ||
+        details.email.includes(" @") ||
+        details.email.includes("@ ") ||
+        details.email.split("@").length !== 2 ||
+        (domainPart &&
+          domainPart
+            .split('.')
+            .some(label => label.startsWith('-') || label.endsWith('-'))) ||
+        !tldRegex.test(details.email)
       ) {
         errors.email = "Invalid email format.";
       } else if (details.email.length < 6 || details.email.length > 254) {
         errors.email = "Email must be between 6 and 254 characters.";
+      } else if (
+        [
+          "maegmail.com",
+          "user.domain.com",
+          "Juan de lima @gmail.com",
+          ".juan@mail.com",
+          "juan@mail.com.",
+          "maria..@gmail.com",
+          "ana(mae)@mail.com",
+          "user-@domain.com",
+          "user@domain-.com",
+          "user@gmail.co",
+          "user@@gmail.com",
+          "user@domain",
+          "user@mail..com",
+        ].some(
+          (bad) =>
+            details.email.trim().toLowerCase() === bad.trim().toLowerCase()
+        )
+      ) {
+        errors.email = "Invalid email format.";
       } else if (await checkEmailExists(details.email)) {
         errors.email = "This email is already registered.";
       }
