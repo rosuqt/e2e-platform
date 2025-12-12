@@ -58,6 +58,9 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import TopHighestMatchApplicants from "./topHighest"
 import { IoCalendarSharp } from "react-icons/io5"
+import { MdOutlineRateReview } from "react-icons/md"
+import { GiCancel } from "react-icons/gi"
+import { FaRegStar } from "react-icons/fa"
 
 type JobPosting = {
   job_title?: string
@@ -589,6 +592,9 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
     waitlisted: { icon: <TbClockQuestion className="h-4 w-4 text-white" />, iconBg: "bg-blue-500" },
     rejected: { icon: <IoIosCloseCircleOutline className="h-4 w-4 text-white" />, iconBg: "bg-red-500" },
     hired: { icon: <FaUserCheck  className="h-4 w-4 text-white" />, iconBg: "bg-green-700" },
+    withdrawn: { icon: <GiCancel className="h-4 w-4 text-white" />, iconBg: "bg-gray-500" },
+    student_ratings: { icon: <MdOutlineRateReview className="h-4 w-4 text-white" />, iconBg: "bg-indigo-500" },
+    student_rating: { icon: <FaRegStar className="h-4 w-4 text-white" />, iconBg: "bg-yellow-600" },
   }
 
   useEffect(() => {
@@ -1454,42 +1460,49 @@ const allDegrees = ["Associate", "Bachelor’s", "Master’s", "Doctorate"]
                         <div className="text-gray-400 text-sm text-center">No recent activity</div>
                       </div>
                     ) : (
-                      recentActivity.slice(0, 6).map((update, index) => {
-                        let iconKey = (update.icon || '').toLowerCase()
-                        if (iconKey === "offer sent" || iconKey === "offer_sent") iconKey = "offer_sent"
-                        const iconInfo = iconMap[iconKey] || { icon: <FileText className="h-4 w-4 text-white" />, iconBg: 'bg-blue-200' }
-                        return (
-                          <div
-                            key={index}
-                            className="flex gap-3 cursor-pointer hover:bg-blue-50 rounded-lg transition-colors"
-                            onClick={() => {
-                              if (update.application_id) {
-                                const applicant = applicants.find(a => a.application_id === update.application_id)
-                                setSelectedApplicant(applicant || null)
-                                setIsModalOpen(true)
-                              }
-                            }}
-                          >
-                            <div className="relative">
-                              <div className={`w-8 h-8 rounded-full ${iconInfo.iconBg} flex items-center justify-center`}>
-                                {iconInfo.icon}
-                              </div>
-                              {update.time && update.time.includes("hour") && index < 1 ? (
-                                <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
-                              ) : null}
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-800">{update.name}</p>
-                              <p className="text-xs text-gray-500">{update.position}</p>
-                              <p className="text-xs font-medium text-blue-600 mt-1">{update.update}</p>
-                              <p className="text-xs text-gray-400 mt-1">{formatActivityDate(update.time)}</p>
-                            </div>
-                            <button className="text-gray-400 hover:text-blue-500">
-                              <ChevronRight className="h-5 w-5" />
-                            </button>
-                          </div>
+                      recentActivity
+                        .filter(
+                          update =>
+                            update.icon?.toLowerCase() !== "event_today" &&
+                            update.icon?.toLowerCase() !== "event_posted"
                         )
-                      })
+                        .slice(0, 6)
+                        .map((update, index) => {
+                          let iconKey = (update.icon || '').toLowerCase()
+                          if (iconKey === "offer sent" || iconKey === "offer_sent") iconKey = "offer_sent"
+                          const iconInfo = iconMap[iconKey] || { icon: <FileText className="h-4 w-4 text-white" />, iconBg: 'bg-blue-200' }
+                          return (
+                            <div
+                              key={index}
+                              className="flex gap-3 cursor-pointer hover:bg-blue-50 rounded-lg transition-colors"
+                              onClick={() => {
+                                if (update.application_id) {
+                                  const applicant = applicants.find(a => a.application_id === update.application_id)
+                                  setSelectedApplicant(applicant || null)
+                                  setIsModalOpen(true)
+                                }
+                              }}
+                            >
+                              <div className="relative">
+                                <div className={`w-8 h-8 rounded-full ${iconInfo.iconBg} flex items-center justify-center`}>
+                                  {iconInfo.icon}
+                                </div>
+                                {update.time && update.time.includes("hour") && index < 1 ? (
+                                  <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                                ) : null}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-800">{update.name}</p>
+                                <p className="text-xs text-gray-500">{update.position}</p>
+                                <p className="text-xs font-medium text-blue-600 mt-1">{update.update}</p>
+                                <p className="text-xs text-gray-400 mt-1">{formatActivityDate(update.time)}</p>
+                              </div>
+                              <button className="text-gray-400 hover:text-blue-500">
+                                <ChevronRight className="h-5 w-5" />
+                              </button>
+                            </div>
+                          )
+                        })
                     )}
                   </div>
                 </CardContent>

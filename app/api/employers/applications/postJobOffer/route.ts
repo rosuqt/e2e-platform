@@ -8,7 +8,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
-      salary,
       start_date,
       notes,
       application_id,
@@ -17,7 +16,6 @@ export async function POST(req: Request) {
       company_name,
       applicant_name,
       job_title,
-      salary_type,
       work_setup,
       employment_type,
       work_location,
@@ -33,7 +31,6 @@ export async function POST(req: Request) {
     } = body;
 
     const offer: Record<string, any> = {
-      salary,
       start_date,
       notes,
       application_id,
@@ -42,7 +39,6 @@ export async function POST(req: Request) {
       company_name,
       applicant_name,
       job_title,
-      salary_type,
       work_setup,
       employment_type,
       work_location,

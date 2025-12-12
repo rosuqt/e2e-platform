@@ -4,44 +4,37 @@ import Sidebar from "../../side-nav/sidebar";
 import BaseLayout from "../../base-layout";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { TbCards,TbUserStar} from "react-icons/tb";
-import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
 import { FiCalendar } from "react-icons/fi";
-import { RiAddCircleLine } from "react-icons/ri";
-import { useSession } from "next-auth/react";
-import { Lock } from "@mui/icons-material";
-import { Tooltip } from "@mui/material";
-
+import { useSession, signOut } from "next-auth/react";
+import { LuBadgeCheck } from "react-icons/lu";
+import { Building2, LogOut } from "lucide-react";
+import { FaUser } from "react-icons/fa";
+import { TbSettings } from "react-icons/tb";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
-  const verifyStatus = session?.user?.verifyStatus;
+  const verifyStatus = (session?.user as { verifyStatus?: string } | undefined)?.verifyStatus;
+
+  const verificationHref =
+    verifyStatus === "full"
+      ? "/employers/verification/fully-verified"
+      : verifyStatus === "standard"
+      ? "/employers/verification/partially-verified"
+      : "/employers/verification/unverified";
 
   const menuItems = [
-    { icon: RiAddCircleLine, text: "Post a Job", href: "/employers/jobs/post-a-job" },
-    { icon: TbCards, text: "Job Listings", href: "/employers/jobs/job-listings" },
+    { icon: FaUser, text: "Me", href: "/employers/profile" },
     {
-      icon: TbUserStar,
-      text: "Candidate Matches",
-      href: verifyStatus !== "full" ? "#" : "/employers/jobs/candidate-matches",
-      render: verifyStatus !== "full"
-        ? () => (
-            <Tooltip title="Verify to access Candidate Matches" arrow>
-              <span style={{ display: "flex", alignItems: "center", cursor: "not-allowed", opacity: 0.7 }}>
-                <TbUserStar style={{ marginRight: 4 }} />
-                <span style={{ flex: 1 }} />
-                <Lock fontSize="small" style={{ marginLeft: "auto" }} />
-              </span>
-            </Tooltip>
-          )
-        : undefined,
-      disabled: verifyStatus !== "full",
-      style: verifyStatus !== "full" ? { cursor: "not-allowed", opacity: 0.7 } : {},
+      icon: Building2,
+      text: "My Company",
+      href: "/employers/profile/company",
     },
-    { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/employers/jobs/applications" },
+    { icon: TbSettings, text: "Settings", href: "/employers/settings" },
     { icon: FiCalendar, text: "Calendar", href: "/employers/calendar" },
+    { icon: LuBadgeCheck, text: "Verification", href: verificationHref },
+    { icon: LogOut, text: "Logout", href: "/landing" },
   ];
 
   useEffect(() => {
@@ -60,7 +53,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }, 300);
   }, [isSidebarMinimized]);
 
-
   return (
     <BaseLayout
       sidebar={
@@ -69,6 +61,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           menuItems={menuItems.map((item) => ({
             ...item,
             isActive: pathname === item.href,
+            ...(item.text === "Logout"
+              ? {
+                  onClick: (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    signOut({ callbackUrl: "/landing" });
+                  },
+                }
+              : {}),
           }))}
         />
       }

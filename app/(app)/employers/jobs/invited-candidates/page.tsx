@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 import Image from "next/image"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { useState, useEffect } from "react"
 import {
@@ -12,7 +13,6 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  User,
   Search,
   TrendingUp,
   Heart,
@@ -116,6 +116,9 @@ export default function InvitedCandidatesPage() {
 
   const [removeModal, setRemoveModal] = useState<{ open: boolean; candidateId?: string }>({ open: false, candidateId: undefined })
 
+  const router = useRouter()
+  const searchParamsNext = useSearchParams()
+
   async function fetchCandidates() {
     setLoading(true)
     const res = await fetch("/api/employers/invitedCandidates/displayInvites")
@@ -151,6 +154,19 @@ export default function InvitedCandidatesPage() {
   useEffect(() => {
     fetchCandidates()
   }, [])
+
+  useEffect(() => {
+    const inviteId = searchParamsNext?.get("inviteId")
+    if (inviteId && candidates.length > 0) {
+      const [jobId, studentId] = inviteId.split("_")
+      const candidate = candidates.find(
+        c => (c.jobId === jobId || c.jobId === jobId) && (c.studentId === studentId || c.studentId === studentId)
+      )
+      if (candidate) {
+        setViewInviteModal({ open: true, candidate })
+      }
+    }
+  }, [searchParamsNext, candidates])
 
   const handleSearch = (firstName: string, lastName: string) => {
     setSearchParams({ firstName, lastName })
@@ -455,6 +471,7 @@ export default function InvitedCandidatesPage() {
           </div>
         </div>
       </div>
+ 
 
       {/* Modals */}
       {removeModal.open && (
@@ -615,6 +632,21 @@ export default function InvitedCandidatesPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Fallback for no invitations */}
+            {candidates.length === 0 && !searchActive && (
+              <div className="flex flex-col items-center justify-center py-24 text-center text-gray-400">
+                <Mail className="w-16 h-16 mb-4 text-blue-200" />
+                <h2 className="text-xl font-semibold mb-2 text-gray-500">No Invitations Yet</h2>
+                <p className="mb-2 text-gray-400">You haven&apos;t invited any candidates yet.<br />Start inviting to see them here!</p>
+                <Button
+                  className="mt-6 px-6 py-2 rounded bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold shadow hover:from-blue-700 hover:to-purple-700 transition"
+                  onClick={() => router.push("/employers/jobs/candidate-matches")}
+                >
+                  Go to Candidate Matches
+                </Button>
+              </div>
+            )}
 
             {searchActive && (
               <Card>
@@ -795,20 +827,13 @@ function CandidateCard({ candidate, onToggleFavorite, onRemoveCandidate, onViewI
               <span className="text-xs text-gray-500">{candidate.school}</span>
             </div>
           </div>
-
           <Badge variant="outline" className={getStatusColor(candidate.status)}>
             {getStatusText(candidate.status)}
           </Badge>
-
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-500">Invited {candidate.date}</span>
           </div>
-
           <div className="flex gap-2 pt-2">
-            <Button variant="outline" size="sm" className="flex-1">
-              <User className="h-4 w-4 mr-1" />
-              View Profile
-            </Button>
             <Button
               size="sm"
               className="flex-1 bg-blue-600 hover:bg-blue-700"
@@ -909,10 +934,6 @@ function CandidateListItem({ candidate, onToggleFavorite, onRemoveCandidate, onV
             <Button size="sm" variant="outline" onClick={() => onToggleFavorite(candidate.id)}>
               <Heart className={`h-4 w-4 mr-1 ${candidate.isFavorite ? "fill-red-500 text-red-500" : ""}`} />
               Save
-            </Button>
-            <Button variant="outline" size="sm">
-              <User className="h-4 w-4 mr-1" />
-              View Profile
             </Button>
             <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => onViewInvite(candidate.id)}>
               <Mail className="h-4 w-4 mr-1" />

@@ -6,18 +6,19 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { TbCards, TbFileStar, TbUsers } from "react-icons/tb";
 import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
-import { FiCalendar } from "react-icons/fi";
+import { FaEarthAmericas } from "react-icons/fa6";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const pathname = usePathname();
 
   const menuItems = [
-    { icon: TbCards, text: "Interview Practice", href: "/student/interview-practice" },
-    { icon: TbFileStar, text: "Job Matches", href: "/student/job-matches" },
-    { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/student/applications" },
-    { icon: TbUsers, text: "Connections", href: "/student/connections" },
-    { icon: FiCalendar, text: "Calendar", href: "/student/calendar" },
+    { icon: TbCards, text: "Interview Practice", href: "/students/jobs/interview-practice" },
+    { icon: TbFileStar, text: "Job Matches", href: "/students/jobs/job-matches" },
+    { icon: HiOutlineClipboardDocumentList, text: "Applications", href: "/students/jobs/applications" },
+    { icon: TbUsers, text: "Connections", href: "/students/people/connections" },
+    { icon: FaEarthAmericas , text: "Community Jobs", href: "/students/community-page" },
+
   ];
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       window.dispatchEvent(recalcEvent);
     }, 300);
   }, [isSidebarMinimized]);
+
 
   return (
     <BaseLayout

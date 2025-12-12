@@ -1,15 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Users, Briefcase, MessageCircle, Bell, User } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ProfileModal } from '../students/profile/components/profile-modal';
-import { MessagesModal } from './messages-modal';
 import { NotificationsModal } from '../students/notifications/components/notifications-modal';
 import { RiRobot2Fill } from "react-icons/ri";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSession } from "next-auth/react";
 import Link from 'next/link';
 import supabase from "@/lib/supabase";
 import { TbCards, TbFileStar, TbUsers, TbUserStar, TbUserCheck, TbUserHeart } from "react-icons/tb";
@@ -21,6 +20,7 @@ import { TbMailStar } from "react-icons/tb";
 import { Lock } from "@mui/icons-material";
 import { Tooltip } from "@mui/material";
 import { IconType } from "react-icons";
+import { useSession } from "next-auth/react";
 
 interface TopNavProps {
   className?: string;
@@ -28,6 +28,8 @@ interface TopNavProps {
   labelColor?: string;
   isSidebarMinimized?: boolean;
   topNavStyle?: React.CSSProperties;
+  session?: any;
+  status?: string;
 }
 
 type DropdownMenuItem = {
@@ -44,19 +46,18 @@ const TopNav: React.FC<TopNavProps> = ({
   iconColor = 'gray',
   labelColor = 'gray',
   isSidebarMinimized,
-  topNavStyle, 
+  topNavStyle,
 }) => {
   const pathname = usePathname() ?? "";
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [isProfileModalOpen, setProfileModalOpen] = useState(false);
   const [isNotificationsModalOpen, setNotificationsModalOpen] = useState(false);
-  const [isMessagesModalOpen, setMessagesModalOpen] = useState(false);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [openPeople, setOpenPeople] = useState(false);
   const [openJobs, setOpenJobs] = useState(false);
   const messagesRef = useRef<HTMLAnchorElement | null>(null); 
 
-  const { data: session, status } = useSession();
   useEffect(() => {
     const fetchSetting = async () => {
       const { data } = await supabase
@@ -126,35 +127,48 @@ const TopNav: React.FC<TopNavProps> = ({
     },
   ];
 
-  const navItems = useMemo(() => {
-    const handleProfileClick = () => setProfileModalOpen((prev) => !prev);
-    const handleNotificationsClick = () => setNotificationsModalOpen((prev) => !prev);
-    const handleMessagesClick = () => setMessagesModalOpen((prev) => !prev);
-
+  // Remove useMemo for navItems and just define it inline for students
+  const handleProfileClick = () => setProfileModalOpen((prev) => !prev);
+  const handleNotificationsClick = () => setNotificationsModalOpen((prev) => !prev);
+  // Remove modal open for messages, instead navigate directly
+  const handleMessagesClick = () => {
     if (session?.user?.role === "employer") {
-      return [
-        { path: '/employers/dashboard', label: 'Home', icon: Home },
-        { path: '/employers/jobs/job-listings', label: 'Jobs', icon: Briefcase, dropdown: employerJobsMenu },
-        { path: '/employers/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
-        ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
-        { path: '/employers/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
-        { path: '/employers/profile', label: 'Me', icon: User, onClick: handleProfileClick },
-      ];
+      router.push("/employers/messages");
+    } else {
+      router.push("/students/messages");
     }
-    return [
-      { path: '/students/dashboard', label: 'Home', icon: Home },
-      { path: '/students/people/suggestions', label: 'People', icon: Users, dropdown: studentPeopleMenu },
-      { path: '/students/jobs/job-listings', label: 'Jobs', icon: Briefcase, dropdown: studentJobsMenu },
-      { path: '/students/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
-      ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
-      { path: '/students/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
-      { path: '/students/profile', label: 'Me', icon: User, onClick: handleProfileClick },
-    ];
-  }, [session, showFeedback, verifyStatus]);
+  };
 
-  useEffect(() => {
-    Promise.all(navItems.map((item) => router.prefetch(item.path)));
-  }, [router, navItems]);
+  // Always check role in session.user
+  const getRole = () => session?.user?.role;
+  console.log("TOPNAV session:", session);
+  console.log("TOPNAV session.user.role:", getRole());
+
+  // Use getRole() everywhere for clarity and reliability
+  const navItems =
+    getRole() === "employer"
+      ? [
+          { path: '/employers/dashboard', label: 'Home', icon: Home },
+          { path: '/employers/jobs/job-listings', label: 'Jobs', icon: Briefcase, dropdown: employerJobsMenu },
+          { path: '/employers/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
+          ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
+          { path: '/employers/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
+          { path: '/employers/profile', label: 'Me', icon: User, onClick: handleProfileClick },
+        ]
+      : [
+          { path: '/students/dashboard', label: 'Home', icon: Home },
+          { path: '/students/people/suggestions', label: 'People', icon: Users, dropdown: studentPeopleMenu },
+          { path: '/students/jobs/job-listings', label: 'Jobs', icon: Briefcase, dropdown: studentJobsMenu },
+          { path: '/students/messages', label: 'Messages', icon: MessageCircle, onClick: handleMessagesClick, ref: messagesRef },
+          ...(showFeedback ? [{ path: '/feedback', label: '', icon: RiRobot2Fill, isRobot: true }] : []),
+          { path: '/students/notifications', label: 'Notifications', icon: Bell, onClick: handleNotificationsClick },
+          { path: '/students/profile', label: 'Me', icon: User, onClick: handleProfileClick },
+        ];
+
+  const getHomePath = () =>
+    getRole() === "employer"
+      ? "/employers/dashboard"
+      : "/students/dashboard";
 
   if (status === "loading") {
     return (
@@ -172,7 +186,25 @@ const TopNav: React.FC<TopNavProps> = ({
             <Image src="/images/logo.blue3.png" alt="Seekr Logo" width={100} height={100} />
           </div>
           <div className="flex items-center mr-8" style={{ gap: isSidebarMinimized ? '112px' : '96px' }}>
-            <span className="animate-pulse text-gray-400">Loading...</span>
+            {/* Skeleton loader */}
+            <div className="flex gap-8">
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 rounded-full bg-gray-200 animate-pulse mb-1" />
+                <div className="w-10 h-3 rounded bg-gray-200 animate-pulse" />
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 rounded-full bg-gray-200 animate-pulse mb-1" />
+                <div className="w-12 h-3 rounded bg-gray-200 animate-pulse" />
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 rounded-full bg-gray-200 animate-pulse mb-1" />
+                <div className="w-8 h-3 rounded bg-gray-200 animate-pulse" />
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="w-6 h-6 rounded-full bg-gray-200 animate-pulse mb-1" />
+                <div className="w-14 h-3 rounded bg-gray-200 animate-pulse" />
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -195,11 +227,7 @@ const TopNav: React.FC<TopNavProps> = ({
         >
           <div className="flex items-center">
              <Link
-               href={
-                 session?.user?.role === "employer"
-                   ? "/employers/dashboard"
-                   : "/students/dashboard"
-               }
+               href={getHomePath()}
                className="text-xl font-bold text-white"
              >
                <Image src="/images/logo.blue3.png" alt="Seekr Logo" width={100} height={100} />
@@ -234,15 +262,20 @@ const TopNav: React.FC<TopNavProps> = ({
             style={{ gap: isSidebarMinimized ? '112px' : '96px' }}
           >
             {navItems.map((item, index) => {
-              const isActive = pathname.startsWith(item.path);
+              let isActive = false;
+              if (item.dropdown) {
+                isActive = item.dropdown.some((menu) => pathname === menu.href);
+              } else {
+                isActive = pathname === item.path;
+              }
               const Icon = item.icon;
 
               if (item.isRobot) {
                 return null;
               }
 
-              // Dropdown for People
-              if (item.label === "People" && item.dropdown) {
+              // Dropdown for People: only for students
+              if (item.label === "People" && getRole() !== "employer" && item.dropdown) {
                 return (
                   <div
                     key={index}
@@ -386,11 +419,21 @@ const TopNav: React.FC<TopNavProps> = ({
               return (
                 <a
                   key={index}
-                  href={item.path}
+                  href={
+                    item.label === 'Home'
+                      ? getHomePath()
+                      : item.path
+                  }
                   ref={item.label === 'Messages' ? messagesRef : undefined}
                   className="flex flex-col items-center"
                   style={{ color: isActive ? '#1551a9' : labelColor }}
-                  onClick={item.onClick ? (e) => { e.preventDefault(); item.onClick(); } : undefined}
+                  // Only override onClick for Messages
+                  onClick={item.label === 'Messages'
+                    ? (e) => { e.preventDefault(); handleMessagesClick(); }
+                    : item.onClick
+                      ? (e) => { e.preventDefault(); item.onClick(); }
+                      : undefined
+                  }
                 >
                   <Icon size={20} color={isActive ? '#1551a9' : iconColor} />
                   <span className="text-xs mt-1">{item.label}</span>
@@ -414,13 +457,6 @@ const TopNav: React.FC<TopNavProps> = ({
         <NotificationsModal
           notifications={[]}
           onClose={() => setNotificationsModalOpen(false)}
-          positionRef={messagesRef}
-        />
-      )}
-      {isMessagesModalOpen && (
-        <MessagesModal
-          messages={[]}
-          onClose={() => setMessagesModalOpen(false)}
           positionRef={messagesRef}
         />
       )}

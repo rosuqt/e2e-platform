@@ -77,7 +77,7 @@ export default function CtaModal({ isOpen, onClose }: { isOpen: boolean; onClose
               Sign In
             </motion.button>
           </Link>
-          <Link href="/join-now">
+          <Link href="/sign-up">
             <motion.button
               className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-8 py-4 rounded-lg font-medium"
               whileHover={{ scale: 1.05 }}

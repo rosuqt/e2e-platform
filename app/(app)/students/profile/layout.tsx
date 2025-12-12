@@ -102,7 +102,6 @@ export default function ProfileLayout() {
       { icon: FaUser, text: "Me", href: "/students/profile" },
       { icon: FiCalendar, text: "Calendar", href: "/students/calendar" },
       { icon: TbSettings, text: "Settings", href: "/students/settings" },
-      { icon: MdVerified, text: "Verification", href: "/students/profile?tab=verification-tab" },
     ],
     []
   );

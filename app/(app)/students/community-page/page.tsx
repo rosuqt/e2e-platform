@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -187,7 +188,10 @@ export default function CommunityPage() {
     )
   }
 
-  const addJob = () => {}
+  // Replace the addJob function with one that prepends the new job
+  const addJob = (newJob: CommunityJob) => {
+    setJobs((prev) => [newJob, ...prev])
+  }
 
   const handleEditJob = (job: CommunityJob) => {
     setJobToEdit(job)
@@ -385,8 +389,17 @@ export default function CommunityPage() {
       {isCreateModalOpen && (
         <CreateJobModal
           onClose={() => setIsCreateModalOpen(false)}
-          onSubmit={() => {
-            addJob()
+          onSubmit={async (jobData: any) => {
+            // Save job to backend and get the created job object
+            const res = await fetch("/api/community-page/createJob", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(jobData),
+            })
+            if (res.ok) {
+              const { job: createdJob } = await res.json()
+              addJob(createdJob)
+            }
             setIsCreateModalOpen(false)
           }}
         />

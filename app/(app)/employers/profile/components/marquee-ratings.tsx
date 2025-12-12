@@ -6,13 +6,11 @@ import { FaRegSmileBeam } from "react-icons/fa";
 const ReviewCard = ({
 	img,
 	name,
-	username,
 	body,
 	star,
 }: {
 	img: string;
 	name: string;
-	username: string;
 	body: string;
 	star: number;
 }) => {
@@ -30,7 +28,7 @@ const ReviewCard = ({
 					<figcaption className="text-sm font-medium dark:text-white">
 						{name}
 					</figcaption>
-					<p className="text-xs font-medium dark:text-white/40">{username}</p>
+					{/* username removed */}
 				</div>
 			</div>
 			<div className="mt-1 flex flex-row items-center gap-0.5">
@@ -54,6 +52,15 @@ const ReviewCard = ({
 
 // Accept ratings as prop
 export function RatingsCards({ ratings }: { ratings?: any[] }) {
+	// Spinner loader if ratings is undefined (fetching)
+	if (typeof ratings === "undefined") {
+		return (
+			<div className="flex justify-center items-center w-full py-12">
+				<div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
+			</div>
+		);
+	}
+
 	const cards =
 		Array.isArray(ratings) && ratings.length > 0
 			? ratings.slice(0, 8).map((r) => {
@@ -63,9 +70,7 @@ export function RatingsCards({ ratings }: { ratings?: any[] }) {
 						student.first_name && student.last_name
 							? `${student.first_name} ${student.last_name}`
 							: student.first_name || "Anonymous",
-					username: student.email
-						? `@${student.email.split("@")[0]}`
-						: "",
+					// username removed
 					body: r.overall_comment && r.overall_comment.trim().length > 0
 						? r.overall_comment
 						: "No comment provided.",
@@ -85,7 +90,7 @@ export function RatingsCards({ ratings }: { ratings?: any[] }) {
 			<div className="flex flex-row flex-nowrap gap-4 justify-center overflow-x-auto">
 				{firstRow.length > 0 ? (
 					firstRow.map((review, i) => (
-						<ReviewCard key={review.username + i} {...review} />
+						<ReviewCard key={review.name + i} {...review} />
 					))
 				) : (
 					<div className="flex flex-col items-center justify-center text-gray-500 text-center w-full py-8">
@@ -100,7 +105,7 @@ export function RatingsCards({ ratings }: { ratings?: any[] }) {
 			<div className="flex flex-row flex-nowrap gap-4 justify-center overflow-x-auto">
 				{secondRow.length > 0
 					? secondRow.map((review, i) => (
-							<ReviewCard key={review.username + "2" + i} {...review} />
+							<ReviewCard key={review.name + "2" + i} {...review} />
 					  ))
 					: null}
 			</div>

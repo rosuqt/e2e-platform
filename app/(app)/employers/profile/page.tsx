@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 
 import { Button } from "@/components/ui/button"
-import { Building2, Camera, Pencil } from "lucide-react"
+import { Building2, Camera } from "lucide-react"
 import { HiBadgeCheck } from "react-icons/hi"
 import { LuBadgeCheck } from "react-icons/lu"
 import {  PiWarningBold, PiWarningFill } from "react-icons/pi"
@@ -54,9 +54,6 @@ const CustomTooltip = styled(Tooltip)<TooltipProps>(() => ({
 export default function EmployerProfilePage() {
   const [activeTab, setActiveTab] = useState(0)
   const [employer, setEmployer] = useState<Employer | null>(null)
-  const [bio, setBio] = useState("")
-  const [editingBio, setEditingBio] = useState(false)
-  const [savingBio, setSavingBio] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
   const [uploadingCover, setUploadingCover] = useState(false)
@@ -92,7 +89,7 @@ export default function EmployerProfilePage() {
       .then(res => res.json())
       .then(async data => {
         if (data && typeof data.short_bio === "string" && data.short_bio.length > 0) {
-          setBio(data.short_bio)
+
         }
 
         if (typeof data?.profile_img === "string" && data.profile_img.trim() !== "") {
@@ -180,28 +177,8 @@ export default function EmployerProfilePage() {
     setActiveTab(newValue)
   }
 
-  const handleBioChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setBio(e.target.value)
-  }
 
-  const handleBioBlur = async () => {
-    if (!employer) return
-    setSavingBio(true)
-    await fetch("/api/employers/employer-profile/postHandlers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employerID: employer.id, short_bio: bio }),
-    })
-    setSavingBio(false)
-    setEditingBio(false)
-  }
 
-  const handleBioKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      await handleBioBlur()
-    }
-  }
 
   const loading = !employer 
 
@@ -316,7 +293,7 @@ export default function EmployerProfilePage() {
                   <div className="flex items-center gap-2">
                     <h1 className="text-2xl font-bold">
                       {employer
-                        ? `${employer.first_name ?? ""} ${employer.last_name ?? ""}${employer.suffix ? " " + employer.suffix : ""}`
+                        ? `${employer.first_name ?? ""} ${employer.last_name ?? ""}${employer.suffix ? " " + employer.suffix.toUpperCase() : ""}`
                         : "Employer Name"}
                     </h1>
                     <div className="relative flex items-center">
@@ -444,32 +421,9 @@ export default function EmployerProfilePage() {
                           className={`w-4 h-4 ${avgRating >= star ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
                         />
                       ))}
-                      <span className="ml-2 text-sm text-gray-700">{avgRating}/5</span>
+                      <span className="ml-2 text-sm text-gray-700">{avgRating}/5 Ratings</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
-                    {editingBio ? (
-                      <textarea
-                        className="w-full bg-transparent focus:outline-none text-gray-600 resize-none px-1 py-1"
-                        value={bio}
-                        onChange={handleBioChange}
-                        onBlur={handleBioBlur}
-                        onKeyDown={handleBioKeyDown}
-                        maxLength={50}
-                        rows={1}
-                        autoFocus
-                        disabled={savingBio}
-                      />
-                    ) : (
-                      <span
-                        className={`cursor-pointer flex items-center ${!bio ? "text-gray-400" : ""}`}
-                        onClick={() => setEditingBio(true)}
-                      >
-                        {bio || "Add a short bio"}
-                        <Pencil className="w-4 h-4 ml-2 text-gray-400 hover:text-blue-600" />
-                      </span>
-                    )}
-                  </div>
                 </div>
 
                 <div className="flex gap-3">
@@ -582,8 +536,8 @@ export default function EmployerProfilePage() {
             <Skeleton variant="rectangular" width="100%" height={200} />
           </div>
         ) : (
-          <>
-            {activeTab === 0 && <AboutTab />}
+          <>  
+            {activeTab === 0 && <AboutTab setActiveTab={setActiveTab} />}
             {activeTab === 1 && <JobListingsTab />}
             {activeTab === 2 && <RatingsTab />}
           </>

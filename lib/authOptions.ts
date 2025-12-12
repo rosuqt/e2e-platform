@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
     AzureADProvider({
       clientId: process.env.AZURE_AD_CLIENT_ID!,
       clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-      tenantId: process.env.AZURE_AD_TENANT_ID,
+      tenantId: process.env.AZURE_AD_TENANT_ID || "common",
       authorization: {
         params: {
           scope: "openid profile email",
@@ -114,31 +114,65 @@ export const authOptions: NextAuthOptions = {
           ) {
             return "/sign-in?error=invalid_domain"
           }
-          let firstName = ""
-          let lastName = ""
-          if (u.name) {
-            const nameNoParen = u.name.replace(/\(.*?\)/g, "").trim()
-            if (nameNoParen.includes(",")) {
-              const [last, ...firstParts] = nameNoParen.split(",")
-              firstName = firstParts.join(",").trim()
-              lastName = last.trim()
-            } else {
-              firstName = nameNoParen
-              lastName = ""
+          
+          const localPart = normalizedEmail.split("@")[0];
+          
+          const studentEmailPattern = /^[^.]+\.\d+$/;
+          const isStudentEmail = studentEmailPattern.test(localPart);
+          
+          if (!isStudentEmail && localPart.includes(".")) {
+            const parts = localPart.split(".");
+            if (parts.length >= 2) {
+              const emailFirstName = parts[0].toLowerCase();
+              const emailLastName = parts.slice(1).join(".").toLowerCase();
+              
+              const { data: admin, error: adminError } = await supabase
+                .from("registered_admins")
+                .select("id, first_name, last_name, status, is_archived")
+                .ilike("first_name", emailFirstName)
+                .ilike("last_name", emailLastName)
+                .eq("status", "active")
+                .eq("is_archived", false)
+                .maybeSingle();
+              
+              if (adminError) {
+                console.error("Error checking registered_admins:", adminError);
+                return "/sign-in?error=admin_check_failed"
+              }
+              
+              if (!admin) {
+                return "/sign-in?error=admin_not_registered"
+              }
             }
           }
-          const { data: existingStudent } = await supabase
-            .from("registered_students")
-            .select("id")
-            .eq("email", normalizedEmail)
-            .single()
-          if (!existingStudent) {
-            await supabase
+          
+          if (isStudentEmail) {
+            let firstName = ""
+            let lastName = ""
+            if (u.name) {
+              const nameNoParen = u.name.replace(/\(.*?\)/g, "").trim()
+              if (nameNoParen.includes(",")) {
+                const [last, ...firstParts] = nameNoParen.split(",")
+                firstName = firstParts.join(",").trim()
+                lastName = last.trim()
+              } else {
+                firstName = nameNoParen
+                lastName = ""
+              }
+            }
+            const { data: existingStudent } = await supabase
               .from("registered_students")
-              .insert({ email: normalizedEmail, first_name: firstName, last_name: lastName })
-            u.newStudent = true
-          } else {
-            u.newStudent = false
+              .select("id")
+              .eq("email", normalizedEmail)
+              .single()
+            if (!existingStudent) {
+              await supabase
+                .from("registered_students")
+                .insert({ email: normalizedEmail, first_name: firstName, last_name: lastName })
+              u.newStudent = true
+            } else {
+              u.newStudent = false
+            }
           }
         }
         return true

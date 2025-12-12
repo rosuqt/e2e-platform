@@ -10,7 +10,7 @@ import {
   Star,
   Building2,
 } from "lucide-react"
-import {  FaTools, FaBug } from "react-icons/fa"
+import {  FaTools } from "react-icons/fa"
 import Image from "next/image"
 import { RatingsCards } from "./marquee-ratings"
 import { Star as StarIcon } from "lucide-react"
@@ -33,7 +33,7 @@ type SessionUser = {
 
 
 
-export default function AboutTab() {
+export default function AboutTab({ setActiveTab }: { setActiveTab?: (tabIdx: number) => void }) {
   const { data: session } = useSession()
   const employerID = (session?.user as SessionUser)?.employerId
   const router = useRouter()
@@ -198,7 +198,7 @@ export default function AboutTab() {
           </div>
           <button
             type="button"
-            onClick={() => router.push("/employers/profile/company#ratings")}
+            onClick={() => setActiveTab?.(2)}
             className="text-blue-600 hover:text-blue-800 font-medium text-sm px-4 py-2 border border-blue-200 rounded-md transition-colors"
           >
             View All Ratings
@@ -253,14 +253,7 @@ export default function AboutTab() {
                     If you think this shouldn’t have happened, let us know so we can chase it down!
                   </span>
                 </div>
-                <Button
-                  variant="ghost"
-                  className="font-bold text-red-700 hover:text-red-900 hover:text-red-900 flex items-center gap-2 px-0 py-0"
-                  onClick={() => window.open('https://github.com/allyzdev/e2e-platform/issues/new', '_blank')}
-                >
-                  <FaBug className="w-5 h-5 mr-1" />
-                  Report Bug
-                </Button>
+            
               </div>
             </div>
           ) : companyProfile ? (

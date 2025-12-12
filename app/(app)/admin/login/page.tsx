@@ -73,8 +73,8 @@ export default function LoginPage() {
     },
     {
       icon: Shield,
-      title: "Report Management",
-      description: "Manage reports and keep the school and students safe in one place",
+      title: "Superadmin Control",
+      description: "Manage verifications and manage the users' accounts in one place",
       color: "from-emerald-500 to-teal-500",
     },
   ]

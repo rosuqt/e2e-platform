@@ -10,25 +10,54 @@ import Popper from "@mui/material/Popper";
 import { countries } from "../data/countries";
 import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+
+const suffixes = [
+  "",
+  "Jr.",
+  "Sr.",
+  "MD",
+  "PhD",
+  "Esq.",
+  "II",
+  "III",
+  "IV",
+  "V",
+  "VI",
+  "VII",
+  "VIII",
+  "IX",
+  "X",
+  "XI",
+  "XII",
+  "XIII",
+  "XIV",
+  "XV",
+];
 
 export default function PersonalDetailsForm({
   data = { firstName: "", middleName: "", lastName: "", suffix: "", countryCode: "", phone: "", email: "", password: "", confirmPassword: "" },
   onChange,
   errors = {},
+  showPassword,
+  setShowPassword,
+  showConfirmPassword,
+  setShowConfirmPassword,
+  passwordChecklist,
 }: {
   data: PersonalDetails & { suffix?: string };
   onChange: (data: PersonalDetails & { suffix?: string }) => void;
   errors: { [key: string]: string };
+  showPassword?: boolean;
+  setShowPassword?: (v: boolean) => void;
+  showConfirmPassword?: boolean;
+  setShowConfirmPassword?: (v: boolean) => void;
+  passwordChecklist?: { label: string; valid: boolean }[]; // optional
 }) {
   const errorAnimation = {
     initial: { x: 0 },
     animate: { x: [0, -10, 10, -10, 10, 0] },
     transition: { duration: 0.4 },
   }
-
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   return (
     <motion.div
@@ -137,22 +166,27 @@ export default function PersonalDetailsForm({
             label="Suffix"
             onChange={(e) => onChange({ ...data, suffix: e.target.value })}
           >
-            <MenuItem value="">None</MenuItem>
-            <MenuItem value="Jr.">Jr.</MenuItem>
-            <MenuItem value="Sr.">Sr.</MenuItem>
-            <MenuItem value="II">II</MenuItem>
-            <MenuItem value="III">III</MenuItem>
-            <MenuItem value="IV">IV</MenuItem>
+            {suffixes.map((suf) => (
+              <MenuItem key={suf} value={suf}>
+                {suf === "" ? "None" : suf}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] gap-3 px-6 mb-6">
         <motion.div className="col-span-1" {...(errors.countryCode ? errorAnimation : {})}>
-          <Autocomplete
+           <Autocomplete
             id="countryCode"
             options={countries}
             autoHighlight
             disablePortal
+            disabled
+            value={
+              countries.find((c) => c.phone === (data.countryCode || "63")) ||
+              countries.find((c) => c.code === "PH") || 
+              null
+            }
             PopperComponent={(props) => <Popper {...props} placement="bottom-start" />}
             getOptionLabel={(option) => `${option.code} (+${option.phone})`}
             renderOption={(props, option) => {
@@ -174,10 +208,6 @@ export default function PersonalDetailsForm({
                   {option.code} (+{option.phone})
                 </Box>
               );
-            }}
-            value={countries.find((c) => c.phone === data.countryCode) || null}
-            onChange={(event, newValue) => {
-              onChange({ ...data, countryCode: newValue?.phone || "" });
             }}
             renderInput={(params) => (
               <TextField
@@ -239,22 +269,68 @@ export default function PersonalDetailsForm({
           value={data.email}
           onChange={(e) => {
             const value = e.target.value;
-            const emailRegex = /^[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
-            const domainPart = value.split('@')[1];
             let emailError = "";
-            if (!emailRegex.test(value)) {
-              emailError = "Invalid email format";
-            } else if (
-              domainPart &&
-              domainPart
-                .split('.')
-                .some(
-                  label =>
-                    label.startsWith('-') ||
-                    label.endsWith('-')
-                )
+            const emailRegex =
+              /^[a-zA-Z0-9]+([._%+-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-]?[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
+            const forbiddenPatterns = [
+              /\s/, // spaces
+              /\.\./, // consecutive dots
+              /[()]/, // parentheses
+              /@.*@/, // double @
+              /^\.|^\S+@\./, // leading dot in local or domain
+              /\.$|\.\s*$/, // trailing dot in local or domain
+              /@.*\.\./, // double dot in domain
+              /@.*\.$/, // domain ends with dot
+              /@.*\.-/, // domain label starts with hyphen
+              /@.*-\./, // domain label ends with hyphen
+              /@.*\.(co)$/, // disallow .co TLD
+              /@.*\.$/, // domain ends with dot
+              /@.*\..*-\./, // domain label ends with hyphen before dot
+              /@.*\.-.*\./, // domain label starts with hyphen after dot
+            ];
+            const tldRegex = /\.(com|net|org|ph)$/i;
+            // Disallow local part starting with dot
+            if (
+              !emailRegex.test(value) ||
+              forbiddenPatterns.some((pat) => pat.test(value)) ||
+              value.startsWith(".") ||
+              value.endsWith(".") ||
+              value.includes("..") ||
+              value.includes("(") ||
+              value.includes(")") ||
+              value.includes(" @") ||
+              value.includes("@ ") ||
+              value.split("@").length !== 2 ||
+              value.split("@")[1]?.split(".").some(label => label.startsWith('-') || label.endsWith('-')) ||
+              !tldRegex.test(value) ||
+              value.startsWith(".") // <-- this line ensures emails like ".allyza@gmail.com" are blocked
             ) {
-              emailError = "Invalid email format";
+              emailError = "Invalid email format.";
+            }
+            // Specific disallowed examples
+            const disallowed = [
+              "maegmail.com",
+              "user.domain.com",
+              "Juan de lima @gmail.com",
+              ".juan@mail.com",
+              "juan@mail.com.",
+              "maria..@gmail.com",
+              "ana(mae)@mail.com",
+              "user-@domain.com",
+              "user@domain-.com",
+              "user@gmail.co",
+              "user@@gmail.com",
+              "user@domain",
+              "user@mail..com",
+            ];
+            if (
+              disallowed.some((bad) => value.trim().toLowerCase() === bad.trim().toLowerCase())
+            ) {
+              emailError = "Invalid email format.";
+            }
+            // Block local part starting with dot
+            if (/^\.([a-zA-Z0-9]+)/.test(value.split("@")[0])) {
+              emailError = "Invalid email format.";
             }
             onChange({ ...data, email: value });
             errors.email = emailError;
@@ -284,30 +360,30 @@ export default function PersonalDetailsForm({
             value={data.password}
             onChange={(e) => {
               const value = e.target.value;
-              let passwordError = "";
-              if (value.length < 8) {
-                passwordError = "Password must be at least 8 characters";
-              } else if (!/[A-Z]/.test(value)) {
-                passwordError = "Password must contain an uppercase letter";
-              } else if (!/[a-z]/.test(value)) {
-                passwordError = "Password must contain a lowercase letter";
-              } else if (!/[0-9]/.test(value)) {
-                passwordError = "Password must contain a digit";
-              } else if (!/[!@#$%^&*(),.?":{}|<>_\-\\[\];'/`~+=]/.test(value)) {
-                passwordError = "Password must contain a special character";
-              }
               onChange({ ...data, password: value });
-              errors.password = passwordError;
             }}
             error={!!errors.password}
-            helperText={errors.password}
+            helperText={
+              errors.password && passwordChecklist ? (
+                <span>
+                  {passwordChecklist.map((item, idx) => (
+                    <div key={idx} className="flex items-center text-xs">
+                      <span className={`mr-2 ${item.valid ? "text-green-600" : "text-gray-400"}`}>
+                        {item.valid ? "✔" : "✗"}
+                      </span>
+                      <span className={item.valid ? "text-green-600" : "text-gray-500"}>{item.label}</span>
+                    </div>
+                  ))}
+                </span>
+              ) : errors.password
+            }
             inputProps={{ maxLength: 128, minLength: 8 }}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
                   <IconButton
                     tabIndex={-1}
-                    onClick={() => setShowPassword((v) => !v)}
+                    onClick={() => setShowPassword && setShowPassword(!showPassword)}
                     edge="end"
                   >
                     {showPassword ? (
@@ -339,9 +415,7 @@ export default function PersonalDetailsForm({
             value={data.confirmPassword}
             onChange={(e) => {
               const value = e.target.value;
-              const confirmPasswordError = value !== data.password ? "Passwords do not match" : "";
               onChange({ ...data, confirmPassword: value });
-              errors.confirmPassword = confirmPasswordError;
             }}
             error={!!errors.confirmPassword}
             helperText={errors.confirmPassword}
@@ -351,7 +425,7 @@ export default function PersonalDetailsForm({
                 <InputAdornment position="end">
                   <IconButton
                     tabIndex={-1}
-                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    onClick={() => setShowConfirmPassword && setShowConfirmPassword(!showConfirmPassword)}
                     edge="end"
                   >
                     {showConfirmPassword ? (
@@ -376,6 +450,3 @@ export default function PersonalDetailsForm({
     </motion.div>
   )
 }
-
-
-

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, ChevronLeft, ChevronRight, Loader } from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, Loader, } from "lucide-react"
 import Swal from "sweetalert2"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
@@ -105,13 +105,54 @@ export default function SignUpForm() {
       confirmPassword: "",
     }
   )
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [fetchedCompanies, setFetchedCompanies] = useState<
+    { name: string; emailDomain?: string | null; branches?: { branch_name: string; email_domain?: string | null }[] }[]
+  >([]);
 
-  const [fetchedCompanies, setFetchedCompanies] = useState<{ name: string, emailDomain?: string | null, branches?: { branch_name: string, email_domain?: string | null }[] }[]>([]);
+  // Password checklist for UI feedback
+  const passwordChecklist = [
+    {
+      label: "Minimum 8 characters",
+      valid: formData.personalDetails.password.length >= 8,
+    },
+    {
+      label: "At least one uppercase letter",
+      valid: /[A-Z]/.test(formData.personalDetails.password),
+    },
+    {
+      label: "At least one lowercase letter",
+      valid: /[a-z]/.test(formData.personalDetails.password),
+    },
+    {
+      label: "At least one digit",
+      valid: /[0-9]/.test(formData.personalDetails.password),
+    },
+    {
+      label: "At least one special character",
+      valid: /[!@#$%^&*(),.?":{}|<>_\-\\[\];'/`~+=]/.test(formData.personalDetails.password),
+    },
+  ];
 
   useEffect(() => {
     const savedData = sessionStorage.getItem("signUpFormData");
     if (savedData) {
-      setFormData(JSON.parse(savedData));
+      const parsed = JSON.parse(savedData);
+      // Ensure countryCode is set to "63" if missing
+      if (!parsed.personalDetails?.countryCode) {
+        parsed.personalDetails.countryCode = "63";
+      }
+      setFormData(parsed);
+    } else {
+      // If no saved data, ensure default countryCode is "63"
+      setFormData((prev) => ({
+        ...prev,
+        personalDetails: {
+          ...prev.personalDetails,
+          countryCode: prev.personalDetails.countryCode || "63",
+        },
+      }));
     }
 
     const fetchInitialData = async () => {
@@ -161,13 +202,16 @@ export default function SignUpForm() {
 
     if (!details.firstName.trim()) {
       errors.firstName = "First Name is required.";
-    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.firstName)) {
-      errors.firstName = "Only letters, single space or dash between names allowed.";
+    // Allow "Ma." as a valid prefix and allow letters, ñ, Ñ, spaces, dashes, and periods
+    } else if (
+      !/^((Ma\.)\s*)?[A-Za-zÑñ.]+([ '-][A-Za-zÑñ.]+)*$/.test(details.firstName)
+    ) {
+      errors.firstName = "Only letters, Ma., single space, period, or dash between names allowed.";
     } else if (details.firstName.length < 1 || details.firstName.length > 36) {
       errors.firstName = "Must be between 1 and 36 characters.";
     }
 
-    if (details.middleName && !/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.middleName)) {
+    if (details.middleName && !/^[A-Za-zÑñ.]+([ -][A-Za-zÑñ.]+)*$/.test(details.middleName)) {
       errors.middleName = "Only letters, single space or dash between names allowed.";
     } else if (details.middleName && details.middleName.length > 35) {
       errors.middleName = "Must not exceed 35 characters.";
@@ -175,8 +219,9 @@ export default function SignUpForm() {
 
     if (!details.lastName.trim()) {
       errors.lastName = "Last Name is required.";
-    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.lastName)) {
-      errors.lastName = "Only letters, single space or dash between names allowed.";
+    // Allow letters, ñ, Ñ, spaces, dashes, and periods in last name
+    } else if (!/^[A-Za-zÑñ.]+([ '-][A-Za-zÑñ.]+)*$/.test(details.lastName)) {
+      errors.lastName = "Only letters, single space, period, or dash between names allowed.";
     } else if (details.lastName.length < 1 || details.lastName.length > 35) {
       errors.lastName = "Last Name must be between 1 and 35 characters.";
     }
@@ -219,23 +264,68 @@ export default function SignUpForm() {
     if (!details.email.trim()) {
       errors.email = "Email is required.";
     } else {
-      const emailRegex = /^[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
+      // Strict email validation
+      const emailRegex =
+        /^[a-zA-Z0-9]+([._%+-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-]?[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
+      const forbiddenPatterns = [
+        /\s/, // spaces
+        /\.\./, // consecutive dots
+        /[()]/, // parentheses
+        /@.*@/, // double @
+        /^\.|^\S+@\./, // leading dot in local or domain
+        /\.$|\.\s*$/, // trailing dot in local or domain
+        /@.*\.\./, // double dot in domain
+        /@.*\.$/, // domain ends with dot
+        /@.*\.-/, // domain label starts with hyphen
+        /@.*-\./, // domain label ends with hyphen
+        /@.*\.(co)$/, // disallow .co TLD
+        /@.*\.$/, // domain ends with dot
+        /@.*\..*-\./, // domain label ends with hyphen before dot
+        /@.*\.-.*\./, // domain label starts with hyphen after dot
+      ];
+      const tldRegex = /\.(com|net|org|ph)$/i;
       const domainPart = details.email.split('@')[1];
-      if (!emailRegex.test(details.email)) {
-        errors.email = "Invalid email format.";
-      } else if (
-        domainPart &&
-        domainPart
-          .split('.')
-          .some(
-            label =>
-              label.startsWith('-') ||
-              label.endsWith('-')
-          )
+      if (
+        !emailRegex.test(details.email) ||
+        forbiddenPatterns.some((pat) => pat.test(details.email)) ||
+        details.email.startsWith(".") ||
+        details.email.endsWith(".") ||
+        details.email.includes("..") ||
+        details.email.includes("(") ||
+        details.email.includes(")") ||
+        details.email.includes(" @") ||
+        details.email.includes("@ ") ||
+        details.email.split("@").length !== 2 ||
+        (domainPart &&
+          domainPart
+            .split('.')
+            .some(label => label.startsWith('-') || label.endsWith('-'))) ||
+        !tldRegex.test(details.email)
       ) {
         errors.email = "Invalid email format.";
       } else if (details.email.length < 6 || details.email.length > 254) {
         errors.email = "Email must be between 6 and 254 characters.";
+      } else if (
+        [
+          "maegmail.com",
+          "user.domain.com",
+          "Juan de lima @gmail.com",
+          ".juan@mail.com",
+          "juan@mail.com.",
+          "maria..@gmail.com",
+          "ana(mae)@mail.com",
+          "user-@domain.com",
+          "user@domain-.com",
+          "user@gmail.co",
+          "user@@gmail.com",
+          "user@domain",
+          "user@mail..com",
+        ].some(
+          (bad) =>
+            details.email.trim().toLowerCase() === bad.trim().toLowerCase()
+        )
+      ) {
+        errors.email = "Invalid email format.";
       } else if (await checkEmailExists(details.email)) {
         errors.email = "This email is already registered.";
       }
@@ -245,6 +335,14 @@ export default function SignUpForm() {
       errors.password = "Password is required.";
     } else if (details.password.length < 8 || details.password.length > 40) {
       errors.password = "Password must be between 8 and 40 characters.";
+    } else if (!/[A-Z]/.test(details.password)) {
+      errors.password = "Password must contain an uppercase letter.";
+    } else if (!/[a-z]/.test(details.password)) {
+      errors.password = "Password must contain a lowercase letter.";
+    } else if (!/[0-9]/.test(details.password)) {
+      errors.password = "Password must contain a digit.";
+    } else if (!/[!@#$%^&*(),.?":{}|<>_\-\\[\];'/`~+=]/.test(details.password)) {
+      errors.password = "Password must contain a special character.";
     }
 
     if (!details.confirmPassword.trim()) {
@@ -262,12 +360,43 @@ export default function SignUpForm() {
 
   const validateCompanyFields = () => {
     const errors: { [key: string]: string } = {}
-    if (!formData.companyAssociation.companyName.trim()) {
-      errors.companyName = "Company Name is required."
+
+    const companyName = formData.companyAssociation.companyName.trim();
+    if (!companyName) {
+      errors.companyName = "Company Name is required.";
+    } else {
+      // Check allowed characters
+      const allowedPattern = /^[A-Za-z0-9 .&'-]+$/;
+      if (!allowedPattern.test(companyName)) {
+        errors.companyName =
+          "Company Name can only contain letters, numbers, spaces, period, hyphen, ampersand (&), and apostrophe (').";
+      }
+
+      // Check for repeated symbols
+      const repeatedSymbolsPattern = /([ .&'-])\1/;
+      if (repeatedSymbolsPattern.test(companyName)) {
+        errors.companyName =
+          "Company Name cannot have repeated symbols like '..' or '&&'.";
+      }
     }
-    if (!formData.companyAssociation.companyBranch.trim()) {
-      errors.companyBranch = "Company Branch is required."
+
+    const companyBranch = formData.companyAssociation.companyBranch.trim();
+    if (!companyBranch) {
+      errors.companyBranch = "Company Branch is required.";
+    } else {
+      // Check for @ symbol
+      if (/@/.test(companyBranch)) {
+        errors.companyBranch = "Company Branch must not contain the '@' symbol.";
+      }
+
+      // Check for repeated symbols (space, period, hyphen, ampersand, apostrophe)
+      const repeatedSymbolsPattern = /([ .&'-])\1/;
+      if (repeatedSymbolsPattern.test(companyBranch)) {
+        errors.companyBranch =
+          "Company Branch cannot have repeated symbols like '..' or '&&'.";
+      }
     }
+
     if (!formData.companyAssociation.companyRole.trim()) {
       errors.companyRole = "Company Role is required."
     }
@@ -423,12 +552,20 @@ export default function SignUpForm() {
           <SuccessPage />
         ) : currentStep === 1 ? (
           <PersonalDetailsForm
-            data={formData.personalDetails}
+            data={{
+              ...formData.personalDetails,
+              countryCode: formData.personalDetails.countryCode || "63",
+            }}
             onChange={(data) => {
               saveToSessionStorage({ personalDetails: data })
               setPersonalDetailsErrors({})
             }}
             errors={personalDetailsErrors}
+            showPassword={showPassword}
+            setShowPassword={setShowPassword}
+            showConfirmPassword={showConfirmPassword}
+            setShowConfirmPassword={setShowConfirmPassword}
+            passwordChecklist={personalDetailsErrors.password ? passwordChecklist : undefined}
           />
         ) : currentStep === 2 ? (
           <CompanyAssociationForm

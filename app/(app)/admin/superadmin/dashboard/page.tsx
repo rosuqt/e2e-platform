@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
@@ -19,7 +20,7 @@ import { cn } from "@/lib/utils"
 import supabase from "@/lib/supabase"
 
 export default function Dashboard() {
-  const [showFeedback, setShowFeedback] = useState<boolean>(false)
+  const [, setShowFeedback] = useState<boolean>(false)
   const [loading, setLoading] = useState(false)
   const [settingId, setSettingId] = useState<string | null>(null)
   const [counts, setCounts] = useState({
@@ -101,27 +102,6 @@ export default function Dashboard() {
       })
   }, [])
 
-  const handleToggle = async () => {
-    setLoading(true)
-    if (settingId) {
-      await supabase
-        .from("site_settings")
-        .update({ show_feedback_button: !showFeedback })
-        .eq("id", settingId)
-      setShowFeedback(!showFeedback)
-    } else {
-      const { data } = await supabase
-        .from("site_settings")
-        .insert([{ show_feedback_button: !showFeedback }])
-        .select("id, show_feedback_button")
-        .single()
-      if (data) {
-        setShowFeedback(data.show_feedback_button)
-        setSettingId(data.id)
-      }
-    }
-    setLoading(false)
-  }
 
   const statsCards = [
     {
@@ -175,39 +155,8 @@ export default function Dashboard() {
           <p className="text-lg text-gray-600">Welcome back! Here&apos;s what&apos;s happening with your platform today.</p>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center space-x-4 p-6 rounded-3xl bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-indigo-500/25"
-        >
-          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-            <Zap className="w-6 h-6" />
-          </div>
-          <div className="flex items-center space-x-4">
-            <div>
-              <p className="font-semibold">Testing Mode</p>
-              <p className="text-sm text-white/80">Enable feedback collection</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!!showFeedback}
-                onChange={handleToggle}
-                disabled={loading}
-                className="sr-only peer"
-                aria-label="Testing Mode"
-              />
-              <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:bg-white/40 transition-all duration-200"></div>
-              <div
-                className={cn(
-                  "absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200",
-                  showFeedback ? "translate-x-5" : ""
-                )}
-              />
-            </label>
-          </div>
-        </motion.div>
+      
+             
       </motion.div>
 
       {/* Stats Cards */}

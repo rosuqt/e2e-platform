@@ -49,10 +49,63 @@ export function EmailVerificationModal({ open, onOpenChange }: EmailVerification
     }
   }, [open])
 
+  // Strict email validation helper
+  function isStrictEmailInvalid(email: string): boolean {
+    const emailRegex =
+      /^[a-zA-Z0-9]+([._%+-]?[a-zA-Z0-9]+)*@[a-zA-Z0-9]+([.-]?[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
+    const forbiddenPatterns = [
+      /\s/, /\.\./, /[()]/, /@.*@/, /^\.|^\S+@\./, /\.$|\.\s*$/, /@.*\.\./, /@.*\.$/, /@.*\.-/, /@.*-\./, /@.*\.(co)$/, /@.*\.$/, /@.*\..*-\./, /@.*\.-.*\./,
+    ];
+    const tldRegex = /\.(com|net|org|ph)$/i;
+    const domainPart = email.split('@')[1];
+    if (
+      !emailRegex.test(email) ||
+      forbiddenPatterns.some((pat) => pat.test(email)) ||
+      email.startsWith(".") ||
+      email.endsWith(".") ||
+      email.includes("..") ||
+      email.includes("(") ||
+      email.includes(")") ||
+      email.includes(" @") ||
+      email.includes("@ ") ||
+      email.split("@").length !== 2 ||
+      (domainPart &&
+        domainPart
+          .split('.')
+          .some(label => label.startsWith('-') || label.endsWith('-'))) ||
+      !tldRegex.test(email) ||
+      [
+        "maegmail.com",
+        "user.domain.com",
+        "Juan de lima @gmail.com",
+        ".juan@mail.com",
+        "juan@mail.com.",
+        "maria..@gmail.com",
+        "ana(mae)@mail.com",
+        "user-@domain.com",
+        "user@domain-.com",
+        "user@gmail.co",
+        "user@@gmail.com",
+        "user@domain",
+        "user@mail..com",
+      ].some(
+        (bad) =>
+          email.trim().toLowerCase() === bad.trim().toLowerCase()
+      )
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg("")
     if (!email) return
+    if (isStrictEmailInvalid(email)) {
+      setErrorMsg("Invalid email format.")
+      return
+    }
     if (cooldown > 0) return
     setLoading(true)
     if (editing && email !== sessionEmail) {
@@ -127,7 +180,10 @@ export function EmailVerificationModal({ open, onOpenChange }: EmailVerification
                   type="email"
                   placeholder="Enter your email address"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={e => {
+                    setEmail(e.target.value)
+                    if (errorMsg) setErrorMsg("")
+                  }}
                   required
                   className="text-base py-5 bg-blue-50 text-gray-700 border-blue-300 focus:ring-blue-400"
                   readOnly={!editing}

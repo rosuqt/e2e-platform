@@ -10,6 +10,30 @@ import { TabList } from "./components/tab-list"
 import Tooltip from "@mui/material/Tooltip"
 import toast, { Toaster } from "react-hot-toast"
 
+// Add suffixes array
+const suffixes = [
+  "",
+  "Jr.",
+  "Sr.",
+  "MD",
+  "PhD",
+  "Esq.",
+  "II",
+  "III",
+  "IV",
+  "V",
+  "VI",
+  "VII",
+  "VIII",
+  "IX",
+  "X",
+  "XI",
+  "XII",
+  "XIII",
+  "XIV",
+  "XV",
+]
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile")
   const tabs = [
@@ -295,12 +319,19 @@ export default function SettingsPage() {
                             <Label htmlFor="suffix" className="text-blue-700">
                               Suffix
                             </Label>
-                            <Input
+                            {/* Dropdown for suffix */}
+                            <select
                               id="suffix"
                               value={editProfile.suffix}
                               onChange={e => handleProfileChange("suffix", e.target.value)}
-                              className="border-blue-200 focus:border-blue-400"
-                            />
+                              className="border-blue-200 focus:border-blue-400 rounded-md w-full px-3 py-2"
+                            >
+                              {suffixes.map((suf, idx) => (
+                                <option key={idx} value={suf}>
+                                  {suf === "" ? "None" : suf}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="email" className="text-blue-700">

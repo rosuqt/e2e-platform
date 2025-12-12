@@ -97,13 +97,14 @@ export function MessagesModal({ messages, onClose, positionRef }: MessagesModalP
                   <Avatar
                     src={message.avatarUrl || "/placeholder.svg"}
                     alt={message.sender}
-                    sx={{ width: 40, height: 40 }}
+                    sx={{ width: 40, height: 40, fontWeight: 700, textTransform: "uppercase" }}
                   >
                     {!message.avatarUrl &&
                       message.sender
                         .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
+                        .map((n) => n[0]?.toUpperCase())
+                        .join("")
+                    }
                   </Avatar>
                   <div className="flex flex-col flex-grow">
                     <span className="font-medium text-gray-800">{message.sender}</span>

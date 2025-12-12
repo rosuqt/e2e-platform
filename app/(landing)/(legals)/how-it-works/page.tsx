@@ -14,6 +14,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import LandingFooter from "../../landing/components/landing-footer";
+import { useRef } from "react";
+import { Confetti, ConfettiRef } from "@/components/magicui/confetti";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 60 },
@@ -103,6 +105,12 @@ const benefits = [
 ];
 
 export default function HowItWorksPage() {
+  const confettiRef = useRef<ConfettiRef>(null);
+
+  function handleAddProjectClick() {
+    confettiRef.current?.fire?.();
+  }
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
@@ -283,16 +291,26 @@ export default function HowItWorksPage() {
                               </div>
                             ))}
                           </div>
-                          <button
-                            className="w-full py-2 mt-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium shadow-lg border-none outline-none transition hover:from-blue-700 hover:to-indigo-700"
-                            style={{
-                              boxShadow: "0 0 12px 2px rgba(80,80,255,0.18)",
-                              textShadow: "0 0 6px #6366F1",
-                              filter: "drop-shadow(0 0 6px #6366F1)",
-                            }}
-                          >
-                            + Add New Project
-                          </button>
+                          <div className="relative w-full flex justify-center">
+                            <button
+                              className="w-full py-2 mt-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium shadow-lg border-none outline-none transition hover:from-blue-700 hover:to-indigo-700"
+                              style={{
+                                boxShadow: "0 0 12px 2px rgba(80,80,255,0.18)",
+                                textShadow: "0 0 6px #6366F1",
+                                filter: "drop-shadow(0 0 6px #6366F1)",
+                              }}
+                              onClick={handleAddProjectClick}
+                            >
+                              + Add New Project
+                            </button>
+                            <div className="absolute inset-0 pointer-events-none">
+                              <Confetti
+                                ref={confettiRef}
+                                style={{ width: "100%", height: "100%" }}
+                                manualstart
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}

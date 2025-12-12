@@ -6,7 +6,7 @@ import {
   Grid,
   List,
   Send,
-  User,
+
   Search,
   TrendingUp,
   Briefcase,
@@ -285,6 +285,28 @@ export default function SavedCandidatesPage() {
                 : undefined
             }
             jobId={modalCandidate.job_id}
+            onSend={async (message) => {
+              // Send invite API call
+              await fetch("/api/employers/invitedCandidates/actionsInvites", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "invite",
+                  studentId: modalCandidate.student_id,
+                  jobId: modalCandidate.job_id,
+                  message,
+                }),
+              })
+              setCandidates(prev =>
+                prev.map(c =>
+                  c.student_id === modalCandidate.student_id && c.job_id === modalCandidate.job_id
+                    ? { ...c, application_status: "invited" }
+                    : c
+                )
+              )
+              setModalOpen(false)
+              setModalCandidate(null)
+            }}
           />
         )}
       </div>
@@ -304,6 +326,7 @@ function CandidateCard({
   candidate,
   getTopMatch,
   onSendInvite,
+  router,
 }: CandidateCardProps) {
   const { match: topMatch, job: topJob } = getTopMatch(candidate)
   let address = "Not Provided"
@@ -350,6 +373,10 @@ function CandidateCard({
       .finally(() => setChecking(false));
   }, [candidate.student_id, candidate.job_id]);
 
+  let statusLabel = candidate.application_status ?? "";
+  if (statusLabel === "offer_sent") statusLabel = "Offer sent";
+  else if (["new", "New"].includes(statusLabel)) statusLabel = "Contacted";
+
   return (
     <Card className="overflow-visible hover:shadow-lg transition-all duration-300 group">
       <div className="relative h-32 bg-gradient-to-r from-blue-500 to-purple-500">
@@ -370,7 +397,7 @@ function CandidateCard({
         {candidate.application_status && (
           <div className="absolute top-3 right-3">
             <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs font-semibold">
-              {["new", "New"].includes(candidate.application_status) ? "Contacted" : candidate.application_status}
+              {statusLabel}
             </Badge>
           </div>
         )}
@@ -418,10 +445,18 @@ function CandidateCard({
               Last matched at {formatDate(candidate.last_scored_at)}
             </span>
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" size="sm" className="flex-1">
-                <User className="h-4 w-4 mr-1" />
-                View Profile
-              </Button>
+              {invited && (
+                <Button
+                  size="sm"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => {
+                    router.push(`/employers/jobs/invited-candidates?inviteId=${candidate.job_id}_${candidate.student_id}`)
+                  }}
+                >
+                  <Send className="h-4 w-4 mr-1" />
+                  View Invite
+                </Button>
+              )}
               <MuiTooltip
                 title={
                   invited
@@ -457,6 +492,7 @@ function CandidateListItem({
   candidate,
   getTopMatch,
   onSendInvite,
+  router,
 }: CandidateCardProps) {
   const { match: topMatch, job: topJob } = getTopMatch(candidate)
   let address = "Not Provided"
@@ -492,6 +528,10 @@ function CandidateListItem({
       .finally(() => setChecking(false));
   }, [candidate.student_id, candidate.job_id]);
 
+  let statusLabel = candidate.application_status ?? "";
+  if (statusLabel === "offer_sent") statusLabel = "Offer sent";
+  else if (["new", "New"].includes(statusLabel)) statusLabel = "Contacted";
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
@@ -499,7 +539,7 @@ function CandidateListItem({
           {candidate.application_status && (
             <div className="absolute top-4 right-4">
               <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs font-semibold">
-                {["new", "New"].includes(candidate.application_status) ? "Contacted" : candidate.application_status}
+                {statusLabel}
               </Badge>
             </div>
           )}
@@ -512,22 +552,19 @@ function CandidateListItem({
                   {candidate.last_name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              {topMatch && (
-                <Badge className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs px-1 py-0">
-                  {topMatch.matchScore}%
-                </Badge>
-              )}
             </div>
-
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-semibold text-gray-900">
                   {candidate.first_name} {candidate.last_name}
                 </h3>
+                {topMatch && (
+                  <Badge className="bg-blue-600 text-white text-xs px-1 py-0">
+                    {topMatch.matchScore}%
+                  </Badge>
+                )}
               </div>
-
               <p className="text-sm text-gray-600 mb-1">{candidate.course}</p>
-
               {topJob && (
                 <div className="bg-blue-50 rounded px-2 py-1 mb-2 inline-block">
                   <span className="text-xs font-medium text-blue-700">
@@ -535,7 +572,6 @@ function CandidateListItem({
                   </span>
                 </div>
               )}
-
               <div className="flex items-center gap-6 text-xs text-gray-500 mb-2">
                 <span className="flex items-center gap-1">
                   <GraduationCap className="h-3 w-3" />
@@ -550,15 +586,23 @@ function CandidateListItem({
                 </span>
                 {candidate.application_status && (
                   <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs font-semibold">
-                    {["new", "New"].includes(candidate.application_status) ? "Contacted" : candidate.application_status}
+                    {statusLabel}
                   </Badge>
                 )}
               </div>
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  <User className="h-4 w-4 mr-1" />
-                  View Profile
-                </Button>
+                {invited && (
+                  <Button
+                    size="sm"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => {
+                      router.push(`/employers/jobs/invited-candidates?inviteId=${candidate.job_id}_${candidate.student_id}`)
+                    }}
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    View Invite
+                  </Button>
+                )}
                 <MuiTooltip
                   title={
                     invited

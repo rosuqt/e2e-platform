@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence, easeOut } from "framer-motion"
 import Link from "next/link"
-import { ArrowRight, Plus, Minus, Search, MessageCircle, Users, Briefcase, Shield, HelpCircle } from "lucide-react"
+import { ArrowRight, Plus, Minus, Search, Users, Briefcase, Shield, HelpCircle } from "lucide-react"
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 60 },
@@ -27,7 +27,7 @@ const faqCategories = [
       {
         question: "Is the platform free to use?",
         answer:
-          "Yes! Our platform is completely free for students. We believe in removing barriers to opportunity. Employers have access to basic features for free, with premium options available for enhanced functionality.",
+          "Up to the client's decision.",
       },
       {
         question: "What information should I include in my profile?",
@@ -58,7 +58,7 @@ const faqCategories = [
       {
         question: "How do I track my applications?",
         answer:
-          "Your dashboard includes an application tracker where you can see all your submitted applications, their current status, and any updates from employers. You'll also receive email notifications for important updates.",
+          "Your dashboard includes an application tracker where you can see all your submitted applications, their current status, and any updates from employers.",
       },
       {
         question: "What happens after I apply to a position?",
@@ -110,7 +110,7 @@ const faqCategories = [
       {
         question: "Can I connect with other students?",
         answer:
-          "Our networking feature allows you to connect with fellow students, join study groups, and participate in industry-specific communities. Building your professional network starts here.",
+          "Our networking feature allows you to connect with fellow students, share updates, and engage with peers. Start building your professional network right here.",
       },
       {
         question: "Is my personal information secure?",
@@ -118,21 +118,6 @@ const faqCategories = [
           "Yes, we take privacy seriously. Your personal information is encrypted and stored securely. You control what information is visible to employers, and we never share your data with third parties without your consent.",
       },
     ],
-  },
-]
-
-const quickHelp = [
-  {
-    title: "Can't find what you're looking for?",
-    description: "Contact our support team",
-    action: "Get Help",
-    icon: <MessageCircle className="w-8 h-8 text-white" />,
-  },
-  {
-    title: "Want to see how it works?",
-    description: "Take a guided tour",
-    action: "Take Tour",
-    icon: <Search className="w-8 h-8 text-white" />,
   },
 ]
 
@@ -296,55 +281,6 @@ export default function FAQPage() {
               </button>
             </motion.div>
           )}
-        </div>
-      </section>
-
-      {/* Quick Help Section */}
-      <section className="py-32 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <motion.div
-            className="text-center mb-16"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
-            variants={fadeInUp}
-          >
-            <h2 className="text-4xl font-bold mb-4">
-              Still Need <span className="text-yellow-500">Help</span>?
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Our support team is here to help you succeed. Get personalized assistance or explore our platform with a
-              guided tour.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {quickHelp.map((item, index) => (
-              <motion.div
-                key={index}
-                className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-2xl p-8 text-white text-center"
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, amount: 0.3 }}
-                variants={fadeInUp}
-                transition={{ delay: index * 0.2 }}
-                whileHover={{ y: -5 }}
-              >
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  {item.icon}
-                </div>
-                <h3 className="text-2xl font-bold mb-4">{item.title}</h3>
-                <p className="text-blue-100 mb-6">{item.description}</p>
-                <motion.button
-                  className="bg-white text-blue-700 hover:bg-blue-50 px-6 py-3 rounded-lg font-medium flex items-center gap-2 mx-auto"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {item.action} <ArrowRight className="w-4 h-4" />
-                </motion.button>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
 

@@ -8,6 +8,7 @@ import Lottie from "lottie-react";
 import dashboardSearchAnimation from "../../../../public/animations/dashboard-search.json";
 import { createPortal } from "react-dom"
 import { ApplicationModal } from "../jobs/job-listings/components/application-modal"
+import Tooltip from "@mui/material/Tooltip"
 
 type JobDetails = {
   id: string
@@ -182,6 +183,7 @@ export default function Home() {
   })
   const [dropdownOpen, setDropdownOpen] = useState<null | string>(null);
   const [showQuickApply, setShowQuickApply] = useState(false)
+  const [hasApplied, setHasApplied] = useState<boolean | null>(null)
 
   const searchRef = useRef<HTMLDivElement | null>(null)
   const rightSectionRef = useRef<HTMLDivElement | null>(null)
@@ -424,6 +426,22 @@ export default function Home() {
     }
   }, [session, update])
 
+  useEffect(() => {
+    if (selectedJob && session?.user?.studentId) {
+      setHasApplied(null)
+      fetch("/api/students/apply/check-apply-exist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: session.user.studentId, jobId: selectedJob }),
+      })
+        .then(res => res.json())
+        .then(data => setHasApplied(!!data.exists))
+        .catch(() => setHasApplied(false))
+    } else {
+      setHasApplied(null)
+    }
+  }, [selectedJob, session?.user?.studentId])
+
   return (
     <div className="flex overflow-x-hidden bg-gradient-to-br from-blue-50 to-sky-100">
       <div className="w-full pr-4">
@@ -595,6 +613,7 @@ export default function Home() {
                       searchTitle={searchTitle}
                       searchLocation={searchLocation}
                       filters={filters}
+                      studentId={session?.user?.studentId}
                     />
                   </motion.div>
 
@@ -897,17 +916,31 @@ export default function Home() {
                                   </ul>
                                 </motion.div>
                                 <div className="flex gap-3 mt-8">
-                                  <motion.button
-                                    className="w-full bg-gradient-to-r from-blue-400 to-sky-400 text-white font-bold py-4 rounded-xl hover:from-blue-500 hover:to-sky-500 transition-all duration-300 shadow-lg"
-                                    whileHover={{
-                                      scale: 1.03,
-                                      boxShadow: "0 15px 25px -5px rgba(0, 0, 0, 0.2)",
-                                    }}
-                                    whileTap={{ scale: 0.97 }}
-                                    onClick={() => setShowQuickApply(true)}
-                                  >
-                                    Apply Now
-                                  </motion.button>
+                                  {hasApplied === false && (
+                                    <motion.button
+                                      className="w-full bg-gradient-to-r from-blue-400 to-sky-400 text-white font-bold py-4 rounded-xl hover:from-blue-500 hover:to-sky-500 transition-all duration-300 shadow-lg"
+                                      whileHover={{
+                                        scale: 1.03,
+                                        boxShadow: "0 15px 25px -5px rgba(0, 0, 0, 0.2)",
+                                      }}
+                                      whileTap={{ scale: 0.97 }}
+                                      onClick={() => setShowQuickApply(true)}
+                                    >
+                                      Apply Now
+                                    </motion.button>
+                                  )}
+                                  {hasApplied === true && (
+                                    <Tooltip title="You have already applied" arrow>
+                                      <span className="w-full">
+                                        <button
+                                          className="w-full bg-gray-200 text-gray-500 font-bold py-4 rounded-xl border-2 border-gray-300 cursor-not-allowed shadow-lg"
+                                          disabled
+                                        >
+                                          Already Applied
+                                        </button>
+                                      </span>
+                                    </Tooltip>
+                                  )}
                                   <motion.button
                                     className="w-full bg-white text-blue-600 font-bold py-4 rounded-xl border-2 border-blue-400 hover:bg-blue-50 transition-all duration-300 shadow-lg"
                                     whileHover={{

@@ -3,7 +3,7 @@
 import React from "react"
 import { Fragment } from "react"
 import { Dialog, Transition } from "@headlessui/react"
-import { X, MapPin, Building, Clock, PiggyBank, CheckCircle } from "lucide-react"
+import { X, MapPin, Building, Clock, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { Toaster, toast } from "react-hot-toast"
@@ -47,6 +47,9 @@ const suffixes = [
   "",
   "Jr.",
   "Sr.",
+  "MD",
+  "PhD",
+  "Esq.",
   "II",
   "III",
   "IV",
@@ -56,9 +59,12 @@ const suffixes = [
   "VIII",
   "IX",
   "X",
-  "MD",
-  "PhD",
-  "Esq."
+  "XI",
+  "XII",
+  "XIII",
+  "XIV",
+  "XV",
+
 ]
 
 export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
@@ -164,45 +170,57 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
       errors.phone = "Phone Number is required."
     } else {
       const phoneInput = data.phone.trim()
-      // Must start with +63, exactly 11 digits, no letters/special chars except +
-      if (!/^\+63\d{10}$/.test(phoneInput)) {
-        errors.phone = "PH format: +63 followed by 10 digits (e.g. +639123456789)"
-      } else if (/[^\d+]/.test(phoneInput)) {
-        errors.phone = "Only digits allowed after +63."
-      } else if (phoneInput.length !== 13) {
-        errors.phone = "Phone number must be exactly 11 digits (+63XXXXXXXXXX)."
+      // Only digits allowed, must start with 9, exactly 10 digits
+      if (!/^\d+$/.test(phoneInput)) {
+        errors.phone = "Phone number must contain digits only."
+      } else if (!/^9\d{9}$/.test(phoneInput)) {
+        errors.phone = "Enter a valid PH mobile number (e.g. 9123456789)."
+      } else if (phoneInput.length !== 10) {
+        errors.phone = "Phone number must be exactly 10 digits."
+      } else if (/^911/.test(phoneInput)) {
+        errors.phone = "Phone number cannot start with 911."
+      } else if (/^(\d)\1{9}$/.test(phoneInput)) {
+        errors.phone = "Phone number cannot be all the same digit."
       }
     }
 
     if (!data.email.trim()) {
       errors.email = "Email is required."
     } else {
-      const email = data.email.trim()
-      // Must contain @, domain, no spaces, no multiple @, no multiple periods, not start/end with period, must end with .com
-      if (/\s/.test(email)) {
-        errors.email = "Email must not contain spaces."
-      } else if ((email.match(/@/g) || []).length !== 1) {
-        errors.email = "Email must contain exactly one '@'."
-      } else if (email.startsWith('.') || email.endsWith('.')) {
-        errors.email = "Email must not start or end with a period."
-      } else if (/\.\./.test(email)) {
-        errors.email = "Email must not contain consecutive periods."
-      } else if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-        errors.email = "Email must contain a valid domain."
-      } else if (!/\.com$/.test(email.toLowerCase())) {
-        errors.email = "Email must end with '.com'."
+      const email = data.email
+      // Reject leading/trailing spaces
+      if (email !== email.trim()) {
+        errors.email = "Email must not have leading or trailing spaces."
       } else {
-        const [local, domain] = email.split('@')
-        if (!local || !domain) {
-          errors.email = "Email must contain a valid local and domain part."
-        } else if (local.endsWith('-') || domain.startsWith('-') || domain.endsWith('-')) {
-          errors.email = "Email must not start or end domain/local with hyphen."
-        } else if (local.startsWith('.') || domain.startsWith('.') || domain.endsWith('.')) {
+        const trimmedEmail = email.trim()
+        // Reject parentheses
+        if (/[()]/.test(trimmedEmail)) {
+          errors.email = "Email must not contain parentheses."
+        } else if (/\s/.test(trimmedEmail)) {
+          errors.email = "Email must not contain spaces."
+        } else if ((trimmedEmail.match(/@/g) || []).length !== 1) {
+          errors.email = "Email must contain exactly one '@'."
+        } else if (trimmedEmail.startsWith('.') || trimmedEmail.endsWith('.')) {
           errors.email = "Email must not start or end with a period."
+        } else if (/\.\./.test(trimmedEmail)) {
+          errors.email = "Email must not contain consecutive periods."
+        } else if (!/^[^@]+@[^@]+\.[^@]+$/.test(trimmedEmail)) {
+          errors.email = "Email must contain a valid domain."
+        } else if (!/\.com$/.test(trimmedEmail.toLowerCase())) {
+          errors.email = "Email must end with '.com'."
+        } else {
+          const [local, domain] = trimmedEmail.split('@')
+          if (!local || !domain) {
+            errors.email = "Email must contain a valid local and domain part."
+          } else if (local.endsWith('-') || domain.startsWith('-') || domain.endsWith('-')) {
+            errors.email = "Email must not start or end domain/local with hyphen."
+          } else if (local.startsWith('.') || domain.startsWith('.') || domain.endsWith('.')) {
+            errors.email = "Email must not start or end with a period."
+          }
         }
-      }
-      if (email.length < 6 || email.length > 254) {
-        errors.email = "Email must be between 6 and 254 characters."
+        if (trimmedEmail.length < 6 || trimmedEmail.length > 254) {
+          errors.email = "Email must be between 6 and 254 characters."
+        }
       }
     }
 
@@ -210,6 +228,8 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
       const allowed = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
       if (!allowed.includes(data.resume.type)) errors.resume = "Accepted formats: PDF, DOC, DOCX."
       if (data.resume.size > 2 * 1024 * 1024) errors.resume = "File size must be under 2MB."
+    } else {
+      errors.resume = "Resume is required."
     }
     if (data.coverLetter) {
       const allowed = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
@@ -364,7 +384,6 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                     </div>
 
                     <div className="flex items-center text-gray-600">
-                      <PiggyBank className="h-4 w-4 mr-2 text-blue-700" />
                       <span>
                         {(() => {
                           if (job.salary && job.salary.includes(",")) {
@@ -616,13 +635,13 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                                     id="phone"
                                     name="phone"
                                     required
-                                    placeholder="+639XXXXXXXXX"
+                                    placeholder="9XXXXXXXXX"
                                     className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                                       formErrors.phone ? "border-red-500" : "border-gray-300"
                                     }`}
                                     value={formData.phone}
                                     onChange={handleInputChange}
-                                    maxLength={13}
+                                    maxLength={10}
                                   />
                                   {formErrors.phone && (
                                     <p className="text-xs text-red-600 mt-1">{formErrors.phone}</p>
@@ -651,7 +670,7 @@ export default function JobModal({ job, isOpen, onClose }: JobModalProps) {
                             </div>
                             <div>
                               <label htmlFor="resume" className="block text-sm font-medium text-gray-700 mb-1">
-                                Resume/CV
+                                Resume/CV <span className="text-red-600">*</span>
                               </label>
               
                               <div
