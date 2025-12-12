@@ -161,7 +161,7 @@ export default function SignUpForm() {
 
     if (!details.firstName.trim()) {
       errors.firstName = "First Name is required.";
-    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.firstName)) {
+    } else if (!/^[A-Za-zÑñ]+([ '-][A-Za-zÑñ]+)*$/.test(details.firstName)) {
       errors.firstName = "Only letters, single space or dash between names allowed.";
     } else if (details.firstName.length < 1 || details.firstName.length > 36) {
       errors.firstName = "Must be between 1 and 36 characters.";
@@ -175,7 +175,7 @@ export default function SignUpForm() {
 
     if (!details.lastName.trim()) {
       errors.lastName = "Last Name is required.";
-    } else if (!/^[a-zA-Z]+([ -][a-zA-Z]+)*$/.test(details.lastName)) {
+    } else if (!/^[A-Za-zÑñ]+([ '-][A-Za-zÑñ]+)*$/.test(details.lastName)) {
       errors.lastName = "Only letters, single space or dash between names allowed.";
     } else if (details.lastName.length < 1 || details.lastName.length > 35) {
       errors.lastName = "Last Name must be between 1 and 35 characters.";
@@ -219,7 +219,7 @@ export default function SignUpForm() {
     if (!details.email.trim()) {
       errors.email = "Email is required.";
     } else {
-      const emailRegex = /^[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
+      const emailRegex = /^(?!.*\.\.)[^\s@]+@([a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*\.)+[a-zA-Z]{2,}$/;
       const domainPart = details.email.split('@')[1];
       if (!emailRegex.test(details.email)) {
         errors.email = "Invalid email format.";
@@ -262,12 +262,43 @@ export default function SignUpForm() {
 
   const validateCompanyFields = () => {
     const errors: { [key: string]: string } = {}
-    if (!formData.companyAssociation.companyName.trim()) {
-      errors.companyName = "Company Name is required."
+
+    const companyName = formData.companyAssociation.companyName.trim();
+    if (!companyName) {
+      errors.companyName = "Company Name is required.";
+    } else {
+      // Check allowed characters
+      const allowedPattern = /^[A-Za-z0-9 .&'-]+$/;
+      if (!allowedPattern.test(companyName)) {
+        errors.companyName =
+          "Company Name can only contain letters, numbers, spaces, period, hyphen, ampersand (&), and apostrophe (').";
+      }
+
+      // Check for repeated symbols
+      const repeatedSymbolsPattern = /([ .&'-])\1/;
+      if (repeatedSymbolsPattern.test(companyName)) {
+        errors.companyName =
+          "Company Name cannot have repeated symbols like '..' or '&&'.";
+      }
     }
-    if (!formData.companyAssociation.companyBranch.trim()) {
-      errors.companyBranch = "Company Branch is required."
+
+    const companyBranch = formData.companyAssociation.companyBranch.trim();
+    if (!companyBranch) {
+      errors.companyBranch = "Company Branch is required.";
+    } else {
+      // Check for @ symbol
+      if (/@/.test(companyBranch)) {
+        errors.companyBranch = "Company Branch must not contain the '@' symbol.";
+      }
+
+      // Check for repeated symbols (space, period, hyphen, ampersand, apostrophe)
+      const repeatedSymbolsPattern = /([ .&'-])\1/;
+      if (repeatedSymbolsPattern.test(companyBranch)) {
+        errors.companyBranch =
+          "Company Branch cannot have repeated symbols like '..' or '&&'.";
+      }
     }
+
     if (!formData.companyAssociation.companyRole.trim()) {
       errors.companyRole = "Company Role is required."
     }
