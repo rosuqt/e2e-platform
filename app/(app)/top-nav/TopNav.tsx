@@ -28,8 +28,6 @@ interface TopNavProps {
   labelColor?: string;
   isSidebarMinimized?: boolean;
   topNavStyle?: React.CSSProperties;
-  session?: any;
-  status?: string;
 }
 
 type DropdownMenuItem = {
@@ -209,6 +207,11 @@ const TopNav: React.FC<TopNavProps> = ({
         </div>
       </header>
     );
+  }
+
+  // Only render TopNav if authenticated and session.user exists
+  if (status !== "authenticated" || !session?.user) {
+    return null;
   }
 
   return (

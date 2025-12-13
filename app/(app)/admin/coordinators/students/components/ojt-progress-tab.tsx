@@ -163,165 +163,6 @@ function getStatusBadge(status: string) {
   )
 }
 
-function DTRTimeline({ studentId }: { studentId: string }) {
-  const [loading, setLoading] = useState(true)
-  const [job, setJob] = useState<any>(null)
-  const [logs, setLogs] = useState<any[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [fullscreenImg, setFullscreenImg] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function fetchDTR() {
-      setLoading(true)
-      setError(null)
-      setJob(null)
-      setLogs([])
-      try {
-        const jobRes = await fetch(`/api/students/dtr/getJobInfo?studentId=${encodeURIComponent(studentId)}`)
-        const jobData = await jobRes.json()
-        if (!jobData.jobs || jobData.jobs.length === 0) {
-          setLoading(false)
-          setJob(null)
-          setLogs([])
-          return
-        }
-        const jobInfo = jobData.jobs[0]
-        setJob(jobInfo)
-        const logsRes = await fetch(`/api/students/dtr/getLogs?jobId=${encodeURIComponent(jobInfo.id)}`)
-        const logsData = await logsRes.json()
-        setLogs(logsData.logs || [])
-      } catch (e) {
-        setError("Failed to fetch DTR data.")
-      }
-      setLoading(false)
-    }
-    if (studentId) fetchDTR()
-  }, [studentId])
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500 mb-2" />
-        <span className="text-gray-500 font-medium">Loading DTR timeline...</span>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8">
-        <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
-        <span className="text-red-600 font-medium">{error}</span>
-      </div>
-    )
-  }
-
-  if (!job) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8">
-        <Image src="/animations/ojt-track.json" alt="No DTR" width={96} height={96} unoptimized />
-        <span className="mt-2 text-gray-700 font-semibold text-base text-center">
-          No DTR records found for this student yet.
-        </span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>DTR Timeline</CardTitle>
-          <CardContent>
-            <div className="mb-2 text-gray-600">
-              {job.jobTitle} at {job.company} <br />
-              Started: {job.startDate ? new Date(job.startDate).toLocaleDateString() : "N/A"}
-            </div>
-            {logs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <AlertCircle className="w-6 h-6 text-yellow-500 mb-2" />
-                <span className="text-gray-500 font-medium">No DTR logs available.</span>
-              </div>
-            ) : (
-              <ol className="relative border-l border-indigo-300">
-                {logs.map((log, idx) => (
-                  <li key={log.id || idx} className="mb-10 ml-6">
-                    <span className="absolute flex items-center justify-center w-8 h-8 bg-indigo-100 rounded-full -left-4 ring-4 ring-white">
-                      <Clock className="w-5 h-5 text-indigo-500" />
-                    </span>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-semibold text-indigo-700">
-                        {log.date ? new Date(log.date).toLocaleDateString() : "Unknown Date"}
-                      </span>
-                      <span className="text-gray-700 text-sm">
-                        {log.time_in} - {log.time_out}
-                      </span>
-                      {log.imageProofUrl && (
-                        <div className="relative mt-2 flex items-center gap-2">
-                          <Image
-                            src={log.imageProofUrl}
-                            alt="Proof"
-                            width={80}
-                            height={80}
-                            className="rounded border cursor-pointer"
-                            unoptimized
-                            onClick={() => setFullscreenImg(log.imageProofUrl)}
-                          />
-                          <button
-                            type="button"
-                            className="p-1 rounded-full bg-white border shadow hover:bg-gray-50"
-                            title="View Fullscreen"
-                            onClick={() => setFullscreenImg(log.imageProofUrl)}
-                          >
-                            <Maximize2 className="w-4 h-4 text-gray-700" />
-                          </button>
-                        </div>
-                      )}
-                      {log.remarks && (
-                        <span className="text-gray-500 text-xs mt-1">Remarks: {log.remarks}</span>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
-            {/* Fullscreen Modal */}
-            {fullscreenImg && (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80"
-                onClick={() => setFullscreenImg(null)}
-                style={{ cursor: "zoom-out" }}
-              >
-                <div className="relative">
-                  <Image
-                    src={fullscreenImg}
-                    alt="Proof Fullscreen"
-                    width={800}
-                    height={800}
-                    className="max-w-[90vw] max-h-[90vh] rounded shadow-lg"
-                    unoptimized
-                  />
-                  <button
-                    type="button"
-                    className="absolute top-2 right-2 p-2 bg-white rounded-full shadow hover:bg-gray-200"
-                    onClick={e => {
-                      e.stopPropagation()
-                      setFullscreenImg(null)
-                    }}
-                    title="Close"
-                  >
-                    <CloseIcon className="w-5 h-5 text-gray-700" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </CardHeader>
-      </Card>
-    </div>
-  )
-}
-
 export default function OJTProgressTab({
   student,
 }: {
@@ -402,7 +243,12 @@ export default function OJTProgressTab({
       }
       setHoursLoading(false)
     }
-    fetchHours()
+    if (student.id) { // <-- Only fetch if student.id is truthy
+      fetchHours()
+    } else {
+      setEditableHoursCompleted(student.hoursCompleted ?? 0)
+      setHoursLoading(false)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [student.id])
 
@@ -758,12 +604,6 @@ export default function OJTProgressTab({
               </CardContent>
             </Card>
           )}
-
-          {effectiveOjtStatus?.toLowerCase() === "hired" && (
-        <div className="space-y-6">
-          <DTRTimeline studentId={student.id} />
-        </div>
-      )}
         </div>
       )}
     </div>

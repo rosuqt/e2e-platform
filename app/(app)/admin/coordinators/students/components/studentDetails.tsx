@@ -1,5 +1,5 @@
 import { Badge as UIBadge } from "@/components/ui/badge"
-import { CheckCircle, MessageSquare, Sparkles } from "lucide-react"
+import { CheckCircle, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DialogFooter, Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Tooltip from "@mui/material/Tooltip"
@@ -243,6 +243,7 @@ export default function StudentDetailsModalContent({
   const [selectedPositions, setSelectedPositions] = useState<string[]>([])
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
   const [ojtApplications, setOjtApplications] = useState<OJTApplication[]>([])
+  const [ojtLoading, setOjtLoading] = useState(false)
 
   useEffect(() => {
     async function fetchAvatar() {
@@ -280,12 +281,21 @@ export default function StudentDetailsModalContent({
 
   useEffect(() => {
     if (tab === "ojt" && student && student.student_id) {
+      if (!student.student_id || String(student.student_id).trim() === "") {
+        setOjtApplications([])
+        setOjtLoading(false)
+        return
+      }
+      setOjtLoading(true)
       fetch(`/api/superadmin/coordinators/fetchOJTProgress?student_id=${student.student_id}`)
         .then(res => res.json())
         .then(data => {
           setOjtApplications(Array.isArray(data) ? data : [])
+          setOjtLoading(false)
         })
         .catch(() => {
+          setOjtApplications([])
+          setOjtLoading(false)
         })
     }
   }, [tab, student.student_id, student])
@@ -387,7 +397,21 @@ export default function StudentDetailsModalContent({
  
         <TabsContent value="ojt">
           <div className="mt-6">
-            {tab === "ojt" && ojtApplications.length === 0 ? (
+            {(!student.student_id || String(student.student_id).trim() === "") ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="w-40 h-40 mb-4 flex items-center justify-center">
+                  <Lottie
+                    animationData={ojtTrackAnimation}
+                    loop
+                    autoplay
+                    style={{ width: 160, height: 160 }}
+                  />
+                </div>
+                <span className="mt-2 text-blue-700 font-semibold text-lg">
+                  No OJT Progress: Student hasn&apos;t started looking for a job yet
+                </span>
+              </div>
+            ) : ojtLoading ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <div className="w-40 h-40 mb-4 flex items-center justify-center">
                   <Lottie
@@ -399,6 +423,20 @@ export default function StudentDetailsModalContent({
                 </div>
                 <span className="mt-2 text-blue-700 font-semibold text-lg animate-pulse">
                   Fetching OJT Progress...
+                </span>
+              </div>
+            ) : ojtApplications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="w-40 h-40 mb-4 flex items-center justify-center">
+                  <Lottie
+                    animationData={ojtTrackAnimation}
+                    loop
+                    autoplay
+                    style={{ width: 160, height: 160 }}
+                  />
+                </div>
+                <span className="mt-2 text-blue-700 font-semibold text-lg">
+                  No OJT Progress found for this student yet.
                 </span>
               </div>
             ) : (
@@ -584,10 +622,7 @@ export default function StudentDetailsModalContent({
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-        <Button className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" />
-          Message Employer
-        </Button>
+    
       </DialogFooter>
     </div>
   )
