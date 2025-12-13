@@ -1472,7 +1472,11 @@ export default function ApplicationTrackerNoSidebar() {
                         {
                           (() => {
                             const ongoing = interviewApps.filter(a => (a.status || "").toLowerCase() === "interview scheduled")
-                            const finished = interviewApps.filter(a => (a.status || "").toLowerCase() === "interview finished")
+                            // Add waitlisted to finished
+                            const finished = interviewApps.filter(a => {
+                              const s = (a.status || "").toLowerCase()
+                              return s === "interview finished" || s === "waitlisted"
+                            })
                             return (
                               <>
                                 <div className="mb-2 mt-2 text-base font-semibold text-purple-700 border-b border-purple-200 pb-1">

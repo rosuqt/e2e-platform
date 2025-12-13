@@ -37,12 +37,17 @@ export const authOptions: NextAuthOptions = {
 
         const { data: user, error } = await supabase
           .from("registered_employers")
-          .select("id, email, password, first_name, last_name, verify_status")
+          .select("id, email, password, first_name, last_name, verify_status, is_archived")
           .eq("email", email)
           .maybeSingle() 
 
         if (error) {
           console.error("CredentialsProvider authorize: error from db:", error)
+        }
+
+        // Archive logic: Block login if account is archived
+        if (user && user.is_archived) {
+          throw new Error("Account is archived and cannot be logged in")
         }
 
         if (user && bcrypt.compareSync(password, user.password)) {
@@ -74,14 +79,17 @@ export const authOptions: NextAuthOptions = {
 
         const { data: admin, error } = await supabase
           .from("registered_admins")
-          .select("id, username, password, first_name, last_name, department, superadmin")
+          .select("id, username, password, first_name, last_name, department, superadmin, is_archived")
           .eq("username", username)
           .maybeSingle()
 
         if (error) {
           console.error("Admin CredentialsProvider authorize: error from db:", error)
         }
-
+        // Archive logic: Block login if admin is archived
+        if (admin && admin.is_archived) {
+          throw new Error("Account is archived and cannot be logged in")
+        }
         if (admin && bcrypt.compareSync(password, admin.password)) {
           return {
             id: admin.id,
@@ -160,11 +168,18 @@ export const authOptions: NextAuthOptions = {
                 lastName = ""
               }
             }
+            
+            // Archive logic: Block login if student is archived
             const { data: existingStudent } = await supabase
               .from("registered_students")
-              .select("id")
+              .select("id, is_archived")
               .eq("email", normalizedEmail)
               .single()
+
+            if (existingStudent && existingStudent.is_archived === true) {
+              return `/sign-in?error=archived_account`;
+            }
+            
             if (!existingStudent) {
               await supabase
                 .from("registered_students")

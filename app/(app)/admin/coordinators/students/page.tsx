@@ -74,6 +74,9 @@ interface Student {
 }
 
 interface BulkUploadPreviewData {
+  full_name: string
+  company: null
+  section: null
   studentId: string
   name: string
   email: string
@@ -390,6 +393,7 @@ export default function StudentManagement() {
               studentId,
               name,
               email,
+              full_name: name, // <-- Add this line for upload mapping
               isValid: errors.length === 0,
               errors,
             }
@@ -439,6 +443,7 @@ export default function StudentManagement() {
                 studentId,
                 name,
                 email,
+                full_name: name, // <-- Add this line for upload mapping
                 isValid: errors.length === 0,
                 errors,
               }
@@ -462,18 +467,21 @@ export default function StudentManagement() {
 
     if (validRecords.length > 0) {
       try {
+        // Add logging to verify API call
+        console.log("Uploading students:", validRecords)
         const res = await fetch("/api/superadmin/coordinators/importStudent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             students: validRecords.map((r) => ({
-              full_name: r.name,
+              full_name: r.full_name || r.name, // <-- Ensure full_name is sent
               email: r.email,
               year_level: r.year?.toString() ?? null,
               status: r.status ?? null,
-              company: r.course ?? null,
-              section: null,
+              company: r.company ?? null,
+              section: r.section ?? null,
               course: r.course ?? null,
+              student_id: r.studentId ?? null, // <-- Pass student_id if available
             })),
           }),
         })
@@ -618,10 +626,7 @@ export default function StudentManagement() {
                         onChange={(e) => setSearchQuery(e.target.value)}
                       />
                     </div>
-                    <Button variant="outline" className="flex items-center gap-2 rounded-2xl border-gray-200">
-                      <Filter className="h-4 w-4" />
-                      Filter
-                    </Button>
+              
                   </div>
                 </div>
                 <Tabs defaultValue="all" onValueChange={setActiveTab} className="space-y-8">

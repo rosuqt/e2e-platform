@@ -7,7 +7,7 @@ import { FaComputer, FaHotel } from "react-icons/fa6";
 import { MdBusinessCenter, MdOutlinePlayCircle, MdLoop } from "react-icons/md";
 import { BiSolidPlaneAlt } from "react-icons/bi";
 import { IoMdPlanet } from "react-icons/io";
-import { FaRegCirclePause , FaMoneyBill, FaTrash } from "react-icons/fa6";
+import { FaRegCirclePause , FaTrash } from "react-icons/fa6";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -326,10 +326,7 @@ export default function EmployerJobCard({
                 <Briefcase className="h-3 w-3" />
                 <span>{job.type}</span>
               </div>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <FaMoneyBill className="h-3 w-3" />
-                <span>{job.salary ? job.salary : "No pay"}</span>
-              </div>
+              {/* Removed pay/salary UI */}
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <Clock className="h-3 w-3" />
                 <span>{getPostedLabel(job.posted)}</span>
