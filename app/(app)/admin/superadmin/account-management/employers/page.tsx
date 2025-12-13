@@ -39,7 +39,7 @@ interface Employer {
   phone: string
   company: string
   position: string
-  status: "active" | "inactive" | "suspended" | "pending"
+  status: "active" | "inactive"
   registrationDate: string
   location: string
   employeesCount: number
@@ -55,6 +55,8 @@ interface Employer {
 interface ApiEmployer {
   profile_img: string
   id: string
+  status?: string
+  is_archived?: boolean
   first_name?: string
   middle_name?: string
   last_name?: string
@@ -120,11 +122,6 @@ function StatusBadge({ status }: { status: string }) {
     badgeClass =
       "bg-gray-100 text-gray-700 border-gray-200 flex items-center gap-1"
     badgeContent = <span className="flex items-center">{label}</span>
-  } else if (status === "suspended") {
-    label = "Suspended"
-    badgeClass =
-      "bg-red-100 text-red-700 border-red-200 flex items-center gap-1"
-    badgeContent = <span className="flex items-center">{label}</span>
   } else {
     label = status.charAt(0).toUpperCase() + status.slice(1)
     badgeClass =
@@ -162,7 +159,6 @@ export default function EmployersManagement() {
 
   useEffect(() => {
     setIsLoading(true)
-    const statuses = ["active", "inactive", "suspended"]
     fetch("/api/superadmin/fetchUsers?employers=true")
       .then((res) => res.json())
       .then(async (res) => {
@@ -176,7 +172,12 @@ export default function EmployersManagement() {
               phone: (e.country_code ? "+" + e.country_code + " " : "") + (e.phone || ""),
               company: e.company_name || "",
               position: e.company_role || "",
-              status: statuses[idx % statuses.length] as "active" | "inactive" | "suspended",
+              status:
+                e.is_archived === true
+                  ? "inactive"
+                  : e.status === "inactive"
+                    ? "inactive"
+                    : "active",
               registrationDate: e.created_at ? new Date(e.created_at).toISOString().slice(0, 10) : "",
               industry: e.company_industry || "",
               location: e.company_branch || "",
@@ -206,20 +207,29 @@ export default function EmployersManagement() {
       employer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employer.company.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesTab =
+    const matchesStatus =
       (activeTab === "active" && employer.status === "active") ||
       (activeTab === "inactive" && employer.status === "inactive") ||
-      (activeTab === "suspended" && employer.status === "suspended") ||
-      (activeTab === "pending" && employer.status === "pending") ||
       activeTab === "all"
 
     const matchesLocation = selectedLocation === "all" || employer.location === selectedLocation
 
-    return matchesSearch && matchesTab && matchesLocation
+    return matchesSearch && matchesStatus && matchesLocation
   })
 
   const pageCount = Math.ceil(filteredEmployers.length / pageSize)
   const paginatedEmployers = filteredEmployers.slice((page - 1) * pageSize, page * pageSize)
+
+  // Keep pagination in sync when filters or data change
+  useEffect(() => {
+    setPage(1)
+  }, [activeTab, searchQuery, selectedLocation])
+
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount === 0 ? 1 : pageCount)
+    }
+  }, [pageCount, page])
 
   const fetchCompanyDetails = async (employerId: string) => {
     const res = await fetch(`/api/superadmin/fetchUsers?employers=true&employerId=${employerId}`)
@@ -239,14 +249,62 @@ export default function EmployersManagement() {
   }
 
   const handleArchiveEmployer = async (employer: Employer) => {
-    await fetch("/api/superadmin/actions/isArchived", {
+    const nextStatus = employer.status === "active" ? "inactive" : "active"
+    const res = await fetch("/api/superadmin/actions/isArchived", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: employer.employerId }),
+      body: JSON.stringify({
+        id: employer.employerId,
+        is_archived: nextStatus === "inactive",
+        target: "employer",
+      }),
     })
-    setEmployers(employers.map(e =>
-      e.employerId === employer.employerId ? { ...e, status: "suspended" } : e
-    ))
+    if (!res.ok) {
+      const errText = await res.text().catch(() => res.statusText)
+      console.error("Failed to toggle employer archive state", errText || res.statusText)
+      return
+    }
+    setEmployers((prev) =>
+      prev.map((e) =>
+        e.employerId === employer.employerId ? { ...e, status: nextStatus } : e
+      ),
+    )
+
+    // Re-fetch to ensure the UI reflects persisted backend state
+    const refreshed = await fetch("/api/superadmin/fetchUsers?employers=true")
+    if (refreshed.ok) {
+      const data = await refreshed.json()
+      if (Array.isArray(data.employers)) {
+        setEmployers(
+          data.employers.map((e: ApiEmployer, idx: number) => ({
+            id: idx + 1,
+            employerId: e.id,
+            name: [e.first_name, e.middle_name, e.last_name, e.suffix].filter(Boolean).join(" "),
+            email: e.email || e.company_email || "",
+            phone: (e.country_code ? "+" + e.country_code + " " : "") + (e.phone || ""),
+            company: e.company_name || "",
+            position: e.company_role || "",
+            status:
+              e.is_archived === true
+                ? "inactive"
+                : e.status === "inactive"
+                  ? "inactive"
+                  : "active",
+            registrationDate: e.created_at ? new Date(e.created_at).toISOString().slice(0, 10) : "",
+            industry: e.company_industry || "",
+            location: e.company_branch || "",
+            company_website: e.company_website || "",
+            employeesCount: 0,
+            description: "",
+            verify_status: e.verify_status ?? "",
+            job_title: e.job_title || "",
+            company_branch: e.company_branch || "",
+            username: e.username || "",
+            profile_img: e.profile_img || "",
+          })),
+        )
+      }
+    }
   }
 
   const handleArchiveDialog = (employer: Employer) => {
@@ -346,7 +404,7 @@ export default function EmployersManagement() {
                 </div>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-                  <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
+                  <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-none lg:flex rounded-2xl bg-gray-100 p-1.5 h-auto">
                     <TabsTrigger
                       value="all"
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
@@ -364,18 +422,6 @@ export default function EmployersManagement() {
                       className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
                     >
                       Inactive ({employers.filter((e) => e.status === "inactive").length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="suspended"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
-                    >
-                      Suspended ({employers.filter((e) => e.status === "suspended").length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="pending"
-                      className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm py-3 px-4 font-semibold"
-                    >
-                      Pending ({employers.filter((e) => e.status === "pending").length})
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="all" className="mt-4">
@@ -401,28 +447,6 @@ export default function EmployersManagement() {
                     />
                   </TabsContent>
                   <TabsContent value="inactive" className="mt-4">
-                    <EmployersTable
-                      employers={paginatedEmployers}
-                      onViewEmployer={handleViewEmployer}
-                      onArchiveEmployer={handleArchiveDialog}
-                      menuAnchorEl={menuAnchorEl}
-                      setMenuAnchorEl={setMenuAnchorEl}
-                      menuEmployerId={menuEmployerId}
-                      setMenuEmployerId={setMenuEmployerId}
-                    />
-                  </TabsContent>
-                  <TabsContent value="suspended" className="mt-4">
-                    <EmployersTable
-                      employers={paginatedEmployers}
-                      onViewEmployer={handleViewEmployer}
-                      onArchiveEmployer={handleArchiveDialog}
-                      menuAnchorEl={menuAnchorEl}
-                      setMenuAnchorEl={setMenuAnchorEl}
-                      menuEmployerId={menuEmployerId}
-                      setMenuEmployerId={setMenuEmployerId}
-                    />
-                  </TabsContent>
-                  <TabsContent value="pending" className="mt-4">
                     <EmployersTable
                       employers={paginatedEmployers}
                       onViewEmployer={handleViewEmployer}
@@ -475,9 +499,13 @@ export default function EmployersManagement() {
       <Dialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
         <DialogContent className="sm:max-w-[400px] rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-gray-900">Archive Employer?</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-900">
+              {selectedEmployer?.status === "active" ? "Archive Employer?" : "Unarchive Employer?"}
+            </DialogTitle>
             <DialogDescription className="text-gray-600 text-base">
-              This will archive the employer record and remove access from the system.
+              {selectedEmployer?.status === "active"
+                ? "This will archive the employer record and remove access from the system."
+                : "This will restore the employer record and re-enable access."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -488,7 +516,7 @@ export default function EmployersManagement() {
               onClick={confirmArchiveEmployer}
               className="rounded-xl px-6 bg-orange-600 hover:bg-orange-700 text-white"
             >
-              Archive
+              {selectedEmployer?.status === "active" ? "Archive" : "Unarchive"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -609,7 +637,7 @@ function EmployersTable({
                         }}
                       >
                         <Archive className="mr-2 h-4 w-4" />
-                        Archive
+                        {employer.status === "active" ? "Archive" : "Unarchive"}
                       </button>
                     </div>
                   )}

@@ -98,14 +98,25 @@ export default function InvitationModal({
   );
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resendDisabled, setResendDisabled] = useState(false); // Add this state
 
   const selectedJobData = jobsList.find((job) => job.title === selectedJob);
 
   const handleSend = async () => {
     setLoading(true);
     try {
+      // Prevent resending if already sent
+      if (sent || resendDisabled) {
+        setLoading(false);
+        return;
+      }
       const jobObj = jobsList.find(j => j.title === selectedJob);
       const resolvedJobId = jobId || jobObj?.id || selectedJob;
+      // Try to get employerId from sessionStorage if available (optional, fallback to null)
+      let employerId: string | null = null;
+      if (typeof window !== "undefined") {
+        employerId = window.sessionStorage?.getItem("employerId") || null;
+      }
       if (typeof onSend === "function") {
         await onSend(message, selectedJob);
       } else {
@@ -113,13 +124,15 @@ export default function InvitationModal({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            studentId: studentId || candidate.id,
-            jobId: resolvedJobId,
+            student_id: studentId || candidate.id,
+            job_id: resolvedJobId,
+            employer_id: employerId,
             message
           })
         });
       }
       setSent(true);
+      setResendDisabled(true); // Disable further sends
     } finally {
       setLoading(false);
       setMessage(
@@ -134,6 +147,7 @@ export default function InvitationModal({
       `Hi ${candidate?.name},\n\nWe're excited to invite you to apply for this position! Your profile caught our attention, and we believe you'd be a fantastic addition to our team.\n\nWe'd love to discuss this opportunity with you further.\n\nBest regards,\nThe Hiring Team`
     );
     setSent(false);
+    // Do not reset resendDisabled, so user can't resend after closing
   };
 
   const handleViewInvited = () => {
@@ -209,174 +223,174 @@ export default function InvitationModal({
           </Box>
         </Box>
         <DialogContent
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          py: 5,
+          minHeight: 220,
+          position: "relative",
+          background: "linear-gradient(90deg, #f0f9ff 0%, #f3e8ff 100%)"
+        }}
+      >
+        <Confetti
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            pointerEvents: "none",
+            zIndex: 1400
+          }}
+          options={{
+            particleCount: 120,
+            spread: 360,
+            ticks: 70,
+            gravity: 0,
+            decay: 0.94,
+            startVelocity: 40,
+            colors: ["#FFE400", "#FFBD00", "#E89400", "#FFCA6C", "#FDFFB8"],
+            shapes: ["star"]
+          }}
+        />
+        <Card
           sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            py: 5,
-            minHeight: 220,
-            position: "relative",
-            background: "linear-gradient(90deg, #f0f9ff 0%, #f3e8ff 100%)"
+            border: "2px solid #dbeafe",
+            background: "linear-gradient(90deg, #f0f9ff 0%, #f3e8ff 100%)",
+            boxShadow: "none",
+            borderRadius: 3,
+            mb: 2,
+            width: "100%",
+            maxWidth: 380
           }}
         >
-          <Confetti
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100vw",
-              height: "100vh",
-              pointerEvents: "none",
-              zIndex: 1400
-            }}
-            options={{
-              particleCount: 120,
-              spread: 360,
-              ticks: 70,
-              gravity: 0,
-              decay: 0.94,
-              startVelocity: 40,
-              colors: ["#FFE400", "#FFBD00", "#E89400", "#FFCA6C", "#FDFFB8"],
-              shapes: ["star"]
-            }}
-          />
-          <Card
-            sx={{
-              border: "2px solid #dbeafe",
-              background: "linear-gradient(90deg, #f0f9ff 0%, #f3e8ff 100%)",
-              boxShadow: "none",
-              borderRadius: 3,
-              mb: 2,
-              width: "100%",
-              maxWidth: 380
-            }}
-          >
-            <CardContent sx={{ p: 3, display: "flex", alignItems: "center", gap: 2 }}>
-              <Avatar
-                sx={{
-                  width: 56,
-                  height: 56,
-                  fontWeight: 600,
-                  fontSize: 24,
-                  bgcolor: "#2563eb",
-                  mr: 2
-                }}
-                src={candidate.avatar}
-              >
-                {candidate?.name?.[0] || "?"}
-              </Avatar>
-              <Box>
-                <Typography fontWeight={600} fontSize={18} color="#1e293b">
-                  {candidate?.name}
-                </Typography>
-                {candidate.program && (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
-                    <GraduationCap size={16} style={{ marginRight: 4, color: "#64748b" }} />
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
-                      {candidate.program}
-                    </Typography>
-                  </Box>
-                )}
-                {candidate.yearSection && (
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
-                    {candidate.yearSection}
-                  </Typography>
-                )}
-                {candidate.skills && candidate.skills.length > 0 && (
-                  <Box sx={{ display: "flex", gap: 0.5, mt: 1, flexWrap: "wrap" }}>
-                    {candidate.skills.slice(0, 3).map((skill, idx) => (
-                      <Box
-                        key={idx}
-                        sx={{
-                          px: 1,
-                          py: 0.2,
-                          bgcolor: "#e0e7ff",
-                          color: "#3730a3",
-                          borderRadius: 1,
-                          fontSize: 12,
-                          fontWeight: 500,
-                          mr: 0.5
-                        }}
-                      >
-                        {skill}
-                      </Box>
-                    ))}
-                    {candidate.skills.length > 3 && (
-                      <Box
-                        sx={{
-                          px: 1,
-                          py: 0.2,
-                          bgcolor: "#f1f5f9",
-                          color: "#334155",
-                          borderRadius: 1,
-                          fontSize: 12,
-                          fontWeight: 500
-                        }}
-                      >
-                        +{candidate.skills.length - 3} more
-                      </Box>
-                    )}
-                  </Box>
-                )}
-              </Box>
-            </CardContent>
-          </Card>
-          {selectedJobData && (
-            <Box
+          <CardContent sx={{ p: 3, display: "flex", alignItems: "center", gap: 2 }}>
+            <Avatar
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                px: 2,
-                py: 1,
-                bgcolor: selectedJobData.matchScore >= 60 ? "#dcfce7" : "#fef3c7",
-                border: selectedJobData.matchScore >= 60 ? "1px solid #bbf7d0" : "1px solid #fde68a",
-                borderRadius: 2,
-                mb: 2
+                width: 56,
+                height: 56,
+                fontWeight: 600,
+                fontSize: 24,
+                bgcolor: "#2563eb",
+                mr: 2
               }}
+              src={candidate.avatar}
             >
-              <Sparkles size={18} style={{ color: selectedJobData.matchScore >= 60 ? "#16a34a" : "#ea580c" }} />
-              <Typography sx={{ fontSize: 14, color: selectedJobData.matchScore >= 60 ? "#166534" : "#b45309" }}>
-                <b>{selectedJobData.matchScore}% match</b> - Great compatibility!
+              {candidate?.name?.[0] || "?"}
+            </Avatar>
+            <Box>
+              <Typography fontWeight={600} fontSize={18} color="#1e293b">
+                {candidate?.name}
               </Typography>
+              {candidate.program && (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                  <GraduationCap size={16} style={{ marginRight: 4, color: "#64748b" }} />
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+                    {candidate.program}
+                  </Typography>
+                </Box>
+              )}
+              {candidate.yearSection && (
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
+                  {candidate.yearSection}
+                </Typography>
+              )}
+              {candidate.skills && candidate.skills.length > 0 && (
+                <Box sx={{ display: "flex", gap: 0.5, mt: 1, flexWrap: "wrap" }}>
+                  {candidate.skills.slice(0, 3).map((skill, idx) => (
+                    <Box
+                      key={idx}
+                      sx={{
+                        px: 1,
+                        py: 0.2,
+                        bgcolor: "#e0e7ff",
+                        color: "#3730a3",
+                        borderRadius: 1,
+                        fontSize: 12,
+                        fontWeight: 500,
+                        mr: 0.5
+                      }}
+                    >
+                      {skill}
+                    </Box>
+                  ))}
+                  {candidate.skills.length > 3 && (
+                    <Box
+                      sx={{
+                        px: 1,
+                        py: 0.2,
+                        bgcolor: "#f1f5f9",
+                        color: "#334155",
+                        borderRadius: 1,
+                        fontSize: 12,
+                        fontWeight: 500
+                      }}
+                    >
+                      +{candidate.skills.length - 3} more
+                    </Box>
+                  )}
+                </Box>
+              )}
             </Box>
-          )}
-          <Typography sx={{ fontSize: 16, color: "#334155", textAlign: "center", mt: 1 }}>
-            Your invitation has been sent successfully.
-          </Typography>
-        </DialogContent>
-        <Box sx={{ px: 3, pb: 3, pt: 0, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 2 }}>
-          <Button
-            onClick={handleClose}
-            variant="outlined"
+          </CardContent>
+        </Card>
+        {selectedJobData && (
+          <Box
             sx={{
-              color: "#2563eb",
-              borderColor: "#2563eb",
-              fontWeight: 500,
-              fontSize: 16,
-              background: "#fff",
-              "&:hover": { borderColor: "#1e40af", background: "#f1f5f9" }
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              px: 2,
+              py: 1,
+              bgcolor: selectedJobData.matchScore >= 60 ? "#dcfce7" : "#fef3c7",
+              border: selectedJobData.matchScore >= 60 ? "1px solid #bbf7d0" : "1px solid #fde68a",
+              borderRadius: 2,
+              mb: 2
             }}
           >
-            Close
-          </Button>
-          <Button
-            onClick={handleViewInvited}
-            variant="contained"
-            sx={{
-              background: "#2563eb",
-              color: "#fff",
-              fontWeight: 500,
-              fontSize: 16,
-              px: 3,
-              "&:hover": { background: "#1e40af" }
-            }}
-          >
-            View Invited Candidates
-          </Button>
-        </Box>
-      </Dialog>
+            <Sparkles size={18} style={{ color: selectedJobData.matchScore >= 60 ? "#16a34a" : "#ea580c" }} />
+            <Typography sx={{ fontSize: 14, color: selectedJobData.matchScore >= 60 ? "#166534" : "#b45309" }}>
+              <b>{selectedJobData.matchScore}% match</b> - Great compatibility!
+            </Typography>
+          </Box>
+        )}
+        <Typography sx={{ fontSize: 16, color: "#334155", textAlign: "center", mt: 1 }}>
+          Your invitation has been sent successfully.
+        </Typography>
+      </DialogContent>
+      <Box sx={{ px: 3, pb: 3, pt: 0, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 2 }}>
+        <Button
+          onClick={handleClose}
+          variant="outlined"
+          sx={{
+            color: "#2563eb",
+            borderColor: "#2563eb",
+            fontWeight: 500,
+            fontSize: 16,
+            background: "#fff",
+            "&:hover": { borderColor: "#1e40af", background: "#f1f5f9" }
+          }}
+        >
+          Close
+        </Button>
+        <Button
+          onClick={handleViewInvited}
+          variant="contained"
+          sx={{
+            background: "#2563eb",
+            color: "#fff",
+            fontWeight: 500,
+            fontSize: 16,
+            px: 3,
+            "&:hover": { background: "#1e40af" }
+          }}
+        >
+          View Invited Candidates
+        </Button>
+      </Box>
+    </Dialog>
     );
   }
 
@@ -591,7 +605,7 @@ export default function InvitationModal({
             </Button>
             <Button
               onClick={handleSend}
-              disabled={!selectedJob || loading}
+              disabled={!selectedJob || loading || resendDisabled} // Disable if already sent
               sx={{
                 flex: 1,
                 background: "#2563eb",

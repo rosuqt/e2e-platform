@@ -31,7 +31,6 @@ import { Lock } from "@mui/icons-material"
 import ApplicantsTab from "./applicants-tab"
 import JobAnalytics from "./analytics-tab"
 import JobSettings from "./settings-tab"
-import { PiMoneyLight } from "react-icons/pi";
 import React from "react"
 import QuickEditModal from "../quick-edit-modal"
 import { useSession } from "next-auth/react"
@@ -424,17 +423,7 @@ export default function EmployerJobOverview({ selectedJob, onClose, onSuccess, i
                           <div className="text-sm text-gray-500">{jobData.workType}</div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <PiMoneyLight className="h-4 w-4 text-gray-400" />
-                        <div>
-                          <div className="text-sm font-medium">Salary</div>
-                          <div className="text-sm text-gray-500">
-                            {jobData.payAmount && jobData.payAmount.trim() !== ""
-                              ? `PHP ${jobData.payAmount}`
-                              : "No Pay"}
-                          </div>
-                        </div>
-                      </div>
+                 
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
                         <div>

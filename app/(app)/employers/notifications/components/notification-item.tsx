@@ -80,6 +80,10 @@ const iconMap: Record<string, { icon: React.ReactNode; bg: string }> = {
     icon: <Calendar className="h-5 w-5 text-white" />,
     bg: "bg-pink-500",
   },
+  invite_sent: {
+    icon: <Mail className="h-5 w-5 text-white" />,
+    bg: "bg-blue-400",
+  },
   default: {
     icon: <FileText className="h-5 w-5 text-white" />,
     bg: "bg-gray-400",
@@ -181,6 +185,11 @@ function getNotificationContent(notification: Notification) {
       return {
         title: `Interview Today: ${name}`,
         description: notification.content,
+      }
+    case "invite_sent":
+      return {
+        title: `Invitation Sent: ${name}`,
+        description: `You have invited ${name} to apply for ${jobTitle}.`,
       }
     default:
       return {

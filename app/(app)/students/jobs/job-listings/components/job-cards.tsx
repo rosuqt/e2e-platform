@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion } from "framer-motion";
 import {  Clock, Users, Bookmark, Briefcase, Calendar, Globe } from "lucide-react";
@@ -171,6 +172,9 @@ function JobCard({
   const [quickApplyProcessing, setQuickApplyProcessing] = useState(false);
   const [companyRating, setCompanyRating] = useState<{ rating: number, count: number } | null>(null);
   const [posterRating, setPosterRating] = useState<{ rating: number, count: number } | null>(null);
+  const [maxApplicantsReached, setMaxApplicantsReached] = useState(false);
+  const [deadlinePassed, setDeadlinePassed] = useState(false);
+  const [currentApplicants, setCurrentApplicants] = useState<number | null>(null);
 
   const logoPath =
     companyLogoImagePath ||
@@ -403,6 +407,32 @@ function JobCard({
       matchedPrefs.push(job.remote_options || jobRemoteNorm);
     }
   }
+
+  useEffect(() => {
+    setMaxApplicantsReached(false);
+    setDeadlinePassed(false);
+    setCurrentApplicants(null);
+    if (!job.id) return;
+    if (job.application_deadline) {
+      const deadline = new Date(job.application_deadline);
+      if (isNaN(deadline.getTime()) || deadline < new Date()) {
+        setDeadlinePassed(true);
+      }
+    }
+    if (typeof job.max_applicants === "number" && job.max_applicants > 0) {
+      fetch(`/api/students/apply/count-applications?jobId=${encodeURIComponent(job.id)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (typeof data.count === "number") {
+            setCurrentApplicants(data.count);
+            if (data.count >= job.max_applicants!) {
+              setMaxApplicantsReached(true);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [job.id, job.max_applicants, job.application_deadline]);
 
   async function handleQuickApply() {
     if (!session?.user?.studentId || quickApplyProcessing) return;
@@ -682,25 +712,50 @@ function JobCard({
             )}
             <motion.button
               className={`px-6 py-2 rounded-full font-medium shadow-sm border flex-1 sm:flex-none flex items-center justify-center gap-2 ${
-                hasApplied
+                hasApplied || maxApplicantsReached || deadlinePassed
                   ? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
                   : "bg-white hover:bg-blue-50 text-blue-600 border-blue-600"
               }`}
-              whileHover={hasApplied || loadingApply || quickApplyProcessing ? {} : { scale: 1.03 }}
-              whileTap={hasApplied || loadingApply || quickApplyProcessing ? {} : { scale: 0.97 }}
+              whileHover={
+                hasApplied || loadingApply || quickApplyProcessing || maxApplicantsReached || deadlinePassed
+                  ? {}
+                  : { scale: 1.03 }
+              }
+              whileTap={
+                hasApplied || loadingApply || quickApplyProcessing || maxApplicantsReached || deadlinePassed
+                  ? {}
+                  : { scale: 0.97 }
+              }
               onClick={(e) => {
                 e.stopPropagation();
+                if (hasApplied || maxApplicantsReached || deadlinePassed) return;
                 handleQuickApply();
               }}
-              disabled={hasApplied || loadingApply || quickApplyProcessing}
+              disabled={hasApplied || loadingApply || quickApplyProcessing || maxApplicantsReached || deadlinePassed}
             >
               {(loadingApply || quickApplyProcessing) ? (
                 <CircularProgress size={20} color="inherit" />
               ) : (
-                <Tooltip title={hasApplied ? "Looks like you’ve applied before — no need to apply again." : ""}>
+                <Tooltip
+                  title={
+                    hasApplied
+                      ? "Looks like you’ve applied before — no need to apply again."
+                      : maxApplicantsReached
+                      ? "Maximum number of applicants reached"
+                      : deadlinePassed
+                      ? "Application deadline has passed"
+                      : ""
+                  }
+                >
                   <span className="flex items-center gap-2">
                     <IoIosRocket className="w-4 h-4" />
-                    {hasApplied ? "Submitted" : "Quick Apply"}
+                    {hasApplied
+                      ? "Submitted"
+                      : maxApplicantsReached
+                      ? "Applications Full"
+                      : deadlinePassed
+                      ? "Deadline Passed"
+                      : "Quick Apply"}
                   </span>
                 </Tooltip>
               )}

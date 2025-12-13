@@ -683,15 +683,7 @@ export function ManageStep({ formData, updateFormData }: ManageStepProps) {
                     </AnimatePresence>
                     {newQuestionType !== "text" && (
                       <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="autoReject"
-                          checked={newQuestionAutoReject}
-                          onCheckedChange={(checked) => setNewQuestionAutoReject(checked === true)}
-                          className="data-[state=checked]:bg-red-500 border-red-200"
-                        />
-                        <Label htmlFor="autoReject" className="text-sm text-gray-700">
-                          Auto-reject if answer doesn&apos;t match criteria
-                        </Label>
+                       
                       </div>
                     )}
                     {newQuestionType === "text" && (

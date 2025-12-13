@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 
 import { motion } from "framer-motion"
@@ -57,6 +58,19 @@ export default function PersonalDetailsForm({
     initial: { x: 0 },
     animate: { x: [0, -10, 10, -10, 10, 0] },
     transition: { duration: 0.4 },
+  }
+
+  // Archive logic: Save form data to localStorage under a special key
+  function archivePersonalDetails() {
+    try {
+      localStorage.setItem(
+        "archivedPersonalDetails",
+        JSON.stringify(data)
+      );
+      alert("Personal details archived safely.");
+    } catch (e) {
+      alert("Failed to archive personal details.");
+    }
   }
 
   return (
@@ -446,6 +460,17 @@ export default function PersonalDetailsForm({
             }}
           />
         </motion.div>
+      </div>
+
+      {/* Archive Button */}
+      <div className="px-6 mb-2 flex justify-end">
+        <button
+          type="button"
+          className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1 px-4 rounded text-sm"
+          onClick={archivePersonalDetails}
+        >
+          Archive Personal Details
+        </button>
       </div>
     </motion.div>
   )

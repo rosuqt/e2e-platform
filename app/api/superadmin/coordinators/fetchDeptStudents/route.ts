@@ -99,7 +99,7 @@ export async function GET() {
   const { data: ojtData, error: ojtError } = await supabase
     .from("ojt_students")
     .select("*")
-    .eq("course", department)
+    .or(`course.eq.${department},course.is.null,course.eq.`) // include department, null, or empty string
 
   if (ojtError && typeof ojtError.message === "string") {
     return NextResponse.json({ error: ojtError.message }, { status: 500 })

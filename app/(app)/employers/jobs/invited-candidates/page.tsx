@@ -551,29 +551,32 @@ export default function InvitedCandidatesPage() {
               inviteModal.candidate?.program ??
               "Job Invitation"]: inviteModal.candidate?.matchPercentage ?? 0,
           }}
-          onSend={async (message, jobTitle) => {
-            const jobId =
-              inviteModal.candidate?.jobId ??
-              jobTitle
-            const student_id = inviteModal.candidate?.studentId && inviteModal.candidate.studentId !== "" 
-              ? inviteModal.candidate.studentId 
-              : undefined;
-            await fetch("/api/employers/invitedCandidates/actionsInvites", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "edit",
-                invitationId: inviteModal.candidate?.id ?? "",
-                data: {
-                  message,
-                  job_id: jobId,
-                  ...(student_id ? { student_id } : {}),
-                },
-              }),
-            })
-            setInviteModal({ open: false, candidate: inviteModal.candidate })
-            await fetchCandidates()
-          }}
+          // Only pass onSend if editing (i.e., if inviteModal.candidate.id exists and is an existing invitation)
+          {...(inviteModal.candidate?.id ? {
+            onSend: async (message, jobTitle) => {
+              const jobId =
+                inviteModal.candidate?.jobId ??
+                jobTitle
+              const student_id = inviteModal.candidate?.studentId && inviteModal.candidate.studentId !== "" 
+                ? inviteModal.candidate.studentId 
+                : undefined;
+              await fetch("/api/employers/invitedCandidates/actionsInvites", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "edit",
+                  invitationId: inviteModal.candidate?.id ?? "",
+                  data: {
+                    message,
+                    job_id: jobId,
+                    ...(student_id ? { student_id } : {}),
+                  },
+                }),
+              })
+              setInviteModal({ open: false, candidate: inviteModal.candidate })
+              await fetchCandidates()
+            }
+          } : {})}
         />
       )}
 

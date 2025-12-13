@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client"
 import { useEffect, useState, useRef, useLayoutEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
@@ -184,6 +185,9 @@ export default function Home() {
   const [dropdownOpen, setDropdownOpen] = useState<null | string>(null);
   const [showQuickApply, setShowQuickApply] = useState(false)
   const [hasApplied, setHasApplied] = useState<boolean | null>(null)
+  const [maxApplicantsReached, setMaxApplicantsReached] = useState(false)
+  const [deadlinePassed, setDeadlinePassed] = useState(false)
+  const [currentApplicants, setCurrentApplicants] = useState<number | null>(null)
 
   const searchRef = useRef<HTMLDivElement | null>(null)
   const rightSectionRef = useRef<HTMLDivElement | null>(null)
@@ -424,6 +428,33 @@ export default function Home() {
       setHasApplied(null)
     }
   }, [selectedJob, session?.user?.studentId])
+
+  useEffect(() => {
+    setMaxApplicantsReached(false)
+    setDeadlinePassed(false)
+    setCurrentApplicants(null)
+    if (selectedJob && jobDetails) {
+      if (jobDetails.application_deadline) {
+        const deadline = new Date(jobDetails.application_deadline)
+        if (isNaN(deadline.getTime()) || deadline < new Date()) {
+          setDeadlinePassed(true)
+        }
+      }
+      if (typeof jobDetails.max_applicants === "number" && jobDetails.max_applicants > 0) {
+        fetch(`/api/students/apply/count-applications?jobId=${encodeURIComponent(selectedJob)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (typeof data.count === "number") {
+              setCurrentApplicants(data.count)
+              if (data.count >= jobDetails.max_applicants!) {
+                setMaxApplicantsReached(true)
+              }
+            }
+          })
+          .catch(() => {})
+      }
+    }
+  }, [selectedJob, jobDetails])
 
   return (
     <div className="flex overflow-x-hidden bg-gradient-to-br from-blue-50 to-sky-100">
@@ -816,7 +847,7 @@ export default function Home() {
 
                                 <motion.div
                                   className="bg-white/10 rounded-2xl p-5 border border-white/20 hover:bg-white/20 transition-all duration-300"
-                                  whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+                                  whileHover={{ y: -5, boxShadow: "0 10px 25 -5px rgba(0, 0, 0, 0.1)" }}
                                 >
                                   <h3 className="text-white font-bold mb-2 text-lg">Nice to Have Qualifications</h3>
                                   <ul className="text-blue-100 text-sm space-y-3">
@@ -899,7 +930,7 @@ export default function Home() {
                                   </ul>
                                 </motion.div>
                                 <div className="flex gap-3 mt-8">
-                                  {hasApplied === false && (
+                                  {hasApplied === false && !maxApplicantsReached && !deadlinePassed && (
                                     <motion.button
                                       className="w-full bg-gradient-to-r from-blue-400 to-sky-400 text-white font-bold py-4 rounded-xl hover:from-blue-500 hover:to-sky-500 transition-all duration-300 shadow-lg"
                                       whileHover={{
@@ -912,14 +943,31 @@ export default function Home() {
                                       Apply Now
                                     </motion.button>
                                   )}
-                                  {hasApplied === true && (
-                                    <Tooltip title="You have already applied" arrow>
+                                  {(hasApplied === true || maxApplicantsReached || deadlinePassed) && (
+                                    <Tooltip
+                                      title={
+                                        hasApplied === true
+                                          ? "You have already applied"
+                                          : maxApplicantsReached
+                                          ? "Maximum number of applicants reached"
+                                          : deadlinePassed
+                                          ? "Application deadline has passed"
+                                          : ""
+                                      }
+                                      arrow
+                                    >
                                       <span className="w-full">
                                         <button
                                           className="w-full bg-gray-200 text-gray-500 font-bold py-4 rounded-xl border-2 border-gray-300 cursor-not-allowed shadow-lg"
                                           disabled
                                         >
-                                          Already Applied
+                                          {hasApplied === true
+                                            ? "Already Applied"
+                                            : maxApplicantsReached
+                                            ? "Applications Full"
+                                            : deadlinePassed
+                                            ? "Deadline Passed"
+                                            : ""}
                                         </button>
                                       </span>
                                     </Tooltip>
