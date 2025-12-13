@@ -169,7 +169,7 @@ function ApplicationModalWrapper({ jobId, jobTitle, onClose }: { jobId: string, 
 }
 
 export default function Home() {
-  const { data: session, update } = useSession()
+  const { data: session } = useSession()
   const [selectedJob, setSelectedJob] = useState<string | null>(null)
   const [jobDetails, setJobDetails] = useState<JobDetails | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
@@ -408,23 +408,6 @@ export default function Home() {
       setJobDetails(null)
     }
   }, [selectedJob])
-
-  useEffect(() => {
-    let refreshTimeout: NodeJS.Timeout | null = null
-    if (session?.expires) {
-      const exp = new Date(session.expires).getTime()
-      const now = Date.now()
-      const msUntilRefresh = exp - now - 60000
-      if (msUntilRefresh > 0) {
-        refreshTimeout = setTimeout(() => {
-          update?.()
-        }, msUntilRefresh)
-      }
-    }
-    return () => {
-      if (refreshTimeout) clearTimeout(refreshTimeout)
-    }
-  }, [session, update])
 
   useEffect(() => {
     if (selectedJob && session?.user?.studentId) {
